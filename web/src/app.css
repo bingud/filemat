@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@import "$lib/css/forms.css";
+
+:root {
+    --navbar-height: 3rem;
+}
+
+.page {
+    @apply flex flex-col w-full;
+}
+
+@theme {
+    --breakpoint-xs: 25.75rem
+}
+
+button {
+    @apply hover:cursor-pointer;
+}

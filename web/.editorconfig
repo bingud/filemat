@@ -1,0 +1,2 @@
+[*.svelte]
+disable_inspection=Svelte:UsingOnEvent

@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: filemat-server
+
+  datasource:
+    url: jdbc:sqlite:/var/lib/filemat/filemat-server.db
+    hikari:
+      connection-init-sql: PRAGMA foreign_keys=ON;

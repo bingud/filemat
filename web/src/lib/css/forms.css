@@ -1,0 +1,263 @@
+/* Block 1: Inputs base styles */
+[type='text'],
+input:where(:not([type])),
+[type='email'],
+[type='url'],
+[type='password'],
+[type='number'],
+[type='date'],
+[type='datetime-local'],
+[type='month'],
+[type='search'],
+[type='tel'],
+[type='time'],
+[type='week'],
+[multiple],
+textarea,
+select,
+.form-input,
+.form-textarea,
+.form-select,
+.form-multiselect {
+    @apply appearance-none border border-gray-500 rounded-none pt-2 pr-3 pb-2 pl-3 text-base leading-normal;
+    --tw-shadow: 0 0 #0000;
+}
+
+/* Block 1: Inputs focus styles */
+[type='text']:focus,
+input:where(:not([type])):focus,
+[type='email']:focus,
+[type='url']:focus,
+[type='password']:focus,
+[type='number']:focus,
+[type='date']:focus,
+[type='datetime-local']:focus,
+[type='month']:focus,
+[type='search']:focus,
+[type='tel']:focus,
+[type='time']:focus,
+[type='week']:focus,
+[multiple]:focus,
+textarea:focus,
+select:focus,
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus,
+.form-multiselect:focus {
+    @apply outline-none outline-offset-2 ring-1 ring-offset-0 ring-blue-600 border-blue-600;
+    --tw-ring-inset: var(--tw-empty,/*!*/ /*!*/);
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-color: #2563eb;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Block 2: Placeholder styles */
+input::placeholder,
+textarea::placeholder,
+.form-input::placeholder,
+.form-textarea::placeholder {
+    @apply placeholder-gray-500;
+    opacity: 1;
+}
+
+/* Block 3: Webkit datetime-edit fields wrapper */
+::-webkit-datetime-edit-fields-wrapper,
+.form-input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+/* Block 4 & 5: Webkit date-and-time value */
+::-webkit-date-and-time-value,
+.form-input::-webkit-date-and-time-value {
+    min-height: 1.5em;
+    text-align: inherit;
+}
+
+/* Block 6: Webkit datetime-edit */
+::-webkit-datetime-edit,
+.form-input::-webkit-datetime-edit {
+    display: inline-flex;
+}
+
+/* Block 7: Webkit datetime-edit fields padding reset */
+::-webkit-datetime-edit,
+::-webkit-datetime-edit-year-field,
+::-webkit-datetime-edit-month-field,
+::-webkit-datetime-edit-day-field,
+::-webkit-datetime-edit-hour-field,
+::-webkit-datetime-edit-minute-field,
+::-webkit-datetime-edit-second-field,
+::-webkit-datetime-edit-millisecond-field,
+::-webkit-datetime-edit-meridiem-field,
+.form-input::-webkit-datetime-edit,
+.form-input::-webkit-datetime-edit-year-field,
+.form-input::-webkit-datetime-edit-month-field,
+.form-input::-webkit-datetime-edit-day-field,
+.form-input::-webkit-datetime-edit-hour-field,
+.form-input::-webkit-datetime-edit-minute-field,
+.form-input::-webkit-datetime-edit-second-field,
+.form-input::-webkit-datetime-edit-millisecond-field,
+.form-input::-webkit-datetime-edit-meridiem-field {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* Block 8: Select with chevron background */
+select,
+.form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    @apply pr-10;
+    print-color-adjust: exact;
+}
+
+/* Block 9: Select (multiple & size) reset */
+[multiple],
+[size]:where(select:not([size="1"])),
+.form-select:where([size]:not([size="1"])) {
+    background-image: initial;
+    background-position: initial;
+    background-repeat: unset;
+    background-size: initial;
+    @apply pr-3;
+    print-color-adjust: unset;
+}
+
+/* Block 10: Checkbox and radio base styles */
+[type='checkbox'],
+[type='radio'],
+.form-checkbox,
+.form-radio {
+    @apply appearance-none p-0 inline-block align-middle select-none flex-shrink-0 h-4 w-4 text-blue-600 bg-white border border-gray-500;
+    background-origin: border-box;
+    print-color-adjust: exact;
+    --tw-shadow: 0 0 #0000;
+}
+
+/* Block 11: Checkbox border radius */
+[type='checkbox'],
+.form-checkbox {
+    @apply rounded-none;
+}
+
+/* Block 12: Radio border radius */
+[type='radio'],
+.form-radio {
+    @apply rounded-full;
+}
+
+/* Block 13: Checkbox and radio focus styles */
+[type='checkbox']:focus,
+[type='radio']:focus,
+.form-checkbox:focus,
+.form-radio:focus {
+    @apply outline-none outline-offset-2 ring-2 ring-offset-2 ring-blue-600;
+    --tw-ring-inset: var(--tw-empty,/*!*/ /*!*/);
+    --tw-ring-offset-width: 2px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-color: #2563eb;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Block 14: Checkbox and radio checked styles */
+[type='checkbox']:checked,
+[type='radio']:checked,
+.form-checkbox:checked,
+.form-radio:checked {
+    @apply border-transparent bg-current;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Block 15: Checkbox checked background image */
+[type='checkbox']:checked,
+.form-checkbox:checked {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+}
+
+@media (forced-colors: active) {
+    [type='checkbox']:checked,
+    .form-checkbox:checked {
+        appearance: auto;
+    }
+}
+
+/* Block 16: Radio checked background image */
+[type='radio']:checked,
+.form-radio:checked {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='3'/%3E%3C/svg%3E");
+}
+
+@media (forced-colors: active) {
+    [type='radio']:checked,
+    .form-radio:checked {
+        appearance: auto;
+    }
+}
+
+/* Block 17: Checkbox and radio checked hover/focus */
+[type='checkbox']:checked:hover,
+[type='checkbox']:checked:focus,
+[type='radio']:checked:hover,
+[type='radio']:checked:focus,
+.form-checkbox:checked:hover,
+.form-checkbox:checked:focus,
+.form-radio:checked:hover,
+.form-radio:checked:focus {
+    @apply border-transparent bg-current;
+}
+
+/* Block 18: Checkbox indeterminate styles */
+[type='checkbox']:indeterminate,
+.form-checkbox:indeterminate {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3E%3Cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3E%3C/svg%3E");
+    @apply border-transparent bg-current;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+@media (forced-colors: active) {
+    [type='checkbox']:indeterminate,
+    .form-checkbox:indeterminate {
+        appearance: auto;
+    }
+}
+
+/* Block 19: Checkbox indeterminate hover/focus */
+[type='checkbox']:indeterminate:hover,
+[type='checkbox']:indeterminate:focus,
+.form-checkbox:indeterminate:hover,
+.form-checkbox:indeterminate:focus {
+    @apply border-transparent bg-current;
+}
+
+/* Block 20: File input reset */
+[type='file'] {
+    background: unset;
+    border-color: inherit;
+    @apply border-0;
+    @apply rounded-none;
+    padding: 0;
+    font-size: unset;
+    line-height: inherit;
+}
+
+/* Block 21: File input focus outline */
+[type='file']:focus {
+    outline: 1px solid ButtonText;
+    outline: 1px auto -webkit-focus-ring-color;
+}
+
+/* Extra: Submit user-select none */
+[type='submit'] {
+    @apply select-none;
+}
