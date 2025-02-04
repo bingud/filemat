@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.filemat.server.common.util.getActualCallerPackage
-import org.filemat.server.common.util.getPackage
+import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.repository.LogRepository
@@ -33,7 +33,6 @@ class LogService(
     fun debug(
         type: LogType,
         action: UserAction,
-        createdDate: Long,
         description: String,
         message: String,
         initiatorId: Ulid? = null,
@@ -44,7 +43,6 @@ class LogService(
             level = LogLevel.DEBUG,
             type = type,
             action = action,
-            createdDate = createdDate,
             description = description,
             message = message,
             initiatorId = initiatorId,
@@ -56,7 +54,6 @@ class LogService(
     fun info(
         type: LogType,
         action: UserAction,
-        createdDate: Long,
         description: String,
         message: String,
         initiatorId: Ulid? = null,
@@ -67,7 +64,6 @@ class LogService(
             level = LogLevel.INFO,
             type = type,
             action = action,
-            createdDate = createdDate,
             description = description,
             message = message,
             initiatorId = initiatorId,
@@ -79,7 +75,6 @@ class LogService(
     fun warn(
         type: LogType,
         action: UserAction,
-        createdDate: Long,
         description: String,
         message: String,
         initiatorId: Ulid? = null,
@@ -90,7 +85,6 @@ class LogService(
             level = LogLevel.WARN,
             type = type,
             action = action,
-            createdDate = createdDate,
             description = description,
             message = message,
             initiatorId = initiatorId,
@@ -102,7 +96,6 @@ class LogService(
     fun error(
         type: LogType,
         action: UserAction,
-        createdDate: Long,
         description: String,
         message: String,
         initiatorId: Ulid? = null,
@@ -113,7 +106,6 @@ class LogService(
             level = LogLevel.ERROR,
             type = type,
             action = action,
-            createdDate = createdDate,
             description = description,
             message = message,
             initiatorId = initiatorId,
@@ -125,7 +117,6 @@ class LogService(
     fun fatal(
         type: LogType,
         action: UserAction,
-        createdDate: Long,
         description: String,
         message: String,
         initiatorId: Ulid? = null,
@@ -136,7 +127,6 @@ class LogService(
             level = LogLevel.FATAL,
             type = type,
             action = action,
-            createdDate = createdDate,
             description = description,
             message = message,
             initiatorId = initiatorId,
@@ -153,7 +143,6 @@ class LogService(
         level: LogLevel,
         type: LogType,
         action: UserAction,
-        createdDate: Long,
         description: String,
         message: String,
         initiatorId: Ulid? = null,
@@ -161,6 +150,7 @@ class LogService(
         targetId: Ulid? = null,
     ) {
         val caller = getActualCallerPackage()
+        val now = unixNow()
 
         // Rate limiter
         val currentTime = System.currentTimeMillis()
@@ -179,7 +169,7 @@ class LogService(
                     level = level.ordinal,
                     type = type.ordinal,
                     action = action.ordinal,
-                    createdDate = createdDate,
+                    createdDate = now,
                     description = description,
                     message = message,
                     initiatorId = initiatorId?.toString(),
@@ -191,7 +181,7 @@ class LogService(
                     e.printStackTrace()
                     loggedException = true
                 }
-                println("\n********************************************************\nFAILED TO SAVE LOG TO DATABASE\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(createdDate)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message")
+                println("\n********************************************************\nFAILED TO SAVE LOG TO DATABASE\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(now)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message")
             }
         }
     }

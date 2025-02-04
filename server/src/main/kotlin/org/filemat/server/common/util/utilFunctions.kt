@@ -1,9 +1,30 @@
 package org.filemat.server.common.util
 
+import kotlinx.serialization.json.Json
+import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.log.service.LogService
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
 
 fun unixNow() = Instant.now().epochSecond
+
+fun List<String>?.toJsonOrNull(): String? {
+    this ?: return null
+    return Json.encodeToString(this)
+}
+
+fun Boolean.toInt() = if (this) 1 else 0
+
+fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
+    val result = TransactionTemplateConfig.instance.execute { status ->
+        block(status)
+    }
+
+    return result!!
+}
+
 
 val packagePrefix = gPackagePrefix() + "."
 fun getPackage(): String {

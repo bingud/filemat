@@ -4,7 +4,7 @@ import com.github.f4b6a3.ulid.Ulid
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
-@Table("user")
+@Table("users")
 data class User(
     @Column("user_id")
     val userId: Ulid,

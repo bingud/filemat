@@ -1,6 +1,6 @@
 -- SQLITE SCHEMA
 
-CREATE TABLE IF NOT EXISTS user (
+CREATE TABLE IF NOT EXISTS users (
     user_id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
     username TEXT NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS permissions (
     role_id TEXT,
     permissions TEXT NOT NULL,
     created_date INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES user(user_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (role_id) REFERENCES role(role_id)
 ) STRICT;
 
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS files (
     inode INTEGER NOT NULL,
     is_filesystem_supported INTEGER NOT NULL,
     owner_user_id TEXT,
-    FOREIGN KEY (owner_user_id) REFERENCES user(user_id)
+    FOREIGN KEY (owner_user_id) REFERENCES users(user_id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS auth_token (
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS auth_token (
     created_date INTEGER NOT NULL,
     user_agent TEXT NOT NULL,
     max_age INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES user(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS log (
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS log (
     initiator_user_id TEXT,
     initiator_ip TEXT,
     target_id TEXT,
-    FOREIGN KEY (initiator_user_id) REFERENCES user(user_id)
+    FOREIGN KEY (initiator_user_id) REFERENCES users(user_id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -80,5 +80,5 @@ CREATE TABLE IF NOT EXISTS shared_files (
     is_password INTEGER NOT NULL,
     password TEXT,
     FOREIGN KEY (file_id) REFERENCES files(entity_id),
-    FOREIGN KEY (user_id) REFERENCES user(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 ) STRICT;

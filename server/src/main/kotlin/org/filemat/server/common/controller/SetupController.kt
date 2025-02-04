@@ -5,19 +5,27 @@ import jakarta.servlet.http.HttpServletRequest
 import org.filemat.server.common.State
 import org.filemat.server.common.util.AController
 import org.filemat.server.common.util.Validator
+import org.filemat.server.common.util.runTransaction
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.user.model.User
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+
 @RestController
 @RequestMapping("/v1/setup")
-class SetupController(private val passwordEncoder: PasswordEncoder) : AController() {
+class SetupController(
+    private val passwordEncoder: PasswordEncoder,
+    private val transactionTemplate: TransactionTemplate,
+) : AController() {
 
     /**
      * Sets up the application.
@@ -54,7 +62,10 @@ class SetupController(private val passwordEncoder: PasswordEncoder) : AControlle
             isBanned = false,
         )
 
-
+        runTransaction { status ->
+            save user,
+            make audit log
+        }
 
         return ok()
     }

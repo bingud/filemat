@@ -2,6 +2,7 @@ package org.filemat.server.test.controller
 
 import kotlinx.serialization.Serializable
 import org.filemat.server.common.util.getPackage
+import org.filemat.server.common.util.runTransaction
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -20,14 +21,19 @@ class TestController(private val logService: LogService) {
 
     @GetMapping("/test")
     fun sus(): String {
-        logService.debug(
-            type = LogType.SYSTEM,
-            action = UserAction.NONE,
-            createdDate = unixNow(),
-            description = "DESCRIPTOID",
-            message = "MESSITCH",
-        )
-        return getPackage()
+        val result = runTransaction {
+            logService.debug(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "NUMBER TWO - This log shouldnt be cancelled",
+                message = "TRANSACTION",
+            )
+
+            Thread.sleep(2000)
+            it.setRollbackOnly()
+            "sulses?"
+        }
+        return result
     }
 
 }
