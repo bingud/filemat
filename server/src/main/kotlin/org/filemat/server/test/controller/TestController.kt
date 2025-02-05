@@ -1,10 +1,9 @@
 package org.filemat.server.test.controller
 
 import kotlinx.serialization.Serializable
-import org.filemat.server.common.util.getPackage
 import org.filemat.server.common.util.runTransaction
-import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.repository.LogRepository
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,7 +16,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.UserDefinedFileAttributeView
 
 @RestController
-class TestController(private val logService: LogService) {
+class TestController(private val logService: LogService, private val logRepository: LogRepository) {
 
     @GetMapping("/test")
     fun sus(): String {
@@ -25,9 +24,10 @@ class TestController(private val logService: LogService) {
             logService.debug(
                 type = LogType.SYSTEM,
                 action = UserAction.NONE,
-                description = "NUMBER TWO - This log shouldnt be cancelled",
+                description = "NUMBER ZINGER - This log shouldnt be cancelled",
                 message = "TRANSACTION",
             )
+
 
             Thread.sleep(2000)
             it.setRollbackOnly()

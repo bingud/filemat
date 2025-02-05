@@ -24,3 +24,7 @@ enum class Permission {
         }
     }
 }
+
+fun List<Permission>.toIntList(): List<Int> {
+    return this.map { p -> p.ordinal }
+}

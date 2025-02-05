@@ -25,6 +25,8 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
     return result!!
 }
 
+fun Int.toBoolean() = this > 0
+
 
 val packagePrefix = gPackagePrefix() + "."
 fun getPackage(): String {

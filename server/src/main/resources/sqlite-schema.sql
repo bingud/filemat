@@ -82,3 +82,13 @@ CREATE TABLE IF NOT EXISTS shared_files (
     FOREIGN KEY (file_id) REFERENCES files(entity_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS user_roles (
+    role_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    created_date INTEGER NOT NULL,
+
+    PRIMARY KEY (role_id, user_id),
+    FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) STRICT;

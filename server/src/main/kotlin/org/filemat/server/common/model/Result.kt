@@ -1,5 +1,6 @@
 package org.filemat.server.common.model
 
+
 data class Result<T>(
     private val inputValue: T? = null,
     private val inputError: String? = null,
@@ -19,6 +20,9 @@ data class Result<T>(
 
     val isSuccessful
         get() = inputValue != null && inputError == null && !inputNotFound && rejectInput == null
+
+    val isNotSuccessful
+        get() = !isSuccessful
 
     val notFound
         get() = inputNotFound

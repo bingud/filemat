@@ -1,5 +1,6 @@
 package org.filemat.server.module.user.service
 
+import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.toInt
 import org.filemat.server.common.util.toJsonOrNull
 import org.filemat.server.module.log.model.LogType
@@ -15,7 +16,7 @@ class UserService(
     private val logService: LogService,
 ) {
 
-    fun createUser(user: User, action: UserAction?) {
+    fun createUser(user: User, action: UserAction?): Result<Unit> {
         try {
             userRepository.createUser(
                 userId = user.userId.toString(),
@@ -29,8 +30,11 @@ class UserService(
                 lastLoginDate = user.lastLoginDate,
                 isBanned = user.isBanned.toInt(),
             )
+
+            return Result.ok(Unit)
         } catch (e: Exception) {
             logService.error(type = LogType.SYSTEM, action = action ?: UserAction.GENERIC_ACCOUNT_CREATION, description = "Failed to insert user to database", message = e.stackTraceToString())
+            return Result.error("Failed to save user account.")
         }
     }
 

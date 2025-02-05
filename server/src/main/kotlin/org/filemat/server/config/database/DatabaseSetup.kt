@@ -1,6 +1,7 @@
 package org.filemat.server.config.database
 
 import org.filemat.server.common.State
+import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.setting.service.SettingService
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.annotation.Configuration
@@ -13,12 +14,19 @@ import kotlin.system.exitProcess
 class DatabaseSetup(
     private val jdbcTemplate: JdbcTemplate,
     private val settingService: SettingService,
+    private val roleService: RoleService,
 ) {
 
     @EventListener(ApplicationReadyEvent::class)
     fun initialize() {
         setUpSchema()
         checkSettings()
+
+        val sysRoles = roleService.createSystemRoles()
+        if (!sysRoles) {
+            println("Failed to create default system user roles.")
+            exitProcess(1)
+        }
     }
 
     private fun setUpSchema() {
@@ -62,14 +70,3 @@ class DatabaseSetup(
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-

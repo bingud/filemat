@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.filemat.server.common.State
 import org.filemat.server.common.util.getActualCallerPackage
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.log.model.LogLevel
@@ -164,25 +165,58 @@ class LogService(
         }
 
         scope.launch {
-            try {
-                logRepository.saveLog(
-                    level = level.ordinal,
-                    type = type.ordinal,
-                    action = action.ordinal,
-                    createdDate = now,
-                    description = description,
-                    message = message,
-                    initiatorId = initiatorId?.toString(),
-                    initiatorIp = initiatorIp,
-                    targetId = targetId?.toString(),
-                )
-            } catch (e: Exception) {
-                if (!loggedException) {
-                    e.printStackTrace()
-                    loggedException = true
-                }
-                println("\n********************************************************\nFAILED TO SAVE LOG TO DATABASE\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(now)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message")
+            createLog(
+                level = level,
+                type = type,
+                action = action,
+                createdDate = now,
+                description = description,
+                message = message,
+                initiatorId = initiatorId,
+                initiatorIp = initiatorIp,
+                targetId = targetId,
+            )
+        }
+    }
+
+    fun createLog(
+        level: LogLevel,
+        type: LogType,
+        action: UserAction,
+        createdDate: Long,
+        description: String,
+        message: String,
+        initiatorId: Ulid? = null,
+        initiatorIp: String? = null,
+        targetId: Ulid? = null,
+    ): Boolean {
+        fun printLog() { println("\n********************************************************\nFAILED TO SAVE LOG TO DATABASE\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(createdDate)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message") }
+
+        try {
+            logRepository.saveLog(
+                level = level.ordinal,
+                type = type.ordinal,
+                action = action.ordinal,
+                createdDate = createdDate,
+                description = description,
+                message = message,
+                initiatorId = initiatorId?.toString(),
+                initiatorIp = initiatorIp,
+                targetId = targetId?.toString(),
+            )
+
+            if (State.App.isDev) {
+                printLog()
             }
+
+            return true
+        } catch (e: Exception) {
+            if (!loggedException) {
+                e.printStackTrace()
+                loggedException = true
+            }
+            printLog()
+            return false
         }
     }
 }
