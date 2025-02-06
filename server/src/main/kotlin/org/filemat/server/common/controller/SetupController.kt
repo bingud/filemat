@@ -46,6 +46,7 @@ class SetupController(
         @RequestParam("email") email: String,
         @RequestParam("username") username: String,
         @RequestParam("password") plainPassword: String,
+        @RequestParam("setup-code") setupCode: String,
     ): ResponseEntity<String> {
         if (State.App.isSetup == true) return bad("${Props.appName} has already been set up. You can log in with an admin account.")
 

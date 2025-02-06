@@ -22,77 +22,97 @@ class RoleService(
     fun createSystemRoles(): Boolean {
         val now = unixNow()
 
-        val userRoleExists = try {
-            roleRepository.existsById(Props.userRoleId) to null
-        } catch (e: Exception) {
-            null to e
-        }
-        val adminRoleExists = try {
-            roleRepository.existsById(Props.adminRoleId) to null
-        } catch (e: Exception) {
-            null to e
-        }
-
-        val statusException = userRoleExists.second ?: adminRoleExists.second
-        if (statusException != null) {
-            logService.error(
-                type = LogType.SYSTEM,
-                action = UserAction.NONE,
-                description = "Failed to check if system role exists in database.",
-                message = statusException.stackTraceToString(),
-            )
-        }
-
-        val admin = Role(
-            roleId = Props.adminRoleId,
-            name = "admin",
-            createdDate = now,
-            permissions = Permission.entries,
-        )
-        val user = Role(
-            roleId = Props.userRoleId,
-            name = "user",
-            createdDate = now,
-            permissions = emptyList()
-        )
-
-        try {
-            val a = roleRepository.insert(
-                roleId = admin.roleId.toString(),
-                name = admin.name,
-                createdDate = admin.createdDate,
-                permissions = admin.permissions.toIntList().toString()
-            ).toBoolean()
-
-            val u = roleRepository.insert(
-                roleId = user.roleId.toString(),
-                name = user.name,
-                createdDate = user.createdDate,
-                permissions = user.permissions.toIntList().toString()
-            ).toBoolean()
-
-            if (a || u) {
-                logService.createLog(
-                    level = LogLevel.INFO,
-                    type = LogType.AUDIT,
-                    action = UserAction.NONE,
-                    createdDate = now,
-                    description = "Created system roles: ${if (a) admin.name else ""}, ${if (u) user.name else ""}",
-                    message = "System user roles created."
-                )
-            }
-
-            return true
+        // Check if the system roles already exist.
+        val adminExists = try {
+            roleRepository.exists(Props.adminRoleId.toString())
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
                 action = UserAction.NONE,
-                description = "Failed to create system role in database",
-                message = e.stackTraceToString(),
+                description = "Failed to check if admin role exists in the database.",
+                message = e.stackTraceToString()
             )
-
             return false
         }
+
+        val userExists = try {
+            roleRepository.exists(Props.userRoleId.toString())
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to check if user role exists in the database.",
+                message = e.stackTraceToString()
+            )
+            return false
+        }
+
+        // Prepare the list of roles that need to be inserted.
+        val rolesToCreate = mutableListOf<Role>()
+        if (!adminExists) {
+            rolesToCreate.add(
+                Role(
+                    roleId = Props.adminRoleId,
+                    name = "admin",
+                    createdDate = now,
+                    permissions = Permission.entries
+                )
+            )
+        }
+        if (!userExists) {
+            rolesToCreate.add(
+                Role(
+                    roleId = Props.userRoleId,
+                    name = "user",
+                    createdDate = now,
+                    permissions = emptyList()
+                )
+            )
+        }
+
+        // Nothing to do if both roles already exist.
+        if (rolesToCreate.isEmpty()) {
+            return true
+        }
+
+        // Insert roles and keep track of those successfully created.
+        val createdRoleNames = mutableListOf<String>()
+        rolesToCreate.forEach { role ->
+            try {
+                val inserted = roleRepository.insert(
+                    roleId = role.roleId.toString(),
+                    name = role.name,
+                    createdDate = role.createdDate,
+                    permissions = role.permissions.toIntList().toString()
+                ).toBoolean()
+
+                if (inserted) {
+                    createdRoleNames.add(role.name)
+                }
+            } catch (e: Exception) {
+                logService.error(
+                    type = LogType.SYSTEM,
+                    action = UserAction.NONE,
+                    description = "Failed to create role '${role.name}' in the database.",
+                    message = e.stackTraceToString()
+                )
+            }
+        }
+
+        // Log an audit entry if any role was created.
+        if (createdRoleNames.isNotEmpty()) {
+            logService.createLog(
+                level = LogLevel.INFO,
+                type = LogType.AUDIT,
+                action = UserAction.NONE,
+                createdDate = now,
+                description = "Created system roles: ${createdRoleNames.joinToString(", ")}",
+                message = "System user roles created."
+            )
+        }
+
+        return true
     }
+
 
 }
