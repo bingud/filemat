@@ -1,7 +1,9 @@
 package org.filemat.server.config.database
 
 import org.filemat.server.common.State
+import org.filemat.server.config.Props
 import org.filemat.server.module.role.service.RoleService
+import org.filemat.server.module.service.AppService
 import org.filemat.server.module.setting.service.SettingService
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.annotation.Configuration
@@ -15,6 +17,7 @@ class DatabaseSetup(
     private val jdbcTemplate: JdbcTemplate,
     private val settingService: SettingService,
     private val roleService: RoleService,
+    private val appService: AppService,
 ) {
 
     @EventListener(ApplicationReadyEvent::class)
@@ -64,9 +67,11 @@ class DatabaseSetup(
     }
 
     fun setting_isAppSetup() {
-        val result = settingService.getSetting("is_application_setup")
+        val result = settingService.getSetting(Props.Settings.isAppSetup)
         if (result.valueOrNull?.value == "true") {
             State.App.isSetup = true
+        } else {
+            appService.generateSetupCode()
         }
     }
 }

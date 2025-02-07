@@ -190,7 +190,7 @@ class LogService(
         initiatorIp: String? = null,
         targetId: Ulid? = null,
     ): Boolean {
-        fun printLog() { println("\n********************************************************\nFAILED TO SAVE LOG TO DATABASE\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(createdDate)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message") }
+        fun printLog(error: Boolean) { println("\n********************************************************\n${if (error) "FAILED TO SAVE LOG TO DATABASE" else ""}\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(createdDate)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message") }
 
         try {
             logRepository.saveLog(
@@ -206,7 +206,7 @@ class LogService(
             )
 
             if (State.App.isDev) {
-                printLog()
+                printLog(false)
             }
 
             return true
@@ -215,7 +215,7 @@ class LogService(
                 e.printStackTrace()
                 loggedException = true
             }
-            printLog()
+            printLog(true)
             return false
         }
     }

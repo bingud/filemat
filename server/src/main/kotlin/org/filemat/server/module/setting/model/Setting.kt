@@ -9,6 +9,6 @@ data class Setting(
     val name: String,
     @Column("value")
     val value: String,
-    @Column("updated_date")
+    @Column("created_date")
     val updatedDate: Long,
 )

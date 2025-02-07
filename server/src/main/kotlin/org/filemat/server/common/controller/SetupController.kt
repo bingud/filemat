@@ -13,12 +13,13 @@ import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.role.service.UserRoleService
+import org.filemat.server.module.service.AppService
+import org.filemat.server.module.setting.service.SettingService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -29,11 +30,27 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/setup")
 class SetupController(
     private val passwordEncoder: PasswordEncoder,
-    private val transactionTemplate: TransactionTemplate,
     private val userService: UserService,
     private val logService: LogService,
     private val userRoleService: UserRoleService,
+    private val appService: AppService,
+    private val settingService: SettingService,
 ) : AController() {
+
+    @PostMapping("/verify")
+    fun verifyAppSetupCode(
+        request: HttpServletRequest,
+        @RequestParam("setup-code") input: String,
+    ): ResponseEntity<String> {
+        val isAppSetup = settingService.getSetting(Props.Settings.isAppSetup)
+        if (isAppSetup.valueOrNull?.value == "true") return bad("Application is already set up.")
+
+        val code = settingService.getSetting(Props.Settings.appSetupCode)
+        if (code.hasError) return internal(code.error)
+        if (code.isNotSuccessful) return bad(code.error)
+
+        return if (code.value.value == input) ok() else bad("Setup code is incorrect.")
+    }
 
     /**
      * Sets up the application.
@@ -55,6 +72,10 @@ class SetupController(
             ?: Validator.password(plainPassword)
             ?: Validator.username(username)
         )?.let { return bad(it) }
+
+        val codeVerification = appService.verifySetupCode(setupCode)
+        if (codeVerification.rejected) return bad(codeVerification.error)
+        if (codeVerification.isNotSuccessful) return internal(codeVerification.error)
 
         val password = passwordEncoder.encode(plainPassword)
         val now = unixNow()
@@ -103,6 +124,7 @@ class SetupController(
         }
 
         if (result.isNotSuccessful) return internal(result.error)
+        appService.deleteSetupCode()
 
         return ok("${Props.appName} was set up. You can log in with your admin account.")
     }
