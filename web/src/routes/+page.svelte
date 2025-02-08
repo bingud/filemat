@@ -11,9 +11,9 @@
         rawData = d
         data = JSON.parse(d)
         
-        timeout = setTimeout(() => {
-            get()
-        }, 10000)
+        // timeout = setTimeout(() => {
+        //     get()
+        // }, 10000)
     }
     
     onDestroy(() => {
@@ -25,14 +25,8 @@
 
 <div class="">
     <button on:click={get}>Diddlebob</button>
+    <p>-----------</p>
     <div class="flex flex-wrap gap-2">
-        {#each data as item}
-            <div class="px-4 bg-neutral-900/50">
-                <p>{item.name}</p>
-                <p>{item.type}</p>
-                <p>{item.inode}</p>
-                <p>{item.xattr}</p>
-            </div>
-        {/each}
+        <p>{rawData}</p>
     </div>
 </div>

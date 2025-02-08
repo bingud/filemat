@@ -1,8 +1,20 @@
 <script lang="ts">
 	import '../app.css';
     import {dev} from "$app/environment"
+    import { Toaster } from '@jill64/svelte-toast'
+    import type { ToastOptions } from 'svelte-french-toast';
+
+
 	let { children } = $props();
+
+    const palette = {}
+    const toastOptions: ToastOptions = {
+        duration: 4000
+    }
 </script>
+
+
+<Toaster {palette} {toastOptions} />
 
 <nav class="flex px-4 items-center justify-between bg-blue-900/20 dark:bg-blue-950/50 h-(--navbar-height)">
     <a href="/">Filemat</a>
