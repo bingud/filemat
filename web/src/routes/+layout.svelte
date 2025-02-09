@@ -9,7 +9,7 @@
 
     const palette = {}
     const toastOptions: ToastOptions = {
-        duration: 4000
+        duration: 5000
     }
 </script>
 

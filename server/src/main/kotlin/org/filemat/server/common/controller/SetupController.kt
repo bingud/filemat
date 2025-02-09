@@ -1,10 +1,11 @@
 package org.filemat.server.common.controller
 
+import com.fasterxml.jackson.databind.annotation.JsonAppend.Prop
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
-import org.filemat.server.common.util.AController
+import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.runTransaction
 import org.filemat.server.common.util.unixNow
@@ -43,13 +44,13 @@ class SetupController(
         @RequestParam("setup-code") input: String,
     ): ResponseEntity<String> {
         val isAppSetup = settingService.getSetting(Props.Settings.isAppSetup)
-        if (isAppSetup.valueOrNull?.value == "true") return bad("Application is already set up.")
+        if (isAppSetup.valueOrNull?.value == "true") return bad("Application is already set up.", "already-setup")
 
         val code = settingService.getSetting(Props.Settings.appSetupCode)
-        if (code.hasError) return internal(code.error)
-        if (code.isNotSuccessful) return bad(code.error)
+        if (code.hasError) return internal(code.error, "code-failure")
+        if (code.isNotSuccessful) return bad(code.error, "code-failure")
 
-        return if (code.value.value == input) ok() else bad("Setup code is incorrect.")
+        return if (code.value.value == input) ok() else bad("Setup code is incorrect.", "invalid-code")
     }
 
     /**
@@ -65,17 +66,17 @@ class SetupController(
         @RequestParam("password") plainPassword: String,
         @RequestParam("setup-code") setupCode: String,
     ): ResponseEntity<String> {
-        if (State.App.isSetup == true) return bad("${Props.appName} has already been set up. You can log in with an admin account.")
+        if (State.App.isSetup == true) return bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
         (
             Validator.email(email)
             ?: Validator.password(plainPassword)
             ?: Validator.username(username)
-        )?.let { return bad(it) }
+        )?.let { return bad(it, "validation") }
 
         val codeVerification = appService.verifySetupCode(setupCode)
-        if (codeVerification.rejected) return bad(codeVerification.error)
-        if (codeVerification.isNotSuccessful) return internal(codeVerification.error)
+        if (codeVerification.rejected) return bad(codeVerification.error, "setup-code-invalid")
+        if (codeVerification.isNotSuccessful) return internal(codeVerification.error, "code-verification-failure")
 
         val password = passwordEncoder.encode(plainPassword)
         val now = unixNow()
@@ -120,10 +121,16 @@ class SetupController(
                 return@runTransaction Result.error("Could not finish setup. Server failed to create a log entry.")
             }
 
+            val settingResult = settingService.setSetting(Props.Settings.isAppSetup, "true")
+            if (settingResult.isNotSuccessful) {
+                status.setRollbackOnly()
+                return@runTransaction Result.error("Failed to save setup status to database.")
+            }
+
             return@runTransaction Result.ok(Unit)
         }
 
-        if (result.isNotSuccessful) return internal(result.error)
+        if (result.isNotSuccessful) return internal(result.error, "failure")
         appService.deleteSetupCode()
 
         return ok("${Props.appName} was set up. You can log in with your admin account.")

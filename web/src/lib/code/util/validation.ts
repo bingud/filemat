@@ -4,8 +4,8 @@ import { isBlank } from "./codeUtil.svelte"
 export class Validator {
     public static email(email: string): string | null {
         if (!email.includes("@") || !email.includes(".")) return "Email is invalid."
-        if (email.length > 5) return "Email is too short."
-        if (email.length < 256) return "Email is too long."
+        if (email.length < 5) return "Email is too short."
+        if (email.length > 256) return "Email is too long."
 
         return null
     }
@@ -13,7 +13,7 @@ export class Validator {
     public static password(
         password: string,
     ): string | null {
-        if (password.length < 3) return "Password is too short."
+        if (password.length < 4) return "Password is too short."
         if (password.length > 256) return "Password is too long."
         if (isBlank(password)) return "Password is blank."
 
@@ -35,6 +35,14 @@ export class Validator {
         code: string,
     ): string | null {
         if (code.length !== 12) return "Setup code must be 12 letters long."
+
+        return null
+    }
+
+    public static emailOrUsername(
+        u: string,
+    ): string | null {
+        if (this.email(u) || this.username(u)) return "Email or username is invalid."
 
         return null
     }

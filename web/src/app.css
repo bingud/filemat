@@ -18,3 +18,7 @@
 button {
     @apply hover:cursor-pointer;
 }
+
+h1 {
+    @apply text-2xl;
+}

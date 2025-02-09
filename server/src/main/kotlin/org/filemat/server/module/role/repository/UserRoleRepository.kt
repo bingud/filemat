@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository
 interface UserRoleRepository : CrudRepository<UserRole, Ulid> {
 
     @Modifying
-    @Query("INSERT INTO user_roles (role_id, user_id, created_date) VALUES (:userId, :roleId, :now)")
-    fun insert(userId: String, roleId: String, now: Long): Int
+    @Query("INSERT INTO user_roles (role_id, user_id, created_date) VALUES (:roleId, :userId, :now)")
+    fun insert(userId: String, roleId: String, now: Long)
 
 }

@@ -1,7 +1,9 @@
+import type { Response } from "node-fetch"
 
 
 export function makeIdempotent<T, Args extends any[]>(
-    fn: (isRunning: boolean, ...args: Args) => T | Promise<T>
+    fn: (isRunning: boolean, ...args: Args) => T | Promise<T>,
+    after?: () => any,
 ): (...args: Args) => Promise<T> {
     let runningCount = 0
 
@@ -15,6 +17,13 @@ export function makeIdempotent<T, Args extends any[]>(
             // Wrap the result in a promise to handle both sync and async cases.
             return Promise.resolve(result).finally(() => {
                 runningCount--
+                if (runningCount === 0) {
+                    if (after) {
+                        try {
+                            after()
+                        } catch (e) {}
+                    }
+                }
             });
         } catch (error) {
             runningCount--
@@ -26,4 +35,25 @@ export function makeIdempotent<T, Args extends any[]>(
 
 export function isBlank(str: string | null | undefined): boolean {
     return !str || str.trim().length === 0;
+}
+
+
+type SafeFetchResult = Response & { failed: boolean, exception: any | null }
+export async function safeFetch(url: string, args?: RequestInit): Promise<SafeFetchResult> {
+    try {
+        const response = await fetch(url, args) as any as SafeFetchResult
+        response.failed = false
+        response.exception = null
+        return response
+    } catch (e) { 
+        return { failed: true, exception: e } as any as SafeFetchResult
+    }
+}
+
+export function parseJson(j: string): any | null {
+    try {
+        return JSON.parse(j) ?? null
+    } catch (e) {
+        return null
+    }
 }
