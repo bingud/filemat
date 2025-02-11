@@ -1,12 +1,12 @@
 package org.filemat.server.common.controller
 
-import com.fasterxml.jackson.databind.annotation.JsonAppend.Prop
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.Validator
+import org.filemat.server.common.util.classes.Locker
 import org.filemat.server.common.util.runTransaction
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
@@ -38,6 +38,8 @@ class SetupController(
     private val settingService: SettingService,
 ) : AController() {
 
+    val submitLock = Locker()
+
     @PostMapping("/verify")
     fun verifyAppSetupCode(
         request: HttpServletRequest,
@@ -65,18 +67,18 @@ class SetupController(
         @RequestParam("username") username: String,
         @RequestParam("password") plainPassword: String,
         @RequestParam("setup-code") setupCode: String,
-    ): ResponseEntity<String> {
-        if (State.App.isSetup == true) return bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
+    ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
+        if (State.App.isSetup == true) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
         (
             Validator.email(email)
             ?: Validator.password(plainPassword)
             ?: Validator.username(username)
-        )?.let { return bad(it, "validation") }
+        )?.let { return@run bad(it, "validation") }
 
         val codeVerification = appService.verifySetupCode(setupCode)
-        if (codeVerification.rejected) return bad(codeVerification.error, "setup-code-invalid")
-        if (codeVerification.isNotSuccessful) return internal(codeVerification.error, "code-verification-failure")
+        if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
+        if (codeVerification.isNotSuccessful) return@run internal(codeVerification.error, "code-verification-failure")
 
         val password = passwordEncoder.encode(plainPassword)
         val now = unixNow()
@@ -114,6 +116,7 @@ class SetupController(
                 createdDate = now,
                 description = "Admin account created during application setup.",
                 message = "Email: [$email]\nusername: [$username]\naccount ID: [${user.userId}]",
+                meta = mapOf("setup-code" to setupCode)
             )
 
             if (!logResult) {
@@ -130,10 +133,10 @@ class SetupController(
             return@runTransaction Result.ok(Unit)
         }
 
-        if (result.isNotSuccessful) return internal(result.error, "failure")
+        if (result.isNotSuccessful) return@run internal(result.error, "failure")
         appService.deleteSetupCode()
 
-        return ok("${Props.appName} was set up. You can log in with your admin account.")
+        return@run ok("${Props.appName} was set up. You can log in with your admin account.")
     }
 
 }

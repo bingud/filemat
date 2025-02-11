@@ -1,6 +1,7 @@
 package org.filemat.server.module.user.service
 
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.toInt
 import org.filemat.server.common.util.toJsonOrNull
 import org.filemat.server.module.log.model.LogType
@@ -38,4 +39,31 @@ class UserService(
         }
     }
 
+    fun getUserByUsername(username: String, userAction: UserAction?): Result<User> {
+        try {
+            return userRepository.getByUsername(username)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ?: UserAction.NONE,
+                description = "Failed to get user from database by username",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to load user.")
+        }
+    }
+
+    fun getUserByEmail(email: String, userAction: UserAction?): Result<User> {
+        try {
+            return userRepository.getByEmail(email)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ?: UserAction.NONE,
+                description = "Failed to get user from by email",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to load user.")
+        }
+    }
 }

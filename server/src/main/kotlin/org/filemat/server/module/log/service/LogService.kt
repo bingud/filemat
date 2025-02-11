@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.util.getActualCallerPackage
 import org.filemat.server.common.util.unixNow
@@ -39,6 +40,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>? = null,
     ) {
         log(
             level = LogLevel.DEBUG,
@@ -49,6 +51,7 @@ class LogService(
             initiatorId = initiatorId,
             initiatorIp = initiatorIp,
             targetId = targetId,
+            meta = meta,
         )
     }
 
@@ -60,6 +63,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>? = null,
     ) {
         log(
             level = LogLevel.INFO,
@@ -70,6 +74,7 @@ class LogService(
             initiatorId = initiatorId,
             initiatorIp = initiatorIp,
             targetId = targetId,
+            meta = meta,
         )
     }
 
@@ -81,6 +86,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>? = null,
     ) {
         log(
             level = LogLevel.WARN,
@@ -91,6 +97,7 @@ class LogService(
             initiatorId = initiatorId,
             initiatorIp = initiatorIp,
             targetId = targetId,
+            meta = meta,
         )
     }
 
@@ -102,6 +109,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>? = null,
     ) {
         log(
             level = LogLevel.ERROR,
@@ -112,6 +120,7 @@ class LogService(
             initiatorId = initiatorId,
             initiatorIp = initiatorIp,
             targetId = targetId,
+            meta = meta,
         )
     }
 
@@ -123,6 +132,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>? = null,
     ) {
         log(
             level = LogLevel.FATAL,
@@ -133,6 +143,7 @@ class LogService(
             initiatorId = initiatorId,
             initiatorIp = initiatorIp,
             targetId = targetId,
+            meta = meta,
         )
     }
 
@@ -149,6 +160,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>?,
     ) {
         val caller = getActualCallerPackage()
         val now = unixNow()
@@ -175,6 +187,7 @@ class LogService(
                 initiatorId = initiatorId,
                 initiatorIp = initiatorIp,
                 targetId = targetId,
+                meta = meta,
             )
         }
     }
@@ -189,11 +202,12 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
+        meta: Map<String, String>?,
     ): Boolean {
         fun printLog(error: Boolean) { println("\n********************************************************\n${if (error) "FAILED TO SAVE LOG TO DATABASE" else ""}\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(createdDate)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message") }
 
         try {
-            logRepository.saveLog(
+            logRepository.insertLog(
                 level = level.ordinal,
                 type = type.ordinal,
                 action = action.ordinal,
@@ -203,6 +217,7 @@ class LogService(
                 initiatorId = initiatorId?.toString(),
                 initiatorIp = initiatorIp,
                 targetId = targetId?.toString(),
+                meta = meta?.let { Json.encodeToString(it) },
             )
 
             if (State.App.isDev) {

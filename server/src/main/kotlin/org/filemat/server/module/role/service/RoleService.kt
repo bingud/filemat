@@ -107,7 +107,8 @@ class RoleService(
                 action = UserAction.NONE,
                 createdDate = now,
                 description = "Created system roles: ${createdRoleNames.joinToString(", ")}",
-                message = "System user roles created."
+                message = "System user roles created.",
+                meta = null
             )
         }
 

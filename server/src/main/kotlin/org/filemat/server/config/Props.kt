@@ -14,4 +14,5 @@ object Props {
         val isAppSetup = "is_application_setup"
     }
 
+
 }

@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS log (
     initiator_user_id TEXT,
     initiator_ip TEXT,
     target_id TEXT,
+    metadata TEXT,
     FOREIGN KEY (initiator_user_id) REFERENCES users(user_id)
 ) STRICT;
 

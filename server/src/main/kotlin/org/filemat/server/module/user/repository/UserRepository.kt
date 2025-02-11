@@ -27,4 +27,9 @@ interface UserRepository : CrudRepository<User, Ulid> {
         isBanned: Int,
     )
 
+    @Query("SELECT * FROM users WHERE username = :username")
+    fun getByUsername(username: String): User?
+
+    @Query("SELECT * FROM users WHERE email = :email")
+    fun getByEmail(email: String): User?
 }

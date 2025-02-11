@@ -1,5 +1,6 @@
 package org.filemat.server.common.util
 
+import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.log.service.LogService
@@ -26,7 +27,12 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
 }
 
 fun Int.toBoolean() = this > 0
+fun Short.toBoolean() = this > 0
 
+fun HttpServletRequest.realIp(): String {
+    val header: String? = this.getHeader("X-Forwarded-For")
+    return header ?: this.remoteAddr
+}
 
 val packagePrefix = gPackagePrefix() + "."
 fun getPackage(): String {

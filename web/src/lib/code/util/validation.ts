@@ -42,7 +42,13 @@ export class Validator {
     public static emailOrUsername(
         u: string,
     ): string | null {
-        if (this.email(u) || this.username(u)) return "Email or username is invalid."
+        if (u.includes("@")) {
+            const v = this.email(u)
+            if (v) return v
+        } else {
+            const v = this.username(u)
+            if (v) return v
+        }
 
         return null
     }

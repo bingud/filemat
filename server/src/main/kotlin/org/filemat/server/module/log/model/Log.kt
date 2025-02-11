@@ -27,4 +27,6 @@ data class Log(
     val initiatorIp: String?,
     @Column("target_id")
     val targetId: Ulid?,
+    @Column("metadata")
+    val metadata: Map<String, String>,
 )
