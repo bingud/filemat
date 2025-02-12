@@ -89,12 +89,7 @@ class AuthController(
         if (tokenR.isNotSuccessful) return internal(tokenR.error, "")
         val token = tokenR.value
 
-        val cookie = Cookie("filemat-auth-token", token.authToken).apply {
-            secure = true
-            isHttpOnly = true
-            path = "/"
-            maxAge = token.maxAge.toInt()
-        }
+        val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
 
         loginLog(LogLevel.INFO, "Successful login", "", meta)

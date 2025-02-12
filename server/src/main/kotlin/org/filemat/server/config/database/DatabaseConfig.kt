@@ -1,11 +1,9 @@
 package org.filemat.server.config.database
 
-import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.event.EventListener
-import org.springframework.core.io.ClassPathResource
+import org.springframework.data.jdbc.repository.config.AbstractJdbcConfiguration
 import org.springframework.jdbc.core.JdbcTemplate
-import kotlin.system.exitProcess
+import java.util.*
 
 
 @Configuration
@@ -14,4 +12,21 @@ class DatabaseConfig(
 ) {
 
 
+
+}
+
+@Configuration
+class JdbcConfig : AbstractJdbcConfiguration() {
+    override fun userConverters(): List<*> {
+        return listOf(
+            BooleanToIntConverter(),
+            IntToBooleanConverter(),
+
+            UlidToStringConverter(),
+            StringToUlidConverter(),
+
+            StringListToStringConverter(),
+            StringToStringListConverter(),
+        )
+    }
 }

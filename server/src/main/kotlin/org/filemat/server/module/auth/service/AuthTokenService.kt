@@ -1,6 +1,7 @@
 package org.filemat.server.module.auth.service
 
 import com.github.f4b6a3.ulid.Ulid
+import jakarta.servlet.http.Cookie
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.StringUtils
@@ -37,6 +38,15 @@ class AuthTokenService(private val logService: LogService, private val authToken
         }
 
         return token.toResult()
+    }
+
+    fun createCookie(token: String, maxAge: Long): Cookie {
+        return Cookie("filemat-auth-token", token).apply {
+            secure = true
+            isHttpOnly = true
+            path = "/"
+            this.maxAge = maxAge.toInt()
+        }
     }
 
 }

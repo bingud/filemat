@@ -10,6 +10,7 @@ import org.filemat.server.common.util.classes.Locker
 import org.filemat.server.common.util.runTransaction
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
+import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -36,6 +37,7 @@ class SetupController(
     private val userRoleService: UserRoleService,
     private val appService: AppService,
     private val settingService: SettingService,
+    private val authTokenService: AuthTokenService,
 ) : AController() {
 
     val submitLock = Locker()
@@ -135,6 +137,11 @@ class SetupController(
 
         if (result.isNotSuccessful) return@run internal(result.error, "failure")
         appService.deleteSetupCode()
+
+        val token = authTokenService.createToken(Props.adminRoleId, "", UserAction.APP_SETUP)
+        if (token.isSuccessful) {
+            val cookie = authTokenService.createCookie()
+        }
 
         return@run ok("${Props.appName} was set up. You can log in with your admin account.")
     }
