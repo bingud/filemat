@@ -2,6 +2,7 @@ package org.filemat.server.common.controller
 
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.controller.AController
@@ -65,6 +66,7 @@ class SetupController(
     @PostMapping("/submit")
     fun submitApplicationSetupMapping(
         request: HttpServletRequest,
+        response: HttpServletResponse,
         @RequestParam("email") email: String,
         @RequestParam("username") username: String,
         @RequestParam("password") plainPassword: String,
@@ -138,9 +140,11 @@ class SetupController(
         if (result.isNotSuccessful) return@run internal(result.error, "failure")
         appService.deleteSetupCode()
 
-        val token = authTokenService.createToken(Props.adminRoleId, "", UserAction.APP_SETUP)
-        if (token.isSuccessful) {
-            val cookie = authTokenService.createCookie()
+        val tokenR = authTokenService.createToken(Props.adminRoleId, "", UserAction.APP_SETUP)
+        if (tokenR.isSuccessful) {
+            val token = tokenR.value
+            val cookie = authTokenService.createCookie(token = token.authToken, maxAge = token.maxAge)
+            response.addCookie(cookie)
         }
 
         return@run ok("${Props.appName} was set up. You can log in with your admin account.")

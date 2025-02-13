@@ -11,4 +11,5 @@ enum class UserAction {
     LOGIN,                                  // 2
     GENERIC_ACCOUNT_CREATION,               // 3
     APP_SETUP,                              // 4
+    AUTH,                                   // 5
 }

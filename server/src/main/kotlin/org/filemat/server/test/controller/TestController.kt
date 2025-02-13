@@ -1,7 +1,9 @@
 package org.filemat.server.test.controller
 
+import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.Serializable
 import org.filemat.server.common.util.runTransaction
+import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.repository.LogRepository
 import org.filemat.server.module.log.service.LogService
@@ -19,21 +21,10 @@ import java.nio.file.attribute.UserDefinedFileAttributeView
 class TestController(private val logService: LogService, private val logRepository: LogRepository) {
 
     @GetMapping("/test")
-    fun sus(): String {
-        val result = runTransaction {
-            logService.debug(
-                type = LogType.SYSTEM,
-                action = UserAction.NONE,
-                description = "NUMBER ZINGER - This log shouldnt be cancelled",
-                message = "TRANSACTION",
-            )
-
-
-            Thread.sleep(2000)
-            it.setRollbackOnly()
-            "sulses?"
-        }
-        return result
+    fun sus(request: HttpServletRequest): String {
+        val auth = request.getAttribute("auth") as Principal
+        println(auth)
+        return "bong"
     }
 
 }

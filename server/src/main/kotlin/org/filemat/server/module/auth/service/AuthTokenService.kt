@@ -10,11 +10,26 @@ import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.repository.AuthTokenRepository
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 
 @Service
 class AuthTokenService(private val logService: LogService, private val authTokenRepository: AuthTokenRepository) {
+
+    fun getUserByToken(token: String): Result<User> {
+        try {
+            return authTokenRepository.getUserByToken(token)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.AUTH,
+                description = "Failed to get user by token from database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to load user using auth token.")
+        }
+    }
 
     fun createToken(userId: Ulid, userAgent: String?, userAction: UserAction?): Result<AuthToken> {
         val token = AuthToken(
