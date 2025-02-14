@@ -1,5 +1,6 @@
 package org.filemat.server.module.role.service
 
+import org.filemat.server.common.State
 import org.filemat.server.common.util.toBoolean
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
@@ -18,6 +19,24 @@ class RoleService(
     private val roleRepository: RoleRepository,
     private val logService: LogService,
 ) {
+
+    fun loadRolesToMemory(): Boolean {
+        try {
+            val list = roleRepository.getAll().map { it.toRole() }
+            list.forEach {
+                State.Auth.roleMap[it.roleId] = it
+            }
+            return true
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to load roles to memory.",
+                message = e.stackTraceToString(),
+            )
+            return false
+        }
+    }
 
     fun createSystemRoles(): Boolean {
         val now = unixNow()
@@ -89,6 +108,8 @@ class RoleService(
                 if (inserted) {
                     createdRoleNames.add(role.name)
                 }
+
+                State.Auth.roleMap[role.roleId] = role
             } catch (e: Exception) {
                 logService.error(
                     type = LogType.SYSTEM,

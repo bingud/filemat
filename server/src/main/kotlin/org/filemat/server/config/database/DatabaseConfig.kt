@@ -27,6 +27,12 @@ class JdbcConfig : AbstractJdbcConfiguration() {
 
             StringListToStringConverter(),
             StringToStringListConverter(),
+
+            PermissionListToStringConverter(),
+            StringToPermissionListConverter(),
+
+//            PermissionToStringConverter(),
+//            StringToPermissionConverter(),
         )
     }
 }

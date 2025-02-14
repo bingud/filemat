@@ -2,6 +2,7 @@ package org.filemat.server.test.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.Serializable
+import org.filemat.server.common.State
 import org.filemat.server.common.util.runTransaction
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.model.LogType
@@ -23,7 +24,8 @@ class TestController(private val logService: LogService, private val logReposito
     @GetMapping("/test")
     fun sus(request: HttpServletRequest): String {
         val auth = request.getAttribute("auth") as Principal
-        println(auth)
+        println(auth.roles)
+        println(State.Auth.roleMap)
         return "bong"
     }
 

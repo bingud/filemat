@@ -30,6 +30,11 @@ class DatabaseSetup(
             println("Failed to create default system user roles.")
             exitProcess(1)
         }
+
+        if (!roleService.loadRolesToMemory()) {
+            println("Failed to load roles to memory.")
+            exitProcess(1)
+        }
     }
 
     private fun setUpSchema() {
