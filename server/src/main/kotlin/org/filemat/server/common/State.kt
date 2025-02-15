@@ -13,14 +13,12 @@ object State {
     }
 
     object Auth {
-        // Auth token -> User ID
+        // User auth tokens
         val tokenToUserIdMap = ConcurrentHashMap<String, Ulid>()
-        // User ID -> Principal
+        // User principals
         val principalMap = ConcurrentHashMap<Ulid, Principal>()
 
-        // User ID -> User Roles
-        val userToRoleMap = ConcurrentHashMap<Ulid, MutableList<Ulid>>()
-        // Role ID -> Role
+        // All roles
         val roleMap = ConcurrentHashMap<Ulid, Role>()
     }
 }

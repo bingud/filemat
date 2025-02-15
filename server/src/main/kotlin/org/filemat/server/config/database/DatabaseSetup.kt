@@ -35,6 +35,8 @@ class DatabaseSetup(
             println("Failed to load roles to memory.")
             exitProcess(1)
         }
+
+        println("Database state initialized.")
     }
 
     private fun setUpSchema() {

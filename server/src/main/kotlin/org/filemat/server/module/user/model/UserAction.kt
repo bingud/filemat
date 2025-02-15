@@ -12,4 +12,6 @@ enum class UserAction {
     GENERIC_ACCOUNT_CREATION,               // 3
     APP_SETUP,                              // 4
     AUTH,                                   // 5
+    GENERIC_GET_ACCOUNT_ROLES,              // 6
+    GENERIC_GET_PRINCIPAL,                  // 7
 }

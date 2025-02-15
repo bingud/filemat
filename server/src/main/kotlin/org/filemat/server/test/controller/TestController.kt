@@ -3,11 +3,14 @@ package org.filemat.server.test.controller
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.Serializable
 import org.filemat.server.common.State
+import org.filemat.server.common.util.getAuth
 import org.filemat.server.common.util.runTransaction
+import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.repository.LogRepository
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -23,7 +26,16 @@ class TestController(private val logService: LogService, private val logReposito
 
     @GetMapping("/test")
     fun sus(request: HttpServletRequest): String {
-        val auth = request.getAttribute("auth") as Principal
+        val auth = request.getAuth()
+        println(auth?.roles)
+        println(State.Auth.roleMap)
+        return "bong"
+    }
+
+    @Authenticated([Permission.MANAGE_SYSTEM])
+    @GetMapping("/test/auth")
+    fun susta(request: HttpServletRequest): String {
+        val auth = request.getAuth()!!
         println(auth.roles)
         println(State.Auth.roleMap)
         return "bong"

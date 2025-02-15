@@ -1,12 +1,12 @@
 package org.filemat.server.module.auth.controller
 
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.realIp
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
@@ -27,7 +27,8 @@ class AuthController(
     private val userService: UserService,
     private val passwordEncoder: PasswordEncoder,
     private val authTokenService: AuthTokenService,
-    private val logService: LogService
+    private val logService: LogService,
+    private val authService: AuthService
 ) : AController() {
 
     private fun loginLog(
@@ -91,6 +92,12 @@ class AuthController(
 
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
+
+        ////
+            SEND PRINCIPAL WITH LOGIN
+        ////
+        val principal = authService.getPrincipalByUserId(user.userId)
+        if (principal.)
 
         loginLog(LogLevel.INFO, "Successful login", "", meta)
 

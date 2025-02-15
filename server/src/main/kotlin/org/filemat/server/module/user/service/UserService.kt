@@ -1,5 +1,6 @@
 package org.filemat.server.module.user.service
 
+import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.toInt
@@ -61,6 +62,20 @@ class UserService(
                 type = LogType.SYSTEM,
                 action = userAction ?: UserAction.NONE,
                 description = "Failed to get user from by email",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to load user.")
+        }
+    }
+
+    fun getUserByUserId(userId: Ulid, userAction: UserAction?): Result<User> {
+        try {
+            return userRepository.getByUserId(userId)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ?: UserAction.NONE,
+                description = "Failed to get user from by user ID",
                 message = e.stackTraceToString()
             )
             return Result.error("Failed to load user.")

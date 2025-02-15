@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import org.filemat.server.common.State
 import org.filemat.server.config.UlidListSerializer
 import org.filemat.server.config.UlidSerializer
+import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.role.model.Role
 
 @Serializable
@@ -16,13 +17,19 @@ data class Principal(
     val username: String,
     val mfaTotpStatus: Boolean,
     val isBanned: Boolean,
+    @Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
     @Serializable(UlidListSerializer::class)
-    val roles: List<Ulid> = resolveRoles(userId)
+    var roles: MutableList<Ulid>,
 ) {
     companion object {
-        private fun resolveRoles(userId: Ulid): List<Ulid> {
-            return State.Auth.userToRoleMap[userId]
-                ?: throw IllegalStateException("Roles for principal are null.")
+        fun Principal.getRoles(): List<Role> {
+            return roles.map { State.Auth.roleMap[it] ?: throw IllegalStateException("Role is null") }
+        }
+
+        fun Principal.getPermissions(): List<Permission> {
+            val roles = this.getRoles()
+            val permissions = roles.map { it.permissions }.flatten().distinct()
+            return permissions
         }
     }
 }

@@ -6,7 +6,7 @@
     let data: any[] = $state([])
     let timeout: any = null
     async function get() {
-        const r = await fetch("/api/test")
+        const r = await fetch("/api/test/auth")
         const d = await r.text()
         rawData = d
         data = JSON.parse(d)

@@ -32,4 +32,7 @@ interface UserRepository : CrudRepository<User, Ulid> {
 
     @Query("SELECT * FROM users WHERE email = :email")
     fun getByEmail(email: String): User?
+
+    @Query("SELECT * FROM users WHERE user_id = :userId")
+    fun getByUserId(userId: Ulid): User?
 }

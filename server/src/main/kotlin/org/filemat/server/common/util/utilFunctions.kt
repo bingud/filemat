@@ -3,6 +3,7 @@ package org.filemat.server.common.util
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
 import org.filemat.server.config.TransactionTemplateConfig
+import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.service.LogService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.transaction.TransactionStatus
@@ -28,6 +29,8 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
 
 fun Int.toBoolean() = this > 0
 fun Short.toBoolean() = this > 0
+
+fun HttpServletRequest.getAuth() = this.getAttribute("auth") as Principal?
 
 fun HttpServletRequest.realIp(): String {
     val header: String? = this.getHeader("X-Forwarded-For")

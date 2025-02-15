@@ -4,30 +4,29 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.module.auth.service.AuthService
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
+@Order(1)
 @Component
-class AuthFilter(private val authService: AuthService) : OncePerRequestFilter() {
+class AuthenticationFilter(private val authService: AuthService) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        val token = request.cookies.find { it.name == "filemat-auth-token" }?.value
+        val token = request.cookies?.find { it.name == "filemat-auth-token" }?.value
+
         if (token == null) {
-            response.status = 401
-            return
+            request.setAttribute("auth", null)
+            return chain.doFilter(request, response)
         }
 
-        val principal = authService.getAuthByToken(token)
+        val principal = authService.getPrincipalByToken(token)
         if (principal.hasError) {
             response.status = 500
             response.writer.write(principal.error)
             return
         }
-        if (principal.notFound) {
-            response.status = 401
-            return
-        }
 
-        request.setAttribute("auth", principal.value)
+        request.setAttribute("auth", principal.valueOrNull)
         return chain.doFilter(request, response)
     }
 }
