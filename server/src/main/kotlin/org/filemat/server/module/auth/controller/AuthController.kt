@@ -93,11 +93,8 @@ class AuthController(
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
 
-        ////
-            SEND PRINCIPAL WITH LOGIN
-        ////
-        val principal = authService.getPrincipalByUserId(user.userId)
-        if (principal.)
+//        val principal = authService.getPrincipalByUserId(user.userId)
+//        if (principal.)
 
         loginLog(LogLevel.INFO, "Successful login", "", meta)
 

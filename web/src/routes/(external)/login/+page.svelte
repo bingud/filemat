@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { goto } from "$app/navigation";
     import { parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { toast } from "@jill64/svelte-toast";
@@ -36,7 +37,7 @@
             const status = response.status
 
             if (status === 200) {
-
+                await goto("/")
             } else {
                 if (json.message) {
                     toast.error(json.message)

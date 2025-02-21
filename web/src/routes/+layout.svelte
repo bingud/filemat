@@ -16,18 +16,9 @@
 
 <Toaster {palette} {toastOptions} />
 
-<nav class="flex px-4 items-center justify-between bg-blue-900/20 dark:bg-blue-950/50 h-(--navbar-height)">
-    <a href="/">Filemat</a>
-    <div class="flex gap-3">
-        <a href="/setup">Setup</a>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-    </div>
-</nav>
-
-<main class="px-4 py-4 w-full min-h-fit h-[calc(100%-var(--navbar-height))] flex flex-col gap-1">
+<div class="w-full min-h-fit h-full flex flex-col">
     {@render children()}
-</main>
+</div>
 
 
 {#if dev}
