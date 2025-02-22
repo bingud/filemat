@@ -6,6 +6,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.util.getAuth
 import org.filemat.server.common.util.runTransaction
 import org.filemat.server.config.auth.Authenticated
+import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.repository.LogRepository
@@ -24,6 +25,7 @@ import java.nio.file.attribute.UserDefinedFileAttributeView
 @RestController
 class TestController(private val logService: LogService, private val logRepository: LogRepository) {
 
+    @Unauthenticated
     @GetMapping("/test")
     fun sus(request: HttpServletRequest): String {
         val auth = request.getAuth()

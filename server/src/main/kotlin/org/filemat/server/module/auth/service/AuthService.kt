@@ -1,35 +1,86 @@
 package org.filemat.server.module.auth.service
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.common.State
+import kotlinx.coroutines.*
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.iterate
+import org.filemat.server.common.util.unixNow
+import org.filemat.server.config.Props
+import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.isExpired
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
 import org.springframework.stereotype.Service
+import java.util.concurrent.ConcurrentHashMap
+
 
 @Service
 class AuthService(
     private val authTokenService: AuthTokenService,
     private val roleService: RoleService,
     private val userRoleService: UserRoleService,
-    private val userService: UserService
+    private val userService: UserService,
+    private val logService: LogService
 ) {
+    private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // User auth tokens
+    // Cleared every 60 seconds - Lazy cleared when accessed.
+    private val tokenToUserIdMap = ConcurrentHashMap<String, AuthToken>()
+    // User principals
+    private val principalMap = ConcurrentHashMap<Ulid, Principal>()
+
+    init {
+        expireMemoryAuthTokens()
+    }
+
+    private fun expireMemoryAuthTokens() {
+        scope.launch {
+            var loggedFailure = false
+
+            while(true) {
+                runCatching {
+                    val now = unixNow()
+
+                    tokenToUserIdMap.iterate { key, value, remove ->
+                        if (value.isExpired(now)) {
+                            remove()
+                        }
+                    }
+                }.onFailure {
+                    if (!loggedFailure) {
+                        logService.error(
+                            type = LogType.SYSTEM,
+                            action = UserAction.NONE,
+                            description = "Failed to remove expired auth tokens from memory.",
+                            message = it.stackTraceToString()
+                        )
+                        loggedFailure = true
+                    }
+                }
+
+                delay(60000)
+            }
+        }
+    }
 
     fun getPrincipalByToken(token: String): Result<Principal> {
-        return getPrincipalFromMemory(token)?.toResult() ?: let {
-            val p = getPrincipalFromDatabase(token)
+        return getPrincipalFromMemoryByToken(token)?.toResult() ?: let {
+            val p = getPrincipalFromDatabaseByToken(token)
             if (p.isNotSuccessful) return p
             return@let p.value.toResult()
         }
     }
 
     fun getPrincipalByUserId(userId: Ulid): Result<Principal> {
-        State.Auth.principalMap[userId]?.let {
+        principalMap[userId]?.let {
             return it.toResult()
         }
 
@@ -41,13 +92,18 @@ class AuthService(
         return TODO()
     }
 
-    private fun getPrincipalFromDatabase(token: String): Result<Principal> {
-        val userR = authTokenService.getUserByToken(token)
+    private fun getPrincipalFromDatabaseByToken(token: String): Result<Principal> {
+        val authTokenResult: Result<AuthToken> = authTokenService.getToken(token)
+        if (authTokenResult.hasError) return Result.error(authTokenResult.error)
+        if (authTokenResult.notFound) return Result.notFound()
+        val authToken = authTokenResult.value
+
+        val userR = userService.getUserByUserId(authToken.userId, UserAction.GENERIC_GET_PRINCIPAL)
         if (userR.hasError) return Result.error(userR.error)
         if (userR.notFound) return Result.notFound()
         val user = userR.value
 
-        State.Auth.tokenToUserIdMap[token] = user.userId
+        tokenToUserIdMap[token] = authToken
         val principal = getPrincipalFromDatabaseByUser(user)
         return principal
     }
@@ -59,7 +115,7 @@ class AuthService(
 
 
         val principal = let {
-            State.Auth.principalMap[user.userId]
+            principalMap[user.userId]
         } ?: let {
             val principal = Principal(
                 userId = user.userId,
@@ -70,16 +126,20 @@ class AuthService(
                 roles = roles.map { it.roleId }.toMutableList()
             )
 
-            State.Auth.principalMap[user.userId] = principal
+            principalMap[user.userId] = principal
             principal
         }
 
         return principal.toResult()
     }
 
-    private fun getPrincipalFromMemory(token: String): Principal? {
-        val userId = State.Auth.tokenToUserIdMap[token] ?: return null
-        return State.Auth.principalMap[userId]
+    private fun getPrincipalFromMemoryByToken(token: String): Principal? {
+        val authToken = tokenToUserIdMap[token] ?: return null
+        if (authToken.isExpired()) {
+            tokenToUserIdMap.remove(token)
+            return null
+        }
+        return principalMap[authToken.userId]
     }
 
 }

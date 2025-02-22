@@ -1,6 +1,7 @@
 package org.filemat.server.module.auth.model
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.util.unixNow
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
@@ -17,3 +18,6 @@ data class AuthToken(
     @Column("max_age")
     val maxAge: Long,
 )
+
+fun AuthToken.isExpired(now: Long) = now >= this.createdDate + this.maxAge
+fun AuthToken.isExpired() = this.isExpired(unixNow())

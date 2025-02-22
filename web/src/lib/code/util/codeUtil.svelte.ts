@@ -1,5 +1,14 @@
+import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
 
+
+export function handleException(message: string, userMessage: string | null, exception: any) {
+    console.log(`${message}\n(${userMessage ?? "No user message"})\n${exception}`)
+
+    if (userMessage) {
+        toast.error(userMessage)
+    }
+}
 
 export function makeIdempotent<T, Args extends any[]>(
     fn: (isRunning: boolean, ...args: Args) => T | Promise<T>,

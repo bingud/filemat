@@ -11,6 +11,7 @@ import org.filemat.server.common.util.classes.Locker
 import org.filemat.server.common.util.runTransaction
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
+import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 
+@Unauthenticated
 @RestController
 @RequestMapping("/v1/setup")
 class SetupController(

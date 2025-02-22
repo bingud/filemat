@@ -17,9 +17,25 @@ import org.springframework.stereotype.Service
 @Service
 class AuthTokenService(private val logService: LogService, private val authTokenRepository: AuthTokenRepository) {
 
+    fun getToken(token: String): Result<AuthToken> {
+        try {
+            val result = authTokenRepository.getToken(token, unixNow())
+                ?: return Result.notFound()
+            return result.toResult()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.AUTH,
+                description = "Failed to get auth token from database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to load authentication token.")
+        }
+    }
+
     fun getUserByToken(token: String): Result<User> {
         try {
-            return authTokenRepository.getUserByToken(token)?.toResult() ?: Result.notFound()
+            return authTokenRepository.getUserByToken(token, unixNow())?.toResult() ?: Result.notFound()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,

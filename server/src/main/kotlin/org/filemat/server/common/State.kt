@@ -1,6 +1,7 @@
 package org.filemat.server.common
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.role.model.Role
 import java.util.concurrent.ConcurrentHashMap
@@ -13,11 +14,6 @@ object State {
     }
 
     object Auth {
-        // User auth tokens
-        val tokenToUserIdMap = ConcurrentHashMap<String, Ulid>()
-        // User principals
-        val principalMap = ConcurrentHashMap<Ulid, Principal>()
-
         // All roles
         val roleMap = ConcurrentHashMap<Ulid, Role>()
     }

@@ -2,6 +2,9 @@ package org.filemat.server.common.util
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.service.LogService
@@ -9,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 fun unixNow() = Instant.now().epochSecond
 
@@ -36,6 +40,27 @@ fun HttpServletRequest.realIp(): String {
     val header: String? = this.getHeader("X-Forwarded-For")
     return header ?: this.remoteAddr
 }
+
+fun <K, V> ConcurrentHashMap<K, V>.removeIf(block: (key: K, value: V) -> Boolean) {
+    val iterator = this.entries.iterator()
+    while (iterator.hasNext()) {
+        val entry = iterator.next()
+        if (block(entry.key, entry.value)) {
+            iterator.remove()
+        }
+    }
+}
+
+fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () -> Unit) -> Unit) {
+    val iterator = this.entries.iterator()
+    while (iterator.hasNext()) {
+        val entry = iterator.next()
+        block(entry.key, entry.value, iterator::remove)
+    }
+}
+
+
+////
 
 val packagePrefix = gPackagePrefix() + "."
 fun getPackage(): String {
@@ -71,4 +96,17 @@ private fun gPackagePrefix(): String {
         return "${caller.className}.${caller.methodName}".split('.').take(3).joinToString(".")
     }
     return "Unknown"
+}
+
+////
+
+class JsonBuilder {
+    private val content = linkedMapOf<String, JsonElement>()
+
+    fun put(key: String, element: JsonElement) = content.put(key, element)
+    fun put(key: String, element: String) = content.put(key, JsonPrimitive(element))
+    fun put(key: String, element: Int) = content.put(key, JsonPrimitive(element))
+
+    fun build() = JsonObject(content)
+    override fun toString() = build().toString()
 }

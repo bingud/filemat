@@ -48,14 +48,16 @@ class AuthenticatedMappingConfig(
             val classUnauthAnnotation = AnnotationUtils.findAnnotation(handlerMethod.beanType, Unauthenticated::class.java)
             val unauthAnnotation = methodUnauthAnnotation ?: classUnauthAnnotation
 
-            // Process the endpoint only if one of the annotations is present.
-            if (authAnnotation == null && unauthAnnotation == null) return@forEach
+            // Authenticate endpoint by default, unless @Unauthenticated
+            val (isAuthenticated, permissions) = when {
+                // If there's an @Unauthenticated on either method or class
+                unauthAnnotation != null -> false to emptyList<Permission>()
 
-            // If both are present, we prioritize @Authenticated.
-            val (isAuthenticated, permissions) = if (authAnnotation != null) {
-                true to authAnnotation.permissions.toList()
-            } else {
-                false to emptyList()
+                // Otherwise, if there's @Authenticated (on method or class), use its permissions
+                authAnnotation != null -> true to authAnnotation.permissions.toList()
+
+                // If neither annotation is present, default to authenticated with no permissions
+                else -> true to emptyList<Permission>()
             }
 
             // Retrieve the mapping patterns (paths).
@@ -82,5 +84,7 @@ class AuthenticatedMappingConfig(
                 }
             }
         }
+
+        println(endpointAuthMap)
     }
 }

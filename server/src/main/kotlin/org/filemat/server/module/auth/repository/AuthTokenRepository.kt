@@ -14,7 +14,9 @@ interface AuthTokenRepository : CrudRepository<AuthToken, String> {
     @Query("INSERT INTO auth_token (auth_token, user_id, created_date, user_agent, max_age) VALUES (:token, :userId, :date, :ua, :maxAge)")
     fun insertToken(token: String, userId: String, date: Long, ua: String, maxAge: Long)
 
-    @Query("SELECT users.* FROM users JOIN auth_token ON users.user_id = auth_token.user_id WHERE auth_token.auth_token = :token")
-    fun getUserByToken(token: String): User?
+    @Query("SELECT users.* FROM users JOIN auth_token ON users.user_id = auth_token.user_id WHERE auth_token.auth_token = :token AND (:unixNow < auth_token.created_date + auth_token.max_age)")
+    fun getUserByToken(token: String, unixNow: Long): User?
 
+    @Query("SELECT * FROM auth_token WHERE auth_token = :token AND (:unixNow < created_date + max_age)")
+    fun getToken(token: String, unixNow: Long): AuthToken?
 }

@@ -2,10 +2,12 @@ package org.filemat.server.module.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.filemat.server.common.util.Validator
+import kotlinx.serialization.json.*
+import org.filemat.server.common.util.*
+import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.realIp
-import org.filemat.server.common.util.unixNow
+import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.module.auth.model.Principal.Companion.getRoles
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.log.model.LogLevel
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+
 @RestController
 @RequestMapping("/v1/auth")
 class AuthController(
@@ -30,6 +33,40 @@ class AuthController(
     private val logService: LogService,
     private val authService: AuthService
 ) : AController() {
+
+    @PostMapping("/state")
+    fun authStateMapping(
+        request: HttpServletRequest,
+        @RequestParam("principal", required = false) rawPrincipal: String?,
+        @RequestParam("roles", required = false) rawRoles: String?,
+    ): ResponseEntity<String> {
+        val principal = request.getAuth()!!
+
+        val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
+        val getRoles = rawRoles?.toBooleanStrictOrNull()
+        if (getPrincipal == null && getRoles == null) return bad("Auth state request did not request anything.", "")
+
+        val builder = JsonBuilder()
+
+        if (getPrincipal == true) {
+            val principalBuilder = JsonBuilder()
+
+            principalBuilder.put("value", Json.encodeToJsonElement(principal))
+
+            builder.put("principal", principalBuilder.build())
+        }
+        if (getRoles == true) {
+            val roleBuilder = JsonBuilder()
+
+            val roles = principal.getRoles()
+            roleBuilder.put("value", Json.encodeToJsonElement(roles))
+
+            builder.put("roles", roleBuilder.build())
+        }
+
+        val serialized = builder.toString()
+        return ok(serialized)
+    }
 
     private fun loginLog(
         level: LogLevel,
@@ -48,6 +85,7 @@ class AuthController(
         )
     }
 
+    @Unauthenticated
     @PostMapping("/login")
     fun loginMapping(
         request: HttpServletRequest,

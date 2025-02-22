@@ -8,6 +8,7 @@ import org.filemat.server.config.UlidListSerializer
 import org.filemat.server.config.UlidSerializer
 import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.role.model.Role
+import kotlinx.serialization.builtins.ListSerializer
 
 @Serializable
 data class Principal(

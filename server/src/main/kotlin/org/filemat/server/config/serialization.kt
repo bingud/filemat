@@ -41,3 +41,4 @@ object UlidListSerializer : KSerializer<List<Ulid>> {
         return list
     }
 }
+
