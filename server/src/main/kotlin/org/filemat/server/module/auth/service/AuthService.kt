@@ -17,6 +17,8 @@ import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 
@@ -37,7 +39,9 @@ class AuthService(
     // User principals
     private val principalMap = ConcurrentHashMap<Ulid, Principal>()
 
-    init {
+
+    @EventListener(ApplicationReadyEvent::class)
+    private fun initialize() {
         expireMemoryAuthTokens()
     }
 
@@ -54,6 +58,8 @@ class AuthService(
                             remove()
                         }
                     }
+
+                    loggedFailure = false
                 }.onFailure {
                     if (!loggedFailure) {
                         logService.error(

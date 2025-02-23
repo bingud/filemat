@@ -2,10 +2,13 @@ package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.listSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
@@ -26,19 +29,15 @@ object UlidSerializer : KSerializer<Ulid> {
 
 
 object UlidListSerializer : KSerializer<List<Ulid>> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("Ulid", PrimitiveKind.STRING)
+    private val delegate = ListSerializer(UlidSerializer)
+
+    override val descriptor: SerialDescriptor = delegate.descriptor
 
     override fun serialize(encoder: Encoder, value: List<Ulid>) {
-        encoder.encodeString(value.toString())
+        delegate.serialize(encoder, value)
     }
 
     override fun deserialize(decoder: Decoder): List<Ulid> {
-        val rawList = decoder.decodeString()
-        val list = Json.decodeFromString<List<String>>(rawList)
-            .map { Ulid.from(it) }
-
-        return list
+        return delegate.deserialize(decoder)
     }
 }
-

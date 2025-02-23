@@ -8,7 +8,6 @@ import org.filemat.server.config.UlidListSerializer
 import org.filemat.server.config.UlidSerializer
 import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.role.model.Role
-import kotlinx.serialization.builtins.ListSerializer
 
 @Serializable
 data class Principal(
@@ -19,8 +18,7 @@ data class Principal(
     val mfaTotpStatus: Boolean,
     val isBanned: Boolean,
     @Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
-    @Serializable(UlidListSerializer::class)
-    var roles: MutableList<Ulid>,
+    var roles: MutableList<@Serializable(UlidSerializer::class) Ulid>,
 ) {
     companion object {
         fun Principal.getRoles(): List<Role> {

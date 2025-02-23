@@ -19,4 +19,8 @@ interface AuthTokenRepository : CrudRepository<AuthToken, String> {
 
     @Query("SELECT * FROM auth_token WHERE auth_token = :token AND (:unixNow < created_date + max_age)")
     fun getToken(token: String, unixNow: Long): AuthToken?
+
+    @Modifying
+    @Query("DELETE FROM auth_token WHERE (:unixNow > created_date + max_age)")
+    fun clearExpiredTokens(unixNow: Long): Int
 }

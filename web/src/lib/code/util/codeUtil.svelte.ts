@@ -10,6 +10,19 @@ export function handleException(message: string, userMessage: string | null, exc
     }
 }
 
+export function handleErrorResponse(response: ErrorResponse, defaultMessage: string) {
+    const message = response.message
+    const error = response.error
+    
+    console.log(`Error Response:\n\n${defaultMessage}\n${error}\n${message}`)
+
+    if (message) {
+        toast.error(message)
+    } else {
+        toast.error(defaultMessage)
+    }
+}
+
 export function makeIdempotent<T, Args extends any[]>(
     fn: (isRunning: boolean, ...args: Args) => T | Promise<T>,
     after?: () => any,

@@ -3,6 +3,7 @@ package org.filemat.server.module.auth.controller
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.*
+import org.filemat.server.common.State
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import kotlin.system.measureNanoTime
 
 
 @RestController
@@ -40,32 +42,34 @@ class AuthController(
         @RequestParam("principal", required = false) rawPrincipal: String?,
         @RequestParam("roles", required = false) rawRoles: String?,
     ): ResponseEntity<String> {
-        val principal = request.getAuth()!!
+            val principal = request.getAuth()!!
 
-        val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
-        val getRoles = rawRoles?.toBooleanStrictOrNull()
-        if (getPrincipal == null && getRoles == null) return bad("Auth state request did not request anything.", "")
+            val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
+            val getRoles = rawRoles?.toBooleanStrictOrNull()
+            if (getPrincipal == null && getRoles == null) return bad("Auth state request did not request anything.", "")
 
-        val builder = JsonBuilder()
+            val builder = JsonBuilder()
 
-        if (getPrincipal == true) {
-            val principalBuilder = JsonBuilder()
+            // Return user principal
+            if (getPrincipal == true) {
+                val principalBuilder = JsonBuilder()
 
-            principalBuilder.put("value", Json.encodeToJsonElement(principal))
+                principalBuilder.put("value", Json.encodeToJsonElement(principal))
 
-            builder.put("principal", principalBuilder.build())
-        }
-        if (getRoles == true) {
-            val roleBuilder = JsonBuilder()
+                builder.put("principal", principalBuilder.build())
+            }
+            // Return all available roles
+            if (getRoles == true) {
+                val roleBuilder = JsonBuilder()
 
-            val roles = principal.getRoles()
-            roleBuilder.put("value", Json.encodeToJsonElement(roles))
+                val roles = State.Auth.roleMap.values.toList()
+                roleBuilder.put("value", Json.encodeToJsonElement(roles))
 
-            builder.put("roles", roleBuilder.build())
-        }
+                builder.put("roles", roleBuilder.build())
+            }
 
-        val serialized = builder.toString()
-        return ok(serialized)
+            val serialized = builder.toString()
+            return ok(serialized)
     }
 
     private fun loginLog(

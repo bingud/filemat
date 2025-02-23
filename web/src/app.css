@@ -2,6 +2,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @import "$lib/css/forms.css";
+@import "$lib/css/loader.css";
 
 :root {
     --navbar-height: 3rem;

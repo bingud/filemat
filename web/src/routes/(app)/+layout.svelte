@@ -1,16 +1,31 @@
 <script lang="ts">
-    import { auth_load } from '$lib/code/auth/auth.svelte';
-    import { onMount } from 'svelte';
-
+    import { goto } from '$app/navigation';
+    import { auth, auth_load } from '$lib/code/auth/auth.svelte';
+    import { onDestroy, onMount } from 'svelte';
 
     let { children } = $props()
 
     onMount(() => {
-        auth_load()
+        (async () => {
+            const principal = await auth_load()
+            if (auth.authenticated == null) {
+                await goto("/login")
+            }
+        })()
+    })
+
+    onDestroy(() => {
+        auth.reset()
     })
 </script>
 
 
-<main>
-    {@render children()}
-</main>
+{#if auth.authenticated === true}
+    <main>
+        {@render children()}
+    </main>
+{:else if auth.authenticated === null}
+    <div class="w-full h-full flex flex-col items-center justify-center">
+        <div class="loader"></div>
+    </div>
+{/if}
