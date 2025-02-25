@@ -137,9 +137,6 @@
             <h1 class="text-2xl font">Create an admin account</h1>
         </div>
         
-        <!-- <div class="flex flex-col gap-2">
-            <p></p>
-        </div> -->
         
         <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_2} title="Create a Filemat admin account">
             <label for="email-input">Email</label>
