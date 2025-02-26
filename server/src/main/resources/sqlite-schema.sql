@@ -93,3 +93,10 @@ CREATE TABLE IF NOT EXISTS user_roles (
     FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
+
+
+CREATE TABLE IF NOT EXISTS folder_visibility (
+    path TEXT PRIMARY KEY,
+    is_exposed INTEGER NOT NULL,
+    created_date INTEGER NOT NULL
+) STRICT;
