@@ -11,6 +11,7 @@ import org.filemat.server.module.log.service.LogService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
+import java.nio.file.Paths
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
@@ -59,6 +60,11 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
     }
 }
 
+fun normalizePath(path: String): String {
+    return Paths.get(path).normalize().toString()
+}
+
+fun <T> kotlin.Result<T>.getResult(): T = this.getOrNull()!!
 
 ////
 

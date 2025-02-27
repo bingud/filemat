@@ -1,13 +1,14 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
-    import { auth, auth_load } from '$lib/code/auth/auth.svelte';
+    import { auth } from '$lib/code/state/authState.svelte';
+    import { fetchState } from '$lib/code/state/stateFetcher';
     import { onDestroy, onMount } from 'svelte';
 
     let { children } = $props()
 
     onMount(() => {
         (async () => {
-            const principal = await auth_load()
+            const principal = await fetchState({ principal: true, roles: true, app: true })
             if (auth.authenticated == null) {
                 await goto("/login")
             }

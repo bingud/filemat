@@ -9,7 +9,7 @@
 }
 
 .page {
-    @apply flex flex-col w-full;
+    @apply flex flex-col w-full min-h-full h-fit;
 }
 
 @theme {

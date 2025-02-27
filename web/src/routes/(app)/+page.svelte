@@ -1,6 +1,10 @@
 <script lang="ts">
     import { auth } from "$lib/code/auth/auth.svelte";
+    import { onMount } from "svelte";
 
+    onMount(() => {
+        
+    })
 
 </script>
 

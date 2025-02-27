@@ -70,7 +70,6 @@ class DatabaseSetup(
     // Settings
     fun checkSettings() {
         setting_isAppSetup()
-        State.App.isInitialized = true
     }
 
     fun setting_isAppSetup() {

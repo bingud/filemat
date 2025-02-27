@@ -1,5 +1,7 @@
 package org.filemat.server.config.properties
 
+import org.filemat.server.common.util.normalizePath
+
 
 object SensitiveFolderPaths {
 
@@ -40,19 +42,19 @@ object SensitiveFolderPaths {
         "/boot",
         "/dev/mem",
         "/dev/kmem",
-        "/dev/sd*",
-        "/var/lib/filemat/",
+        "/dev/sd",
+        "/var/lib/filemat",
     )
 
     private val wildcardList = fullList.filter { it.contains("*") }.map { (if (it.startsWith("/")) it else "/$it").split("*") }.map { it[0] to it[1] }
     private val list = fullList.filterNot { it.contains("*") }.toHashSet()
 
-    fun contains(path: String): Boolean {
-        val formattedPath = path.trimEnd('/').let { if (path.startsWith("/")) it else "/$it" }
-        if (list.contains(formattedPath)) return true
+    fun contains(_path: String, isPathNormalized: Boolean): Boolean {
+        val path = if (isPathNormalized) _path else normalizePath(_path)
+        if (list.any { path.startsWith(it) }) return true
 
         wildcardList.forEach { pair ->
-            if (formattedPath.startsWith(pair.first) && formattedPath.endsWith(pair.second)) return true
+            if (path.startsWith(pair.first) && path.endsWith(pair.second)) return true
         }
         return false
     }

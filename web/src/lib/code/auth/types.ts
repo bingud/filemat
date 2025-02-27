@@ -27,3 +27,5 @@ enum Permission {
     MANAGE_SYSTEM = "MANAGE_SYSTEM",
     EDIT_ROLES = "EDIT_ROLES",
 }
+
+type HttpStatus = 200 | 400 | 401 | 403 | 404 | 500 | 503

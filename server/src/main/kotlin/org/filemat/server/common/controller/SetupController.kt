@@ -24,6 +24,7 @@ import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -44,6 +45,9 @@ class SetupController(
 ) : AController() {
 
     val submitLock = Locker()
+
+    @GetMapping("/status")
+    fun setupStatusMapping() = ok(State.App.isSetup.toString())
 
     @PostMapping("/verify")
     fun verifyAppSetupCode(
