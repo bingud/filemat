@@ -21,7 +21,7 @@ class Initialization(
     fun initialize() = CoroutineScope(Dispatchers.Default).launch {
         databaseSetup.initialize()
 
-        if (State.App.isSetup == true) {
+        if (State.App.isSetup) {
             folderVisibilityService.initialize()
         }
 

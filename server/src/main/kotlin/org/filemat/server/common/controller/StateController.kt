@@ -7,6 +7,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getAuth
+import org.filemat.server.config.auth.Unauthenticated
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/state")
 class StateController : AController() {
 
+    @Unauthenticated
     @PostMapping("/select")
     fun optionalStateMapping(
         request: HttpServletRequest,
@@ -24,7 +26,7 @@ class StateController : AController() {
         @RequestParam("roles", required = false) rawRoles: String?,
         @RequestParam("app", required = false) rawApp: String?,
     ): ResponseEntity<String> {
-        val principal = request.getAuth()!!
+        val principal = request.getAuth()
 
         val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
         val getRoles = rawRoles?.toBooleanStrictOrNull()
@@ -37,7 +39,12 @@ class StateController : AController() {
         if (getPrincipal == true) {
             val principalBuilder = JsonBuilder()
 
-            principalBuilder.put("value", Json.encodeToJsonElement(principal))
+            if (principal != null) {
+                principalBuilder.put("value", Json.encodeToJsonElement(principal))
+                principalBuilder.put("status", 200)
+            } else {
+                principalBuilder.put("status", 401)
+            }
 
             builder.put("principal", principalBuilder.build())
         }
@@ -45,13 +52,25 @@ class StateController : AController() {
         if (getRoles == true) {
             val roleBuilder = JsonBuilder()
 
-            val roles = State.Auth.roleMap.values.toList()
-            roleBuilder.put("value", Json.encodeToJsonElement(roles))
+            if (principal != null) {
+                val roles = State.Auth.roleMap.values.toList()
+                roleBuilder.put("value", Json.encodeToJsonElement(roles))
+                roleBuilder.put("status", 200)
+            } else {
+                roleBuilder.put("status", 401)
+            }
 
             builder.put("roles", roleBuilder.build())
         }
         if (getApp == true) {
+            val valueBuilder = JsonBuilder()
+            valueBuilder.put("isSetup", State.App.isSetup)
 
+            val appBuilder = JsonBuilder()
+            appBuilder.put("status", 200)
+            appBuilder.put("value", valueBuilder.build())
+
+            builder.put("app", appBuilder.build())
         }
 
         val serialized = builder.toString()

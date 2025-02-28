@@ -46,6 +46,9 @@ class SetupController(
 
     val submitLock = Locker()
 
+    @GetMapping("/sensitive-folders")
+    fun getSensitiveFolderListMapping() = ok(Props.sensitiveFolders.serialize())
+
     @GetMapping("/status")
     fun setupStatusMapping() = ok(State.App.isSetup.toString())
 

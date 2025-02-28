@@ -1,17 +1,31 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
+    import { appState } from '$lib/code/state/appState.svelte';
     import { auth } from '$lib/code/state/authState.svelte';
     import { fetchState } from '$lib/code/state/stateFetcher';
     import { onDestroy, onMount } from 'svelte';
 
     let { children } = $props()
+    let mounted: boolean | null = $state(null)
 
     onMount(() => {
         (async () => {
-            const principal = await fetchState({ principal: true, roles: true, app: true })
-            if (auth.authenticated == null) {
-                await goto("/login")
+            const stateResult = await fetchState({ principal: true, roles: true, app: true })
+            if (!stateResult) {
+                mounted = false
+                return
             }
+
+            if (appState.isSetup === false) {
+                await goto (`/setup`)
+                return
+            }
+            if (auth.authenticated !== true) {
+                await goto("/login")
+                return
+            }
+
+            mounted = true
         })()
     })
 
@@ -21,12 +35,17 @@
 </script>
 
 
-{#if auth.authenticated === true}
+{#if mounted}
     <main>
         {@render children()}
     </main>
-{:else if auth.authenticated === null}
+{:else if mounted == null}
     <div class="w-full h-full flex flex-col items-center justify-center">
         <div class="loader"></div>
+    </div>
+{:else if mounted == false}
+    <div class="page justify-center items-center gap-6">
+        <h2 class="text-2xl">Failed to load Filemat.</h2>
+        <button on:click={() => { location.reload() }} class="underline px-2 py-1">Reload</button>
     </div>
 {/if}

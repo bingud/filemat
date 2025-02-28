@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { auth } from "$lib/code/auth/auth.svelte";
+    import { auth } from "$lib/code/state/authState.svelte";
     import { onMount } from "svelte";
 
     onMount(() => {

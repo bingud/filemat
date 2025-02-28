@@ -1,5 +1,6 @@
 import { auth } from "../state/authState.svelte"
-import { handleErrorResponse, handleException, parseJson } from "../util/codeUtil.svelte"
+import { handleError, handleErrorResponse, handleException, parseJson } from "../util/codeUtil.svelte"
+import { appState } from "./appState.svelte"
 
 
 export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean }): Promise<boolean> {
@@ -17,30 +18,57 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
         const json = parseJson(text)
 
         if (status === 200) {
-            const data = json as { principal: { value: Principal, status: HttpStatus }, roles: { value: Role[], status: HttpStatus }, app: { value: {}, status: HttpStatus } }
+            const data = json as { principal: { value: Principal, status: HttpStatus }, roles: { value: Role[], status: HttpStatus }, app: { value: { isSetup: boolean }, status: HttpStatus } }
 
             if (options.principal) {
-                const principal = data.principal.value
-                auth.principal = principal
-                auth.authenticated = true
+                const status = data.principal.status
+                
+                if (status === 200) {
+                    const principal = data.principal.value
+                    auth.principal = principal
+                    auth.authenticated = true
+                } else if (status === 401) {
+                    auth.principal = null
+                    auth.authenticated = false
+                } else {
+                    handleError(`Status ${status} for principal when fetching state.`, `Failed to load your account (${status})`)
+                    return false
+                }
             }
             if (options.roles) {
-                const roleList = data.roles.value
-                auth.roleList = roleList
+                const status = data.roles.status
+
+                if (status === 200) {
+                    const roleList = data.roles.value
+                    auth.roleList = roleList
+                } else if (status === 401) {
+                    auth.roleList = null
+                } else {
+                    handleError(`Status ${status} for role list when fetching state.`, `Failed to load the list of user roles (${status})`)
+                    return false
+                }
             }
             if (options.app) {
-                
+                const status = data.app.status
+
+                if (status === 200) {
+                    const app = data.app.value
+                    appState.isSetup = app.isSetup
+                } else {
+                    handleError(`Status ${status} for app state when fetching state.`, `Failed to load Filemat state (${status})`)
+                    return false
+                }
             }
 
             console.log(`Loaded state.`)
             return true
         } else {
             const error = json as ErrorResponse
-            handleErrorResponse(error, "Failed to load your state data.")
+            handleErrorResponse(error, `Failed to load state (${status})`)
             return false
         }
     } catch (e) {
-        handleException("Exception when fetching state", "Failed to load state data.", e)
+        handleException("Exception when fetching state", "An error occurred while loading state.", e)
         return false
     }
 }

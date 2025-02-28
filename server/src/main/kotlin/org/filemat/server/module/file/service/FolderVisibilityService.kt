@@ -38,11 +38,13 @@ class FolderVisibilityService(
     fun isPathAllowed(rawPath: String): Boolean {
         val path = normalizePath(rawPath)
 
-        if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
+        val visibility = visibilityTrie.getVisibility(path)
+
+        // If folder doesnt have explicit rule, then check whether to block sensitive folders
+        if (!visibility.isExplicit && State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
             return false
         }
 
-        val isExposed = visibilityTrie.getVisibility(path)
-        return isExposed
+        return visibility.isExposed
     }
 }

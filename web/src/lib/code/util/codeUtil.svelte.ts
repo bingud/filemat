@@ -10,6 +10,14 @@ export function handleException(message: string, userMessage: string | null, exc
     }
 }
 
+export function handleError(message: string, userMessage: string | null) {
+    console.log(`${message}\n(${userMessage ?? "No user message"})`)
+
+    if (userMessage) {
+        toast.error(userMessage)
+    }
+}
+
 export function handleErrorResponse(response: ErrorResponse, defaultMessage: string) {
     const message = response.message
     const error = response.error

@@ -13,6 +13,6 @@
     </div>
 </nav>
 
-<main class="px-4 py-4 w-full min-h-fit h-[calc(100%-var(--navbar-height))] flex flex-col gap-1">
+<main class="px-4 py-4 w-full min-h-0 h-[calc(100%-var(--navbar-height))] flex flex-col gap-1">
     {@render children()}
 </main>

@@ -133,7 +133,7 @@ select,
 [type='radio'],
 .form-checkbox,
 .form-radio {
-    @apply appearance-none p-0 inline-block align-middle select-none flex-shrink-0 h-4 w-4 text-blue-600 bg-white border border-gray-500;
+    @apply appearance-none p-0 inline-block align-middle select-none flex-shrink-0 h-4 w-4 text-blue-600 bg-white border border-gray-500 enabled:cursor-pointer;
     background-origin: border-box;
     print-color-adjust: exact;
     --tw-shadow: 0 0 #0000;

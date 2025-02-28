@@ -3,13 +3,14 @@
 
 @import "$lib/css/forms.css";
 @import "$lib/css/loader.css";
+@import "$lib/css/layout.css";
 
 :root {
     --navbar-height: 3rem;
 }
 
 .page {
-    @apply flex flex-col w-full min-h-full h-fit;
+    @apply flex flex-col w-full h-full min-h-0;
 }
 
 @theme {

@@ -1,5 +1,6 @@
 package org.filemat.server.config.properties
 
+import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.normalizePath
 
 
@@ -59,4 +60,13 @@ object SensitiveFolderPaths {
         return false
     }
 
+    private var serializedList: String? = null
+    fun serialize(): String {
+        serializedList?.let { return it }
+
+        Json.encodeToString(fullList).let {
+            serializedList = it
+            return it
+        }
+    }
 }

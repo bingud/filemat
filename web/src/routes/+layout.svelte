@@ -16,7 +16,7 @@
 
 <Toaster {palette} {toastOptions} />
 
-<div class="w-full min-h-fit h-full flex flex-col">
+<div class="w-full min-h-0 h-full flex flex-col">
     {@render children()}
 </div>
 

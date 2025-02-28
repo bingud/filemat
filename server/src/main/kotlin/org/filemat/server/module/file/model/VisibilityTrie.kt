@@ -3,6 +3,8 @@ package org.filemat.server.module.file.model
 class VisibilityTrie {
     private val root = TrieNode()
 
+    data class Visibility(val isExposed: Boolean, val isExplicit: Boolean)
+
     fun insert(path: String, isExposed: Boolean) {
         var node = root
         val parts = path.split("/").filter { it.isNotEmpty() }
@@ -13,16 +15,27 @@ class VisibilityTrie {
         node.hasRule = true
     }
 
-    fun getVisibility(path: String): Boolean {
+    fun getVisibility(path: String): Visibility {
         var node = root
         var lastKnownVisibility: Boolean? = null
+        var lastKnownVisibilityIndex: Int? = null
 
         val parts = path.split("/").filter { it.isNotEmpty() }
-        for (part in parts) {
-            node = node.children[part] ?: return (lastKnownVisibility ?: false)
-            if (node.hasRule) lastKnownVisibility = node.isExposed
+        parts.forEachIndexed { index, part ->
+            node = node.children[part] ?: return Visibility(
+                isExposed = lastKnownVisibility ?: false,
+                isExplicit = lastKnownVisibilityIndex == index
+            )
+            if (node.hasRule) {
+                lastKnownVisibility = node.isExposed
+                lastKnownVisibilityIndex = index
+            }
         }
-        return lastKnownVisibility ?: false
+
+        return Visibility(
+            isExposed = lastKnownVisibility ?: false,
+            isExplicit = (lastKnownVisibilityIndex == parts.lastIndex)
+        )
     }
 
     private class TrieNode {

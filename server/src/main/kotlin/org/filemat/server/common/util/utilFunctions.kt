@@ -112,6 +112,7 @@ class JsonBuilder {
     fun put(key: String, element: JsonElement) = content.put(key, element)
     fun put(key: String, element: String) = content.put(key, JsonPrimitive(element))
     fun put(key: String, element: Int) = content.put(key, JsonPrimitive(element))
+    fun put(key: String, element: Boolean) = content.put(key, JsonPrimitive(element))
 
     fun build() = JsonObject(content)
     override fun toString() = build().toString()

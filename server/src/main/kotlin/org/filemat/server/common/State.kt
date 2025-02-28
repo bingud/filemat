@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object State {
     object App {
-        var isSetup: Boolean? = null
+        var isSetup: Boolean = false
         var isInitialized: Boolean = false
         val isDev = env("FM_DEV_MODE")?.toBooleanStrictOrNull() ?: false
 
