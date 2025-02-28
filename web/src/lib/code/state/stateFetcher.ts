@@ -62,6 +62,9 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
 
             console.log(`Loaded state.`)
             return true
+        } else if (status === 503) {
+            handleError("Server is 503 while fetching state", "Server is unavailable.")
+            return false
         } else {
             const error = json as ErrorResponse
             handleErrorResponse(error, `Failed to load state (${status})`)

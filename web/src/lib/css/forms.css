@@ -19,7 +19,7 @@ select,
 .form-textarea,
 .form-select,
 .form-multiselect {
-    @apply appearance-none border border-gray-500 rounded-none pt-2 pr-3 pb-2 pl-3 text-base leading-normal;
+    @apply appearance-none border border-gray-500 rounded-none pt-2 pr-3 pb-2 pl-3 text-base leading-normal not-focus:hover:border-gray-300;
     --tw-shadow: 0 0 #0000;
 }
 

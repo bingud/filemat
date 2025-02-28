@@ -5,6 +5,10 @@
 @import "$lib/css/loader.css";
 @import "$lib/css/layout.css";
 
+html {
+    @apply fill-neutral-50;
+}
+
 :root {
     --navbar-height: 3rem;
 }
@@ -23,4 +27,8 @@ button {
 
 h1 {
     @apply text-2xl;
+}
+
+.gutter-stable-both {
+    scrollbar-gutter: stable both-edges;
 }

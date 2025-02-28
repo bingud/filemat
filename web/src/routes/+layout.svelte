@@ -3,6 +3,7 @@
     import {dev} from "$app/environment"
     import { Toaster } from '@jill64/svelte-toast'
     import type { ToastOptions } from 'svelte-french-toast';
+    import Symbols from '$lib/component/icons/Symbols.svelte';
 
 
 	let { children } = $props();
@@ -14,6 +15,7 @@
 </script>
 
 
+<Symbols />
 <Toaster {palette} {toastOptions} />
 
 <div class="w-full min-h-0 h-full flex flex-col">

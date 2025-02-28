@@ -10,6 +10,8 @@
     import { appState } from "$lib/code/state/appState.svelte";
     import { pushState } from "$app/navigation";
     import { page } from "$app/state";
+    import Close from "$lib/component/icons/Close.svelte";
+    import Checkmark from "$lib/component/icons/Checkmark.svelte";
 
     let alreadySetup: boolean | null = $state(null)
     let running = $state(false)
@@ -28,14 +30,10 @@
 
     // Section 3
     let exposedFolders: { path: string, isExposed: boolean }[] = $state([])
+    let hideSensitiveFolders: boolean = $state(true)
 
     onMount(async () => {
         await getSetupStatus()
-       
-        let i = 25
-        while (i--) {
-            exposedFolders.push({path: "", isExposed: true})
-        }
     })
 
     function increasePhase() { phase++ }
@@ -222,21 +220,42 @@
                     <p>Configure which folders will show up in Filemat</p>
                 </div>
 
-                <div class="max-w-full flex-grow flex flex-col gap-4 items-center overflow-y-hidden py-4 bg-neutral-900/50">
-                    <div class="flex flex-col flex-grow max-w-full gap-2 overflow-y-auto desktop-scrollbar px-6">
+                <p>If a folder is visible, then it will show up in Filemat. <br class="max-sm:hidden">If it is hidden, it will be fully blocked, as if it didn't exist. <br class="max-sm:hidden">All folders are hidden by default.</p> 
+
+                <div class="w-[35rem] max-w-full h-fit max-h-svh sm:max-h-fit sm:flex-grow flex flex-col gap-8 items-center sm:overflow-y-hidden py-12 border-y-2 border-neutral-900">
+                    <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto desktop-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
                         {#each exposedFolders as folder, index}
-                            <div>
-                                <input bind:value={folder.path}>
+                            <div class="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+                                <input placeholder="Full folder path" class="sm:order-2 max-sm:w-full sm:flex-grow shrink-0" bind:value={folder.path}>
+                                <div class="flex items-center justify-between w-full sm:contents">
+                                    <button on:click={() => { exposedFolders.splice(index, 1) }} title="Remove this folder" class="sm:order-1 flex items-center justify-center w-[1.5rem] hover:bg-neutral-800 h-full rounded opacity-60">
+                                        <div class="size-4">
+                                            <Close />
+                                        </div>
+                                    </button>
+                                    <button on:click={() => { folder.isExposed = !folder.isExposed }} class="sm:order-3 h-full rounded px-4 py-2 flex gap-2 bg-neutral-900 hover:bg-neutral-800 items-center w-[7rem]" title={`Make the selected folder ${folder.isExposed ? 'hidden' : 'visible'} in Filemat`}>
+                                        <div class="size-[1.2rem] {folder.isExposed ? 'fill-green-500' : 'fill-red-500'}">
+                                            {#if folder.isExposed}
+                                                <Checkmark />
+                                            {:else}
+                                                <Close />
+                                            {/if}
+                                        </div>
+                                        <p>{#if folder.isExposed}Visible{:else}Hidden{/if}</p>
+                                    </button>
+                                </div>
                             </div>
                         {/each}
                     </div>
-                    <button on:click={addExposedFolder} class="tw-form-button w-fit shrink-0">Add folder</button>
+                    <div class="w-full px-8">
+                        <button on:click={addExposedFolder} class="tw-form-button w-full shrink-0 select-none" title="Configure the visibility of another folder">Add folder</button>
+                    </div>
                 </div>
 
                 <div class="flex flex-col items-center gap-6 mt-auto shrink-0 pb-4 md:pb-8">
                     <div class="flex flex-col">
                         <div class="flex items-center gap-2">
-                            <input id="hide-sensitive-folders-checkbox" type="checkbox">
+                            <input id="hide-sensitive-folders-checkbox" type="checkbox" bind:checked={hideSensitiveFolders}>
                             <label for="hide-sensitive-folders-checkbox">Hide sensitive folders</label>
                         </div>
                         <button on:click={openSensitiveFolderInfo}><span class="underline">Learn more</span> about sensitive folders</button>
