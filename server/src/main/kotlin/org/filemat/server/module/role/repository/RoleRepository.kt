@@ -1,6 +1,7 @@
 package org.filemat.server.module.role.repository
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.role.model.RoleModel
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
@@ -17,5 +18,9 @@ interface RoleRepository : CrudRepository<RoleModel, Ulid> {
     fun insert(roleId: String, name: String, createdDate: Long, permissions: String): Int
 
     @Query("SELECT EXISTS(SELECT 1 FROM role WHERE role_id = :roleId)")
-    fun exists(roleId: String): Boolean
+    fun exists(roleId: Ulid): Boolean
+
+    @Modifying
+    @Query("UPDATE role SET permissions = :permissions WHERE role_id = :roleId")
+    fun updatePermissions(roleId: Ulid, permissions: String /* JDBC is a stupid fucking bitch and will not be forgiven */): Boolean
 }

@@ -3,16 +3,17 @@ package org.filemat.server.common.controller
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.classes.Locker
-import org.filemat.server.common.util.runTransaction
-import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
+import org.filemat.server.module.file.model.PlainFolderVisibility
+import org.filemat.server.module.file.service.FolderVisibilityService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -42,6 +43,7 @@ class SetupController(
     private val appService: AppService,
     private val settingService: SettingService,
     private val authTokenService: AuthTokenService,
+    private val folderVisibilityService: FolderVisibilityService,
 ) : AController() {
 
     val submitLock = Locker()
@@ -79,9 +81,11 @@ class SetupController(
         @RequestParam("email") email: String,
         @RequestParam("username") username: String,
         @RequestParam("password") plainPassword: String,
+        @RequestParam("folder-visibility-list") rawFolderVisibilities: String,
         @RequestParam("setup-code") setupCode: String,
+        //@RequestParam("hide-sensitive-folders") rawHideSensitiveFolders: String,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
-        if (State.App.isSetup == true) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
+        if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
         (
             Validator.email(email)
@@ -89,9 +93,25 @@ class SetupController(
             ?: Validator.username(username)
         )?.let { return@run bad(it, "validation") }
 
+        // val hideSensitiveFolders = rawHideSensitiveFolders.toBooleanStrictOrNull()
+        //     ?: return@run bad("Value for whether to hide sensitive folders must be either true or false.", "validation")
+
         val codeVerification = appService.verifySetupCode(setupCode)
         if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
         if (codeVerification.isNotSuccessful) return@run internal(codeVerification.error, "code-verification-failure")
+
+        val folderVisibilities = Json.decodeFromStringOrNull<List<PlainFolderVisibility>>(rawFolderVisibilities)
+            ?: return@run bad("Configuration for folder visibility is invalid.", "validation")
+
+        // Check for folder visibility duplicates
+        folderVisibilities.let {
+            val normalizedList = mutableSetOf<String>()
+            val rawList = mutableSetOf<String>()
+            it.forEach { path ->
+                val alreadyExists = !rawList.add(path.path) || !normalizedList.add(normalizePath(path.path))
+                if (alreadyExists) return@run bad("Folder visibility configuration has a duplicate.", "validation")
+            }
+        }
 
         val password = passwordEncoder.encode(plainPassword)
         val now = unixNow()
@@ -137,10 +157,24 @@ class SetupController(
                 return@runTransaction Result.error("Could not finish setup. Server failed to create a log entry.")
             }
 
-            val settingResult = settingService.setSetting(Props.Settings.isAppSetup, "true")
-            if (settingResult.isNotSuccessful) {
+            settingService.setSetting(Props.Settings.isAppSetup, "true").let { result ->
+                if (result.isNotSuccessful) {
+                    status.setRollbackOnly()
+                    return@runTransaction Result.error("Failed to save setup status to database.")
+                }
+            }
+
+            // settingService.setSetting(Props.Settings.hideSensitiveFolders, hideSensitiveFolders.toString()).let { result ->
+            //     if (result.isNotSuccessful) {
+            //         status.setRollbackOnly()
+            //         return@runTransaction Result.error("Failed to save setting for whether to hide sensitive folders.")
+            //     }
+            // }
+
+            val visibilityResult = folderVisibilityService.insertPaths(folderVisibilities, UserAction.APP_SETUP)
+            if (visibilityResult.isNotSuccessful) {
                 status.setRollbackOnly()
-                return@runTransaction Result.error("Failed to save setup status to database.")
+                return@runTransaction Result.error("Failed to save folder visibility configuration to database.")
             }
 
             return@runTransaction Result.ok(Unit)
@@ -149,12 +183,14 @@ class SetupController(
         if (result.isNotSuccessful) return@run internal(result.error, "failure")
         appService.deleteSetupCode()
 
-        val tokenR = authTokenService.createToken(Props.adminRoleId, "", UserAction.APP_SETUP)
+        val tokenR = authTokenService.createToken(user.userId, "", UserAction.APP_SETUP)
         if (tokenR.isSuccessful) {
             val token = tokenR.value
             val cookie = authTokenService.createCookie(token = token.authToken, maxAge = token.maxAge)
             response.addCookie(cookie)
         }
+
+        State.App.isSetup = true
 
         return@run ok("${Props.appName} was set up. You can log in with your admin account.")
     }

@@ -22,6 +22,14 @@ fun List<String>?.toJsonOrNull(): String? {
     return Json.encodeToString(this)
 }
 
+inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
+    return try {
+        Json.decodeFromString<T>(string)
+    } catch (e: Exception) {
+        null
+    }
+}
+
 fun Boolean.toInt() = if (this) 1 else 0
 
 fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {

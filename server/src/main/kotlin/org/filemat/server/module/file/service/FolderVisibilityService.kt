@@ -1,16 +1,23 @@
 package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
+import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.normalizePath
+import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
+import org.filemat.server.module.file.model.IFolderVisibility
 import org.filemat.server.module.file.model.VisibilityTrie
 import org.filemat.server.module.file.repository.FolderVisibilityRepository
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import kotlin.system.exitProcess
 
 @Service
 class FolderVisibilityService(
     private val folderVisibilityRepository: FolderVisibilityRepository,
+    private val logService: LogService,
 ) {
     private val visibilityTrie = VisibilityTrie()
 
@@ -41,10 +48,28 @@ class FolderVisibilityService(
         val visibility = visibilityTrie.getVisibility(path)
 
         // If folder doesnt have explicit rule, then check whether to block sensitive folders
-        if (!visibility.isExplicit && State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
+        if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
             return false
         }
 
         return visibility.isExposed
+    }
+
+    fun insertPaths(paths: List<IFolderVisibility>, userAction: UserAction): Result<Unit> {
+        try {
+            val now = unixNow()
+            paths.forEach {
+                folderVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)
+            }
+            return Result.ok(Unit)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to insert folder visibility to database",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to save folder visibility configuration.")
+        }
     }
 }

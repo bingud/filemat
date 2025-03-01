@@ -16,7 +16,8 @@ enum class Permission {
     MANAGE_ALL_FILE_PERMISSIONS,            // 7
     MANAGE_USERS,                           // 8
     MANAGE_SYSTEM,                          // 9
-    EDIT_ROLES;                             // 10
+    EDIT_ROLES,                             // 10
+    EXPOSE_FOLDERS;                         // 11
 
     companion object {
         fun fromInt(int: Int): Permission {
@@ -28,3 +29,5 @@ enum class Permission {
 fun List<Permission>.toIntList(): List<Int> {
     return this.map { p -> p.ordinal }
 }
+
+fun List<Permission>.serialize(): String = this.toIntList().toString()

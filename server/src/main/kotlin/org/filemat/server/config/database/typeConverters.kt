@@ -65,6 +65,7 @@ class StringToStringListConverter : Converter<String, List<String>> {
 
 // List<Permission> - String
 
+// this type converter is worthless because JDBC devs made the decision to throw their brain down the drain
 @Component
 @WritingConverter
 class PermissionListToStringConverter : Converter<List<Permission>, String> {

@@ -8,6 +8,7 @@ import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.serialize
 import org.filemat.server.module.permission.model.toIntList
 import org.filemat.server.module.role.model.Role
 import org.filemat.server.module.role.repository.RoleRepository
@@ -43,7 +44,7 @@ class RoleService(
 
         // Check if the system roles already exist.
         val adminExists = try {
-            roleRepository.exists(Props.adminRoleId.toString())
+            roleRepository.exists(Props.adminRoleId)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -55,7 +56,7 @@ class RoleService(
         }
 
         val userExists = try {
-            roleRepository.exists(Props.userRoleId.toString())
+            roleRepository.exists(Props.userRoleId)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -77,7 +78,15 @@ class RoleService(
                     permissions = Permission.entries
                 )
             )
+        } else {
+            try {
+                roleRepository.updatePermissions(Props.adminRoleId, Permission.entries.serialize())
+            } catch (e: Exception) {
+                logService.error(type = LogType.SYSTEM, action = UserAction.NONE, description = "Failed to update permissions of admin role during initialization", message = e.stackTraceToString())
+                return false
+            }
         }
+
         if (!userExists) {
             rolesToCreate.add(
                 Role(
@@ -117,6 +126,7 @@ class RoleService(
                     description = "Failed to create role '${role.name}' in the database.",
                     message = e.stackTraceToString()
                 )
+                return false
             }
         }
 
