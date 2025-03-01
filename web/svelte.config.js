@@ -16,7 +16,7 @@ const config = {
 	},
 	compilerOptions: {
 		warningFilter: (w) => {
-			if (w.message.includes("Using `on:click`")) return false
+			if (w.message.includes("event_directive_deprecated")) return false
 			return true
 		}
 	}

@@ -1,5 +1,5 @@
 import { auth } from "../state/authState.svelte"
-import { handleError, handleErrorResponse, handleException, parseJson } from "../util/codeUtil.svelte"
+import { handleError, handleErrorResponse, handleException, isServerDown, parseJson } from "../util/codeUtil.svelte"
 import { appState } from "./appState.svelte"
 
 
@@ -62,8 +62,8 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
 
             console.log(`Loaded state.`)
             return true
-        } else if (status === 503) {
-            handleError("Server is 503 while fetching state", "Server is unavailable.")
+        } else if (isServerDown(status)) {
+            handleError(`Server is ${status} while fetching state`, "Server is unavailable.")
             return false
         } else {
             const error = json as ErrorResponse

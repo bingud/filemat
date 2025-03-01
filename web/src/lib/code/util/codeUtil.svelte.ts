@@ -2,6 +2,12 @@ import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
 
 
+export function isServerDown(httpStatus: number): boolean {
+    if (httpStatus > 500 && httpStatus < 530) return true
+    return false
+}
+export function pageTitle(text: string) { return `${text} - Filemat` }
+
 export function handleException(message: string, userMessage: string | null, exception: any) {
     console.log(`${message}\n(${userMessage ?? "No user message"})\n${exception}`)
 
@@ -19,8 +25,8 @@ export function handleError(message: string, userMessage: string | null) {
 }
 
 export function handleErrorResponse(response: ErrorResponse, defaultMessage: string) {
-    const message = response.message
-    const error = response.error
+    const message = response?.message
+    const error = response?.error
     
     console.log(`Error Response:\n\n${defaultMessage}\n${error}\n${message}`)
 

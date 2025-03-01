@@ -2,7 +2,7 @@
     import Noindex from "$lib/component/head/Noindex.svelte"
     import CodeChunk from "$lib/component/CodeChunk.svelte"
     import { toast } from "@jill64/svelte-toast";
-    import { handleException, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { handleException, isBlank, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { onMount } from "svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -12,10 +12,13 @@
     import { page } from "$app/state";
     import Close from "$lib/component/icons/Close.svelte";
     import Checkmark from "$lib/component/icons/Checkmark.svelte";
+    import { dev } from "$app/environment";
+    import { envVars } from "$lib/code/data/environmentVariables";
 
     let alreadySetup: boolean | null = $state(null)
     let running = $state(false)
-    let phase = $state(3)
+    let phase = $state(1)
+    let lastPhase = 1
     page.state.popupPhase = null
 
     // Section 1
@@ -34,10 +37,19 @@
 
     onMount(async () => {
         await getSetupStatus()
+        if (dev) {
+            // codeInput = "aaaaaaaaaaaa"
+            // emailInput = "a@a.a"
+            // usernameInput = "a"
+            // passwordInput = "aaaa"
+            // repeatPasswordInput = "aaaa"
+            // phase = 3
+        }
     })
 
-    function increasePhase() { phase++ }
-    function decreasePhase() { phase-- }
+    function increasePhase() { lastPhase = phase; phase++ }
+    function decreasePhase() { lastPhase = phase; phase-- }
+    function setPhase(newPhase: typeof phase) { lastPhase = phase; phase = newPhase }
 
     function closePopup() { history.back() }
     function openPopup(newPopupPhase: typeof page.state.popupPhase) {
@@ -66,7 +78,11 @@
             const text = await response.text()
 
             if (status === 200) {
-                increasePhase()
+                if (lastPhase !== 1) {
+                    setPhase(lastPhase)
+                } else {
+                    increasePhase()
+                }
             } else {
                 const json = parseJson(text)
                 if (json?.message) {
@@ -94,11 +110,37 @@
             const passwordValid = Validator.password(passwordInput)
             if (passwordValid) return toast.error(passwordValid)
             if (passwordInput !== repeatPasswordInput) return toast.error("Passwords do not match.")
+            
+            increasePhase()
+        } finally {
+            running = false
+        }
+    }
 
+    async function submit_3() {
+        // if (running) return
+        // running = true
+
+        try {
+            await submit_finish()
+        } finally {
+            // running = false
+        }
+    }
+
+    async function submit_finish() {
+        if (running) return
+        running = true
+
+        try {
+            const serializedFolderVisibilities = JSON.stringify(exposedFolders.filter((v) => isBlank(v.path)))
+            
             const body = new FormData()
             body.append("email", emailInput)
             body.append("password", passwordInput)
             body.append("username", usernameInput)
+            body.append("folder-visibility-list", serializedFolderVisibilities)
+            // body.append("hide-sensitive-folders", hideSensitiveFolders.toString())
             body.append("setup-code", codeInput)
 
             const response = await safeFetch(`/api/v1/setup/submit`, { method: "POST", body: body })
@@ -116,7 +158,7 @@
                 const json = parseJson(text)
                 if (json?.error === "setup-code-invalid") {
                     toast.error(json.message)
-                    decreasePhase()
+                    setPhase(1)
                     return
                 }
 
@@ -167,6 +209,7 @@
 
 <svelte:head>
     <Noindex />
+    <title>{pageTitle("Setup")}</title>
 </svelte:head>
 
 <div class="page items-center gap-12 pt-6 md:pt-12">
@@ -198,7 +241,6 @@
                     <h1 class="text-2xl font">Create an admin account</h1>
                 </div>
                 
-                
                 <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_2} title="Create a Filemat admin account">
                     <label for="email-input">Email</label>
                     <input type="email" bind:value={emailInput} minlength="3" maxlength="256" required title="Enter your email" id="email-input" class="">
@@ -219,8 +261,15 @@
                     <h1 class="text-2xl font">Select exposed folders</h1>
                     <p>Configure which folders will show up in Filemat</p>
                 </div>
+                
+                <div class="flex flex-col gap-2 shrink-0 max-w-[min(100%,32rem)] w-fit">
+                    <p class="">If a folder is visible, then it will show up in Filemat. <br class="max-sm:hidden">If it is hidden, it will be fully blocked, as if it didn't exist. <br class="max-sm:hidden">All folders are hidden by default.</p>
 
-                <p>If a folder is visible, then it will show up in Filemat. <br class="max-sm:hidden">If it is hidden, it will be fully blocked, as if it didn't exist. <br class="max-sm:hidden">All folders are hidden by default.</p> 
+                    <div class="">
+                        <p>Some sensitive system folders are blocked by default, and cannot be unblocked from the web UI.</p>
+                        <button on:click={openSensitiveFolderInfo}><span class="underline">Click here</span> to learn about blocking sensitive system folders.</button>
+                    </div>
+                </div>
 
                 <div class="w-[35rem] max-w-full h-fit max-h-svh sm:max-h-fit sm:flex-grow flex flex-col gap-8 items-center sm:overflow-y-hidden py-12 border-y-2 border-neutral-900">
                     <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto desktop-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
@@ -253,14 +302,14 @@
                 </div>
 
                 <div class="flex flex-col items-center gap-6 mt-auto shrink-0 pb-4 md:pb-8">
-                    <div class="flex flex-col">
+                    <!-- <div class="flex flex-col">
                         <div class="flex items-center gap-2">
                             <input id="hide-sensitive-folders-checkbox" type="checkbox" bind:checked={hideSensitiveFolders}>
                             <label for="hide-sensitive-folders-checkbox">Hide sensitive folders</label>
                         </div>
-                        <button on:click={openSensitiveFolderInfo}><span class="underline">Learn more</span> about sensitive folders</button>
-                    </div>
-                    <button class="tw-form-button">Confirm</button>
+                        
+                    </div> -->
+                    <button on:click={submit_3} class="tw-form-button">{#if !running}Finish setup{:else}...{/if}</button>
                 </div>
             {:else if phase === 4}
                 <div class="flex flex-col items-center gap-6">
@@ -273,12 +322,12 @@
         {:else if page.state.popupPhase  === "sensitive-folders"}
             <div class="flex flex-col gap-6 shrink-0 max-w-full w-[30rem]">
                 <h1 class="mx-auto">Sensitive folders</h1>
-                <p>When automatic hiding of sensitive folders is enabled, these folders will never show up in Filemat, unless you explicitly configure them to be exposed.</p>
+                <p>When automatic hiding of sensitive folders is enabled, these folders will never show up in Filemat.<br>You can disable it by setting the <CodeChunk>{envVars.FM_HIDE_SENSITIVE_FOLDERS}</CodeChunk> environment variable to <CodeChunk>false</CodeChunk>.</p>
                 <p>The <CodeChunk>*</CodeChunk> in the following paths is a wildcard.</p>
             </div>
 
             {#if appState.sensitiveFolders}
-                <div class="flex-grow overflow-y-scroll flex flex-col gap-2 max-w-full">
+                <div class="flex-grow overflow-y-auto scrollbar flex flex-col gap-2 max-w-full">
                     {#each appState.sensitiveFolders as folder}
                         <div>
                             {folder}
