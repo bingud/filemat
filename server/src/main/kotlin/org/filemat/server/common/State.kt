@@ -1,9 +1,13 @@
 package org.filemat.server.common
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.role.model.Role
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Dynamic application state
+ */
 object State {
     object App {
         var isSetup: Boolean = false
@@ -11,7 +15,8 @@ object State {
         val isDev = env("FM_DEV_MODE")?.toBooleanStrictOrNull() ?: false
 
         val hideSensitiveFolders = env("FM_HIDE_SENSITIVE_FOLDERS")?.toBooleanStrictOrNull() ?: true
-        val hiddenFolders = env("FM_HIDDEN_FOLDER_PATHS")?.split(":")?.map { it.removeSuffix("/") }?.also { println("Hidden folders: $it") }?.toHashSet() ?: hashSetOf( )
+        val nonSensitiveFolders = env("FM_NON_SENSITIVE_FOLDERS").getNonSensitiveFolders()
+        val hiddenFolders = env("FM_HIDDEN_FOLDER_PATHS").getHiddenFolders()
     }
 
     object Auth {
@@ -20,7 +25,24 @@ object State {
     }
 }
 
-private fun env(name: String): String? {
-    val value = System.getenv(name)
-    return value
+private fun env(name: String)= System.getenv(name)
+
+
+/**
+ * Environment variable helper functions
+ */
+
+private fun String?.getNonSensitiveFolders(): HashSet<String> {
+    this ?: return hashSetOf()
+    return this.split(":")
+        .map { it.removeSuffix("/") }
+        .toHashSet()
+        .also { println("Some folders were marked as not sensitive:\n${it.joinToString("\n")}") }
+}
+
+private fun String?.getHiddenFolders(): HashSet<String> {
+    this ?: return hashSetOf()
+    return this.split(":")
+        .map { normalizePath(it) }
+        .also { println("Hidden folders:\n${it.joinToString("\n")}") }.toHashSet()
 }

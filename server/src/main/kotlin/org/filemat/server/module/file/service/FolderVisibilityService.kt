@@ -20,7 +20,11 @@ class FolderVisibilityService(
     private val logService: LogService,
 ) {
     private val visibilityTrie = VisibilityTrie()
+    private val hiddenFolderTrie = VisibilityTrie()
 
+    /**
+     * Initialize folder visibility service
+     */
     fun initialize() {
         println("Loading folder visibility configurations")
 
@@ -40,26 +44,37 @@ class FolderVisibilityService(
         } else {
             println("No folders have been exposed or hidden.")
         }
+
+        // Insert true because VisibilityTrie returns false by default
+        State.App.hiddenFolders.forEach { hiddenFolderTrie.insert(it, true) }
     }
 
+    /**
+     * returns if a folder path is not blocked
+     */
     fun isPathAllowed(rawPath: String): Boolean {
         val path = normalizePath(rawPath)
 
-        val visibility = visibilityTrie.getVisibility(path)
-
-        // If folder doesnt have explicit rule, then check whether to block sensitive folders
         if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
             return false
         }
 
+        val isForceHidden = hiddenFolderTrie.getVisibility(path)
+        if (isForceHidden.isExposed == true) return false
+
+        val visibility = visibilityTrie.getVisibility(path)
         return visibility.isExposed
     }
 
+    /**
+     * Create new folder visibility configurations
+     */
     fun insertPaths(paths: List<IFolderVisibility>, userAction: UserAction): Result<Unit> {
         try {
             val now = unixNow()
             paths.forEach {
                 folderVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)
+                visibilityTrie.insert(it.path, it.isExposed)
             }
             return Result.ok(Unit)
         } catch (e: Exception) {

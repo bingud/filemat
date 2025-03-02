@@ -15,7 +15,7 @@ interface UserRepository : CrudRepository<User, Ulid> {
             "(user_id, email, username, password, mfa_totp_secret, mfa_totp_status, mfa_totp_codes, created_date, last_login_date, is_banned) " +
             "VALUES (:userId, :email, :username, :password, :mfaTotpSecret, :mfaTotpStatus, :mfaTotpCodes, :createdDate, :lastLoginDate, :isBanned)")
     fun createUser(
-        userId: String,
+        userId: Ulid,
         email: String,
         username: String,
         password: String,

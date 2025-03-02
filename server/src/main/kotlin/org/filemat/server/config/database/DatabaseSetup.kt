@@ -2,12 +2,10 @@ package org.filemat.server.config.database
 
 import org.filemat.server.common.State
 import org.filemat.server.config.Props
+import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.service.AppService
 import org.filemat.server.module.setting.service.SettingService
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.annotation.Configuration
-import org.springframework.context.event.EventListener
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
@@ -20,26 +18,22 @@ class DatabaseSetup(
     private val roleService: RoleService,
     private val appService: AppService,
 ) {
+    fun initialize_loadRolesToMemory() {
+        if (!roleService.loadRolesToMemory()) {
+            println("Failed to load roles to memory.")
+            exitProcess(1)
+        }
+    }
 
-    fun initialize() {
-        setUpSchema()
-        checkSettings()
-
+    fun initialize_systemRoles() {
         val sysRoles = roleService.createSystemRoles()
         if (!sysRoles) {
             println("Failed to create default system user roles.")
             exitProcess(1)
         }
-
-        if (!roleService.loadRolesToMemory()) {
-            println("Failed to load roles to memory.")
-            exitProcess(1)
-        }
-
-        println("Database state initialized.")
     }
 
-    private fun setUpSchema() {
+    fun initialize_setUpSchema() {
         println("Setting schema from `resources/sqlite-schema.sql`")
 
         val resource = ClassPathResource("sqlite-schema.sql")
@@ -68,7 +62,7 @@ class DatabaseSetup(
 
 
     // Settings
-    fun checkSettings() {
+    fun initialize_loadSettings() {
         setting_isAppSetup()
     }
 

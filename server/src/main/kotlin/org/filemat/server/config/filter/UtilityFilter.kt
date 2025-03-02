@@ -16,6 +16,7 @@ class UtilityFilter : OncePerRequestFilter() {
         // Check if application has finished starting
         if (!State.App.isInitialized) return
 
+
         return filterChain.doFilter(request, response)
     }
 }

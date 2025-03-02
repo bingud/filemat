@@ -33,7 +33,6 @@
 
     // Section 3
     let exposedFolders: { path: string, isExposed: boolean }[] = $state([])
-    let hideSensitiveFolders: boolean = $state(true)
 
     onMount(async () => {
         await getSetupStatus()
@@ -133,14 +132,13 @@
         running = true
 
         try {
-            const serializedFolderVisibilities = JSON.stringify(exposedFolders.filter((v) => isBlank(v.path)))
+            const serializedFolderVisibilities = JSON.stringify(exposedFolders.filter((v) => !isBlank(v.path)))
             
             const body = new FormData()
             body.append("email", emailInput)
             body.append("password", passwordInput)
             body.append("username", usernameInput)
             body.append("folder-visibility-list", serializedFolderVisibilities)
-            // body.append("hide-sensitive-folders", hideSensitiveFolders.toString())
             body.append("setup-code", codeInput)
 
             const response = await safeFetch(`/api/v1/setup/submit`, { method: "POST", body: body })
@@ -267,7 +265,7 @@
 
                     <div class="">
                         <p>Some sensitive system folders are blocked by default, and cannot be unblocked from the web UI.</p>
-                        <button on:click={openSensitiveFolderInfo}><span class="underline">Click here</span> to learn about blocking sensitive system folders.</button>
+                        <button on:click={openSensitiveFolderInfo} class="hover:text-blue-400"><span class="underline">Click here</span> to learn about blocking sensitive system folders.</button>
                     </div>
                 </div>
 
@@ -282,7 +280,7 @@
                                             <Close />
                                         </div>
                                     </button>
-                                    <button on:click={() => { folder.isExposed = !folder.isExposed }} class="sm:order-3 h-full rounded px-4 py-2 flex gap-2 bg-neutral-900 hover:bg-neutral-800 items-center w-[7rem]" title={`Make the selected folder ${folder.isExposed ? 'hidden' : 'visible'} in Filemat`}>
+                                    <button on:click={() => { folder.isExposed = !folder.isExposed }} class="sm:order-3 h-full rounded px-4 py-2 flex gap-2 bg-neutral-900 hover:bg-neutral-800 items-center w-[7rem] select-none" title={`Make the selected folder ${folder.isExposed ? 'hidden' : 'visible'} in Filemat`}>
                                         <div class="size-[1.2rem] {folder.isExposed ? 'fill-green-500' : 'fill-red-500'}">
                                             {#if folder.isExposed}
                                                 <Checkmark />
@@ -302,13 +300,6 @@
                 </div>
 
                 <div class="flex flex-col items-center gap-6 mt-auto shrink-0 pb-4 md:pb-8">
-                    <!-- <div class="flex flex-col">
-                        <div class="flex items-center gap-2">
-                            <input id="hide-sensitive-folders-checkbox" type="checkbox" bind:checked={hideSensitiveFolders}>
-                            <label for="hide-sensitive-folders-checkbox">Hide sensitive folders</label>
-                        </div>
-                        
-                    </div> -->
                     <button on:click={submit_3} class="tw-form-button">{#if !running}Finish setup{:else}...{/if}</button>
                 </div>
             {:else if phase === 4}
@@ -323,6 +314,7 @@
             <div class="flex flex-col gap-6 shrink-0 max-w-full w-[30rem]">
                 <h1 class="mx-auto">Sensitive folders</h1>
                 <p>When automatic hiding of sensitive folders is enabled, these folders will never show up in Filemat.<br>You can disable it by setting the <CodeChunk>{envVars.FM_HIDE_SENSITIVE_FOLDERS}</CodeChunk> environment variable to <CodeChunk>false</CodeChunk>.</p>
+                <p>You can unblock any path so that you can expose or hide it with the web UI by using the <CodeChunk>{envVars.FM_NON_SENSITIVE_FOLDERS}</CodeChunk> environment variable.</p>
                 <p>The <CodeChunk>*</CodeChunk> in the following paths is a wildcard.</p>
             </div>
 

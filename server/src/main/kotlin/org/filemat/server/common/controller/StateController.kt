@@ -7,6 +7,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getAuth
+import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+@BeforeSetup
 @RestController
 @RequestMapping("/v1/state")
 class StateController : AController() {

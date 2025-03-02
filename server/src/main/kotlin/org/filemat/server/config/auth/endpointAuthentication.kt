@@ -8,9 +8,12 @@ import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
 
+/**
+ * Endpoint auth and configuration
+ */
 val endpointAuthMap: HashMap<String, EndpointAuth> = HashMap()
 
-// Define the custom annotations.
+
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Authenticated(val permissions: Array<Permission> = [])
@@ -19,14 +22,28 @@ annotation class Authenticated(val permissions: Array<Permission> = [])
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Unauthenticated
 
-// Data class holding endpoint authentication details.
+/**
+ * Allows an endpoint to be reached before the app is set up.
+ */
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class BeforeSetup
+
+
 data class EndpointAuth(
     val path: String,
     val httpMethod: RequestMethod,
     val authenticated: Boolean = true,
-    val requiredPermissions: List<Permission> = emptyList()
+    val requiredPermissions: List<Permission> = emptyList(),
+    val isBeforeSetup: Boolean,
 )
 
+
+/**
+ * Component that collects annotations from endpoints
+ *
+ * For auth or configuration
+ */
 @Component
 class AuthenticatedMappingConfig(
     private val requestMappingHandlerMapping: RequestMappingHandlerMapping
@@ -47,6 +64,12 @@ class AuthenticatedMappingConfig(
             val methodUnauthAnnotation = AnnotationUtils.findAnnotation(handlerMethod.method, Unauthenticated::class.java)
             val classUnauthAnnotation = AnnotationUtils.findAnnotation(handlerMethod.beanType, Unauthenticated::class.java)
             val unauthAnnotation = methodUnauthAnnotation ?: classUnauthAnnotation
+
+            // Look for @BeforeSetup on the method; if not present, check the controller class.
+            val methodBeforeSetupAnnotation = AnnotationUtils.findAnnotation(handlerMethod.method, BeforeSetup::class.java)
+            val classBeforeSetupAnnotation = AnnotationUtils.findAnnotation(handlerMethod.beanType, BeforeSetup::class.java)
+            val beforeSetupAnnotation = methodBeforeSetupAnnotation ?: classBeforeSetupAnnotation
+            val isBeforeSetup = beforeSetupAnnotation != null
 
             // Authenticate endpoint by default, unless @Unauthenticated
             val (isAuthenticated, permissions) = when {
@@ -78,7 +101,8 @@ class AuthenticatedMappingConfig(
                         path = pattern,
                         httpMethod = httpMethod,
                         authenticated = isAuthenticated,
-                        requiredPermissions = permissions
+                        requiredPermissions = permissions,
+                        isBeforeSetup = isBeforeSetup
                     )
                     endpointAuthMap[pattern] = endpointAuth
                 }

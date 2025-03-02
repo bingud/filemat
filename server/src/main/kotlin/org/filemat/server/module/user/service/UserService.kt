@@ -21,7 +21,7 @@ class UserService(
     fun createUser(user: User, action: UserAction?): Result<Unit> {
         try {
             userRepository.createUser(
-                userId = user.userId.toString(),
+                userId = user.userId,
                 email = user.email,
                 username = user.username,
                 password = user.password,

@@ -1,9 +1,13 @@
 package org.filemat.server.config.properties
 
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.State
 import org.filemat.server.common.util.normalizePath
 
 
+/**
+ * Blocklist of sensitive system folders
+ */
 object SensitiveFolderPaths {
 
     /**
@@ -24,7 +28,7 @@ object SensitiveFolderPaths {
         "/var/lib/postgresql", // PostgreSQL data files, if applicable
         "/var/lib/docker",     // Docker’s internal data and images
         "/var/run/docker.sock" // Docker socket, which can grant root-equivalent access
-    )
+    ).filterNot { State.App.nonSensitiveFolders.contains(it) }.toHashSet()
 
 
     private val wildcardList = fullList.filter { it.contains("*") }.map { (if (it.startsWith("/")) it else "/$it").split("*") }.map { it[0] to it[1] }
@@ -43,3 +47,15 @@ object SensitiveFolderPaths {
     private val serializedList: String by lazy { Json.encodeToString(fullList) }
     fun serialize() = serializedList
 }
+
+
+
+
+
+
+
+
+
+
+
+

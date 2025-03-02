@@ -39,10 +39,12 @@
             if (status === 200) {
                 await goto("/")
             } else {
-                if (json.message) {
+                if (json?.message) {
                     toast.error(json.message)
-                } else {
+                } else if (status === 500) {
                     toast.error("Failed to log in. Server provided no details.")
+                } else {
+                    toast.error(text)
                 }
             }
         } finally {

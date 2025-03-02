@@ -19,13 +19,19 @@ class Initialization(
      */
     @EventListener(ApplicationReadyEvent::class)
     fun initialize() = CoroutineScope(Dispatchers.Default).launch {
-        databaseSetup.initialize()
+        databaseSetup.initialize_setUpSchema().line()
+        databaseSetup.initialize_systemRoles().line()
+        databaseSetup.initialize_loadRolesToMemory().line()
 
         if (State.App.isSetup) {
-            folderVisibilityService.initialize()
+            folderVisibilityService.initialize().line()
         }
+
+        databaseSetup.initialize_loadSettings().line()
 
         State.App.isInitialized = true
     }
+
+    private fun <T> T.line() = this.also { println() }
 
 }

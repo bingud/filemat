@@ -10,6 +10,7 @@ import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.classes.Locker
 import org.filemat.server.config.Props
+import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.file.model.PlainFolderVisibility
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 
+@BeforeSetup
 @Unauthenticated
 @RestController
 @RequestMapping("/v1/setup")
@@ -83,7 +85,6 @@ class SetupController(
         @RequestParam("password") plainPassword: String,
         @RequestParam("folder-visibility-list") rawFolderVisibilities: String,
         @RequestParam("setup-code") setupCode: String,
-        //@RequestParam("hide-sensitive-folders") rawHideSensitiveFolders: String,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
         if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
@@ -92,9 +93,6 @@ class SetupController(
             ?: Validator.password(plainPassword)
             ?: Validator.username(username)
         )?.let { return@run bad(it, "validation") }
-
-        // val hideSensitiveFolders = rawHideSensitiveFolders.toBooleanStrictOrNull()
-        //     ?: return@run bad("Value for whether to hide sensitive folders must be either true or false.", "validation")
 
         val codeVerification = appService.verifySetupCode(setupCode)
         if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
@@ -142,34 +140,12 @@ class SetupController(
                 return@runTransaction roleResult
             }
 
-            val logResult = logService.createLog(
-                level = LogLevel.INFO,
-                type = LogType.AUDIT,
-                action = UserAction.APP_SETUP,
-                createdDate = now,
-                description = "Admin account created during application setup.",
-                message = "Email: [$email]\nusername: [$username]\naccount ID: [${user.userId}]",
-                meta = mapOf("setup-code" to setupCode)
-            )
-
-            if (!logResult) {
-                status.setRollbackOnly()
-                return@runTransaction Result.error("Could not finish setup. Server failed to create a log entry.")
-            }
-
             settingService.setSetting(Props.Settings.isAppSetup, "true").let { result ->
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction Result.error("Failed to save setup status to database.")
                 }
             }
-
-            // settingService.setSetting(Props.Settings.hideSensitiveFolders, hideSensitiveFolders.toString()).let { result ->
-            //     if (result.isNotSuccessful) {
-            //         status.setRollbackOnly()
-            //         return@runTransaction Result.error("Failed to save setting for whether to hide sensitive folders.")
-            //     }
-            // }
 
             val visibilityResult = folderVisibilityService.insertPaths(folderVisibilities, UserAction.APP_SETUP)
             if (visibilityResult.isNotSuccessful) {
@@ -181,7 +157,19 @@ class SetupController(
         }
 
         if (result.isNotSuccessful) return@run internal(result.error, "failure")
+
+        logService.createLog(
+            level = LogLevel.INFO,
+            type = LogType.AUDIT,
+            action = UserAction.APP_SETUP,
+            createdDate = now,
+            description = "Admin account created during application setup.",
+            message = "Email: [$email]\nusername: [$username]\naccount ID: [${user.userId}]",
+            meta = mapOf("setup-code" to setupCode)
+        )
+
         appService.deleteSetupCode()
+        State.App.isSetup = true
 
         val tokenR = authTokenService.createToken(user.userId, "", UserAction.APP_SETUP)
         if (tokenR.isSuccessful) {
@@ -189,8 +177,6 @@ class SetupController(
             val cookie = authTokenService.createCookie(token = token.authToken, maxAge = token.maxAge)
             response.addCookie(cookie)
         }
-
-        State.App.isSetup = true
 
         return@run ok("${Props.appName} was set up. You can log in with your admin account.")
     }
