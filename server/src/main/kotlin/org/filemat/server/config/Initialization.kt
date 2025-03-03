@@ -29,6 +29,7 @@ class Initialization(
 
         databaseSetup.initialize_loadSettings().line()
 
+        println("${Props.appName} is initialized.")
         State.App.isInitialized = true
     }
 

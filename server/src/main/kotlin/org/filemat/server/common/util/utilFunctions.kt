@@ -14,6 +14,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Paths
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.system.measureNanoTime
 
 fun unixNow() = Instant.now().epochSecond
 
@@ -28,6 +29,20 @@ inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
     } catch (e: Exception) {
         null
     }
+}
+
+fun <T> measureNano(block: () -> T): Pair<T, Long> {
+    var result: T
+
+    val nano = measureNanoTime {
+        result = block()
+    }
+
+    return result to nano
+}
+
+fun <T> measureMillis(block: () -> T): Pair<T, Double> {
+    return measureNano(block).let { it.first to it.second.toDouble() / 1_000_000 }
 }
 
 fun Boolean.toInt() = if (this) 1 else 0
