@@ -33,6 +33,7 @@
 
     // Section 3
     let exposedFolders: { path: string, isExposed: boolean }[] = $state([])
+    let followSymlinks = $state(false)
 
     onMount(async () => {
         await getSetupStatus()
@@ -139,6 +140,7 @@
             body.append("password", passwordInput)
             body.append("username", usernameInput)
             body.append("folder-visibility-list", serializedFolderVisibilities)
+            body.append("follow-symlinks", followSymlinks.toString())
             body.append("setup-code", codeInput)
 
             const response = await safeFetch(`/api/v1/setup/submit`, { method: "POST", body: body })
@@ -188,7 +190,7 @@
     }
 
     let openSensitiveInfoRunning = false
-    async function openSensitiveFolderInfo() {
+    async function openInfo_sensitiveFolders() {
         if (openSensitiveInfoRunning) return
         openSensitiveInfoRunning = true
         try {
@@ -197,6 +199,10 @@
         } finally {
             openSensitiveInfoRunning = false
         }
+    }
+
+    async function openInfo_symbolicLinks() {
+        openPopup("symbolic-links")
     }
 
     function addExposedFolder() {
@@ -263,9 +269,9 @@
                 <div class="flex flex-col gap-2 shrink-0 max-w-[min(100%,32rem)] w-fit">
                     <p class="">If a folder is visible, then it will show up in Filemat. <br class="max-sm:hidden">If it is hidden, it will be fully blocked, as if it didn't exist. <br class="max-sm:hidden">All folders are hidden by default.</p>
 
-                    <div class="">
+                    <div class="flex flex-col">
                         <p>Some sensitive system folders are blocked by default, and cannot be unblocked from the web UI.</p>
-                        <button on:click={openSensitiveFolderInfo} class="hover:text-blue-400"><span class="underline">Click here</span> to learn about blocking sensitive system folders.</button>
+                        <button on:click={openInfo_sensitiveFolders} class="hover:text-blue-400 text-start"><span class="underline">Click here</span> to learn about blocking sensitive system folders.</button>
                     </div>
                 </div>
 
@@ -300,6 +306,13 @@
                 </div>
 
                 <div class="flex flex-col items-center gap-6 mt-auto shrink-0 pb-4 md:pb-8">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="follow-symlinks-input" bind:checked={followSymlinks}>
+                            <label for="follow-symlinks-input">Follow symbolic links</label>
+                        </div>
+                        <p><button title="Open information about symbolic links" on:click={openInfo_symbolicLinks} class="underline hover:text-blue-400">Click here</button> to learn about symbolic links.</p>
+                    </div>
                     <button on:click={submit_3} class="tw-form-button">{#if !running}Finish setup{:else}...{/if}</button>
                 </div>
             {:else if phase === 4}
@@ -319,7 +332,7 @@
             </div>
 
             {#if appState.sensitiveFolders}
-                <div class="flex-grow overflow-y-auto scrollbar flex flex-col gap-2 max-w-full">
+                <div class="min-h-fit max-h-svh overflow-y-auto scrollbar flex flex-col gap-2 max-w-full">
                     {#each appState.sensitiveFolders as folder}
                         <div>
                             {folder}
@@ -330,9 +343,17 @@
                 <Loader />
             {/if}
             
-            <div class="shrink-0 mt-auto">
+            <div class="shrink-0 mt-auto pb-6">
                 <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] tw-form-button">Go back</button>
             </div>
+        {:else if page.state.popupPhase === "symbolic-links"}
+            <div class="flex flex-col gap-6 shrink-0 max-w-full w-[30rem]">
+                <h1 class="mx-auto">Symbolic links</h1>
+                <p>Symbolic links are files which act as shortcuts to other files or folders.<br>If following symbolic links is disabled, a link pointing to a folder will show up as a normal file, instead of as the target folder.</p>
+                <p>You can toggle the following of symbolic links with this environtment variable: <CodeChunk>{envVars.FM_FOLLOW_SYMBOLIC_LINKS}</CodeChunk> by setting it to <CodeChunk>true</CodeChunk> or <CodeChunk>false</CodeChunk>.</p>
+            </div>
+
+            <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] tw-form-button">Go back</button>
         {/if}
     {:else if alreadySetup === true}
         <div class="flex flex-col gap-6 items-center">

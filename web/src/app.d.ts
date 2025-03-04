@@ -9,7 +9,7 @@ declare global {
 		// interface PageData {}
 		interface PageState {
             // phase?: number;
-            popupPhase?: "sensitive-folders" | null;
+            popupPhase?: "sensitive-folders" | "symbolic-links" | null;
         }
 		// interface Platform {}
 	}

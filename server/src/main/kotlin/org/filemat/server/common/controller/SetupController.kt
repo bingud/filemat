@@ -84,6 +84,7 @@ class SetupController(
         @RequestParam("username") username: String,
         @RequestParam("password") plainPassword: String,
         @RequestParam("folder-visibility-list") rawFolderVisibilities: String,
+        @RequestParam("follow-symlinks") rawFollowSymlinks: String,
         @RequestParam("setup-code") setupCode: String,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
         if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
@@ -100,6 +101,8 @@ class SetupController(
 
         val folderVisibilities = Json.decodeFromStringOrNull<List<PlainFolderVisibility>>(rawFolderVisibilities)
             ?: return@run bad("Configuration for folder visibility is invalid.", "validation")
+        val followSymlinks = rawFollowSymlinks.toBooleanStrictOrNull()
+            ?: return@run bad("Option for following symbolic links must be true or false.", "validation")
 
         // Check for folder visibility duplicates
         folderVisibilities.let {
@@ -128,18 +131,21 @@ class SetupController(
         )
 
         val result = runTransaction { status ->
+            // Create user account
             val userResult = userService.createUser(user, UserAction.APP_SETUP)
             if (userResult.isNotSuccessful) {
                 status.setRollbackOnly()
                 return@runTransaction userResult
             }
 
+            // Give roles to user account
             val roleResult = userRoleService.assign(userId = user.userId, roleId = Props.adminRoleId, action = UserAction.APP_SETUP)
             if (roleResult.isNotSuccessful) {
                 status.setRollbackOnly()
                 return@runTransaction roleResult
             }
 
+            // Mark app as set up
             settingService.setSetting(Props.Settings.isAppSetup, "true").let { result ->
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
@@ -147,6 +153,15 @@ class SetupController(
                 }
             }
 
+            // Create setting for following symlinks
+            settingService.setSetting(Props.Settings.followSymlinks, followSymlinks.toString()).let { result ->
+                if (result.isNotSuccessful) {
+                    status.setRollbackOnly()
+                    return@runTransaction Result.error("Failed to save configuration for following symbolic links.")
+                }
+            }
+
+            // Save exposed folders
             val visibilityResult = folderVisibilityService.insertPaths(folderVisibilities, UserAction.APP_SETUP)
             if (visibilityResult.isNotSuccessful) {
                 status.setRollbackOnly()
@@ -170,6 +185,7 @@ class SetupController(
 
         appService.deleteSetupCode()
         State.App.isSetup = true
+        State.App.followSymLinks = followSymlinks
 
         val tokenR = authTokenService.createToken(user.userId, "", UserAction.APP_SETUP)
         if (tokenR.isSuccessful) {

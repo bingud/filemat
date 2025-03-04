@@ -63,15 +63,22 @@ class DatabaseSetup(
 
     // Settings
     fun initialize_loadSettings() {
-        setting_isAppSetup()
-    }
+        // Follow symlinks setting
+        settingService.getSetting(Props.Settings.followSymlinks).let { result ->
+            result.valueOrNull?.value?.toBooleanStrictOrNull()?.let { bool ->
+                State.App.followSymLinks = bool
+            }
+        }
 
-    fun setting_isAppSetup() {
-        val result = settingService.getSetting(Props.Settings.isAppSetup)
-        if (result.valueOrNull?.value == "true") {
-            State.App.isSetup = true
-        } else {
-            appService.generateSetupCode()
+        // Is app setup setting
+        settingService.getSetting(Props.Settings.isAppSetup).let { result ->
+            result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->
+                if (bool == true) {
+                    State.App.isSetup = bool
+                } else {
+                    appService.generateSetupCode()
+                }
+            }
         }
     }
 }

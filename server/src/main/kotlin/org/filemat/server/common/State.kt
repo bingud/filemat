@@ -17,6 +17,13 @@ object State {
         val hideSensitiveFolders = env("FM_HIDE_SENSITIVE_FOLDERS")?.toBooleanStrictOrNull() ?: true
         val nonSensitiveFolders = env("FM_NON_SENSITIVE_FOLDERS").getNonSensitiveFolders()
         val hiddenFolders = env("FM_HIDDEN_FOLDER_PATHS").getHiddenFolders()
+
+        private val followSymLinksEnv = env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull() ?: false
+        var followSymLinks: Boolean = followSymLinksEnv
+            set(new) {
+                if (followSymLinksEnv == true) return
+                field = new
+            }
     }
 
     object Auth {
@@ -25,7 +32,7 @@ object State {
     }
 }
 
-private fun env(name: String)= System.getenv(name)
+private fun env(name: String): String?= System.getenv(name)
 
 
 /**

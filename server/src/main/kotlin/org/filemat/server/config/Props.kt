@@ -14,6 +14,7 @@ object Props {
     object Settings {
         const val appSetupCode = "application_setup_code"
         const val isAppSetup = "is_application_setup"
+        const val followSymlinks = "follow_symbolic_links"
     }
 
 }
