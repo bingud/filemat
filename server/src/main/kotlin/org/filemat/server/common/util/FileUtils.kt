@@ -12,6 +12,7 @@ enum class FileType {
     FOLDER,
     FILE_LINK,
     FOLDER_LINK,
+    ANY_LINK,
     OTHER
 }
 
@@ -59,3 +60,5 @@ object FileUtils {
         }
     }
 }
+
+fun BasicFileAttributes.getFileType(): FileType = if (this.isRegularFile) FileType.FILE else if (this.isSymbolicLink) FileType.ANY_LINK else if (this.isDirectory) FileType.FOLDER else FileType.OTHER
