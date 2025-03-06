@@ -52,8 +52,8 @@ class FolderVisibilityService(
     /**
      * returns if a folder path is not blocked
      */
-    fun isPathAllowed(rawPath: String): Boolean {
-        val path = normalizePath(rawPath)
+    fun isPathAllowed(folderPath: String, isNormalized: Boolean = false): Boolean {
+        val path = if (isNormalized) folderPath else normalizePath(folderPath)
 
         if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
             return false

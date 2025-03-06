@@ -1,20 +1,12 @@
 package org.filemat.server.common.util
 
+import org.filemat.server.module.file.model.FileType
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
 import java.util.concurrent.TimeUnit
-
-enum class FileType {
-    FILE,
-    FOLDER,
-    FILE_LINK,
-    FOLDER_LINK,
-    ANY_LINK,
-    OTHER
-}
 
 object FileUtils {
 

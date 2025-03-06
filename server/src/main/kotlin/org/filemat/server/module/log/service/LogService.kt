@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.util.getActualCallerPackage
+import org.filemat.server.common.util.packagePrefix
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
@@ -40,7 +41,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
-        meta: Map<String, String>? = null,
+        meta: MutableMap<String, String>? = null,
     ) {
         log(
             level = LogLevel.DEBUG,
@@ -63,7 +64,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
-        meta: Map<String, String>? = null,
+        meta: MutableMap<String, String>? = null,
     ) {
         log(
             level = LogLevel.INFO,
@@ -86,7 +87,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
-        meta: Map<String, String>? = null,
+        meta: MutableMap<String, String>? = null,
     ) {
         log(
             level = LogLevel.WARN,
@@ -109,7 +110,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
-        meta: Map<String, String>? = null,
+        meta: MutableMap<String, String>? = null,
     ) {
         log(
             level = LogLevel.ERROR,
@@ -132,7 +133,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
-        meta: Map<String, String>? = null,
+        meta: MutableMap<String, String>? = null,
     ) {
         log(
             level = LogLevel.FATAL,
@@ -160,7 +161,7 @@ class LogService(
         initiatorId: Ulid? = null,
         initiatorIp: String? = null,
         targetId: Ulid? = null,
-        meta: Map<String, String>?,
+        meta: MutableMap<String, String>?,
     ) {
         val caller = getActualCallerPackage()
         val now = unixNow()
@@ -175,6 +176,9 @@ class LogService(
             }
             lastLogTimes[caller] = currentTime
         }
+
+        val metadata = meta ?: mutableMapOf()
+        metadata["package"] = caller
 
         scope.launch {
             createLog(
@@ -220,7 +224,7 @@ class LogService(
                 meta = meta?.let { Json.encodeToString(it) },
             )
 
-            if (State.App.isDev) {
+            if (State.App.printLogs || State.App.isDev) {
                 printLog(false)
             }
 

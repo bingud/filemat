@@ -24,6 +24,8 @@ object State {
                 if (followSymLinksEnv == true) return
                 field = new
             }
+
+        val printLogs = env("FM_PRINT_LOGS")?.toBooleanStrictOrNull() ?: false
     }
 
     object Auth {

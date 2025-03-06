@@ -8,9 +8,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.service.LogService
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.transaction.TransactionStatus
-import org.springframework.transaction.support.TransactionTemplate
 import java.nio.file.Paths
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -53,6 +51,10 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
     }
 
     return result!!
+}
+
+inline fun <T> runIf(condition: Boolean, block: () -> T): T? {
+    return if (condition) block() else null
 }
 
 fun Int.toBoolean() = this > 0

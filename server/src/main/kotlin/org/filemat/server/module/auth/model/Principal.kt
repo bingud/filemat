@@ -25,6 +25,15 @@ data class Principal(
             return roles.map { State.Auth.roleMap[it] ?: throw IllegalStateException("Role is null") }
         }
 
+        fun Principal.hasPermission(permission: Permission): Boolean {
+            roles.forEach { roleId ->
+                State.Auth.roleMap[roleId]?.let { role ->
+                    if (role.permissions.contains(permission)) return true
+                }
+            }
+            return false
+        }
+
         fun Principal.getPermissions(): List<Permission> {
             val roles = this.getRoles()
             val permissions = roles.map { it.permissions }.flatten().distinct()

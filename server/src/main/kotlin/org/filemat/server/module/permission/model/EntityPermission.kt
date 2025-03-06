@@ -11,8 +11,6 @@ data class EntityPermission(
     val permissionId: Ulid,
     @Column("permission_type")
     val permissionType: PermissionType,
-    @Column("entity_type")
-    val entityType: FilesystemEntityType,
     @Column("entity_id")
     val entityId: Ulid,
     @Column("user_id")
@@ -23,4 +21,8 @@ data class EntityPermission(
     val permissions: List<Permission>,
     @Column("created_date")
     val createdDate: Long,
-)
+) {
+    init {
+        if (userId == null && roleId == null) throw IllegalStateException("Permission must have either a role or user ID.")
+    }
+}

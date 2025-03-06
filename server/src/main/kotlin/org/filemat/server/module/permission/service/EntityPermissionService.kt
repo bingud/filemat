@@ -1,0 +1,83 @@
+package org.filemat.server.module.permission.service
+
+import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.util.classes.Token
+import org.filemat.server.common.util.normalizePath
+import org.filemat.server.config.Props
+import org.filemat.server.module.file.model.FilesystemEntity
+import org.filemat.server.module.file.service.EntityService
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.permission.model.EntityPermissionTree
+import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.repository.PermissionRepository
+import org.filemat.server.module.user.model.UserAction
+import org.springframework.stereotype.Service
+
+@Service
+class EntityPermissionService(
+    private val permissionRepository: PermissionRepository,
+    private val logService: LogService,
+    private val entityService: EntityService,
+) {
+
+    private val pathTree = EntityPermissionTree()
+
+    fun getUserPermission(filePath: String, isNormalized: Boolean, userId: Ulid, roles: List<Ulid>): List<Permission>? {
+        val path = if (isNormalized) filePath else normalizePath(filePath)
+
+        pathTree.getClosestPermissionForUser(path, userId)
+            ?.let { return it.permissions }
+
+        pathTree.getClosestPermissionForAnyRole(path, roles)
+            ?.let { return it.permissions }
+
+        return null
+    }
+
+    fun loadPermissionsFromDatabase(): Boolean {
+        println("Loading file permissions from database...")
+
+        val permissions = try {
+            permissionRepository.getAll()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to load file permissions from database during startup.",
+                message = e.stackTraceToString()
+            )
+            return false
+        }
+
+        val entities = hashMapOf<Ulid, FilesystemEntity?>()
+
+        // Load entities
+        runCatching {
+            val loggedNotFound = Token()
+            permissions.forEach {
+                entities.computeIfAbsent(it.entityId) { entityId ->
+                    val result = entityService.getById(entityId, UserAction.NONE)
+                    if (result.hasError) {
+                        throw Exception()
+                    } else if (result.notFound) {
+                        loggedNotFound.consume {
+                            println("${Props.appName} has permissions that arent associated with any files.")
+                        }
+                    }
+                    result.valueOrNull
+                }
+            }
+        }.onFailure { return false }
+
+        // Add permissions to tree
+        permissions.forEach { permission ->
+            val entity = entities[permission.entityId]
+            if (entity == null) return@forEach
+            pathTree.addPermission(entity.path, permission)
+        }
+
+        return true
+    }
+
+}
