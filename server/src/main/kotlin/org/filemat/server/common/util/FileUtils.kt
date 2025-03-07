@@ -19,37 +19,10 @@ object FileUtils {
         }
     }
 
-    fun getLastModifiedTime(path: String) = getLastModifiedTime(Paths.get(path))
-    fun getLastModifiedTime(path: Path): Long? {
-        return try {
-            Files.getLastModifiedTime(path).to(TimeUnit.SECONDS)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    fun getCreationTime(path: String) = getCreationTime(Paths.get(path))
-    fun getCreationTime(path: Path): Long? {
-        return try {
-            val time = Files.getAttribute(path, "basic:creationTime") as FileTime
-            time.to(TimeUnit.SECONDS)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    fun getType(path: Path): FileType? {
-        try {
-            val attrs = Files.readAttributes(path, BasicFileAttributes::class.java)
-            return when {
-                attrs.isDirectory -> FileType.FOLDER
-                attrs.isRegularFile -> FileType.FILE
-                attrs.isSymbolicLink -> TODO()
-                else -> FileType.OTHER
-            }
-        } catch (e: Exception) {
-            return null
-        }
+    fun findFilePathByInode(inode: Long, searchDir: String): String? {
+        val process = ProcessBuilder("find", searchDir, "-inum", inode.toString()).start()
+        val result = process.inputStream.bufferedReader().readText().trim()
+        return if (result.isNotEmpty()) result else null
     }
 }
 

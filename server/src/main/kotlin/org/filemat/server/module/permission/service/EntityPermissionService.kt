@@ -8,8 +8,8 @@ import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.permission.model.EntityPermission
 import org.filemat.server.module.permission.model.EntityPermissionTree
-import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.repository.PermissionRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -23,14 +23,16 @@ class EntityPermissionService(
 
     private val pathTree = EntityPermissionTree()
 
-    fun getUserPermission(filePath: String, isNormalized: Boolean, userId: Ulid, roles: List<Ulid>): List<Permission>? {
+    fun removeEntity(path: String, entityId: Ulid) = pathTree.removePermissionByEntityId(path, entityId, null)
+
+    fun getUserPermission(filePath: String, isNormalized: Boolean, userId: Ulid, roles: List<Ulid>): EntityPermission? {
         val path = if (isNormalized) filePath else normalizePath(filePath)
 
         pathTree.getClosestPermissionForUser(path, userId)
-            ?.let { return it.permissions }
+            ?.let { return it }
 
         pathTree.getClosestPermissionForAnyRole(path, roles)
-            ?.let { return it.permissions }
+            ?.let { return it }
 
         return null
     }
@@ -65,7 +67,10 @@ class EntityPermissionService(
                             println("${Props.appName} has permissions that arent associated with any files.")
                         }
                     }
-                    result.valueOrNull
+
+                    val entity = result.valueOrNull
+
+                    return@computeIfAbsent entity
                 }
             }
         }.onFailure { return false }
@@ -73,7 +78,7 @@ class EntityPermissionService(
         // Add permissions to tree
         permissions.forEach { permission ->
             val entity = entities[permission.entityId]
-            if (entity == null) return@forEach
+            if (entity == null || entity.path == null) return@forEach
             pathTree.addPermission(entity.path, permission)
         }
 

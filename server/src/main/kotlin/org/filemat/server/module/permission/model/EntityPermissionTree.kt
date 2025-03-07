@@ -2,11 +2,6 @@ package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
 
-private data class PathNode(
-    val segment: String,
-    val children: MutableMap<String, PathNode> = mutableMapOf(),
-    val rolePermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf()
-)
 
 /**
  * Represents a node in the file path tree.
@@ -129,5 +124,40 @@ class EntityPermissionTree {
         val parentSegments = segments.dropLast(1)
         val parentPath = parentSegments.joinToString("/")
         return findNode(parentPath)
+    }
+
+    /**
+     * Removes a permission entry from the specified path by entity ID.
+     */
+    fun removePermissionByEntityId(path: String, entityId: Ulid, permissionType: PermissionType?) {
+        val node = findNode(path) ?: return
+
+        if (permissionType == PermissionType.USER || permissionType == null) {
+            node.userPermissions.remove(entityId)
+        }
+        if (permissionType == PermissionType.ROLE || permissionType == null) {
+            node.rolePermissions.remove(entityId)
+        }
+
+    }
+
+    /**
+     * Updates the path for a specific entity's permission by removing it from the old path
+     * and inserting it under the new path (if the new path is not null/blank).
+     */
+    fun updatePermissionPath(oldPath: String, newPath: String?, entityId: Ulid, permissionType: PermissionType) {
+        // Fetch current permission at the old path
+        val oldPermission = when (permissionType) {
+            PermissionType.USER -> getClosestPermissionForUser(oldPath, entityId)
+            PermissionType.ROLE -> getClosestPermissionForRole(oldPath, entityId)
+        } ?: return
+
+        // Remove it from the old path
+        removePermissionByEntityId(oldPath, entityId, permissionType)
+
+        // Re-insert under the new path if provided
+        if (!newPath.isNullOrBlank()) {
+            addPermission(newPath, oldPermission)
+        }
     }
 }

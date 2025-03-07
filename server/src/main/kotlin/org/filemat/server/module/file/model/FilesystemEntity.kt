@@ -9,9 +9,9 @@ data class FilesystemEntity(
     @Column("entity_id")
     val entityId: Ulid,
     @Column("path")
-    val path: String,
+    val path: String?,
     @Column("inode")
-    val inode: Int?,
+    val inode: Long?,
     @Column("is_filesystem_supported")
     val isFilesystemSupported: Boolean,
     @Column("owner_user_id")

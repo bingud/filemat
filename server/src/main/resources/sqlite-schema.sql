@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS permissions (
 
 CREATE TABLE IF NOT EXISTS files (
     entity_id TEXT PRIMARY KEY,
-    path TEXT NOT NULL,
-    inode INTEGER NOT NULL,
+    path TEXT,
+    inode INTEGER,
     is_filesystem_supported INTEGER NOT NULL,
     owner_user_id TEXT,
     FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE CASCADE
