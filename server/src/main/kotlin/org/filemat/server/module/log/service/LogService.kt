@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
+fun meta(vararg input: Pair<String, String>) = mutableMapOf(*input)
+
 @Service
 class LogService(
     private val logRepository: LogRepository

@@ -19,4 +19,12 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
     @Modifying
     @Query("UPDATE files SET path = :path, inode = :inode WHERE entity_id = :entityId")
     fun updateInodeAndPath(entityId: Ulid, inode: Long?, path: String?): Int
+
+    @Modifying
+    @Query("UPDATE files SET path = :path WHERE entity_id = :entityId")
+    fun updatePath(entityId: Ulid, path: String?): Int
+
+    @Modifying
+    @Query("UPDATE files SET inode = :inode WHERE entity_id = :entityId")
+    fun updateInode(entityId: Ulid, inode: Long?): Int
 }

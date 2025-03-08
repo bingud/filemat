@@ -25,7 +25,7 @@ object State {
                 field = new
             }
 
-        val printLogs = env("FM_PRINT_LOGS")?.toBooleanStrictOrNull() ?: false
+        val printLogs = env("FM_PRINT_LOGS")?.toBooleanStrictOrNull() ?: true
     }
 
     object Auth {
@@ -52,6 +52,6 @@ private fun String?.getNonSensitiveFolders(): HashSet<String> {
 private fun String?.getHiddenFolders(): HashSet<String> {
     this ?: return hashSetOf()
     return this.split(":")
-        .map { normalizePath(it) }
+        .map { it.normalizePath() }
         .also { println("Hidden folders:\n${it.joinToString("\n")}") }.toHashSet()
 }

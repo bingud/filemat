@@ -6,7 +6,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import org.filemat.server.common.State
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.getAuth
+import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
 import org.springframework.http.ResponseEntity
@@ -28,7 +28,7 @@ class StateController : AController() {
         @RequestParam("roles", required = false) rawRoles: String?,
         @RequestParam("app", required = false) rawApp: String?,
     ): ResponseEntity<String> {
-        val principal = request.getAuth()
+        val principal = request.getPrincipal()
 
         val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
         val getRoles = rawRoles?.toBooleanStrictOrNull()

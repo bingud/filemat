@@ -145,19 +145,22 @@ class EntityPermissionTree {
      * Updates the path for a specific entity's permission by removing it from the old path
      * and inserting it under the new path (if the new path is not null/blank).
      */
-    fun updatePermissionPath(oldPath: String, newPath: String?, entityId: Ulid, permissionType: PermissionType) {
-        // Fetch current permission at the old path
-        val oldPermission = when (permissionType) {
-            PermissionType.USER -> getClosestPermissionForUser(oldPath, entityId)
-            PermissionType.ROLE -> getClosestPermissionForRole(oldPath, entityId)
-        } ?: return
+    fun updatePermissionPath(oldPath: String, newPath: String?, entityId: Ulid, permissionType: PermissionType?) {
+        // Move user permission
+        if (permissionType == PermissionType.USER || permissionType == null) {
+            val oldPermission = getClosestPermissionForUser(oldPath, entityId)
+            removePermissionByEntityId(oldPath, entityId, PermissionType.USER)
+            if (!newPath.isNullOrBlank() && oldPermission != null) {
+                addPermission(newPath, oldPermission)
+            }
+        }
 
-        // Remove it from the old path
-        removePermissionByEntityId(oldPath, entityId, permissionType)
-
-        // Re-insert under the new path if provided
-        if (!newPath.isNullOrBlank()) {
-            addPermission(newPath, oldPermission)
+        if (permissionType == PermissionType.ROLE || permissionType == null) {
+            val oldPermission = getClosestPermissionForRole(oldPath, entityId)
+            removePermissionByEntityId(oldPath, entityId, PermissionType.ROLE)
+            if (!newPath.isNullOrBlank() && oldPermission != null) {
+                addPermission(newPath, oldPermission)
+            }
         }
     }
 }

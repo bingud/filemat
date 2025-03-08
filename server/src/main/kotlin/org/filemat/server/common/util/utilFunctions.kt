@@ -60,7 +60,7 @@ inline fun <T> runIf(condition: Boolean, block: () -> T): T? {
 fun Int.toBoolean() = this > 0
 fun Short.toBoolean() = this > 0
 
-fun HttpServletRequest.getAuth() = this.getAttribute("auth") as Principal?
+fun HttpServletRequest.getPrincipal() = this.getAttribute("auth") as Principal?
 
 fun HttpServletRequest.realIp(): String {
     val header: String? = this.getHeader("X-Forwarded-For")
@@ -85,11 +85,7 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
     }
 }
 
-fun normalizePath(path: String): String {
-    return Paths.get(path).normalize().toString()
-}
-
-fun <T> kotlin.Result<T>.getResult(): T = this.getOrNull()!!
+fun String.normalizePath() = Paths.get(this).normalize().toString()
 
 ////
 

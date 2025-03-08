@@ -17,15 +17,21 @@ class VisibilityTrie {
 
     fun getVisibility(path: String): Visibility {
         var node = root
-        var lastKnownVisibility: Boolean? = null
-        var lastKnownVisibilityIndex: Int? = null
+        // If the root itself has a rule, pick it up immediately.
+        var lastKnownVisibility = if (root.hasRule) root.isExposed else null
+        var lastKnownVisibilityIndex = if (root.hasRule) -1 else null
 
         val parts = path.split("/").filter { it.isNotEmpty() }
         parts.forEachIndexed { index, part ->
-            node = node.children[part] ?: return Visibility(
+            // Update from the current node’s rule before moving on
+            // (We already did this for the root outside the loop.)
+
+            val child = node.children[part] ?: return Visibility(
                 isExposed = lastKnownVisibility ?: false,
-                isExplicit = lastKnownVisibilityIndex == index
+                isExplicit = (lastKnownVisibilityIndex == index - 1)
             )
+            node = child
+
             if (node.hasRule) {
                 lastKnownVisibility = node.isExposed
                 lastKnownVisibilityIndex = index

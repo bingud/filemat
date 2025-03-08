@@ -23,10 +23,12 @@ class EntityPermissionService(
 
     private val pathTree = EntityPermissionTree()
 
+
     fun removeEntity(path: String, entityId: Ulid) = pathTree.removePermissionByEntityId(path, entityId, null)
+    fun updateEntityPath(oldPath: String, newPath: String?, entityId: Ulid) = pathTree.updatePermissionPath(oldPath, newPath, entityId, null)
 
     fun getUserPermission(filePath: String, isNormalized: Boolean, userId: Ulid, roles: List<Ulid>): EntityPermission? {
-        val path = if (isNormalized) filePath else normalizePath(filePath)
+        val path = if (isNormalized) filePath else filePath.normalizePath()
 
         pathTree.getClosestPermissionForUser(path, userId)
             ?.let { return it }

@@ -1,8 +1,10 @@
 <script lang="ts">
     import { auth } from "$lib/code/state/authState.svelte";
+    import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte";
 
     let data: any = $state(null)
+    let error = $state("")
 
     onMount(() => {
         
@@ -11,7 +13,7 @@
     async function openFolder() {
         data = []
         const body = new FormData();
-        body.append("path", "/usr/share");
+        body.append("path", "/etc/ssh");
 
         const response = await fetch(`/api/v1/folder/list`, {
             credentials: "same-origin",
@@ -19,32 +21,11 @@
             body: body
         });
 
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            try {
-                // Attempt to parse as JSON if the buffer contains a complete object
-                while (buffer.includes("{") && buffer.includes("}")) {
-                    const start = buffer.indexOf("{");
-                    const end = buffer.indexOf("}") + 1;
-                    const jsonChunk = buffer.slice(start, end);
-                    
-                    const parsed = JSON.parse(jsonChunk);
-                    data.push(parsed)
-
-                    // Remove processed data from the buffer
-                    buffer = buffer.slice(end);
-                }
-            } catch (error) {
-                // Ignore errors due to incomplete JSON, wait for more data
-            }
+        if (response.status != 200) {
+            error = await response.text()
+        } else {
+            const json = await response.json()
+            data = json
         }
     }
 
@@ -55,7 +36,7 @@
     <button class="tw-form-button" on:click={openFolder}>Open folder</button>
 
     <div id="file-browser" class="flex flex-col gap-6">
-        {#if data}
+        {#if data != null}
             {#each data as item}
                 <div>
                     {#each Object.keys(item) as key}
@@ -63,6 +44,10 @@
                     {/each}
                 </div>
             {/each}
+        {/if}
+
+        {#if error != ""}
+            <p>{error}</p>
         {/if}
     </div>
 </div>

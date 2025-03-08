@@ -5,8 +5,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.attribute.FileTime
-import java.util.concurrent.TimeUnit
 
 object FileUtils {
 
@@ -17,6 +15,21 @@ object FileUtils {
         } catch (e: Exception) {
             null
         }
+    }
+
+    fun getInode(attributes: BasicFileAttributes): Long? {
+        return attributes.fileKey()?.toString().orEmpty()
+            .substringAfter("ino=").let {
+                val inode = StringBuilder()
+                it.forEach { char ->
+                    if (char.isDigit()) {
+                        inode.append(char)
+                    } else {
+                        return@forEach
+                    }
+                }
+                inode.toString().toLongOrNull()
+            }
     }
 
     fun findFilePathByInode(inode: Long, searchDir: String): String? {

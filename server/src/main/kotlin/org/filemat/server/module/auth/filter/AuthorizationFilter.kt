@@ -4,7 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.State
-import org.filemat.server.common.util.getAuth
+import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.endpointAuthMap
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
@@ -25,7 +25,7 @@ class AuthorizationFilter : OncePerRequestFilter() {
 
         // Check if user has authorization for secured endpoint
         if (endpoint.authenticated) {
-            val auth = request.getAuth()
+            val auth = request.getPrincipal()
             if (auth == null) {
                 response.status = 401
                 response.writer.write("unauthenticated")

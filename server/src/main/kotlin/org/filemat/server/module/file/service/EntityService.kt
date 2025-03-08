@@ -7,18 +7,36 @@ import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 
 @Service
 class EntityService(
     private val entityRepository: EntityRepository,
     private val logService: LogService,
-    private val entityPermissionService: EntityPermissionService,
+    @Lazy private val entityPermissionService: EntityPermissionService,
 ) {
+    fun updateInode(entityId: Ulid, newInode: Long?, userAction: UserAction): Result<Unit> {
+        try {
+            entityRepository.updateInode(entityId, newInode)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to update file path in database.",
+                message = e.stackTraceToString(),
+                meta = meta("newInode" to "$newInode", "entityId" to "$entityId"),
+            )
+            return Result.error("Failed to update file path in database.")
+        }
 
-    fun updatePath(entityId: Ulid, path: String?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
+        return Result.ok(Unit)
+    }
+
+    fun updatePath(entityId: Ulid, newPath: String?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
         val entity = existingEntity ?: let {
             val entityR = getById(entityId, userAction)
             if (entityR.isNotSuccessful) return Result.error(entityR.error)
@@ -26,11 +44,22 @@ class EntityService(
         }
 
         try {
-            TODO("  update entity path everyweerre  ")
-            entityRepository
+            entityRepository.updatePath(entityId, newPath)
         } catch (e: Exception) {
-
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to update file path in database.",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to update file path in database.")
         }
+
+        // Update path of permissions that are tied to this entity ID
+        if (entity.path != null) {
+            entityPermissionService.updateEntityPath(entity.path, newPath, entity.entityId)
+        }
+        return Result.ok(Unit)
     }
 
     fun removeInodeAndPath(entityId: Ulid, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
@@ -46,8 +75,9 @@ class EntityService(
             logService.error(
                 type = LogType.SYSTEM,
                 action = userAction,
-                description = "Failed to update file in database.",
-                message = e.stackTraceToString()
+                description = "Failed to remove file path and inode from database.",
+                message = e.stackTraceToString(),
+                meta = meta("entityId" to "$entityId")
             )
             return Result.error("Failed to remove file from database.")
         }
@@ -81,7 +111,8 @@ class EntityService(
                 type = LogType.SYSTEM,
                 action = userAction,
                 description = "Failed to get filesystem entity by ID",
-                message = e.stackTraceToString()
+                message = e.stackTraceToString(),
+                meta = meta("entityId" to "$entityId")
             )
             Result.error("Failed to get file from database.")
         }

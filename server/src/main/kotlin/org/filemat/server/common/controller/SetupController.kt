@@ -109,7 +109,7 @@ class SetupController(
             val normalizedList = mutableSetOf<String>()
             val rawList = mutableSetOf<String>()
             it.forEach { path ->
-                val alreadyExists = !rawList.add(path.path) || !normalizedList.add(normalizePath(path.path))
+                val alreadyExists = !rawList.add(path.path) || !normalizedList.add(path.path.normalizePath())
                 if (alreadyExists) return@run bad("Folder visibility configuration has a duplicate.", "validation")
             }
         }

@@ -34,8 +34,8 @@ object SensitiveFolderPaths {
     private val wildcardList = fullList.filter { it.contains("*") }.map { (if (it.startsWith("/")) it else "/$it").split("*") }.map { it[0] to it[1] }
     private val list = fullList.filterNot { it.contains("*") }.toHashSet()
 
-    fun contains(_path: String, isPathNormalized: Boolean): Boolean {
-        val path = if (isPathNormalized) _path else normalizePath(_path)
+    fun contains(rawPath: String, isPathNormalized: Boolean): Boolean {
+        val path = if (isPathNormalized) rawPath else rawPath.normalizePath()
         if (list.any { path.startsWith(it) }) return true
 
         wildcardList.forEach { pair ->
@@ -46,6 +46,12 @@ object SensitiveFolderPaths {
 
     private val serializedList: String by lazy { Json.encodeToString(fullList) }
     fun serialize() = serializedList
+
+    fun printSensitiveFolders() {
+        println("### Sensitive folders that will be blocked:")
+        fullList.forEach { println(it) }
+        println("\n")
+    }
 }
 
 

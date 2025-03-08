@@ -26,6 +26,8 @@ class Initialization(
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()
 
+        Props.sensitiveFolders.printSensitiveFolders()
+
         // Load settings to memory
         databaseSetup.initialize_loadSettings().line()
 

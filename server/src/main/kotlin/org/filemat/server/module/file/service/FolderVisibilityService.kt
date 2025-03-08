@@ -26,7 +26,7 @@ class FolderVisibilityService(
      * Initialize folder visibility service
      */
     fun initialize() {
-        println("Loading folder visibility configurations")
+        println("Loading folder visibility configurations...\n")
 
         val visibilityData = runCatching { folderVisibilityRepository.getAll() }
             .onFailure {
@@ -40,7 +40,7 @@ class FolderVisibilityService(
         if (visibilityData.isNotEmpty()) {
             val exposedPaths = visibilityData.filter { it.isExposed }.map { it.path }
             val hiddenPaths = visibilityData.filterNot { it.isExposed }.map { it.path }
-            println("Folder visibility configurations loaded:\n### EXPOSED FOLDERS:\n\n${exposedPaths.joinToString("\t")}\n\n### HIDDEN FOLDERS:\n\n${hiddenPaths.joinToString("\t")}")
+            println("Folder visibility configurations loaded:\n### EXPOSED FOLDERS:\n${exposedPaths.joinToString("\t")}\n\n### HIDDEN FOLDERS:\n${hiddenPaths.joinToString("\t")}")
         } else {
             println("No folders have been exposed or hidden.")
         }
@@ -52,18 +52,19 @@ class FolderVisibilityService(
     /**
      * returns if a folder path is not blocked
      */
-    fun isPathAllowed(folderPath: String, isNormalized: Boolean = false): Boolean {
-        val path = if (isNormalized) folderPath else normalizePath(folderPath)
+    fun isPathAllowed(folderPath: String, isNormalized: Boolean = false): String? {
+        val path = if (isNormalized) folderPath else folderPath.normalizePath()
 
         if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
-            return false
+            return "This file is blocked because it is marked as sensitive."
         }
 
         val isForceHidden = hiddenFolderTrie.getVisibility(path)
-        if (isForceHidden.isExposed == true) return false
+        // isExposed is set to true because all folders in this list are forcefully hidden
+        if (isForceHidden.isExposed == true) return "This file is blocked."
 
         val visibility = visibilityTrie.getVisibility(path)
-        return visibility.isExposed
+        return if (visibility.isExposed) null else "This file is not exposed."
     }
 
     /**
