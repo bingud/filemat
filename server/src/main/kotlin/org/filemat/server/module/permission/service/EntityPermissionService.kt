@@ -43,7 +43,7 @@ class EntityPermissionService(
         println("Loading file permissions from database...")
 
         val permissions = try {
-            permissionRepository.getAll()
+            permissionRepository.getAll().map { it.toEntityPermission() }
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,

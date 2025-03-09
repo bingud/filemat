@@ -24,6 +24,8 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.io.path.exists
 
 @Service
@@ -38,6 +40,7 @@ class FileService(
 
     fun getFolderEntries(folderPath: String, principal: Principal): Result<List<FileMetadata>> {
         val path = folderPath.normalizePath()
+        println("Getting $path")
 
         val isFileAvailable = verifyEntityInode(path, UserAction.READ_FOLDER)
         if (!isFileAvailable) return Result.error("This folder is not available.")
@@ -47,10 +50,11 @@ class FileService(
         if (isAllowed != null) return Result.reject(isAllowed)
 
         val hasAdminAccess = principal.hasPermission(Permission.ACCESS_ALL_FILES)
+        println("has admin $hasAdminAccess")
         // Check permissions
         runIf(!hasAdminAccess) {
             val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
-                ?: return@runIf
+                ?: return Result.reject("You do not have permission to open this folder.")
 
             if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
         }
@@ -61,6 +65,7 @@ class FileService(
         if (result.rejected) return Result.reject(result.error)
         val folderEntries = result.value
 
+        println("Serve folder")
         return folderEntries.toResult()
     }
 
@@ -113,39 +118,60 @@ class FileService(
     /**
      * Checks if entity Inode matches actual file Inode
      */
+    private val verifyLocks = ConcurrentHashMap<String, ReentrantLock>()
+
     fun verifyEntityInode(filePath: String, userAction: UserAction): Boolean {
-        val entityR = entityService.getByPath(filePath, UserAction.NONE)
-        if (entityR.notFound) return true
-        if (entityR.isNotSuccessful) return false
-        val entity = entityR.value
+        val lock = verifyLocks.computeIfAbsent(filePath) { ReentrantLock() }
+        lock.lock()
+        return try {
+            val entityR = entityService.getByPath(filePath, UserAction.NONE)
+            if (entityR.notFound) return true
+            if (entityR.isNotSuccessful) return false
+            val entity = entityR.value
 
-        // Only check path of unsupported filesystem
-        if (!entity.isFilesystemSupported || entity.inode == null) {
-            val path = Paths.get(filePath)
-            val exists = if (State.App.followSymLinks) path.exists() else path.exists(LinkOption.NOFOLLOW_LINKS)
-            return exists
+            // Only check path of unsupported filesystem
+            if (!entity.isFilesystemSupported || entity.inode == null) {
+                val path = Paths.get(filePath)
+                val exists = if (State.App.followSymLinks) path.exists()
+                else path.exists(LinkOption.NOFOLLOW_LINKS)
+                return exists
+            }
+
+            val newInode = FileUtils.getInode(filePath)
+            if (entity.inode == newInode) return true
+
+            // Search for file by inode
+            val parentPath = filePath.substringBeforeLast("/")
+            val newPath = FileUtils.findFilePathByInode(entity.inode, parentPath)?.normalizePath()
+
+            // Update paths or inodes accordingly
+            if (newPath != null) {
+                entityService.updatePath(
+                    entityId = entity.entityId,
+                    newPath = newPath,
+                    existingEntity = entity,
+                    userAction = userAction
+                )
+            } else if (newInode != null) {
+                entityService.updateInode(
+                    entityId = entity.entityId,
+                    newInode = newInode,
+                    userAction = userAction
+                )
+            } else {
+                entityService.removeInodeAndPath(
+                    entityId = entity.entityId,
+                    existingEntity = entity,
+                    userAction = userAction
+                )
+            }
+
+            true
+        } finally {
+            lock.unlock()
+            verifyLocks.remove(filePath, lock)
         }
-
-        val newInode = FileUtils.getInode(filePath)
-        if (entity.inode == newInode) return true
-
-        // Search for file by inode
-        val parentPath = filePath.substringBeforeLast("/")
-        val newPath = FileUtils.findFilePathByInode(entity.inode, parentPath)?.normalizePath()
-
-        // Check if new path of file was found
-        if (newPath != null) {
-            // Change entity path to new path
-            entityService.updatePath(entityId = entity.entityId, newPath = newPath, existingEntity = entity, userAction = userAction)
-        } else if (newInode != null) {
-            // Change entity inode to new inode on the current path
-            entityService.updateInode(entityId = entity.entityId, newInode = newInode, userAction = userAction)
-        } else {
-            // Remove path and inode from entity
-            entityService.removeInodeAndPath(entityId = entity.entityId, existingEntity = entity, userAction = userAction)
-        }
-
-        return true
     }
+
 
 }

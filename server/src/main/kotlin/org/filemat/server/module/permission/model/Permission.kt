@@ -1,5 +1,6 @@
 package org.filemat.server.module.permission.model
 
+import kotlinx.serialization.json.Json
 
 
 /**
@@ -22,6 +23,11 @@ enum class Permission {
     companion object {
         fun fromInt(int: Int): Permission {
             return Permission.entries.getOrNull(int) ?: throw IllegalArgumentException("Permission ENUM  -  integer index of enum does not exist.")
+        }
+
+        fun fromString(str: String): List<Permission> {
+            val list = Json.decodeFromString<List<Int>>(str)
+            return list.map { fromInt(it) }
         }
     }
 }

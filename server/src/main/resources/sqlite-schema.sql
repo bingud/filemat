@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS role (
 CREATE TABLE IF NOT EXISTS permissions (
     permission_id TEXT PRIMARY KEY,
     permission_type INTEGER NOT NULL,
-    entity_type INTEGER NOT NULL,
     entity_id TEXT NOT NULL,
     user_id TEXT,
     role_id TEXT,

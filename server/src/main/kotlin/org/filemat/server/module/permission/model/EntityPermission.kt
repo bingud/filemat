@@ -5,8 +5,23 @@ import org.filemat.server.module.file.model.FilesystemEntityType
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
-@Table("permissions")
 data class EntityPermission(
+    val permissionId: Ulid,
+    val permissionType: PermissionType,
+    val entityId: Ulid,
+    val userId: Ulid?,
+    val roleId: Ulid?,
+    val permissions: List<Permission>,
+    val createdDate: Long,
+) {
+    init {
+        if (userId == null && roleId == null || userId != null && roleId != null) throw IllegalStateException("Permission must have either a role or user ID.")
+    }
+}
+
+
+@Table("permissions")
+data class EntityPermissionDto(
     @Column("permission_id")
     val permissionId: Ulid,
     @Column("permission_type")
@@ -18,11 +33,19 @@ data class EntityPermission(
     @Column("role_id")
     val roleId: Ulid?,
     @Column("permissions")
-    val permissions: List<Permission>,
+    val permissions: String,
     @Column("created_date")
     val createdDate: Long,
 ) {
-    init {
-        if (userId == null && roleId == null) throw IllegalStateException("Permission must have either a role or user ID.")
+    fun toEntityPermission(): EntityPermission {
+        return EntityPermission(
+            permissionId = permissionId,
+            permissionType = permissionType,
+            entityId = entityId,
+            userId = userId,
+            roleId = roleId,
+            permissions = Permission.fromString(permissions),
+            createdDate = createdDate
+        )
     }
 }

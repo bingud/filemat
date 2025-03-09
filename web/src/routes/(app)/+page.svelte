@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { auth } from "$lib/code/state/authState.svelte";
-    import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte";
 
     let data: any = $state(null)
@@ -13,7 +11,7 @@
     async function openFolder() {
         data = []
         const body = new FormData();
-        body.append("path", "/etc/ssh");
+        body.append("path", "/home/wsl/test");
 
         const response = await fetch(`/api/v1/folder/list`, {
             credentials: "same-origin",
