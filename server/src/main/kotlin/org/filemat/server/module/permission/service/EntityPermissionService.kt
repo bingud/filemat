@@ -24,9 +24,19 @@ class EntityPermissionService(
     private val pathTree = EntityPermissionTree()
 
 
+    /**
+     * Remove permission for an entity ID from a specific file path
+     */
     fun removeEntity(path: String, entityId: Ulid) = pathTree.removePermissionByEntityId(path, entityId, null)
+
+    /**
+     * Update the file path of an entity
+     */
     fun updateEntityPath(oldPath: String, newPath: String?, entityId: Ulid) = pathTree.updatePermissionPath(oldPath, newPath, entityId, null)
 
+    /**
+     * Get the closest (inherited) file permission for a user.
+     */
     fun getUserPermission(filePath: String, isNormalized: Boolean, userId: Ulid, roles: List<Ulid>): EntityPermission? {
         val path = if (isNormalized) filePath else filePath.normalizePath()
 
@@ -39,6 +49,9 @@ class EntityPermissionService(
         return null
     }
 
+    /**
+     * Initialize permission tree from database
+     */
     fun loadPermissionsFromDatabase(): Boolean {
         println("Loading file permissions from database...")
 

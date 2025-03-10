@@ -4,6 +4,9 @@ import com.github.f4b6a3.ulid.Ulid
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
+/**
+ * Representation of a file or folder in the database (with extra respective metadata)
+ */
 @Table("files")
 data class FilesystemEntity(
     @Column("entity_id")

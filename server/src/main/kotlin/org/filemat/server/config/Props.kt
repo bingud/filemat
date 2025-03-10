@@ -3,6 +3,9 @@ package org.filemat.server.config
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.config.properties.SensitiveFolderPaths
 
+/**
+ * Contains fixed configuration properties and other constants.
+ */
 object Props {
 
     const val appName = "Filemat"
@@ -11,6 +14,9 @@ object Props {
     const val setupCodeFile = "/var/lib/filemat/setup-code.txt"
     val sensitiveFolders = SensitiveFolderPaths
 
+    /**
+     * Keys for database settings table.
+     */
     object Settings {
         const val appSetupCode = "application_setup_code"
         const val isAppSetup = "is_application_setup"

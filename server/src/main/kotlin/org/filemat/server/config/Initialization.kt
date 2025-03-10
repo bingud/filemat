@@ -18,7 +18,7 @@ class Initialization(
 ) {
 
     /**
-     * #### Startup initialization
+     * #### Initializes the application.
      */
     @EventListener(ApplicationReadyEvent::class)
     fun initialize() = CoroutineScope(Dispatchers.Default).launch {

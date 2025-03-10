@@ -33,6 +33,11 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 
+/**
+ * Controller that handles initial application setup.
+ *
+ * Only used when application is first installed.
+ */
 @BeforeSetup
 @Unauthenticated
 @RestController

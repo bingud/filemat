@@ -6,7 +6,9 @@ import org.filemat.server.module.role.model.Role
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Dynamic application state
+ * Dynamic application state.
+ *
+ * Contains state and configuration.
  */
 object State {
     object App {

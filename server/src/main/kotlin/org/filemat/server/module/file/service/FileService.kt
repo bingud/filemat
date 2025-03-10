@@ -28,6 +28,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.io.path.exists
 
+/**
+ * Service to interact with files.
+ */
 @Service
 class FileService(
     private val folderVisibilityService: FolderVisibilityService,
@@ -38,6 +41,9 @@ class FileService(
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /**
+     * Returns list of entries in a folder.
+     */
     fun getFolderEntries(folderPath: String, principal: Principal): Result<List<FileMetadata>> {
         val path = folderPath.normalizePath()
         println("Getting $path")
@@ -56,10 +62,14 @@ class FileService(
             val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
                 ?: return Result.reject("You do not have permission to open this folder.")
 
+            println("Got permissions")
             if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
         }
+        println("user has sufficient permissoins")
 
+        println("getting folder entries")
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
+        println("got entries")
         if (result.notFound) return Result.notFound()
         if (result.hasError) return Result.error(result.error)
         if (result.rejected) return Result.reject(result.error)
@@ -69,6 +79,9 @@ class FileService(
         return folderEntries.toResult()
     }
 
+    /**
+     * Directly gets entries from a folder. Is not authenticated.
+     */
     private fun internalGetFolderEntries(path: String, userAction: UserAction): Result<List<FileMetadata>> {
         try {
             val file = File(path)
@@ -91,6 +104,9 @@ class FileService(
         }
     }
 
+    /**
+     * Gets metadata for a file.
+     */
     private fun getMetadata(rawPath: String, isNormalized: Boolean): FileMetadata {
         val normalized = if (isNormalized) rawPath else rawPath.normalizePath()
         val path = Paths.get(normalized)
@@ -115,11 +131,14 @@ class FileService(
         )
     }
 
-    /**
-     * Checks if entity Inode matches actual file Inode
-     */
+
     private val verifyLocks = ConcurrentHashMap<String, ReentrantLock>()
 
+    /**
+     * Verifies whether a file exists.
+     *
+     * Handles file conflicts like moved files. Can reassign inode or path of an entity.
+     */
     fun verifyEntityInode(filePath: String, userAction: UserAction): Boolean {
         val lock = verifyLocks.computeIfAbsent(filePath) { ReentrantLock() }
         lock.lock()
@@ -140,31 +159,24 @@ class FileService(
             val newInode = FileUtils.getInode(filePath)
             if (entity.inode == newInode) return true
 
-            // Search for file by inode
-            val parentPath = filePath.substringBeforeLast("/")
-            val newPath = FileUtils.findFilePathByInode(entity.inode, parentPath)?.normalizePath()
-
-            // Update paths or inodes accordingly
-            if (newPath != null) {
-                entityService.updatePath(
-                    entityId = entity.entityId,
-                    newPath = newPath,
-                    existingEntity = entity,
-                    userAction = userAction
-                )
-            } else if (newInode != null) {
-                entityService.updateInode(
-                    entityId = entity.entityId,
-                    newInode = newInode,
-                    userAction = userAction
-                )
-            } else {
-                entityService.removeInodeAndPath(
-                    entityId = entity.entityId,
-                    existingEntity = entity,
-                    userAction = userAction
-                )
+            // Check if this inode was already in the database
+            if (newInode != null) {
+                val existingEntityR = entityService.getByInodeWithNullPath(newInode, userAction)
+                // Dangling entity exists with this inode.
+                // Associate this path to it.
+                if (existingEntityR.isSuccessful) {
+                    val existingEntity = existingEntityR.value
+                    entityService.updatePath(existingEntity.entityId, filePath, existingEntity, userAction)
+                }
             }
+
+            // Path has unexpected Inode, so remove the path from the entity in database.
+            entityService.updatePath(
+                entityId = entity.entityId,
+                newPath = null,
+                existingEntity = entity,
+                userAction = userAction,
+            )
 
             true
         } finally {

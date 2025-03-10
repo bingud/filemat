@@ -11,6 +11,11 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import kotlin.system.exitProcess
 
+/**
+ * Initializes state from the database.
+ *
+ * Sets up DB schema, creates default roles and loads state into memory.
+ */
 @Component
 class DatabaseSetup(
     private val jdbcTemplate: JdbcTemplate,

@@ -4,34 +4,42 @@ import com.github.f4b6a3.ulid.Ulid
 
 
 /**
- * Represents a node in the file path tree.
- * Each node holds:
- *  - children: mapping from path segment to child node
- *  - userPermissions: mapping from userId -> EntityPermission
- *  - rolePermissions: mapping from roleId -> EntityPermission
+ * Entity permission tree
+ *
+ * Stores file permissions based on paths, for users and roles
  */
 class EntityPermissionTree {
 
-    private val root = Node("")
-
+    /**
+     * File permission tree node
+     */
     data class Node(
+        // Path segment
         val segment: String,
+        // Parent node
+        val parent: Node?,
+        // Node children
         val children: MutableMap<String, Node> = mutableMapOf(),
+        // Permissions for users for this node
         val userPermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf(),
+        // Permissions for roles for this node
         val rolePermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf()
     )
 
+    private val root = Node(segment = "", parent = null)
+
     /**
-     * Inserts or updates a permission into the tree at the specified path.
-     * A path is split by '/' into segments. The corresponding node is created if missing.
+     * Add a permission for a path
      */
     fun addPermission(path: String, permission: EntityPermission) {
         val segments = path.trim('/').split('/')
         var current = root
 
-        // Descend or create nodes
+        // Descend or create nodes, attaching each child’s parent
         for (segment in segments) {
-            current = current.children.getOrPut(segment) { Node(segment) }
+            current = current.children.getOrPut(segment) {
+                Node(segment = segment, parent = current)
+            }
         }
 
         // Store the permission based on its type
@@ -48,86 +56,67 @@ class EntityPermissionTree {
     }
 
     /**
-     * Returns the closest permission for the specified userId, or null if not found
-     * at this path or any of its parents.
+     * Gets the closest inherited permission for an input path, for user ID.
+     *
+     * Returns permission either for path or for closest parent.
      */
     fun getClosestPermissionForUser(path: String, userId: Ulid): EntityPermission? {
         val node = findNode(path) ?: return null
-        // Climb up until we find a node with a matching user permission or reach the root
         var current: Node? = node
         while (current != null) {
             current.userPermissions[userId]?.let { return it }
-            current = findParentNode(path, current)
+            current = current.parent // move up
         }
         return null
     }
 
     /**
-     * Returns the closest permission for the specified roleId, or null if not found
-     * at this path or any of its parents.
+     * Gets the closest inherited permission for an input path, for role ID.
+     *
+     * Returns permission either for path or for closest parent.
      */
     fun getClosestPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
         val node = findNode(path) ?: return null
         var current: Node? = node
         while (current != null) {
             current.rolePermissions[roleId]?.let { return it }
-            current = findParentNode(path, current)
+            current = current.parent
         }
         return null
     }
 
+
     /**
-     * Returns the closest permission for any of the specified roleIds. You can adapt
-     * how you combine or prioritize multiple role matches. Here we simply return the
-     * first found, but you could merge permissions if needed.
+     * Gets the closest inherited permission for an input path, for list of role IDs.
+     *
+     * Returns permission either for path or for closest parent.
      */
     fun getClosestPermissionForAnyRole(path: String, roleIds: List<Ulid>): EntityPermission? {
         val node = findNode(path) ?: return null
         var current: Node? = node
         while (current != null) {
-            // Check if current node has a permission for any of the given roles
             for (roleId in roleIds) {
                 current.rolePermissions[roleId]?.let { return it }
             }
-            current = findParentNode(path, current)
+            current = current.parent
         }
         return null
     }
 
     /**
-     * Locates the node that corresponds exactly to the given path, or null if it doesn't exist.
+     * Returns the node for the input path.
      */
     private fun findNode(path: String): Node? {
         val segments = path.trim('/').split('/')
         var current = root
         for (segment in segments) {
-            val next = current.children[segment] ?: return null
-            current = next
+            current = current.children[segment] ?: return null
         }
         return current
     }
 
     /**
-     * Utility to move "one level up" from the given node. We do this by reconstructing
-     * the path from the root, then dropping the last segment to find the parent node.
-     *
-     * If the current node is the root, or we can't find a parent, we return null.
-     */
-    private fun findParentNode(fullPath: String, currentNode: Node): Node? {
-        if (currentNode == root) return null
-
-        // Re-split and remove last segment
-        val segments = fullPath.trim('/').split('/')
-        if (segments.size <= 1) return root
-
-        // Construct the parent path
-        val parentSegments = segments.dropLast(1)
-        val parentPath = parentSegments.joinToString("/")
-        return findNode(parentPath)
-    }
-
-    /**
-     * Removes a permission entry from the specified path by entity ID.
+     * Remove permission with a specific entity ID from a specific path
      */
     fun removePermissionByEntityId(path: String, entityId: Ulid, permissionType: PermissionType?) {
         val node = findNode(path) ?: return
@@ -142,8 +131,7 @@ class EntityPermissionTree {
     }
 
     /**
-     * Updates the path for a specific entity's permission by removing it from the old path
-     * and inserting it under the new path (if the new path is not null/blank).
+     * Update permission for a specific entity ID on a specific path
      */
     fun updatePermissionPath(oldPath: String, newPath: String?, entityId: Ulid, permissionType: PermissionType?) {
         // Move user permission

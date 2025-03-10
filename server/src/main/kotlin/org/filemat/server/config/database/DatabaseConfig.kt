@@ -6,15 +6,9 @@ import org.springframework.jdbc.core.JdbcTemplate
 import java.util.*
 
 
-@Configuration
-class DatabaseConfig(
-    private val jdbcTemplate: JdbcTemplate,
-) {
-
-
-
-}
-
+/**
+ * Custom JDBC type converters
+ */
 @Configuration
 class JdbcConfig : AbstractJdbcConfiguration() {
     override fun userConverters(): List<*> {
@@ -27,9 +21,6 @@ class JdbcConfig : AbstractJdbcConfiguration() {
 
             StringListToStringConverter(),
             StringToStringListConverter(),
-
-//            PermissionListToStringConverter(),
-//            StringToPermissionListConverter(),
         )
     }
 }

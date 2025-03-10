@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * Controller that serves generic frontend state.
+ *
+ * User auth principal, application state, available roles.
+ */
 @BeforeSetup
 @RestController
 @RequestMapping("/v1/state")

@@ -8,7 +8,9 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
-
+/**
+ * Request filter for random utilities
+ */
 @Order(1)
 @Component
 class UtilityFilter : OncePerRequestFilter() {

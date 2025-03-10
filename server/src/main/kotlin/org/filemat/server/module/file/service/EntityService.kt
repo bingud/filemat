@@ -13,6 +13,11 @@ import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 
+/**
+ * Service for file entities in the database
+ *
+ * Entity is a database entry for a file
+ */
 @Service
 class EntityService(
     private val entityRepository: EntityRepository,
@@ -97,6 +102,20 @@ class EntityService(
                 type = LogType.SYSTEM,
                 action = userAction,
                 description = "Failed to get filesystem entity by path",
+                message = e.stackTraceToString()
+            )
+            Result.error("Failed to get file from database.")
+        }
+    }
+
+    fun getByInodeWithNullPath(inode: Long, userAction: UserAction): Result<FilesystemEntity> {
+        return try {
+            entityRepository.getByInodeWithNullPath(inode)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to get file by inode from database.",
                 message = e.stackTraceToString()
             )
             Result.error("Failed to get file from database.")
