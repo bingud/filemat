@@ -46,36 +46,36 @@ class FileService(
      */
     fun getFolderEntries(folderPath: String, principal: Principal): Result<List<FileMetadata>> {
         val path = folderPath.normalizePath()
-        println("Getting $path")
-
-        val isFileAvailable = verifyEntityInode(path, UserAction.READ_FOLDER)
-        if (!isFileAvailable) return Result.error("This folder is not available.")
 
         // Deny blocked folder
         val isAllowed = folderVisibilityService.isPathAllowed(folderPath = path, isNormalized = true)
         if (isAllowed != null) return Result.reject(isAllowed)
 
+        // Verify the file location and handle conflicts
+        val isFileAvailable = verifyEntityInode(path, UserAction.READ_FOLDER)
+        if (!isFileAvailable) return Result.error("This folder is not available.")
+
         val hasAdminAccess = principal.hasPermission(Permission.ACCESS_ALL_FILES)
-        println("has admin $hasAdminAccess")
+
         // Check permissions
         runIf(!hasAdminAccess) {
             val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
                 ?: return Result.reject("You do not have permission to open this folder.")
 
-            println("Got permissions")
             if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
         }
-        println("user has sufficient permissoins")
 
-        println("getting folder entries")
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
-        println("got entries")
         if (result.notFound) return Result.notFound()
         if (result.hasError) return Result.error(result.error)
         if (result.rejected) return Result.reject(result.error)
-        val folderEntries = result.value
+        val unfilteredFolderEntries = result.value
 
-        println("Serve folder")
+        val folderEntries = unfilteredFolderEntries.filter { meta ->
+            val permission = entityPermissionService.getUserPermission(filePath = "$folderPath/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
+            return@filter (permission != null && permission.permissions.contains(Permission.READ))
+        }
+
         return folderEntries.toResult()
     }
 
@@ -148,11 +148,10 @@ class FileService(
             if (entityR.isNotSuccessful) return false
             val entity = entityR.value
 
-            // Only check path of unsupported filesystem
+            // Do not do inode check on unsupported filesystem.
             if (!entity.isFilesystemSupported || entity.inode == null) {
                 val path = Paths.get(filePath)
-                val exists = if (State.App.followSymLinks) path.exists()
-                else path.exists(LinkOption.NOFOLLOW_LINKS)
+                val exists = if (State.App.followSymLinks) path.exists() else path.exists(LinkOption.NOFOLLOW_LINKS)
                 return exists
             }
 
@@ -167,7 +166,9 @@ class FileService(
                 if (existingEntityR.isSuccessful) {
                     val existingEntity = existingEntityR.value
                     entityService.updatePath(existingEntity.entityId, filePath, existingEntity, userAction)
-                }
+                } else return false
+
+                return true
             }
 
             // Path has unexpected Inode, so remove the path from the entity in database.
@@ -184,6 +185,4 @@ class FileService(
             verifyLocks.remove(filePath, lock)
         }
     }
-
-
 }
