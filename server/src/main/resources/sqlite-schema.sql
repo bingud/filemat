@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_date INTEGER,
     is_banned INTEGER NOT NULL
 ) STRICT;
-CREATE UNIQUE INDEX idx_users_email ON users(email);
-CREATE UNIQUE INDEX idx_users_username ON users(username);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
 
 CREATE TABLE IF NOT EXISTS role (
@@ -35,9 +35,9 @@ CREATE TABLE IF NOT EXISTS permissions (
     FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
     CHECK (user_id IS NOT NULL OR role_id IS NOT NULL)
 ) STRICT;
-CREATE INDEX idx_permissions_entity_id ON permissions(entity_id);
-CREATE INDEX idx_permissions_user_id ON permissions(user_id);
-CREATE INDEX idx_permissions_role_id ON permissions(role_id);
+CREATE INDEX IF NOT EXISTS idx_permissions_entity_id ON permissions(entity_id);
+CREATE INDEX IF NOT EXISTS idx_permissions_user_id ON permissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_permissions_role_id ON permissions(role_id);
 
 
 CREATE TABLE IF NOT EXISTS files (
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS files (
     owner_user_id TEXT,
     FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
-CREATE INDEX idx_files_path ON files(path);
-CREATE INDEX idx_files_inode ON files(inode);
+CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);
+CREATE INDEX IF NOT EXISTS idx_files_inode ON files(inode);
 
 CREATE TABLE IF NOT EXISTS auth_token (
     auth_token TEXT PRIMARY KEY,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS auth_token (
     max_age INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
-CREATE INDEX idx_auth_token_user_id ON auth_token(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_token_user_id ON auth_token(user_id);
 
 
 CREATE TABLE IF NOT EXISTS log (
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS log (
     metadata TEXT,
     FOREIGN KEY (initiator_user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
-CREATE INDEX idx_log_initiator_user_id ON log(initiator_user_id);
+CREATE INDEX IF NOT EXISTS idx_log_initiator_user_id ON log(initiator_user_id);
 
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -96,8 +96,8 @@ CREATE TABLE IF NOT EXISTS shared_files (
     FOREIGN KEY (file_id) REFERENCES files(entity_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
-CREATE INDEX idx_shared_files_file_id ON shared_files(file_id);
-CREATE INDEX idx_shared_files_user_id ON shared_files(user_id);
+CREATE INDEX IF NOT EXISTS idx_shared_files_file_id ON shared_files(file_id);
+CREATE INDEX IF NOT EXISTS idx_shared_files_user_id ON shared_files(user_id);
 
 CREATE TABLE IF NOT EXISTS user_roles (
     role_id TEXT NOT NULL,
@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS user_roles (
     FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
-CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
-CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
 
 CREATE TABLE IF NOT EXISTS folder_visibility (
     path TEXT PRIMARY KEY,
