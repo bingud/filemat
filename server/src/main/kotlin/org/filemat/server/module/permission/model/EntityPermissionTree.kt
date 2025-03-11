@@ -32,13 +32,16 @@ class EntityPermissionTree {
      * Add a permission for a path
      */
     fun addPermission(path: String, permission: EntityPermission) {
-        val segments = path.trim('/').split('/')
+        val trim = path.trim('/')
+        val segments = trim.split('/')
         var current = root
 
-        // Descend or create nodes, attaching each child’s parent
-        for (segment in segments) {
-            current = current.children.getOrPut(segment) {
-                Node(segment = segment, parent = current)
+        if (trim.isNotBlank()) {
+            // Descend or create nodes, attaching each child’s parent
+            for (segment in segments) {
+                current = current.children.getOrPut(segment) {
+                    Node(segment = segment, parent = current)
+                }
             }
         }
 
@@ -61,7 +64,7 @@ class EntityPermissionTree {
      * Returns permission either for path or for closest parent.
      */
     fun getClosestPermissionForUser(path: String, userId: Ulid): EntityPermission? {
-        val node = findNode(path) ?: return null
+        val node = findNode(path, true) ?: return null
         var current: Node? = node
         while (current != null) {
             current.userPermissions[userId]?.let { return it }
@@ -76,7 +79,7 @@ class EntityPermissionTree {
      * Returns permission either for path or for closest parent.
      */
     fun getClosestPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
-        val node = findNode(path) ?: return null
+        val node = findNode(path, true) ?: return null
         var current: Node? = node
         while (current != null) {
             current.rolePermissions[roleId]?.let { return it }
@@ -92,7 +95,7 @@ class EntityPermissionTree {
      * Returns permission either for path or for closest parent.
      */
     fun getClosestPermissionForAnyRole(path: String, roleIds: List<Ulid>): EntityPermission? {
-        val node = findNode(path) ?: return null
+        val node = findNode(path, true) ?: return null
         var current: Node? = node
         while (current != null) {
             for (roleId in roleIds) {
@@ -106,12 +109,15 @@ class EntityPermissionTree {
     /**
      * Returns the node for the input path.
      */
-    private fun findNode(path: String): Node? {
+    private fun findNode(path: String, onlyClosest: Boolean = false): Node? {
         val segments = path.trim('/').split('/')
         var current = root
         for (segment in segments) {
-            current = current.children[segment] ?: return null
+            val child = current.children[segment]
+                ?: return if (onlyClosest) current else null
+            current = child
         }
+
         return current
     }
 

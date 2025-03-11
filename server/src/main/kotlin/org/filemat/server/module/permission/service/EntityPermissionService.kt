@@ -14,6 +14,10 @@ import org.filemat.server.module.permission.repository.PermissionRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 
+
+/**
+ * Service for file permissions
+ */
 @Service
 class EntityPermissionService(
     private val permissionRepository: PermissionRepository,
@@ -21,6 +25,9 @@ class EntityPermissionService(
     private val entityService: EntityService,
 ) {
 
+    /**
+     * Holds user and role permissions for file paths in a tree.
+     */
     private val pathTree = EntityPermissionTree()
 
 
