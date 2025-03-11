@@ -41,6 +41,9 @@ data class Result<T>(
             return inputError ?: rejectInput ?: throw IllegalStateException("Tried to access null error or rejection message in Result class.")
         }
 
+    val errorOrNull: String?
+        get() = inputError ?: rejectInput
+
     val valueOrNull: T?
         get() = inputValue
 }

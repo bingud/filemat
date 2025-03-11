@@ -43,6 +43,8 @@ class FileService(
 
     /**
      * Returns list of entries in a folder.
+     *
+     * Verifies user permissions.
      */
     fun getFolderEntries(folderPath: String, principal: Principal): Result<List<FileMetadata>> {
         val path = folderPath.normalizePath()
@@ -55,6 +57,7 @@ class FileService(
         val isFileAvailable = verifyEntityInode(path, UserAction.READ_FOLDER)
         if (!isFileAvailable) return Result.error("This folder is not available.")
 
+        // Check if user can read any files
         val hasAdminAccess = principal.hasPermission(Permission.ACCESS_ALL_FILES)
 
         // Check permissions
@@ -65,15 +68,17 @@ class FileService(
             if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
         }
 
+        // Get folder entries
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
         if (result.notFound) return Result.notFound()
         if (result.hasError) return Result.error(result.error)
         if (result.rejected) return Result.reject(result.error)
         val unfilteredFolderEntries = result.value
 
+        // Check permissions for folder entries
         val folderEntries = unfilteredFolderEntries.filter { meta ->
             val permission = entityPermissionService.getUserPermission(filePath = "$folderPath/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
-            return@filter (permission != null && permission.permissions.contains(Permission.READ))
+            return@filter hasAdminAccess || (permission != null && permission.permissions.contains(Permission.READ))
         }
 
         return folderEntries.toResult()
