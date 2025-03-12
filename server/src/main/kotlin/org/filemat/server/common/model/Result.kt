@@ -10,16 +10,17 @@ data class Result<T>(
 
     companion object {
         fun <T> ok(value: T): Result<T> = Result(inputValue = value)
+        fun ok(): Result<Unit> = Result()
         fun <T> error(message: String): Result<T> = Result(inputError = message)
         fun <T> notFound(): Result<T> = Result(inputNotFound = true)
         fun <T> reject(message: String): Result<T> = Result(rejectInput = message)
     }
 
     val hasError
-        get() = inputError != null && inputValue == null
+        get() = inputError != null
 
     val isSuccessful
-        get() = inputValue != null && inputError == null && !inputNotFound && rejectInput == null
+        get() = inputError == null && !inputNotFound && rejectInput == null
 
     val isNotSuccessful
         get() = !isSuccessful
@@ -51,3 +52,6 @@ data class Result<T>(
 fun <T> T.toResult(): Result<T> {
     return Result.ok(this)
 }
+
+@Suppress("UNCHECKED_CAST")
+fun <T, P> Result<P>.cast(): Result<T> = if (this.isNotSuccessful) this as Result<T> else throw IllegalStateException("Cannot cast type on a successful result.")

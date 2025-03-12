@@ -5,10 +5,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
 import org.filemat.server.common.util.getFileType
-import org.filemat.server.common.util.runIf
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
@@ -50,23 +50,17 @@ class FileService(
         val path = folderPath.normalizePath()
 
         // Deny blocked folder
-        val isAllowed = folderVisibilityService.isPathAllowed(folderPath = path, isNormalized = true)
-        if (isAllowed != null) return Result.reject(isAllowed)
+        val isAllowedResult = isPathAllowed(path)
+        if (isAllowedResult.isNotSuccessful) return isAllowedResult.cast()
 
         // Verify the file location and handle conflicts
         val isFileAvailable = verifyEntityInode(path, UserAction.READ_FOLDER)
-        if (!isFileAvailable) return Result.error("This folder is not available.")
+        if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
         // Check if user can read any files
         val hasAdminAccess = principal.hasPermission(Permission.ACCESS_ALL_FILES)
-
-        // Check permissions
-        runIf(!hasAdminAccess) {
-            val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
-                ?: return Result.reject("You do not have permission to open this folder.")
-
-            if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
-        }
+        val permissionResult = hasReadPermission(path = path, principal = principal, hasAdminAccess = hasAdminAccess)
+        if (permissionResult.isNotSuccessful) return permissionResult.cast()
 
         // Get folder entries
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
@@ -82,6 +76,28 @@ class FileService(
         }
 
         return folderEntries.toResult()
+    }
+
+    /**
+     * Returns whether user has sufficient read permission for path.
+     */
+    fun hasReadPermission(path: String, principal: Principal, hasAdminAccess: Boolean): Result<Unit> {
+        if (!hasAdminAccess) {
+            val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
+                ?: return Result.reject("You do not have permission to open this folder.")
+
+            if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
+        }
+
+        return Result.ok(Unit)
+    }
+
+    /**
+     * Returns null if path is allowed. Otherwise returns string error.
+     */
+    fun isPathAllowed(path: String): Result<Unit> {
+        val result = folderVisibilityService.isPathAllowed(folderPath = path, isNormalized = true)
+        return if (result == null) Result.ok() else Result.reject(result)
     }
 
     /**
@@ -144,36 +160,38 @@ class FileService(
      *
      * Handles file conflicts like moved files. Can reassign inode or path of an entity.
      */
-    fun verifyEntityInode(filePath: String, userAction: UserAction): Boolean {
+    fun verifyEntityInode(filePath: String, userAction: UserAction): Result<Unit> {
         val lock = verifyLocks.computeIfAbsent(filePath) { ReentrantLock() }
         lock.lock()
-        return try {
+        try {
             val entityR = entityService.getByPath(filePath, UserAction.NONE)
-            if (entityR.notFound) return true
-            if (entityR.isNotSuccessful) return false
+            if (entityR.notFound) return Result.ok()
+            if (entityR.isNotSuccessful) return entityR.cast()
             val entity = entityR.value
 
             // Do not do inode check on unsupported filesystem.
             if (!entity.isFilesystemSupported || entity.inode == null) {
                 val path = Paths.get(filePath)
                 val exists = if (State.App.followSymLinks) path.exists() else path.exists(LinkOption.NOFOLLOW_LINKS)
-                return exists
+                return if (exists) Result.ok() else Result.reject("Path does not exist.")
             }
 
             val newInode = FileUtils.getInode(filePath)
-            if (entity.inode == newInode) return true
+            if (entity.inode == newInode) return Result.ok()
 
-            // Check if this inode was already in the database
+            // Handle if a file with a different inode exists on the path
             if (newInode != null) {
                 val existingEntityR = entityService.getByInodeWithNullPath(newInode, userAction)
-                // Dangling entity exists with this inode.
-                // Associate this path to it.
+
+                // Check if this inode was already in the database
                 if (existingEntityR.isSuccessful) {
+                    // Dangling entity exists with this inode.
+                    // Associate this path to it.
                     val existingEntity = existingEntityR.value
                     entityService.updatePath(existingEntity.entityId, filePath, existingEntity, userAction)
-                } else return false
-
-                return true
+                } else if (existingEntityR.hasError){
+                    return existingEntityR.cast()
+                }
             }
 
             // Path has unexpected Inode, so remove the path from the entity in database.
@@ -184,7 +202,7 @@ class FileService(
                 userAction = userAction,
             )
 
-            true
+            return Result.ok()
         } finally {
             lock.unlock()
             verifyLocks.remove(filePath, lock)
