@@ -7,7 +7,6 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
-import org.filemat.server.common.util.FileUtils
 import org.filemat.server.common.util.getFileType
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.auth.model.Principal
@@ -20,13 +19,10 @@ import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.LinkOption
 import java.nio.file.Paths
-import java.nio.file.attribute.BasicFileAttributes
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.io.path.exists
+
 
 /**
  * Service to interact with files.
@@ -36,7 +32,8 @@ class FileService(
     private val folderVisibilityService: FolderVisibilityService,
     private val entityPermissionService: EntityPermissionService,
     private val entityService: EntityService,
-    private val logService: LogService
+    private val logService: LogService,
+    private val filesystem: FilesystemService,
 ) {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -64,18 +61,27 @@ class FileService(
 
         // Get folder entries
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
-        if (result.notFound) return Result.notFound()
-        if (result.hasError) return Result.error(result.error)
-        if (result.rejected) return Result.reject(result.error)
+        if (result.isNotSuccessful) return result.cast()
         val unfilteredFolderEntries = result.value
 
         // Check permissions for folder entries
-        val folderEntries = unfilteredFolderEntries.filter { meta ->
-            val permission = entityPermissionService.getUserPermission(filePath = "$folderPath/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
-            return@filter hasAdminAccess || (permission != null && permission.permissions.contains(Permission.READ))
+        val folderEntries = if (hasAdminAccess) {
+            unfilteredFolderEntries
+        } else {
+            filterPermittedFiles(unfilteredFolderEntries, folderPath, principal)
         }
 
         return folderEntries.toResult()
+    }
+
+    /**
+     * Filters list of files for which user has read permission
+     */
+    fun filterPermittedFiles(list: List<FileMetadata>, folderPath: String, principal: Principal): List<FileMetadata> {
+        return list.filter { meta ->
+            val permission = entityPermissionService.getUserPermission(filePath = "$folderPath/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
+            return@filter permission != null && permission.permissions.contains(Permission.READ)
+        }
     }
 
     /**
@@ -106,11 +112,11 @@ class FileService(
     private fun internalGetFolderEntries(path: String, userAction: UserAction): Result<List<FileMetadata>> {
         try {
             val file = File(path)
-            val filenames = file.listFiles()?.toList()
+            val filenames = filesystem.listFiles(file)
                 ?: return Result.notFound()
 
             val files = filenames.map {
-                getMetadata(it.absolutePath, true)
+                getMetadata(it.absolutePath, true) ?: throw IllegalStateException("Metadata object was null for a known file.")
             }
 
             return files.toResult()
@@ -128,16 +134,12 @@ class FileService(
     /**
      * Gets metadata for a file.
      */
-    private fun getMetadata(rawPath: String, isNormalized: Boolean): FileMetadata {
+    private fun getMetadata(rawPath: String, isNormalized: Boolean): FileMetadata? {
         val normalized = if (isNormalized) rawPath else rawPath.normalizePath()
         val path = Paths.get(normalized)
 
-        val attributes = if (!State.App.followSymLinks) {
-            Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-        } else {
-            val realPath = path.toRealPath()
-            Files.readAttributes(realPath, BasicFileAttributes::class.java)
-        }
+        val attributes = filesystem.readAttributes(path, State.App.followSymLinks)
+            ?: return null
 
         val type = attributes.getFileType()
         val creationTime = attributes.creationTime().toMillis()
@@ -172,11 +174,11 @@ class FileService(
             // Do not do inode check on unsupported filesystem.
             if (!entity.isFilesystemSupported || entity.inode == null) {
                 val path = Paths.get(filePath)
-                val exists = if (State.App.followSymLinks) path.exists() else path.exists(LinkOption.NOFOLLOW_LINKS)
+                val exists = filesystem.exists(path, State.App.followSymLinks)
                 return if (exists) Result.ok() else Result.reject("Path does not exist.")
             }
 
-            val newInode = FileUtils.getInode(filePath)
+            val newInode = filesystem.getInode(filePath)
             if (entity.inode == newInode) return Result.ok()
 
             // Handle if a file with a different inode exists on the path
