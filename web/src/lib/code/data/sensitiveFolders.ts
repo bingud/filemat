@@ -3,6 +3,9 @@ import { handleErrorResponse, handleException, parseJson } from "../util/codeUti
 
 
 
+/**
+ * Fetches the list of folder paths that are marked as sensitive.
+ */
 export async function fetchSensitiveFolderList(): Promise<string[] | null> {
     try {
         appState.sensitiveFolders = null

@@ -4,6 +4,7 @@
     import { auth } from '$lib/code/state/authState.svelte';
     import { fetchState } from '$lib/code/state/stateFetcher';
     import { onDestroy, onMount } from 'svelte';
+    import Navbar from './components/Navbar.svelte';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
@@ -36,9 +37,14 @@
 
 
 {#if mounted}
-    <main>
-        {@render children()}
-    </main>
+    <div class="flex flex-col w-full h-full overflow-hidden">
+        <nav class="contents">
+            <Navbar />
+        </nav>
+        <main>
+            {@render children()}
+        </main>
+    </div>
 {:else if mounted == null}
     <div class="w-full h-full flex flex-col items-center justify-center">
         <div class="loader"></div>

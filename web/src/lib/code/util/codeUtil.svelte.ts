@@ -2,12 +2,22 @@ import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
 
 
+/**
+ * Returns whether HTTP status indicates that server is down.
+ */
 export function isServerDown(httpStatus: number): boolean {
     if (httpStatus > 500 && httpStatus < 530) return true
     return false
 }
+
+/**
+ * Returns a template for a page title.
+ */
 export function pageTitle(text: string) { return `${text} - Filemat` }
 
+/**
+ * Logs an exception
+ */
 export function handleException(message: string, userMessage: string | null, exception: any) {
     console.log(`${message}\n(${userMessage ?? "No user message"})\n${exception}`)
 
@@ -16,6 +26,9 @@ export function handleException(message: string, userMessage: string | null, exc
     }
 }
 
+/**
+ * Logs any error
+ */
 export function handleError(message: string, userMessage: string | null) {
     console.log(`${message}\n(${userMessage ?? "No user message"})`)
 
@@ -24,6 +37,9 @@ export function handleError(message: string, userMessage: string | null) {
     }
 }
 
+/**
+ * Logs an error HTTP response
+ */
 export function handleErrorResponse(response: ErrorResponse, defaultMessage: string) {
     const message = response?.message
     const error = response?.error
@@ -68,13 +84,19 @@ export function makeIdempotent<T, Args extends any[]>(
     }
 }
   
-
+/**
+ * Returns whether a string is blank
+ */
 export function isBlank(str: string | null | undefined): boolean {
     return !str || str.trim().length === 0;
 }
 
 
 type SafeFetchResult = Response & { failed: boolean, exception: any | null }
+
+/**
+ * Fetches without throwing an exception.
+ */
 export async function safeFetch(url: string, args?: RequestInit): Promise<SafeFetchResult> {
     try {
         const response = await fetch(url, args) as any as SafeFetchResult
@@ -86,6 +108,9 @@ export async function safeFetch(url: string, args?: RequestInit): Promise<SafeFe
     }
 }
 
+/**
+ * Returns parsed JSON or null.
+ */
 export function parseJson(j: string): any | null {
     try {
         return JSON.parse(j) ?? null

@@ -10,7 +10,7 @@
     import { appState } from "$lib/code/state/appState.svelte";
     import { pushState } from "$app/navigation";
     import { page } from "$app/state";
-    import Close from "$lib/component/icons/Close.svelte";
+    import Close from "$lib/component/icons/CloseIcon.svelte";
     import Checkmark from "$lib/component/icons/Checkmark.svelte";
     import { dev } from "$app/environment";
     import { envVars } from "$lib/code/data/environmentVariables";

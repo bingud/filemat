@@ -3,7 +3,7 @@
     import {dev} from "$app/environment"
     import { Toaster } from '@jill64/svelte-toast'
     import type { ToastOptions } from 'svelte-french-toast';
-    import Symbols from '$lib/component/icons/Symbols.svelte';
+    import Symbols from '$lib/component/icons/util/Symbols.svelte';
 
 
 	let { children } = $props();

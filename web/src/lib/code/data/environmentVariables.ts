@@ -1,4 +1,7 @@
 
+/**
+ * List of available backend environment variables
+ */
 export const envVars = {
     FM_DEV_MODE: "FM_DEV_MODE",
     FM_HIDE_SENSITIVE_FOLDERS: "FM_HIDE_SENSITIVE_FOLDERS",

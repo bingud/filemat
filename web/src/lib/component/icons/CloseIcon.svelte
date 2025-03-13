@@ -3,4 +3,4 @@
 
 </script>
 
-<SvgUse id="symbol-checkmark"/>
+<SvgUse id="symbol-close" />

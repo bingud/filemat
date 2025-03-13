@@ -1,6 +1,9 @@
 import { isBlank } from "./codeUtil.svelte"
 
 
+/**
+ * Contains value validation methods
+ */
 export class Validator {
     public static email(email: string): string | null {
         if (!email.includes("@") || !email.includes(".")) return "Email is invalid."

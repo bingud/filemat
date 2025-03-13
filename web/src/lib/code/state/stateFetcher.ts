@@ -3,6 +3,9 @@ import { handleError, handleErrorResponse, handleException, isServerDown, parseJ
 import { appState } from "./appState.svelte"
 
 
+/**
+ * Fetches general application state, such as auth, available roles, app state.
+ */
 export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean }): Promise<boolean> {
     try {
         const body = new FormData()
