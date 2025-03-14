@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 @import "$lib/css/forms.css";
 @import "$lib/css/loader.css";
@@ -11,8 +11,39 @@ html {
 
 :root {
     --navbar-height: 3.5rem;
+    --sidebar-w: 17rem;
+    --sidebar-w-desktop: 14rem;
+
+    --bg-dark: #111111;
+    --bg-dark-layout: #141414;
+
+    --bg-light: var(--color-neutral-50);
+    --bg-light-layout: var(--color-neutral-200);
 }
 
+/* 
+    Background Colors
+*/
+.bg-main {
+    @apply bg-(--bg-light) dark:bg-(--bg-dark);
+}
+
+.bg-layout {
+    @apply bg-(--bg-light-layout) dark:bg-(--bg-dark-layout);
+}
+
+
+/* 
+    Text Colors
+*/
+.text-main {
+    @apply text-neutral-950 dark:text-neutral-50;
+}
+
+
+/* 
+    Layouts
+*/
 .page {
     @apply flex flex-col w-full h-full min-h-0;
 }

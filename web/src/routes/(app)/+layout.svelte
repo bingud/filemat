@@ -1,10 +1,13 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
-    import { appState } from '$lib/code/state/appState.svelte';
-    import { auth } from '$lib/code/state/authState.svelte';
+    import { appState } from '$lib/code/stateObjects/appState.svelte';
+    import { auth } from '$lib/code/stateObjects/authState.svelte';
     import { fetchState } from '$lib/code/state/stateFetcher';
     import { onDestroy, onMount } from 'svelte';
     import Navbar from './components/Navbar.svelte';
+    import Sidebar from './components/Sidebar.svelte';
+    import { dev } from '$app/environment';
+    import { uiState } from '$lib/code/stateObjects/uiState.svelte';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
@@ -28,6 +31,10 @@
 
             mounted = true
         })()
+
+        if (dev) {
+            uiState.menuOpen = true
+        }
     })
 
     onDestroy(() => {
@@ -39,8 +46,15 @@
 {#if mounted}
     <div class="flex flex-col w-full h-full overflow-hidden">
         <nav class="contents">
-            <Navbar />
+            <!-- Mobile Top Bar -->
+            <div class="contents md:hidden">
+                <Navbar />
+            </div>
+
+            <!-- Sidebar -->
+            <Sidebar />
         </nav>
+        
         <main>
             {@render children()}
         </main>

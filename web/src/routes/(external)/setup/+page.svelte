@@ -7,7 +7,7 @@
     import { onMount } from "svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { fetchSensitiveFolderList } from "$lib/code/data/sensitiveFolders";
-    import { appState } from "$lib/code/state/appState.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { pushState } from "$app/navigation";
     import { page } from "$app/state";
     import Close from "$lib/component/icons/CloseIcon.svelte";

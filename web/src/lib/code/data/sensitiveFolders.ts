@@ -1,4 +1,4 @@
-import { appState } from "../state/appState.svelte"
+import { appState } from "../stateObjects/appState.svelte"
 import { handleErrorResponse, handleException, parseJson } from "../util/codeUtil.svelte"
 
 

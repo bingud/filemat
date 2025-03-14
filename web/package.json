@@ -13,21 +13,21 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.8",
-		"@sveltejs/kit": "^2.17.1",
+		"@sveltejs/kit": "^2.19.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tailwindcss/container-queries": "^0.1.1",
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.16",
-		"autoprefixer": "^10.4.20",
-		"svelte": "^5.19.9",
+		"autoprefixer": "^10.4.21",
+		"svelte": "^5.23.0",
 		"svelte-check": "^4.0.0",
-		"tailwindcss": "^4.0.2",
-		"typescript": "^5.0.0",
-		"vite": "^6.0.0"
+		"tailwindcss": "^4.0.14",
+		"typescript": "^5.8.2",
+		"vite": "^6.2.2"
 	},
 	"dependencies": {
 		"@jill64/svelte-toast": "^2.1.6",
-		"@tailwindcss/postcss": "^4.0.2",
-		"@tailwindcss/vite": "^4.0.2"
+		"@tailwindcss/postcss": "^4.0.14",
+		"@tailwindcss/vite": "^4.0.14"
 	}
 }

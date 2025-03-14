@@ -1,5 +1,6 @@
 import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
+import type { ErrorResponse } from "../types"
 
 
 /**
@@ -91,6 +92,13 @@ export function isBlank(str: string | null | undefined): boolean {
     return !str || str.trim().length === 0;
 }
 
+/**
+ * Removes spaces from input string
+ */
+export function removeSpaces(str: string): string {
+    return str.replaceAll(" ", "")
+}
+
 
 type SafeFetchResult = Response & { failed: boolean, exception: any | null }
 
@@ -116,5 +124,41 @@ export function parseJson(j: string): any | null {
         return JSON.parse(j) ?? null
     } catch (e) {
         return null
+    }
+}
+
+/**
+ * Returns a debounced input function
+ */
+export function debounceFunction(action: any, delay: any, continuousCallDuration: any) {
+    let timeoutId: any;
+    let continuousCallTimeoutId: any;
+    let lastCallTime: number | null = null;
+
+    return function() {
+        //@ts-ignore
+        const context: any = this;
+        const args = arguments;
+
+        const currentTime = new Date().getTime();
+
+        // If it's the first call or more than continuousCallDuration has passed since the last call
+        if (!lastCallTime || currentTime - lastCallTime > continuousCallDuration) {
+            clearTimeout(continuousCallTimeoutId);
+            lastCallTime = currentTime;
+
+            continuousCallTimeoutId = setTimeout(() => {
+                action.apply(context, args);
+                lastCallTime = null;  // Reset after action has been called
+            }, continuousCallDuration);
+        }
+
+        clearTimeout(timeoutId);
+
+        timeoutId = setTimeout(() => {
+            action.apply(context, args);
+            clearTimeout(continuousCallTimeoutId);
+            lastCallTime = null;
+        }, delay);
     }
 }

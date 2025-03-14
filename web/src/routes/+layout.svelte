@@ -1,10 +1,13 @@
 <script lang="ts">
 	import '../app.css';
-    import {dev} from "$app/environment"
+    import {browser, dev} from "$app/environment"
     import { Toaster } from '@jill64/svelte-toast'
     import type { ToastOptions } from 'svelte-french-toast';
     import Symbols from '$lib/component/icons/util/Symbols.svelte';
-
+    import { onMount } from 'svelte';
+    import { debounceFunction } from '$lib/code/util/codeUtil.svelte';
+    import { updateScreenSize } from '$lib/code/util/uiUtil';
+    import { uiState } from '$lib/code/stateObjects/uiState.svelte';
 
 	let { children } = $props();
 
@@ -12,8 +15,33 @@
     const toastOptions: ToastOptions = {
         duration: 5000
     }
+
+    onMount(() => {
+        updateScreenSize()
+    })
+
+    const updateScreenSizeDebounced = debounceFunction(updateScreenSize, 50, 1000)
+    function onResize() {
+        updateScreenSizeDebounced()
+    }
+
+    /**
+     * Sync dark mode state
+    */
+    $effect(() => {
+        if (!browser) return
+        const html = document.documentElement
+        if (!html) return
+
+        if (uiState.isDark) {
+            html.setAttribute("data-theme", "dark")
+        } else {
+            html.setAttribute("data-theme", "light")
+        }
+    })
 </script>
 
+<svelte:window on:resize={onResize} />
 
 <Symbols />
 <Toaster {palette} {toastOptions} />

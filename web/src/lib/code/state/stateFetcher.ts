@@ -1,6 +1,6 @@
-import { auth } from "../state/authState.svelte"
+import { auth } from "../stateObjects/authState.svelte"
 import { handleError, handleErrorResponse, handleException, isServerDown, parseJson } from "../util/codeUtil.svelte"
-import { appState } from "./appState.svelte"
+import { appState } from "../stateObjects/appState.svelte"
 
 
 /**
