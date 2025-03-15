@@ -20,3 +20,20 @@ export function toggleDarkMode(): boolean {
     uiState.isDark = !uiState.isDark
     return uiState.isDark
 }
+
+/**
+ * Saves whether dark mode is on
+ */
+export async function saveDarkModeState() {
+    localStorage.setItem("dark-mode", `${uiState.isDark}`)
+}
+
+export async function loadDarkModeState() {
+    const raw = localStorage.getItem("dark-mode")
+    if (!raw) return
+    if (raw === "false") {
+        uiState.isDark = false
+    } else {
+        uiState.isDark = true
+    }
+}

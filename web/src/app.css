@@ -6,7 +6,7 @@
 @import "$lib/css/layout.css";
 
 html {
-    @apply fill-neutral-50;
+    @apply fill-neutral-950 dark:fill-neutral-50;
 }
 
 :root {
@@ -17,8 +17,8 @@ html {
     --bg-dark: #111111;
     --bg-dark-layout: #141414;
 
-    --bg-light: var(--color-neutral-50);
-    --bg-light-layout: var(--color-neutral-200);
+    --bg-light: #fafafa;
+    --bg-light-layout: #e5e5e5;
 }
 
 /* 
@@ -45,7 +45,7 @@ html {
     Layouts
 */
 .page {
-    @apply flex flex-col w-full h-full min-h-0;
+    @apply flex w-full h-full min-h-0;
 }
 
 @theme {

@@ -30,7 +30,7 @@
 </script>
 
 
-<div class="size-full flex flex-col items-center justify-center">
+<div class="page flex-col items-center justify-center">
     <button class="tw-form-button" on:click={openFolder}>Open folder</button>
 
     <div id="file-browser" class="flex flex-col gap-6">

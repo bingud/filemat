@@ -216,7 +216,7 @@
     <title>{pageTitle("Setup")}</title>
 </svelte:head>
 
-<div class="page items-center gap-12 pt-6 md:pt-12">
+<div class="page flex-col items-center gap-12 pt-6 md:pt-12">
     {#if alreadySetup === false}
         {#if page.state.popupPhase == null}
             {#if phase === 1}

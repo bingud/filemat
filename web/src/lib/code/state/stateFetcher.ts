@@ -1,17 +1,27 @@
-import { auth } from "../stateObjects/authState.svelte"
+import { auth } from "$lib/code/stateObjects/authState.svelte"
+import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { handleError, handleErrorResponse, handleException, isServerDown, parseJson } from "../util/codeUtil.svelte"
-import { appState } from "../stateObjects/appState.svelte"
+import type { HttpStatus, Principal, Role } from "../auth/types"
+import type { ErrorResponse, ulid } from "../types"
 
+
+type state = {
+    principal: { value: Principal, status: HttpStatus }, 
+    roles: { value: Role[], status: HttpStatus }, 
+    app: { value: { isSetup: boolean }, status: HttpStatus },
+    systemRoleIds: { value: { user: ulid, admin: ulid }, status: HttpStatus },
+}
 
 /**
  * Fetches general application state, such as auth, available roles, app state.
  */
-export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean }): Promise<boolean> {
+export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean, systemRoleIds: boolean }): Promise<boolean> {
     try {
         const body = new FormData()
         if (options.principal) body.append("principal", "true")
         if (options.roles) body.append("roles", "true")
         if (options.app) body.append("app", "true")
+        if (options.systemRoleIds) body.append("systemRoleIds", "true")
 
         const response = await fetch(`/api/v1/state/select`, {
             method: "POST", credentials: "same-origin", body: body
@@ -21,7 +31,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
         const json = parseJson(text)
 
         if (status === 200) {
-            const data = json as { principal: { value: Principal, status: HttpStatus }, roles: { value: Role[], status: HttpStatus }, app: { value: { isSetup: boolean }, status: HttpStatus } }
+            const data = json as state
 
             if (options.principal) {
                 const status = data.principal.status
@@ -47,7 +57,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                 } else if (status === 401) {
                     auth.roleList = null
                 } else {
-                    handleError(`Status ${status} for role list when fetching state.`, `Failed to load the list of user roles (${status})`)
+                    handleError(`Status ${status} for role list when fetching state.`, `Failed to load roles (${status})`)
                     return false
                 }
             }
@@ -60,6 +70,16 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                 } else {
                     handleError(`Status ${status} for app state when fetching state.`, `Failed to load Filemat state (${status})`)
                     return false
+                }
+            }
+            if (options.systemRoleIds) {
+                const status = data.systemRoleIds.status
+
+                if (status === 200) {
+                    const ids = data.systemRoleIds.value
+                    auth.systemRoleIds = ids
+                } else {
+                    handleError(`Status ${status} for system role IDs when fetching state.`, `Failed to load system roles (${status})`)
                 }
             }
 

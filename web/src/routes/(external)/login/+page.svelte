@@ -54,7 +54,7 @@
 </script>
 
 
-<div class="page items-center gap-12 pt-12">
+<div class="page flex-col items-center gap-12 pt-12">
     <h1>Login</h1>
 
     <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_2} title="Login to Filemat">

@@ -17,6 +17,14 @@ class UiState {
     isDesktop: boolean = $state(false)
 
     /**
+     * Holds settings UI state
+     */
+    settings = $state({
+        section: "preferences" as "preferences" | "users",
+        menuOpen: false as boolean
+    })
+
+    /**
      * Binds methods to this context
      */
     constructor() {
@@ -37,6 +45,7 @@ class UiState {
     onResize() {
         if (this.isDesktop) {
             this.menuOpen = false
+            this.settings.menuOpen = false
         }
     }
 }

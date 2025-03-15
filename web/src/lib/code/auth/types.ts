@@ -1,4 +1,6 @@
-type Principal = {
+import type { ulid } from "../types"
+
+export type Principal = {
     userId: ulid,
     email: string,
     username: string,
@@ -7,14 +9,14 @@ type Principal = {
     roles: ulid[]
 }
 
-type Role = {
+export type Role = {
     roleId: ulid,
     name: string,
     createdDate: number,
     permissions: Permission[]
 }
 
-enum Permission {
+export enum Permission {
     READ = "READ",
     DELETE = "DELETE",
     WRITE = "WRITE",
@@ -28,4 +30,4 @@ enum Permission {
     EDIT_ROLES = "EDIT_ROLES",
 }
 
-type HttpStatus = 200 | 400 | 401 | 403 | 404 | 500 | 503
+export type HttpStatus = 200 | 400 | 401 | 403 | 404 | 500 | 503

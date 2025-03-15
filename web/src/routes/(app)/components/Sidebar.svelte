@@ -11,27 +11,32 @@
 
         if (path === "/") {
             return "all"
+        } else if (path.startsWith("/settings")) {
+            return "settings"
         }
 
         return "whothefuckknows"
     })
 
+    function hide() { uiState.menuOpen = false }
+
     const transitionDuration = 150
 </script>
 
 
-<div class="fixed top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none">
+<div class="fixed top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none md:contents">
     <!-- Navbar -->
     {#if uiState.menuOpen || uiState.isDesktop}
-        <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-(--sidebar-w) md:w-(--sidebar-w-desktop) bg-layout pointer-events-auto z-10 flex flex-col justify-between">
+        <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-(--sidebar-w) md:w-(--sidebar-w-desktop) h-full bg-layout pointer-events-auto z-10 flex flex-col justify-between shrink-0">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/" class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
-                <a href="/" class="sidebar-button">Home Folder</a>
+                <a href="/" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
+                <a href="/" on:click={hide} class="sidebar-button">Home Folder</a>
             </div>
 
             <!-- Bottom -->
             <div class="flex flex-col px-2 py-4 gap-1">
+                <a href="/settings" on:click={hide} class="sidebar-button" class:current-button={currentButton === "settings"}>Settings</a>
                 <button on:click={toggleDarkMode} class="sidebar-button">{uiState.isDark ? "Dark" : "Light"} mode</button>
             </div>
         </div>
@@ -44,14 +49,14 @@
 </div>
 
 
-<style>
-    @import "/src/app.css";
+<style lang="postcss">
+    @reference "tailwindcss";
 
     .sidebar-button {
-        @apply flex items-center px-4 py-2 w-full rounded-md duration-75 hover:bg-neutral-400 dark:hover:bg-neutral-800;
+        @apply flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none;
     }
     
     .current-button {
-        @apply bg-neutral-400 dark:bg-neutral-800;
+        @apply bg-neutral-300 dark:bg-neutral-800;
     }
 </style>

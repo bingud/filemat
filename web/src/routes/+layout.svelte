@@ -6,7 +6,7 @@
     import Symbols from '$lib/component/icons/util/Symbols.svelte';
     import { onMount } from 'svelte';
     import { debounceFunction } from '$lib/code/util/codeUtil.svelte';
-    import { updateScreenSize } from '$lib/code/util/uiUtil';
+    import { loadDarkModeState, saveDarkModeState, updateScreenSize } from '$lib/code/util/uiUtil';
     import { uiState } from '$lib/code/stateObjects/uiState.svelte';
 
 	let { children } = $props();
@@ -17,6 +17,7 @@
     }
 
     onMount(() => {
+        loadDarkModeState()
         updateScreenSize()
     })
 
@@ -38,6 +39,8 @@
         } else {
             html.setAttribute("data-theme", "light")
         }
+
+        saveDarkModeState()
     })
 </script>
 
