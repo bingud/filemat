@@ -144,7 +144,7 @@ class SetupController(
             }
 
             // Give roles to user account
-            val roleResult = userRoleService.assign(userId = user.userId, roleId = Props.adminRoleId, action = UserAction.APP_SETUP)
+            val roleResult = userRoleService.assign(userId = user.userId, roleId = Props.Roles.adminRoleId, action = UserAction.APP_SETUP)
             if (roleResult.isNotSuccessful) {
                 status.setRollbackOnly()
                 return@runTransaction roleResult

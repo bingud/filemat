@@ -9,10 +9,19 @@ import org.filemat.server.config.properties.SensitiveFolderPaths
 object Props {
 
     const val appName = "Filemat"
-    val adminRoleId = Ulid.from("005QMX54X0AMAS9Z66WXDGY8EX")
-    val userRoleId = Ulid.from("008BG034N8XRRQ1MKHXNF9Y7RR")
     const val setupCodeFile = "/var/lib/filemat/setup-code.txt"
     val sensitiveFolders = SensitiveFolderPaths
+
+    /**
+     * Holds role-related values
+     */
+    object Roles {
+        val userRoleId = Ulid.from("008BG034N8XRRQ1MKHXNF9Y7RR")
+        val adminRoleId = Ulid.from("005QMX54X0AMAS9Z66WXDGY8EX")
+
+        val userRoleIdString = userRoleId.toString()
+        val adminRoleIdString = adminRoleId.toString()
+    }
 
     /**
      * Keys for database settings table.

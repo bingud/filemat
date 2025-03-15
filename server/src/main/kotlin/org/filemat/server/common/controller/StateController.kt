@@ -7,6 +7,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.config.Props
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
 import org.springframework.http.ResponseEntity
@@ -31,6 +32,7 @@ class StateController : AController() {
         request: HttpServletRequest,
         @RequestParam("principal", required = false) rawPrincipal: String?,
         @RequestParam("roles", required = false) rawRoles: String?,
+        @RequestParam("systemRoleIds", required = false) rawrSysRoleIds: String?,
         @RequestParam("app", required = false) rawApp: String?,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()
@@ -38,7 +40,7 @@ class StateController : AController() {
         val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
         val getRoles = rawRoles?.toBooleanStrictOrNull()
         val getApp = rawApp?.toBooleanStrictOrNull()
-        if (getPrincipal != true && getRoles != true && getApp != true) return bad("Auth state request did not request anything.", "")
+        val getSystemRoleIds = rawrSysRoleIds?.toBooleanStrictOrNull()
 
         val builder = JsonBuilder()
 
@@ -78,6 +80,18 @@ class StateController : AController() {
             appBuilder.put("value", valueBuilder.build())
 
             builder.put("app", appBuilder.build())
+        }
+        if (getSystemRoleIds == true) {
+            val valueBuilder = JsonBuilder()
+
+            val roleBuilder = JsonBuilder()
+            roleBuilder.put("user", Props.Roles.userRoleIdString)
+            roleBuilder.put("admin", Props.Roles.adminRoleIdString)
+
+            valueBuilder.put("value", roleBuilder.build())
+            valueBuilder.put("status", 200)
+
+            builder.put("systemRoleIds", valueBuilder.build())
         }
 
         val serialized = builder.toString()

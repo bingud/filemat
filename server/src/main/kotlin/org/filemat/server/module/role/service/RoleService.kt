@@ -44,7 +44,7 @@ class RoleService(
 
         // Check if the system roles already exist.
         val adminExists = try {
-            roleRepository.exists(Props.adminRoleId)
+            roleRepository.exists(Props.Roles.adminRoleId)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -56,7 +56,7 @@ class RoleService(
         }
 
         val userExists = try {
-            roleRepository.exists(Props.userRoleId)
+            roleRepository.exists(Props.Roles.userRoleId)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -72,7 +72,7 @@ class RoleService(
         if (!adminExists) {
             rolesToCreate.add(
                 Role(
-                    roleId = Props.adminRoleId,
+                    roleId = Props.Roles.adminRoleId,
                     name = "admin",
                     createdDate = now,
                     permissions = Permission.entries
@@ -80,7 +80,7 @@ class RoleService(
             )
         } else {
             try {
-                roleRepository.updatePermissions(Props.adminRoleId, Permission.entries.serialize())
+                roleRepository.updatePermissions(Props.Roles.adminRoleId, Permission.entries.serialize())
             } catch (e: Exception) {
                 logService.error(type = LogType.SYSTEM, action = UserAction.NONE, description = "Failed to update permissions of admin role during initialization", message = e.stackTraceToString())
                 return false
@@ -90,7 +90,7 @@ class RoleService(
         if (!userExists) {
             rolesToCreate.add(
                 Role(
-                    roleId = Props.userRoleId,
+                    roleId = Props.Roles.userRoleId,
                     name = "user",
                     createdDate = now,
                     permissions = emptyList()
