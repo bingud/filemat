@@ -14,7 +14,7 @@ export function isServerDown(httpStatus: number): boolean {
 /**
  * Returns a template for a page title.
  */
-export function pageTitle(text: string) { return `${text} - Filemat` }
+export function pageTitle(text: string) { return `${text} — Filemat` }
 
 /**
  * Logs an exception
@@ -161,4 +161,9 @@ export function debounceFunction(action: any, delay: any, continuousCallDuration
             lastCallTime = null;
         }, delay);
     }
+}
+
+
+export function valuesOf<T>(obj: {[key: string]: T}): T[] {
+    return Object.values(obj)
 }

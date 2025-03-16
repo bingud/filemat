@@ -5,20 +5,13 @@
     import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
+    import { settingSectionLists } from "../settings";
 
     export let classes: string
 
-    const sectionLists: {[key: string]: (typeof uiState.settings.section)[]} = {
-        user: [
-            "preferences"
-        ],
-        admin: [
-            "users"
-        ]
-    }
-
     function openSection(section: typeof uiState.settings.section) {
         uiState.settings.section = section
+        uiState.settings.menuOpen = false
     }
 
     const transitionDuration = 150
@@ -31,13 +24,13 @@
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-(--sidebar-w) md:w-(--sidebar-w-desktop) h-full bg-layout pointer-events-auto z-10 flex flex-col justify-between shrink-0 {classes}">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                {#each Object.values(sectionLists) as sections, index}
+                {#each Object.values(settingSectionLists) as sections, index}
                     {#if index !== 1 || auth.isAdmin}
                         {#if index === 1}
                             <p class="w-full px-4 border-b border-neutral-700 my-4 py-2 font-medium">Admin Settings</p>
                         {/if}
                         {#each sections as section}
-                            <button on:click={() => { openSection(section) }} class="sidebar-button" class:current-button={uiState.settings.section === section}>{section}</button>
+                            <a href="/settings/{section}" on:click={() => { openSection(section) }} class="sidebar-button" class:current-button={uiState.settings.section === section}>{section}</a>
                         {/each}
                     {/if}
                 {/each}

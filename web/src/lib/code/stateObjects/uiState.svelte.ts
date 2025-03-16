@@ -20,6 +20,7 @@ class UiState {
      * Holds settings UI state
      */
     settings = $state({
+        defaultSection: "preferences",
         section: "preferences" as "preferences" | "users",
         menuOpen: false as boolean
     })

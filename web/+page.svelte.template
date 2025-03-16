@@ -1,0 +1,14 @@
+<script lang="ts">
+    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
+
+</script>
+
+
+<svelte:head>
+    <title>{pageTitle("")}</title>
+</svelte:head>
+
+
+<div class="page ">
+
+</div>
