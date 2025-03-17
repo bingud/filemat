@@ -5,43 +5,25 @@ import { resolve } from 'node:path';
 
 
 export default defineConfig({
-	plugins: [
-		tailwindcss(),
-		sveltekit(),
-		SvelteTailwindApply(),
-	],
-	resolve: {
-		alias: [
-			{
-				find: "@app-css",
-				replacement: resolve(__dirname, 'src/app.css')
-			}
-		]
-	}
-});
+    plugins: [
+        injectGlobalCSS(`@import "/src/app.css" reference;`),
+        // SvelteTailwindApply(),
+        tailwindcss(),
+        sveltekit(),
+    ],
+})
 
 
-
-
-
-
-
-
-
-
-async function SvelteTailwindApply(): Promise<Plugin> {
-  return {
-    name: "svelte-tailwind-apply",
-    api: {
-      sveltePreprocess: {
-        style: async ({ content, filename }: { content: any, filename: any }) => {
-          if (filename.endsWith(".svelte")) {
-            const newContent = `@import "@app-css" reference;\n${content}`;
-            return { code: newContent };
-          }
-          return { code: content };
-        },
-      },
-    },
-  }
-};
+function injectGlobalCSS(cssToInject: string): Plugin {
+    return {
+        name: 'inject-global-css',
+        enforce: 'pre',
+        transform(code, id) {
+            if (!id.endsWith('.svelte')) return null;
+            return code.replace(
+                /<style(\s[^>]*)?>/g,
+                `<style$1>\n${cssToInject}\n`
+            )
+        }
+    }
+}

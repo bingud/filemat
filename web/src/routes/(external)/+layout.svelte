@@ -9,7 +9,6 @@
     <div class="flex gap-3">
         <a href="/setup">Setup</a>
         <a href="/login">Login</a>
-        <a href="/register">Register</a>
     </div>
 </nav>
 
