@@ -1,8 +1,9 @@
 <script lang="ts">
+    import type { PublicUser } from "$lib/code/auth/types";
     import { handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
 
-    let users = $state(null)
+    let users: PublicUser[] | null = $state(null)
 
     onMount(() => {
         loadUserList()
@@ -40,5 +41,14 @@
 
 
 <div class="page">
-    
+    {#if users}
+        <ul class="flex flex-col w-full">
+            {#each users as user}
+                <li class="flex w-full items-center justify-around rounded bg-neutral-200 py-2 px-4">
+                    <p>{user.username}</p>
+                    <p>{user.email}</p>
+                </li>
+            {/each}
+        </ul>
+    {/if}
 </div>

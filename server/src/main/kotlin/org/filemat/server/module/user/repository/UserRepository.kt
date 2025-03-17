@@ -1,6 +1,7 @@
 package org.filemat.server.module.user.repository
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.module.user.model.PublicUser
 import org.filemat.server.module.user.model.User
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
@@ -35,4 +36,8 @@ interface UserRepository : CrudRepository<User, Ulid> {
 
     @Query("SELECT * FROM users WHERE user_id = :userId")
     fun getByUserId(userId: Ulid): User?
+
+
+    @Query("SELECT * FROM users")
+    fun getAllUsers(): List<PublicUser>
 }

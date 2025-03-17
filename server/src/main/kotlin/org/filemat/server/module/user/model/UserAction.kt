@@ -15,4 +15,5 @@ enum class UserAction {
     GENERIC_GET_ACCOUNT_ROLES,              // 6
     GENERIC_GET_PRINCIPAL,                  // 7
     READ_FOLDER,                            // 8
+    LIST_USERS,                             // 9
 }
