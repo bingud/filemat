@@ -31,3 +31,13 @@ export enum Permission {
 }
 
 export type HttpStatus = 200 | 400 | 401 | 403 | 404 | 500 | 503
+
+export type PublicUser = {
+    userId: ulid,
+    email: String,
+    username: String,
+    mfaTotpStatus: Boolean,
+    createdDate: number,
+    lastLoginDate: number | null,
+    isBanned: Boolean,
+}

@@ -42,9 +42,9 @@
 
 <div class="page">
     {#if users}
-        <ul class="flex flex-col w-full">
+        <ul class="flex flex-col w-full py-2">
             {#each users as user}
-                <li class="flex w-full items-center justify-around rounded bg-neutral-200 py-2 px-4">
+                <li class="flex w-full items-center justify-around rounded bg-neutral-200 dark:bg-neutral-900 py-2 px-4">
                     <p>{user.username}</p>
                     <p>{user.email}</p>
                 </li>
