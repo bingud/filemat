@@ -12,8 +12,7 @@ html {
 
 :root {
     --navbar-height: 3.5rem;
-    --sidebar-w: 17rem;
-    --sidebar-w-desktop: 14rem;
+    
 
     --bg-dark: #111111;
     --bg-dark-layout: #141414;
@@ -21,6 +20,15 @@ html {
     --bg-light: #fafafa;
     --bg-light-layout: #e5e5e5;
 }
+
+@theme {
+    --spacing-without-layout: calc(100%-var(--sidebar-w));
+    --spacing-without-layout-desktop: calc(100%-var(--sidebar-w-desktop));
+
+    --spacing-sidebar: 17rem;
+    --spacing-sidebar-desktop: 14rem;
+}
+
 
 /* 
     Background Colors

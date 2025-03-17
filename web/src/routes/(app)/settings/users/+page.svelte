@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { PublicUser } from "$lib/code/auth/types";
-    import { handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
 
     let users: PublicUser[] | null = $state(null)
@@ -40,15 +40,39 @@
 </svelte:head>
 
 
-<div class="page">
+<div class="page px-4">
     {#if users}
-        <ul class="flex flex-col w-full py-2">
-            {#each users as user}
-                <li class="flex w-full items-center justify-around rounded bg-neutral-200 dark:bg-neutral-900 py-2 px-4">
-                    <p>{user.username}</p>
-                    <p>{user.email}</p>
-                </li>
-            {/each}
-        </ul>
+        <div class="w-full overflow-y-auto scrollbar">
+            <table class="w-full max-w-fit">
+                <thead>
+                    <tr class="dark:bg-neutral-900 text-left">
+                        <th class="py-2 px-4">Email</th>
+                        <th class="py-2 px-4">Username</th>
+                        <th class="py-2 px-4">MFA Status</th>
+                        <th class="py-2 px-4">Created Date</th>
+                        <th class="py-2 px-4">Last Login</th>
+                        <th class="py-2 px-4">Banned</th>
+                        <th class="py-2 px-4">User ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each users as user, index}
+                        <tr class="{index % 2 === 0 ? 'bg-neutral-200 dark:bg-neutral-800' : 'bg-neutral-100 dark:bg-neutral-900'} whitespace-nowrap">
+                            <td class="py-2 px-4">{user.email}</td>
+                            <td class="py-2 px-4">{user.username}</td>
+                            <td class="py-2 px-4">{user.mfaTotpStatus ? 'Enabled' : 'Disabled'}</td>
+                            <td class="py-2 px-4">{formatUnixTimestamp(user.createdDate)}</td>
+                            <td class="py-2 px-4">
+                                {user.lastLoginDate 
+                                    ? formatUnixTimestamp(user.lastLoginDate) 
+                                    : 'N/A'}
+                            </td>
+                            <td class="py-2 px-4">{user.isBanned ? 'Yes' : 'No'}</td>
+                            <td class="py-2 px-4">{user.userId}</td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
     {/if}
 </div>
