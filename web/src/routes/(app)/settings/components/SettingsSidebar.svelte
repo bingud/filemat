@@ -1,8 +1,6 @@
 <script lang="ts">
-    import { page } from "$app/state";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
     import { settingSectionLists } from "../settings";
@@ -30,7 +28,7 @@
                             <p class="w-full px-4 border-b border-neutral-700 my-4 py-2 font-medium">Admin Settings</p>
                         {/if}
                         {#each sections as section}
-                            <a href="/settings/{section}" on:click={() => { openSection(section) }} class="sidebar-button" class:current-button={uiState.settings.section === section}>{section}</a>
+                            <a href="/settings/{section}" on:click={() => { openSection(section) }} class="flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none capitalize {uiState.settings.section === section ? 'bg-neutral-300 dark:bg-neutral-800' : ''}">{section}</a>
                         {/each}
                     {/if}
                 {/each}
@@ -50,13 +48,4 @@
 
 
 <style>
-    @reference "tailwindcss";
-
-    :global(.sidebar-button) {
-        @apply flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none capitalize;
-    }
-    
-    :global(.current-button) {
-        @apply bg-neutral-300 dark:bg-neutral-800;
-    }
 </style>

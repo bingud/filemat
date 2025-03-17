@@ -13,7 +13,8 @@
 
     const palette = {}
     const toastOptions: ToastOptions = {
-        duration: 5000
+        duration: 5000,
+        position: "bottom-right"
     }
 
     onMount(() => {
