@@ -22,8 +22,8 @@ html {
 }
 
 @theme {
-    --spacing-without-layout: calc(100%-var(--sidebar-w));
-    --spacing-without-layout-desktop: calc(100%-var(--sidebar-w-desktop));
+    --spacing-without-sidebar: calc(100% - var(--spacing-sidebar));
+    --spacing-without-sidebar-desktop: calc(100% - var(--spacing-sidebar-desktop));
 
     --spacing-sidebar: 17rem;
     --spacing-sidebar-desktop: 14rem;

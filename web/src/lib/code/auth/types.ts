@@ -32,6 +32,7 @@ export enum Permission {
 
 export type HttpStatus = 200 | 400 | 401 | 403 | 404 | 500 | 503
 
+
 export type PublicUser = {
     userId: ulid,
     email: String,
@@ -40,4 +41,8 @@ export type PublicUser = {
     createdDate: number,
     lastLoginDate: number | null,
     isBanned: Boolean,
+}
+
+export type FullPublicUser = PublicUser & {
+    roles: ulid[]
 }

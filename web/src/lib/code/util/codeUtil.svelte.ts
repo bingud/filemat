@@ -171,6 +171,13 @@ export function valuesOf<T>(obj: {[key: string]: T}): T[] {
     return Object.values(obj)
 }
 
+/**
+ * Returns keys of an object
+ */
+export function keysOf<T>(obj: {[key: string]: T}): string[] {
+    return Object.keys(obj)
+}
+
 
 /**
  * Formats unix timestamp into text
@@ -186,4 +193,16 @@ export function formatUnixTimestamp(unixTimestamp: number) {
     const minutes = String(date.getMinutes()).padStart(2, '0');
     
     return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+
+/**
+ * Creates FormData object
+ */
+export function formData(obj: { [key: string]: string }): FormData {
+    const data = new FormData()
+    Object.keys(obj).forEach((v: string) => {
+        data.append(v, obj[v])
+    })
+    return data
 }

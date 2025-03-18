@@ -50,7 +50,7 @@
 <Symbols />
 <Toaster {palette} {toastOptions} />
 
-<div class="w-full min-h-0 h-full flex flex-col">
+<div id="root-page" class="w-full min-h-0 h-full flex flex-col">
     {@render children()}
 </div>
 

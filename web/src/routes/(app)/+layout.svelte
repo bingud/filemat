@@ -55,7 +55,7 @@
             <Sidebar />
         </nav>
         
-        <main class="w-full h-full shrink overflow-auto">
+        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-full">
             {@render children()}
         </main>
     </div>
