@@ -1,29 +1,34 @@
 package org.filemat.server.module.user.model
 
 import com.github.f4b6a3.ulid.Ulid
+import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
 @Table("users")
 data class User(
+    @Id
     @Column("user_id")
-    val userId: Ulid,
+    override val userId: Ulid,
     @Column("email")
-    val email: String,
+    override val email: String,
     @Column("username")
-    val username: String,
+    override val username: String,
     @Column("password")
-    val password: String,
+    override val password: String,
     @Column("mfa_totp_secret")
-    val mfaTotpSecret: String?,
+    override val mfaTotpSecret: String?,
     @Column("mfa_totp_status")
-    val mfaTotpStatus: Boolean,
+    override val mfaTotpStatus: Boolean,
     @Column("mfa_totp_codes")
-    val mfaTotpCodes: List<String>?,
+    override val mfaTotpCodes: List<String>?,
     @Column("created_date")
-    val createdDate: Long,
+    override val createdDate: Long,
     @Column("last_login_date")
-    val lastLoginDate: Long?,
+    override val lastLoginDate: Long?,
     @Column("is_banned")
-    val isBanned: Boolean,
-)
+    override val isBanned: Boolean,
+) : AUser()
+
+
+

@@ -36,8 +36,4 @@ interface UserRepository : CrudRepository<User, Ulid> {
 
     @Query("SELECT * FROM users WHERE user_id = :userId")
     fun getByUserId(userId: Ulid): User?
-
-
-    @Query("SELECT * FROM users")
-    fun getAllUsers(): List<PublicUser>
 }

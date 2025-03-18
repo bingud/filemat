@@ -210,7 +210,31 @@ class LogService(
         targetId: Ulid? = null,
         meta: Map<String, String>?,
     ): Boolean {
-        fun printLog(error: Boolean) { println("\n********************************************************\n${if (error) "FAILED TO SAVE LOG TO DATABASE" else ""}\n$level  -  $type  -  $action\nAt ${Instant.ofEpochSecond(createdDate)}  -  Initiated by ID: $initiatorId  -  Initiator IP: $initiatorIp  -  Target ID: $targetId\n$description\n$message") }
+        fun printLog(error: Boolean) {
+            val s = StringBuilder()
+            fun StringBuilder.div() = s.append("  -  ")
+
+            s.append("\n********************************************************\n")
+            if (error) {
+                s.append("FAILED TO SAVE LOG TO DATABASE")
+            }
+            s.appendLine().append(level).div().append(type).div().append(action).appendLine()
+            s.append("At ").append(Instant.ofEpochSecond(createdDate)).div().append("Initiated by ID: ").append(initiatorIp).div()
+
+            if (!meta.isNullOrEmpty()) {
+                s.appendLine()
+                meta.forEach {
+                    s.append(it.key).append(": ").append(it.value).div()
+                }
+                s.appendLine()
+            }
+
+            s.append("Initiator IP: ").append(initiatorIp).div()
+            s.append("Target ID: ").append(targetId).appendLine().append(description).appendLine().append(message).appendLine()
+
+
+            println(s.toString())
+        }
 
         try {
             logRepository.insertLog(

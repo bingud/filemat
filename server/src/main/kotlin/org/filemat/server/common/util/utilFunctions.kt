@@ -1,5 +1,6 @@
 package org.filemat.server.common.util
 
+import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
@@ -57,6 +58,8 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
 inline fun <T> runIf(condition: Boolean, block: () -> T): T? {
     return if (condition) block() else null
 }
+
+fun parseUlidOrNull(str: String): Ulid? = runCatching { Ulid.from(str) }.getOrNull()
 
 fun getUlid() = UlidCreator.getUlid()
 

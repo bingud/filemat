@@ -50,30 +50,30 @@ class AuthController(
 
         if (username.contains("@")) {
             Validator.email(username)?.let {
-                loginLog(LogLevel.WARN, "Failed login - Invalid email", it, meta)
+                loginLog(LogLevel.WARN, "Failed login - Invalid email", it, meta, ip)
                 return bad(it, "email-invalid")
             }
         } else {
             Validator.username(username)?.let {
-                loginLog(LogLevel.WARN, "Failed login - Invalid username", it, meta)
+                loginLog(LogLevel.WARN, "Failed login - Invalid username", it, meta, ip)
                 return bad(it, "username-invalid")
             }
         }
         Validator.password(password)?.let {
-            loginLog(LogLevel.WARN, "Failed login - Invalid password", it, meta)
+            loginLog(LogLevel.WARN, "Failed login - Invalid password", it, meta, ip)
             return bad(it, "password-invalid")
         }
 
         val userRes = if (username.contains("@")) userService.getUserByEmail(username, UserAction.LOGIN) else userService.getUserByUsername(username, UserAction.LOGIN)
         if (userRes.notFound) return unauthenticated("Password is incorrect.", "incorrect-password")
-            .also { loginLog(LogLevel.WARN, "Failed login - Invalid account", "Account does not exist.", meta) }
+            .also { loginLog(LogLevel.WARN, "Failed login - Invalid account", "Account does not exist.", meta, ip) }
         if (userRes.hasError) return internal(userRes.error, "")
         val user = userRes.value
 
         if (user.isBanned) return bad("This account is banned.", "banned")
-            .also { loginLog(LogLevel.WARN, "Failed login - User banned", "", meta) }
+            .also { loginLog(LogLevel.WARN, "Failed login - User banned", "", meta, ip) }
         if (!passwordEncoder.matches(password, user.password)) return bad("Password is incorrect.", "incorrect-password")
-            .also { loginLog(LogLevel.WARN, "Failed login - Incorrect password", "", meta) }
+            .also { loginLog(LogLevel.WARN, "Failed login - Incorrect password", "", meta, ip) }
 
         val tokenR = authTokenService.createToken(userId = user.userId, userAgent = userAgent, userAction = UserAction.LOGIN)
         if (tokenR.isNotSuccessful) return internal(tokenR.error, "")
@@ -82,28 +82,27 @@ class AuthController(
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
 
-//        val principal = authService.getPrincipalByUserId(user.userId)
-//        if (principal.)
-
-        loginLog(LogLevel.INFO, "Successful login", "", meta)
+        loginLog(LogLevel.INFO, "", "Successful login", meta, ip)
 
         return ok()
     }
 
     private fun loginLog(
         level: LogLevel,
-        message: String,
         description: String,
+        message: String,
         meta: Map<String, String>,
+        ip: String
     ) {
         logService.createLog(
             type = LogType.AUTH,
             level = level,
             createdDate = unixNow(),
             action = UserAction.LOGIN,
-            description = "description",
+            description = description,
             message = message,
             meta = meta,
+            initiatorIp = ip
         )
     }
 
