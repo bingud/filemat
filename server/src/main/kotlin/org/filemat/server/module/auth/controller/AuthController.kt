@@ -47,6 +47,7 @@ class AuthController(
     ): ResponseEntity<String> {
         val ip = request.realIp()
         val meta = mapOf("ip" to ip, "user-agent" to userAgent, "target-username" to username)
+        val now = unixNow()
 
         if (username.contains("@")) {
             Validator.email(username)?.let {
@@ -81,6 +82,8 @@ class AuthController(
 
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
+
+        userService.setLastLoginDate(user.userId, now)
 
         loginLog(LogLevel.INFO, "", "Successful login", meta, ip)
 

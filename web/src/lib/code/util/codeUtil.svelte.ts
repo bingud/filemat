@@ -206,3 +206,23 @@ export function formData(obj: { [key: string]: string }): FormData {
     })
     return data
 }
+
+
+type httpStatus = { ok: true, serverDown: false, failed: false } | { ok: false, serverDown: true, failed: true } | { ok: false, serverDown: false, failed: true }
+
+/**
+ * Parses HTTP status code
+ */
+export function toStatus(s: number): httpStatus {
+    let result: httpStatus
+    if (s === 200){
+        result = { ok: true, serverDown: false, failed: false }
+    } else if (isServerDown(s)) {
+        result = { ok: false, serverDown: true, failed: true }
+    } else {
+        result = { ok: false, serverDown: false, failed: true }
+    }
+
+    result.toString = () => { return `${s}` }
+    return result
+}

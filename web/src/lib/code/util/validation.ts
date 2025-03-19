@@ -1,3 +1,4 @@
+import type { ulid } from "../types"
 import { isBlank } from "./codeUtil.svelte"
 
 
@@ -11,6 +12,11 @@ export class Validator {
         if (email.length > 256) return "Email is too long."
 
         return null
+    }
+
+    public static isUlidValid(ulid: ulid | string): boolean {
+        if (isBlank(ulid) || ulid.length !== 26) return false
+        return true
     }
   
     public static password(

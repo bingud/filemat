@@ -1,14 +1,17 @@
 <script lang="ts">
     import type { PublicUser } from "$lib/code/auth/types";
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
 
+    const title = "Users"
     let users: PublicUser[] | null = $state(null)
     let loading = $state(false)
 
     onMount(() => {
+        uiState.settings.title = title
         loadUserList()
     })
 
@@ -41,13 +44,13 @@
 
 
 <svelte:head>
-    <title>{pageTitle("User Settings")}</title>
+    <title>{pageTitle(title)}</title>
 </svelte:head>
 
 
 <div class="page">
     {#if users}
-        <div in:fade={{duration: 100}} class="w-full overflow-y-auto scrollbar">
+        <div in:fade={{duration: 70}} class="w-full overflow-y-auto scrollbar h-fit pb-1">
             <table class="w-full max-w-fit">
                 <thead>
                     <tr class="dark:bg-neutral-900 text-left">
@@ -82,7 +85,7 @@
             </table>
         </div>
     {:else if loading}
-        <div in:fade={{duration: 2000}}>
+    <div in:fade={{duration: 200}} class="size-full flex items-center justify-center">
             <Loader />
         </div>
     {:else}

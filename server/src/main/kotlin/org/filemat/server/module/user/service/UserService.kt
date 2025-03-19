@@ -18,6 +18,19 @@ class UserService(
     private val logService: LogService,
 ) {
 
+    fun setLastLoginDate(userId: Ulid, date: Long) {
+        try {
+            userRepository.updateLastLoginDate(userId, date)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.LOGIN,
+                description = "Failed to set last login date",
+                message = e.stackTraceToString()
+            )
+        }
+    }
+
     fun createUser(user: User, action: UserAction?): Result<Unit> {
         try {
             userRepository.createUser(

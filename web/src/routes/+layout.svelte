@@ -8,6 +8,8 @@
     import { debounceFunction } from '$lib/code/util/codeUtil.svelte';
     import { loadDarkModeState, saveDarkModeState, updateScreenSize } from '$lib/code/util/uiUtil';
     import { uiState } from '$lib/code/stateObjects/uiState.svelte';
+    import { appState } from '$lib/code/stateObjects/appState.svelte';
+    import { page } from '$app/state';
 
 	let { children } = $props();
 
@@ -18,6 +20,9 @@
     }
 
     onMount(() => {
+        const path = page.url.pathname
+        appState.firstPath = path
+        
         loadDarkModeState()
         updateScreenSize()
     })

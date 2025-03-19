@@ -18,6 +18,20 @@ class UserRoleService(
     private val logService: LogService,
 ) {
 
+    fun getRoleUsers(roleId: Ulid): Result<List<Ulid>> {
+        try {
+            return userRoleRepository.getUserIdsByRole(roleId)?.toResult() ?: return Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to load user IDs by role",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to get users with this role.")
+        }
+    }
+
     fun getRolesByUserId(userId: Ulid): Result<List<UserRole>> {
         try {
             val result = userRoleRepository.getRolesByUserId(userId)

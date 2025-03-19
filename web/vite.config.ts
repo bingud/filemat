@@ -7,7 +7,6 @@ import { resolve } from 'node:path';
 export default defineConfig({
     plugins: [
         injectGlobalCSS(`@import "/src/app.css" reference;`),
-        // SvelteTailwindApply(),
         tailwindcss(),
         sveltekit(),
     ],
@@ -19,7 +18,7 @@ function injectGlobalCSS(cssToInject: string): Plugin {
         name: 'inject-global-css',
         enforce: 'pre',
         transform(code, id) {
-            if (!id.endsWith('.svelte')) return null;
+            if (!id.endsWith('.svelte') || code.includes(cssToInject)) return null;
             return code.replace(
                 /<style(\s[^>]*)?>/g,
                 `<style$1>\n${cssToInject}\n`

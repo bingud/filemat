@@ -7,7 +7,8 @@ export const settingSectionLists: {[key: string]: (typeof uiState.settings.secti
         "preferences"
     ],
     admin: [
-        "users"
+        "users",
+        "roles",
     ]
 }
 

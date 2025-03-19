@@ -11,9 +11,6 @@ html {
 }
 
 :root {
-    --navbar-height: 3.5rem;
-    
-
     --bg-dark: #111111;
     --bg-dark-layout: #141414;
 
@@ -24,9 +21,12 @@ html {
 @theme {
     --spacing-without-sidebar: calc(100% - var(--spacing-sidebar));
     --spacing-without-sidebar-desktop: calc(100% - var(--spacing-sidebar-desktop));
+    --spacing-without-navbar: calc(100% - var(--spacing-navbar));
 
     --spacing-sidebar: 17rem;
     --spacing-sidebar-desktop: 14rem;
+
+    --spacing-navbar: 3.5rem;
 }
 
 

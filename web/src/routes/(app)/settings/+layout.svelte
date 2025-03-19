@@ -33,18 +33,18 @@
 </script>
 
 
-<div class="page flex-col py-4 md:py-0 md:flex-row overflow-auto">
+<div class="flex w-full h-full flex-col md:flex-row">
     <SettingsSidebar classes="border-l border-neutral-300 dark:border-neutral-800"></SettingsSidebar>
 
-    <div class="contents md:flex flex-col md:w-without-sidebar-desktop">
-        <div class="flex items-center md:p-6">
+    <div class="flex flex-col w-full md:w-without-sidebar-desktop h-full overflow-y-auto scrollbar-desktop">
+        <div class="flex items-center md:p-6 h-fit">
             <button on:click={() => { uiState.settings.menuOpen = true }} aria-label="Open settings navigation menu" class="p-4 size-[3.5rem] md:hidden">
                 <MenuIcon />
             </button>
-            <h2 class="text-lg capitalize">{uiState.settings.section}</h2>
+            <h2 class="text-lg capitalize">{uiState.settings.title}</h2>
         </div>
 
-        <div id="setting-page" class="w-full h-fit p-4 md:p-6">
+        <div id="setting-page" class="w-full flex-grow h-fit p-4 md:p-6">
             {@render children()}
         </div>
     </div>

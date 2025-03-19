@@ -1,6 +1,8 @@
 package org.filemat.server.module.role.service
 
+import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.State
+import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.toBoolean
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props

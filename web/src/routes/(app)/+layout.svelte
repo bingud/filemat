@@ -31,10 +31,6 @@
 
             mounted = true
         })()
-
-        if (dev) {
-            uiState.menuOpen = true
-        }
     })
 
     onDestroy(() => {
@@ -55,7 +51,7 @@
             <Sidebar />
         </nav>
         
-        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-full">
+        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-without-navbar">
             {@render children()}
         </main>
     </div>

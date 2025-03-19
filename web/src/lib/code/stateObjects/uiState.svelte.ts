@@ -20,8 +20,9 @@ class UiState {
      * Holds settings UI state
      */
     settings = $state({
-        defaultSection: "preferences",
-        section: "preferences" as "preferences" | "users",
+        defaultSection: "preferences" as "preferences",
+        section: "preferences" as "preferences" | "users" | "userinfo" | "roles",
+        title: "preferences",
         menuOpen: false as boolean
     })
 
@@ -38,6 +39,9 @@ class UiState {
      */
     reset() {
         this.menuOpen = false
+        this.settings.section = this.settings.defaultSection
+        this.settings.title = this.settings.section
+        this.settings.menuOpen = false
     }
 
     /**

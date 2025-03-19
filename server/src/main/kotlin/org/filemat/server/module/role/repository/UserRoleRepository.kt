@@ -18,4 +18,7 @@ interface UserRoleRepository : CrudRepository<UserRole, Ulid> {
     @Query("SELECT * FROM user_roles WHERE user_id = :userId")
     fun getRolesByUserId(userId: Ulid): List<UserRole>
 
+    @Query("SELECT user_id FROM user_roles WHERE role_id = :roleId")
+    fun getUserIdsByRole(roleId: Ulid): List<Ulid>?
+
 }

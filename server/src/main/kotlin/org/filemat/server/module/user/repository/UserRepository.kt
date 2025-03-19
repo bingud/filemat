@@ -36,4 +36,8 @@ interface UserRepository : CrudRepository<User, Ulid> {
 
     @Query("SELECT * FROM users WHERE user_id = :userId")
     fun getByUserId(userId: Ulid): User?
+
+    @Modifying
+    @Query("UPDATE users SET last_login_date = :newDate WHERE user_id = :userId")
+    fun updateLastLoginDate(userId: Ulid, newDate: Long): Int
 }
