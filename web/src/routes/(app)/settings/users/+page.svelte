@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { goto } from "$app/navigation";
     import type { PublicUser } from "$lib/code/auth/types";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
@@ -65,8 +66,10 @@
                 </thead>
                 <tbody>
                     {#each users as user, index}
-                        <tr class="{index % 2 === 0 ? 'bg-neutral-200 dark:bg-neutral-800' : 'bg-neutral-100 dark:bg-neutral-900'} whitespace-nowrap">
-                            <td class="py-2 px-4">{user.email}</td>
+                        <tr on:click={() => { goto(`/settings/users/${user.userId}`) }} class="{index % 2 === 0 ? 'bg-neutral-200 dark:bg-neutral-800' : 'bg-neutral-100 dark:bg-neutral-900'} whitespace-nowrap">
+                            <td>
+                                <a href="/settings/users/{user.userId}" class="py-2 px-4 hover:text-blue-400 hover:underline">{user.email}</a>
+                            </td>
                             <td class="py-2 px-4">{user.username}</td>
                             <td class="py-2 px-4">{user.mfaTotpStatus ? 'Enabled' : 'Disabled'}</td>
                             <td class="py-2 px-4">{formatUnixTimestamp(user.createdDate)}</td>

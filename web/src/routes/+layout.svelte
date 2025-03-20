@@ -19,10 +19,7 @@
         position: "bottom-right"
     }
 
-    onMount(() => {
-        const path = page.url.pathname
-        appState.firstPath = path
-        
+    onMount(() => {        
         loadDarkModeState()
         updateScreenSize()
     })
@@ -47,6 +44,24 @@
         }
 
         saveDarkModeState()
+    })
+
+    /**
+     * Effect to set whether the initial page is still open
+    */
+    let cancelInitialPageEffect = $effect.root(() => {
+        let initialPath = page.url.pathname
+        $effect(() => {
+            const path = page.url.pathname
+
+            if (initialPath) {
+                if (path !== initialPath) {
+                    appState.isInitialPageOpen = false
+                    setTimeout(() => cancelInitialPageEffect(), 0)
+                }
+            }
+            initialPath = path
+        })
     })
 </script>
 

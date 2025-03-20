@@ -6,6 +6,7 @@
     import type { ulid } from "$lib/code/types";
     import { formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, isServerDown, pageTitle, parseJson, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
+    import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -97,6 +98,11 @@
                     </div>
                 {/if}
             {/each}
+            <button class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20">
+                <div class="size-4 rotate-45">
+                    <CloseIcon></CloseIcon>
+                </div>
+            </button>
         </div>
 
         <hr class="detail-hr">
@@ -142,7 +148,7 @@
         @apply w-full md:w-auto md:flex-1 max-w-[30rem];
     }
     .detail-content {
-        @apply p-3 rounded bg-neutral-900 w-full whitespace-pre-wrap break-all md:whitespace-nowrap;
+        @apply p-3 rounded bg-neutral-200 dark:bg-neutral-900 w-full whitespace-pre-wrap break-all md:whitespace-nowrap;
     }
     .details-holder {
         @apply flex flex-wrap gap-4 w-full;

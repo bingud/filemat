@@ -1,5 +1,7 @@
 <script lang="ts">
     import { page } from "$app/state";
+    import { PermissionType } from "$lib/code/auth/types";
+    import { formatPermission, getPermissionInfo } from "$lib/code/data/permissions";
     import { fetchState } from "$lib/code/state/stateFetcher";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
@@ -15,7 +17,7 @@
     onMount(() => {
         uiState.settings.title = title
 
-        if (appState.firstPath !== page.url.pathname) {
+        if (!appState.isInitialPageOpen) {
             loading = true
             fetchState({ roles: true, systemRoleIds: false, principal: false, app: false })
                 .then(() => { loading = false })
@@ -55,11 +57,13 @@
                         </div>
                 
                         <!-- Permissions (wrapped) -->
-                        <div class="flex flex-wrap gap-2">
-                            {#each role.permissions as permission}
-                                <span class="px-2 py-1 bg-neutral-700/40 rounded text-xs">
-                                    {permission}
-                                </span>
+                        <div title="Permissions of this role" class="flex flex-wrap gap-2">
+                            {#each role.permissions.map(v => getPermissionInfo(v)) as permission}
+                                {#if permission.type !== PermissionType.file}
+                                    <span class="px-2 py-1 bg-neutral-300 dark:bg-neutral-700/40 rounded text-xs">
+                                        {permission.name}
+                                    </span>
+                                {/if}
                             {/each}
                         </div>
                     </div>

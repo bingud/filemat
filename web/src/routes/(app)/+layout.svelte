@@ -51,7 +51,7 @@
             <Sidebar />
         </nav>
         
-        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-without-navbar">
+        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-without-navbar md:h-full">
             {@render children()}
         </main>
     </div>

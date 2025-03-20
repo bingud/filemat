@@ -11,9 +11,10 @@ class AppState {
     sensitiveFolders: string[] | null = $state(null)
     
     /**
-     * Which path the app was opened on
+     * Indicates whether the first page the user entered is stil open 
+     * or whether the user navigated
      */
-    firstPath: string | null = $state(null)
+    isInitialPageOpen = $state(true)
 }
 
 /**

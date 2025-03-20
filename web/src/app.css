@@ -72,3 +72,7 @@ h1 {
 .gutter-stable-both {
     scrollbar-gutter: stable both-edges;
 }
+
+.center {
+    @apply size-full flex flex-col items-center justify-center;
+}

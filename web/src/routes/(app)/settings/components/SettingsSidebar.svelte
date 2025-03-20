@@ -30,7 +30,7 @@
                             <p class="w-full px-4 border-b border-neutral-700 my-4 py-2 font-medium">Admin Settings</p>
                         {/if}
                         {#each sections as section}
-                            <a href="/settings/{section}" on:click|preventDefault={() => { openSection(section) }} class="flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none capitalize {uiState.settings.section === section ? 'bg-neutral-300 dark:bg-neutral-800' : ''} active:text-blue-400">{section}</a>
+                            <a href="/settings/{section}" on:click|preventDefault={() => { openSection(section) }} class="flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none capitalize {uiState.settings.section === section ? 'bg-neutral-300 dark:bg-neutral-800' : ''}">{section}</a>
                         {/each}
                     {/if}
                 {/each}

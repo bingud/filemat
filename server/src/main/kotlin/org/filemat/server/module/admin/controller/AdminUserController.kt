@@ -3,6 +3,7 @@ package org.filemat.server.module.admin.controller
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.config.auth.Authenticated
@@ -29,6 +30,25 @@ class AdminUserController(
     private val roleService: RoleService,
     private val userRoleService: UserRoleService
 ) : AController() {
+
+    /**
+     * Returns a list of mini users
+     */
+    @PostMapping("/minilist")
+    fun adminUserMiniListMapping(
+        @RequestParam("userIdList") rawIdList: String
+    ): ResponseEntity<String> {
+        val userIds = Json.decodeFromStringOrNull<List<String>>(rawIdList)?.map {
+            parseUlidOrNull(it) ?: return bad("List of user IDs contains an invalid ID.", "validation")
+        } ?: return bad("List of user IDs is invalid.", "validation")
+
+        val list = adminUserService.getUserMiniList(userIds).let {
+            if (it.isNotSuccessful) return internal(it.error, "")
+            it.value
+        }
+        val serialized = Json.encodeToString(list)
+        return ok(serialized)
+    }
 
     /**
      * Returns a list of all users
