@@ -4,6 +4,7 @@
 @import "$lib/css/loader.css";
 @import "$lib/css/layout.css";
 
+
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 html {

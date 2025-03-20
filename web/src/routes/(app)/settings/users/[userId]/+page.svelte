@@ -8,7 +8,7 @@
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import { onMount } from "svelte";
+    import Popover from "$lib/component/Popover.svelte";
     import { fade } from "svelte/transition";
 
     const title = "Manage user"
@@ -98,11 +98,25 @@
                     </div>
                 {/if}
             {/each}
-            <button class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20">
+
+            <button id="add-roles" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20">
                 <div class="size-4 rotate-45">
                     <CloseIcon></CloseIcon>
                 </div>
             </button>
+
+            {#if auth.roleList}
+                <Popover buttonId="add-roles" marginRem={1} fadeDuration={40}>
+                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] h-[6rem]">
+                        {#each auth.roleList as role}
+                            {@const hasRole = user.roles.includes(role.roleId)}
+                            {#if !hasRole}
+                                <p>{role.name}</p>
+                            {/if}
+                        {/each}
+                    </div>
+                </Popover>
+            {/if}
         </div>
 
         <hr class="detail-hr">
