@@ -2,7 +2,7 @@
     import Noindex from "$lib/component/head/Noindex.svelte"
     import CodeChunk from "$lib/component/CodeChunk.svelte"
     import { toast } from "@jill64/svelte-toast";
-    import { handleException, isBlank, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { handleError, handleException, isBlank, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { onMount } from "svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -71,20 +71,18 @@
 
             const response = await safeFetch(`/api/v1/setup/verify`, { method: "POST", body: body })
             if (response.failed) {
-                console.log("Failed to verify setup code" + response.exception)
-                toast.error(`Failed to verify code. (Local issue)`)
+                handleException(`Failed to verify setup code`, `Failed to verify setup code.`, response.exception)
             }
-            const status = response.status
-            const text = await response.text()
+            const status = response.code
 
-            if (status === 200) {
+            if (status.ok) {
                 if (lastPhase !== 1) {
                     setPhase(lastPhase)
                 } else {
                     increasePhase()
                 }
             } else {
-                const json = parseJson(text)
+                const json = response.json()
                 if (json?.message) {
                     toast.error(json.message)
                 } else {
@@ -150,12 +148,11 @@
                 return
             }
             const status = response.status
-            const text = await response.text()
 
             if (status === 200) {
                 increasePhase()
             } else {
-                const json = parseJson(text)
+                const json = response.json()
                 if (json?.error === "setup-code-invalid") {
                     toast.error(json.message)
                     setPhase(1)

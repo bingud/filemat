@@ -1,20 +1,22 @@
 <script lang="ts">
     import { debounceFunction } from "$lib/code/util/codeUtil.svelte";
     import { onMount, type Snippet } from "svelte";
+    import { preventDefault } from "svelte/legacy";
     import { fade } from "svelte/transition";
 
-    let { children, buttonId, marginRem, fadeDuration }: {
+    let { children, buttonId, marginRem = 0, fadeDuration = 0, open = false }: {
         children: Snippet<[]>,
         buttonId: string,
-        marginRem: number,
-        fadeDuration: number,
+        marginRem?: number,
+        fadeDuration?: number,
+        open?: boolean
     } = $props()
 
     /**
      * Button to toggle popover
      */
     let button: HTMLElement | null = $state(null)
-    let visible = $state(false)
+    let visible = $state(open)
 
     /**
      * Coordinations of top-middle of button
@@ -101,7 +103,7 @@
 
 {#if visible && button && topY != null && topX != null}
     <!-- Close popover by clicking off -->
-    <button aria-label="Close the popover" class="z-10 fixed top-0 left-0 w-full h-full !cursor-default" on:click={hide}></button>
+    <button aria-label="Close the popover" class="z-10 fixed top-0 left-0 w-full h-full !cursor-default" on:wheel|passive={hide} on:mousedown={hide} on:click={hide}></button>
 
     <!-- Popover -->
     <div transition:fade={{duration: fadeDuration}} bind:offsetHeight={popoverHeight} bind:offsetWidth={popoverWidth} class="fixed z-20 rounded flex flex-col" style="top: {topY - popoverHeight}px; left: {topX - (popoverWidth / 2)}px; padding-bottom: {marginRem}rem;">

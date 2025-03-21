@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { handleError, handleErrorResponse, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { toast } from "@jill64/svelte-toast";
 
@@ -32,20 +32,15 @@
                 toast.error("Failed to log in. (Local error)")
                 return
             }
-            const text = await response.text()
-            const json = parseJson(text)
-            const status = response.status
+            const json = response.json()
+            const status = response.code
 
-            if (status === 200) {
+            if (status.ok) {
                 await goto("/")
+            } else if (status.serverDown) {
+                handleError(`Server ${status} while logging in`, "Server is unavailable.")
             } else {
-                if (json?.message) {
-                    toast.error(json.message)
-                } else if (status === 500) {
-                    toast.error("Failed to log in. Server provided no details.")
-                } else {
-                    toast.error(text)
-                }
+                handleErrorResponse(json, "Failed to log in.")
             }
         } finally {
             running = false

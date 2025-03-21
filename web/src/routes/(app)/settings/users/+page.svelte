@@ -26,16 +26,15 @@
             users = null
             return
         }
-        const text = await response.text()
-        const status = response.status
-        const json = parseJson(text)
+        const status = response.code
+        const json = response.json()
 
-        if (status === 200) {
+        if (status.ok) {
             if (json) {
                 users = json
             }
-        } else if (isServerDown(status)) {
-            handleError(`Server ${status} when fetching user list.`, "The server is unavailable.")
+        } else if (status.serverDown) {
+            handleError(`Server ${status} when fetching user list.`, "Failed to load users. The server is unavailable.")
         } else {
             handleErrorResponse(json, `Failed to load the list of all users. (${status})`)
         }

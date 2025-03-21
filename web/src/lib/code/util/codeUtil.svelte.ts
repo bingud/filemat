@@ -41,7 +41,7 @@ export function handleError(message: string, userMessage: string | null) {
 /**
  * Logs an error HTTP response
  */
-export function handleErrorResponse(response: ErrorResponse, defaultMessage: string) {
+export function handleErrorResponse(response: ErrorResponse | any, defaultMessage: string) {
     const message = response?.message
     const error = response?.error
     
@@ -54,37 +54,6 @@ export function handleErrorResponse(response: ErrorResponse, defaultMessage: str
     }
 }
 
-export function makeIdempotent<T, Args extends any[]>(
-    fn: (isRunning: boolean, ...args: Args) => T | Promise<T>,
-    after?: () => any,
-): (...args: Args) => Promise<T> {
-    let runningCount = 0
-
-    return (...args: Args): Promise<T> => {
-        // Determine if another call is already in progress.
-        const isAlreadyRunning = runningCount > 0
-        runningCount++
-
-        try {
-            const result = fn(isAlreadyRunning, ...args)
-            // Wrap the result in a promise to handle both sync and async cases.
-            return Promise.resolve(result).finally(() => {
-                runningCount--
-                if (runningCount === 0) {
-                    if (after) {
-                        try {
-                            after()
-                        } catch (e) {}
-                    }
-                }
-            });
-        } catch (error) {
-            runningCount--
-            return Promise.reject(error)
-        }
-    }
-}
-  
 /**
  * Returns whether a string is blank
  */
@@ -100,16 +69,26 @@ export function removeSpaces(str: string): string {
 }
 
 
-type SafeFetchResult = Response & { failed: boolean, exception: any | null }
+type SafeFetchResult = Omit<Response, 'json'> & { failed: boolean, exception: any | null, code: httpStatus, content: string, json: () => any | null }
 
 /**
  * Fetches without throwing an exception.
+ * 
+ * Default request is POST and credentials same-origin
  */
 export async function safeFetch(url: string, args?: RequestInit): Promise<SafeFetchResult> {
     try {
+        let arg = args ? args : {}
+        if (!arg.credentials) arg.credentials = "same-origin"
+        if (!arg.method) arg.method = "POST"
+
         const response = await fetch(url, args) as any as SafeFetchResult
         response.failed = false
         response.exception = null
+        response.code = toStatus(response.status)
+        response.content = await response.text()
+        response.json = () => { return parseJson(response.content) }
+
         return response
     } catch (e) { 
         return { failed: true, exception: e } as any as SafeFetchResult
@@ -208,7 +187,7 @@ export function formData(obj: { [key: string]: string }): FormData {
 }
 
 
-type httpStatus = { ok: true, serverDown: false, failed: false } | { ok: false, serverDown: true, failed: true } | { ok: false, serverDown: false, failed: true }
+type httpStatus = ({ ok: true, serverDown: false, failed: false } | { ok: false, serverDown: true, failed: true } | { ok: false, serverDown: false, failed: true }) & { raw: number } 
 
 /**
  * Parses HTTP status code
@@ -216,13 +195,39 @@ type httpStatus = { ok: true, serverDown: false, failed: false } | { ok: false, 
 export function toStatus(s: number): httpStatus {
     let result: httpStatus
     if (s === 200){
-        result = { ok: true, serverDown: false, failed: false }
+        result = { ok: true, serverDown: false, failed: false, raw: s }
     } else if (isServerDown(s)) {
-        result = { ok: false, serverDown: true, failed: true }
+        result = { ok: false, serverDown: true, failed: true, raw: s }
     } else {
-        result = { ok: false, serverDown: false, failed: true }
+        result = { ok: false, serverDown: false, failed: true, raw: s }
     }
 
     result.toString = () => { return `${s}` }
     return result
 }
+
+
+export function includesList<T>(list: T[], includedItems: T[]): boolean {
+    return includedItems.every(i => list.includes(i));
+}
+
+
+/**
+ * Locks an input function, so that it can only run once at a time
+ */
+export function lockFunction<T, Args extends any[]>(block: (...args: Args) => T | Promise<T>): (...args: Args) => Promise<T | void> {
+    let running = false
+
+    return async (...args: Args) => { 
+        if (running) return
+        running = true
+        
+        try {
+            return await block(...args)
+        } finally {
+            running = false
+        }
+    }
+}
+
+export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

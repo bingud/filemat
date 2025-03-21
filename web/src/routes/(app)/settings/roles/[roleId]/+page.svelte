@@ -33,16 +33,15 @@
     })
 
     async function loadRoleData(id: string) {
-        const response = await safeFetch(`/api/v1/admin/role/get`, { method: "POST", credentials: "same-origin", body: formData({ roleId: id }) })
+        const response = await safeFetch(`/api/v1/admin/role/get`, { body: formData({ roleId: id }) })
         if (response.failed) {
             role = null
             status = "failed"
             handleException(`Failed to fetch role data.`, `Failed to load role.`, response.exception)
             return
         }
-        const httpStatus = toStatus(response.status)
-        const text = await response.text()
-        const json = parseJson(text)
+        const httpStatus = response.code
+        const json = response.json()
 
         if (httpStatus.ok) {
             if (json.userIds) {
@@ -71,9 +70,8 @@
             handleException(`Failed to fetch list of user mini metadata: ${status}`, "Failed to load users with this role.", response.exception)
             return null
         }
-        const st = toStatus(response.status)
-        const text = await response.text()
-        const json = parseJson(text)
+        const st = response.code
+        const json = response.json()
 
         if (st.ok) {
             return json

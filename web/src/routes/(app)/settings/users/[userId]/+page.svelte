@@ -1,10 +1,11 @@
 <script lang="ts">
+    import { dev } from "$app/environment";
     import { page } from "$app/state";
-    import type { FullPublicUser, PublicUser } from "$lib/code/auth/types";
+    import type { FullPublicUser } from "$lib/code/auth/types";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types";
-    import { formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, isServerDown, pageTitle, parseJson, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { delay, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -15,6 +16,12 @@
     let user: FullPublicUser | null = $state(null)
     let loading = $state(true)
     let mounted = $state(false)
+
+    let addRolesDisabled = $derived.by(() => {
+        if (!user || !auth.roleList) return true
+
+        return includesList(user.roles, auth.roleList.map(v=>v.roleId))
+    })
 
     $effect(() => {
         uiState.settings.title = title
@@ -32,6 +39,9 @@
         mounted = true
     })
 
+    /**
+     * Load user data
+     */
     async function loadUser(userId: ulid) {
         const body = formData({ userId: userId })
         const response = await safeFetch(`/api/v1/admin/user/get`, { method: "POST", body: body, credentials: "same-origin" })
@@ -39,21 +49,48 @@
             handleException(`Failed to fetch user by user id`, "Failed to load user data.", response.exception)
             return
         }
-        const status = response.status
-        const text = await response.text()
-        const json = parseJson(text)
+        const status = response.code
+        const json = response.json()
 
-        if (status === 200) {
+        if (status.ok) {
             user = json
-        } else if (isServerDown(status)) {
-            handleError(`Failed to fetch user data. server ${status}`, `Failed to load user data.`)
+        } else if (status.serverDown) {
+            handleError(`Failed to fetch user data. server ${status}`, `Failed to load user data. Server is unavailable.`)
         } else {
             handleErrorResponse(json, "Failed to load user data.")
             user = null
         }
     }
 
+    /**
+     * Assign role to user
+     */
+    const assignRole = lockFunction(async (roleId: ulid) => {
+        if (!user) return
 
+        const body = formData({ userId: user.userId, roleId: roleId })
+        const response = await safeFetch(`/api/v1/admin/user-role/assign`, { body: body })
+        if (response.failed) {
+            handleException(`Failed to assign role to user.`, `Failed to assign role.`, response.exception)
+            return
+        }
+        const status = response.code
+        const json = response.json()
+
+        if (status.ok) {
+            if (user) {
+                user.roles.push(roleId)
+
+                if (auth.principal!.userId === user.userId) {
+                    auth.principal!.roles.push(roleId)
+                }
+            }
+        } else if (status.serverDown) {
+            handleError(`Server ${status} when assigning role`, `Server is unavilable.`)
+        } else {
+            handleErrorResponse(json, `Failed to assign role.`)
+        }
+    })
 
 </script>
 
@@ -99,21 +136,23 @@
                 {/if}
             {/each}
 
-            <button id="add-roles" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20">
+            <button id="add-roles" disabled={addRolesDisabled} title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none">
                 <div class="size-4 rotate-45">
                     <CloseIcon></CloseIcon>
                 </div>
             </button>
 
-            {#if auth.roleList}
-                <Popover buttonId="add-roles" marginRem={1} fadeDuration={40}>
-                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] h-[6rem]">
-                        {#each auth.roleList as role}
-                            {@const hasRole = user.roles.includes(role.roleId)}
-                            {#if !hasRole}
-                                <p>{role.name}</p>
-                            {/if}
-                        {/each}
+            {#if auth.roleList && !addRolesDisabled}
+                <Popover buttonId="add-roles" marginRem={1} fadeDuration={40} open={dev}>
+                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                        <div class="flex flex-col gap-2 p-2">
+                            {#each auth.roleList as role}
+                                {@const hasRole = user.roles.includes(role.roleId)}
+                                {#if !hasRole}
+                                    <button on:click={() => { assignRole(role.roleId) }} class="rounded w-full bg-neutral-900 text-left px-2 py-1 hover:bg-neutral-700">{role.name}</button>
+                                {/if}
+                            {/each}
+                        </div>
                     </div>
                 </Popover>
             {/if}

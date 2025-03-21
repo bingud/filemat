@@ -1,7 +1,6 @@
 <script lang="ts">
-    import { page } from "$app/state";
     import { PermissionType } from "$lib/code/auth/types";
-    import { formatPermission, getPermissionInfo } from "$lib/code/data/permissions";
+    import { getPermissionInfo } from "$lib/code/data/permissions";
     import { fetchState } from "$lib/code/state/stateFetcher";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
