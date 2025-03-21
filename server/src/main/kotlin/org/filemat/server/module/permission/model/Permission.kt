@@ -26,14 +26,14 @@ interface Permission {
 /**
  * # System permissions
  */
-enum class SystemPermission(override val index: Int) : Permission {
-    ACCESS_ALL_FILES(100),
-    MANAGE_OWN_FILE_PERMISSIONS(101),
-    MANAGE_ALL_FILE_PERMISSIONS(102),
-    MANAGE_USERS(103),
-    MANAGE_SYSTEM(104),
-    EDIT_ROLES(105),
-    EXPOSE_FOLDERS(106);
+enum class SystemPermission(override val index: Int, val level: Int) : Permission {
+    ACCESS_ALL_FILES(100, 2),
+    MANAGE_OWN_FILE_PERMISSIONS(101, 1),
+    MANAGE_ALL_FILE_PERMISSIONS(102, 1),
+    MANAGE_USERS(103, 3),
+    MANAGE_SYSTEM(104, 4),
+    EDIT_ROLES(105, 3),
+    EXPOSE_FOLDERS(106, 1);
 
     companion object {
         fun fromInt(int: Int) = Permission.fromInt(int, entries)
@@ -65,4 +65,14 @@ fun List<Permission>.toIntList(): List<Int> {
 fun List<Permission>.serialize(): String {
     val list = this.map { it.index }
     return Json.encodeToString(list)
+}
+
+fun List<SystemPermission>.hasSufficientPermissionsFor(list: List<SystemPermission>): Boolean {
+    val levels = this.map { it.level }
+    val targetLevels = list.map { it.level }
+
+    val highest = levels.maxOrNull() ?: 0
+    val targetHighest = targetLevels.maxOrNull() ?: 0
+
+    return (highest >= targetHighest)
 }

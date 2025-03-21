@@ -7,6 +7,7 @@ import org.filemat.server.common.State
 import org.filemat.server.config.UlidListSerializer
 import org.filemat.server.config.UlidSerializer
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.model.Role
 
 @Serializable
@@ -34,7 +35,7 @@ data class Principal(
             return false
         }
 
-        fun Principal.getPermissions(): List<Permission> {
+        fun Principal.getPermissions(): List<SystemPermission> {
             val roles = this.getRoles()
             val permissions = roles.map { it.permissions }.flatten().distinct()
             return permissions

@@ -16,4 +16,5 @@ enum class UserAction {
     GENERIC_GET_PRINCIPAL,                  // 7
     READ_FOLDER,                            // 8
     LIST_USERS,                             // 9
+    ASSIGN_ROLE,                            // 9
 }
