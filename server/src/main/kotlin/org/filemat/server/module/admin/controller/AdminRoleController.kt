@@ -5,7 +5,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.config.auth.Authenticated
-import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.model.RoleMeta
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * Admin controller for managing roles
  */
-@Authenticated([Permission.EDIT_ROLES])
+@Authenticated([SystemPermission.EDIT_ROLES])
 @RestController
 @RequestMapping("/v1/admin/role")
 class AdminRoleController(

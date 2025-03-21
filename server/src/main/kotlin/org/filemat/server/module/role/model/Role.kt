@@ -5,8 +5,27 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.filemat.server.config.UlidSerializer
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
+
+
+
+
+abstract class ABaseRole {
+    abstract val roleId: Ulid
+    abstract val name: String
+    abstract val createdDate: Long
+}
+
+abstract class ARole : ABaseRole() {
+    abstract val permissions: List<SystemPermission>
+}
+
+abstract class ARoleMeta : ARole() {
+    abstract val userIds: List<Ulid>
+}
+
 
 /**
  * Role object
@@ -17,7 +36,7 @@ data class Role(
     override val roleId: Ulid,
     override val name: String,
     override val createdDate: Long,
-    override val permissions: List<Permission>,
+    override val permissions: List<SystemPermission>,
 ) : ARole()
 
 
@@ -37,7 +56,7 @@ data class RoleDto(
 ) : ABaseRole() {
     fun toRole(): Role {
         return Role(
-            roleId = roleId, name = name, createdDate = createdDate, permissions = Json.decodeFromString<List<Int>>(permissions).map { Permission.fromInt(it) }
+            roleId = roleId, name = name, createdDate = createdDate, permissions = SystemPermission.fromString(permissions)
         )
     }
 }
@@ -51,7 +70,7 @@ data class RoleMeta(
     override val roleId: Ulid,
     override val name: String,
     override val createdDate: Long,
-    override val permissions: List<Permission>,
+    override val permissions: List<SystemPermission>,
     override val userIds: List<@Serializable(UlidSerializer::class) Ulid>,
 ) : ARoleMeta() {
     companion object {
@@ -65,20 +84,4 @@ data class RoleMeta(
             )
         }
     }
-}
-
-
-
-abstract class ABaseRole {
-    abstract val roleId: Ulid
-    abstract val name: String
-    abstract val createdDate: Long
-}
-
-abstract class ARole : ABaseRole() {
-    abstract val permissions: List<Permission>
-}
-
-abstract class ARoleMeta : ARole() {
-    abstract val userIds: List<Ulid>
 }

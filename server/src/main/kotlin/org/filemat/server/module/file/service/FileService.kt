@@ -14,7 +14,9 @@ import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -55,7 +57,7 @@ class FileService(
         if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
         // Check if user can read any files
-        val hasAdminAccess = principal.hasPermission(Permission.ACCESS_ALL_FILES)
+        val hasAdminAccess = principal.hasPermission(SystemPermission.ACCESS_ALL_FILES)
         val permissionResult = hasReadPermission(path = path, principal = principal, hasAdminAccess = hasAdminAccess)
         if (permissionResult.isNotSuccessful) return permissionResult.cast()
 
@@ -80,7 +82,7 @@ class FileService(
     fun filterPermittedFiles(list: List<FileMetadata>, folderPath: String, principal: Principal): List<FileMetadata> {
         return list.filter { meta ->
             val permission = entityPermissionService.getUserPermission(filePath = "$folderPath/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
-            return@filter permission != null && permission.permissions.contains(Permission.READ)
+            return@filter permission != null && permission.permissions.contains(FilePermission.READ)
         }
     }
 
@@ -92,7 +94,7 @@ class FileService(
             val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
                 ?: return Result.reject("You do not have permission to open this folder.")
 
-            if (!permissions.permissions.contains(Permission.READ)) return Result.reject("You do not have permission to open this folder.")
+            if (!permissions.permissions.contains(FilePermission.READ)) return Result.reject("You do not have permission to open this folder.")
         }
 
         return Result.ok(Unit)

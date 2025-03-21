@@ -10,6 +10,7 @@ import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.model.serialize
 import org.filemat.server.module.permission.model.toIntList
 import org.filemat.server.module.role.model.Role
@@ -77,12 +78,12 @@ class RoleService(
                     roleId = Props.Roles.adminRoleId,
                     name = "admin",
                     createdDate = now,
-                    permissions = Permission.entries
+                    permissions = SystemPermission.entries
                 )
             )
         } else {
             try {
-                roleRepository.updatePermissions(Props.Roles.adminRoleId, Permission.entries.serialize())
+                roleRepository.updatePermissions(Props.Roles.adminRoleId, SystemPermission.entries.serialize())
             } catch (e: Exception) {
                 logService.error(type = LogType.SYSTEM, action = UserAction.NONE, description = "Failed to update permissions of admin role during initialization", message = e.stackTraceToString())
                 return false

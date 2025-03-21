@@ -1,6 +1,8 @@
 package org.filemat.server.config.auth
 
+import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.core.annotation.AnnotationUtils
@@ -16,7 +18,9 @@ val endpointAuthMap: HashMap<String, EndpointAuth> = HashMap()
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Authenticated(val permissions: Array<Permission> = [])
+annotation class Authenticated(
+    val systemPermissions: Array<SystemPermission> = [],
+)
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
@@ -77,7 +81,7 @@ class AuthenticatedMappingConfig(
                 unauthAnnotation != null -> false to emptyList<Permission>()
 
                 // Otherwise, if there's @Authenticated (on method or class), use its permissions
-                authAnnotation != null -> true to authAnnotation.permissions.toList()
+                authAnnotation != null -> true to authAnnotation.systemPermissions.toList()
 
                 // If neither annotation is present, default to authenticated with no permissions
                 else -> true to emptyList<Permission>()

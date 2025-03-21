@@ -9,6 +9,7 @@ import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.service.AdminUserService
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.FullPublicUser
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * Admin controller for managing users
  */
-@Authenticated([Permission.MANAGE_USERS])
+@Authenticated([SystemPermission.MANAGE_USERS])
 @RequestMapping("/v1/admin/user")
 @RestController
 class AdminUserController(

@@ -11,7 +11,7 @@ data class EntityPermission(
     val entityId: Ulid,
     val userId: Ulid?,
     val roleId: Ulid?,
-    val permissions: List<Permission>,
+    val permissions: List<FilePermission>,
     val createdDate: Long,
 ) {
     init {
@@ -44,7 +44,7 @@ data class EntityPermissionDto(
             entityId = entityId,
             userId = userId,
             roleId = roleId,
-            permissions = Permission.fromString(permissions),
+            permissions = FilePermission.fromString(permissions),
             createdDate = createdDate
         )
     }

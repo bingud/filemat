@@ -2,7 +2,9 @@ package org.filemat.server.config.database
 
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.json.Json
+import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.core.convert.converter.Converter
 import org.springframework.data.convert.ReadingConverter
 import org.springframework.data.convert.WritingConverter
@@ -62,42 +64,75 @@ class StringToStringListConverter : Converter<String, List<String>> {
     }
 }
 
-
-// List<Permission> - String
-
-// this type converter is worthless because JDBC devs made the decision to throw their brain down the drain
+/**
+ * # Permission List
+ */
 @Component
 @WritingConverter
-class PermissionListToStringConverter : Converter<List<Permission>, String> {
-    override fun convert(source: List<Permission>): String {
-        return Json.encodeToString(source.map { it.ordinal })
+class SystemPermissionListToStringConverter : Converter<List<SystemPermission>, String> {
+    override fun convert(source: List<SystemPermission>): String {
+        return Json.encodeToString(source.map { it.index })
     }
 }
 
 @Component
 @ReadingConverter
-class StringToPermissionListConverter : Converter<String, List<Permission>> {
-    override fun convert(source: String): List<Permission> {
+class StringToSystemPermissionListConverter : Converter<String, List<SystemPermission>> {
+    override fun convert(source: String): List<SystemPermission> {
         println("to multiple permissions")
-        return Json.decodeFromString<List<Int>>(source).map { Permission.fromInt(it) }
+        return Json.decodeFromString<List<Int>>(source).map { SystemPermission.fromInt(it) }
     }
 }
 
-// Permission
 
 @Component
 @WritingConverter
-class PermissionToStringConverter : Converter<Permission, String> {
-    override fun convert(source: Permission): String {
+class FilePermissionListToStringConverter : Converter<List<FilePermission>, String> {
+    override fun convert(source: List<FilePermission>): String {
+        return Json.encodeToString(source.map { it.index })
+    }
+}
+
+@Component
+@ReadingConverter
+class StringToFilePermissionListConverter : Converter<String, List<FilePermission>> {
+    override fun convert(source: String): List<FilePermission> {
+        println("to multiple permissions")
+        return Json.decodeFromString<List<Int>>(source).map { FilePermission.fromInt(it) }
+    }
+}
+
+/**
+ * # Permission
+ */
+@Component
+@WritingConverter
+class SystemPermissionToStringConverter : Converter<SystemPermission, String> {
+    override fun convert(source: SystemPermission): String {
         return Json.encodeToString(source)
     }
 }
 
 @Component
 @ReadingConverter
-class StringToPermissionConverter : Converter<String, Permission> {
-    override fun convert(source: String): Permission {
-        println("to one permission")
-        return Permission.fromInt(source.toInt())
+class StringToSystemPermissionConverter : Converter<String, SystemPermission> {
+    override fun convert(source: String): SystemPermission {
+        return SystemPermission.fromInt(source.toInt())
+    }
+}
+
+@Component
+@WritingConverter
+class FilePermissionToStringConverter : Converter<FilePermission, String> {
+    override fun convert(source: FilePermission): String {
+        return Json.encodeToString(source)
+    }
+}
+
+@Component
+@ReadingConverter
+class StringToFilePermissionConverter : Converter<String, FilePermission> {
+    override fun convert(source: String): FilePermission {
+        return FilePermission.fromInt(source.toInt())
     }
 }

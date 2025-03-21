@@ -152,7 +152,7 @@ class SetupController(
             }
 
             // Give user role to user account
-            userRoleService.assign(userId = user.userId, roleId = Props.Roles.adminRoleId, action = UserAction.APP_SETUP).let {
+            userRoleService.assign(userId = user.userId, roleId = Props.Roles.userRoleId, action = UserAction.APP_SETUP).let {
                 if (it.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction it

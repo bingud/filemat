@@ -1,39 +1,68 @@
 package org.filemat.server.module.permission.model
 
 import kotlinx.serialization.json.Json
+import kotlin.enums.EnumEntries
 
-
-/**
- # DO NOT RE-ORDER ENUMS
- */
-enum class Permission {
-    READ,                                   // 0
-    DELETE,                                 // 1
-    WRITE,                                  // 2
-    SHARE,                                  // 3
-    RENAME,                                 // 4
-    ACCESS_ALL_FILES,                       // 5
-    MANAGE_OWN_FILE_PERMISSIONS,            // 6
-    MANAGE_ALL_FILE_PERMISSIONS,            // 7
-    MANAGE_USERS,                           // 8
-    MANAGE_SYSTEM,                          // 9
-    EDIT_ROLES,                             // 10
-    EXPOSE_FOLDERS;                         // 11
+interface Permission {
+    val index: Int
 
     companion object {
-        fun fromInt(int: Int): Permission {
-            return Permission.entries.getOrNull(int) ?: throw IllegalArgumentException("Permission ENUM  -  integer index of enum does not exist.")
+        fun <T> fromInt(int: Int, values: EnumEntries<T>): T where T : Enum<T>, T : Permission {
+            return values.firstOrNull { it.index == int }
+                ?: throw IllegalArgumentException("Permission ENUM - integer index of enum does not exist.")
         }
 
-        fun fromString(str: String): List<Permission> {
-            val list = Json.decodeFromString<List<Int>>(str)
-            return list.map { fromInt(it) }
+        fun <T> fromString(str: String, values: EnumEntries<T>): List<T> where T : Enum<T>, T : Permission {
+            return Json.decodeFromString<List<Int>>(str).map { int ->
+                values.firstOrNull { it.index == int }
+                    ?: throw IllegalArgumentException("Permission ENUM - integer index of enum does not exist.")
+            }
         }
     }
 }
 
-fun List<Permission>.toIntList(): List<Int> {
-    return this.map { p -> p.ordinal }
+
+
+/**
+ * # System permissions
+ */
+enum class SystemPermission(override val index: Int) : Permission {
+    ACCESS_ALL_FILES(100),
+    MANAGE_OWN_FILE_PERMISSIONS(101),
+    MANAGE_ALL_FILE_PERMISSIONS(102),
+    MANAGE_USERS(103),
+    MANAGE_SYSTEM(104),
+    EDIT_ROLES(105),
+    EXPOSE_FOLDERS(106);
+
+    companion object {
+        fun fromInt(int: Int) = Permission.fromInt(int, entries)
+        fun fromString(str: String) = Permission.fromString(str, entries)
+    }
 }
 
-fun List<Permission>.serialize(): String = this.toIntList().toString()
+/**
+ * # File permissions
+ */
+enum class FilePermission(override val index: Int) : Permission {
+    READ(0),
+    DELETE(1),
+    WRITE(2),
+    SHARE(3),
+    RENAME(4);
+
+    companion object {
+        fun fromInt(int: Int) = Permission.fromInt(int, entries)
+        fun fromString(str: String) = Permission.fromString(str, entries)
+    }
+}
+
+
+fun List<Permission>.toIntList(): List<Int> {
+    return this.map { p -> p.index }
+}
+
+fun List<Permission>.serialize(): String {
+    val list = this.map { it.index }
+    return Json.encodeToString(list)
+}
