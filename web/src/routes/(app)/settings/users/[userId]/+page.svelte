@@ -136,11 +136,13 @@
                 {/if}
             {/each}
 
-            <button id="add-roles" disabled={addRolesDisabled} title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none">
-                <div class="size-4 rotate-45">
-                    <CloseIcon></CloseIcon>
-                </div>
-            </button>
+            {#if !addRolesDisabled}
+                <button id="add-roles" title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none">
+                    <div class="size-4 rotate-45">
+                        <CloseIcon></CloseIcon>
+                    </div>
+                </button>
+            {/if}
 
             {#if auth.roleList && !addRolesDisabled}
                 <Popover buttonId="add-roles" marginRem={1} fadeDuration={40} open={dev}>

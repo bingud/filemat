@@ -58,11 +58,9 @@
                         <!-- Permissions (wrapped) -->
                         <div title="Permissions of this role" class="flex flex-wrap gap-2">
                             {#each role.permissions.map(v => getPermissionInfo(v)) as permission}
-                                {#if permission.type !== PermissionType.file}
-                                    <span class="px-2 py-1 bg-neutral-300 dark:bg-neutral-700/40 rounded text-xs">
-                                        {permission.name}
-                                    </span>
-                                {/if}
+                                <span class="px-2 py-1 bg-neutral-300 dark:bg-neutral-700/40 rounded text-xs">
+                                    {permission.name}
+                                </span>
                             {/each}
                         </div>
                     </div>
@@ -75,7 +73,7 @@
             <Loader></Loader>
         </div>
     {:else}
-        <div class="p-6 bg-neutral-800 rounded">
+        <div class="p-6 bg-neutral-800 rounded size-fit">
             <p>Failed to load roles.</p>
         </div>
     {/if}

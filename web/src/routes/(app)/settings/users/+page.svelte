@@ -91,7 +91,7 @@
             <Loader />
         </div>
     {:else}
-        <div class="p-6 bg-neutral-800 rounded">
+        <div class="p-6 bg-neutral-800 rounded size-fit">
             <p>Failed to load users.</p>
         </div>
     {/if}
