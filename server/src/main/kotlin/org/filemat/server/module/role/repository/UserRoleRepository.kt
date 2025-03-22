@@ -15,6 +15,10 @@ interface UserRoleRepository : CrudRepository<UserRole, Ulid> {
     @Query("INSERT INTO user_roles (role_id, user_id, created_date) VALUES (:roleId, :userId, :now)")
     fun insert(userId: String, roleId: String, now: Long)
 
+    @Modifying
+    @Query("DELETE FROM user_roles WHERE user_id = :userId AND role_id IN (:roles)")
+    fun removeList(userId: Ulid, roles: List<Ulid>): Int
+
     @Query("SELECT * FROM user_roles WHERE user_id = :userId")
     fun getRolesByUserId(userId: Ulid): List<UserRole>
 

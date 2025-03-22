@@ -231,3 +231,9 @@ export function lockFunction<T, Args extends any[]>(block: (...args: Args) => T 
 }
 
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+
+export function removeString(arr: string[], str: string) {
+    const index = arr.indexOf(str)
+    if (index !== -1) arr.splice(index, 1)
+}

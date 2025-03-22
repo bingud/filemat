@@ -62,4 +62,19 @@ class UserRoleService(
         }
     }
 
+    fun removeList(userId: Ulid, roles: List<Ulid>, action: UserAction): Result<Unit> {
+        try {
+            userRoleRepository.removeList(userId, roles)
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = action,
+                description = "Failed to remove list of roles to user in database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to remove roles.")
+        }
+    }
+
 }

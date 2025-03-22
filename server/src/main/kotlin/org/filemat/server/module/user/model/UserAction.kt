@@ -17,4 +17,5 @@ enum class UserAction {
     READ_FOLDER,                            // 8
     LIST_USERS,                             // 9
     ASSIGN_ROLE,                            // 9
+    UNASSIGN_ROLES,                         // 10
 }

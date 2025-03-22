@@ -5,7 +5,7 @@
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types";
-    import { delay, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { delay, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -16,6 +16,9 @@
     let user: FullPublicUser | null = $state(null)
     let loading = $state(true)
     let mounted = $state(false)
+
+    let selectingRoles = $state(false)
+    let selectedRoles: ulid[] = $state([])
 
     let addRolesDisabled = $derived.by(() => {
         if (!user || !auth.roleList) return true
@@ -92,6 +95,56 @@
         }
     })
 
+    /**
+     * Role selection
+     */
+    function toggleRoleSelection() {
+        selectedRoles = []
+        selectingRoles = !selectingRoles
+    }
+
+    function selectRole(id: ulid) {
+        if (!selectedRoles.includes(id)) {
+            selectedRoles.push(id)
+        } else {
+            removeString(selectedRoles, id)
+        }
+    }
+
+    let removingRoles = $state(false)
+    async function removeSelectedRoles() {
+        finish
+        if (removingRoles) return; removingRoles = true
+        try {
+            if (selectedRoles.length < 1 || !selectingRoles || !user) return
+
+            const userId = user.userId
+            const body = formData({ userId: userId, roleIdList: JSON.stringify(selectedRoles) })
+            const response = await safeFetch(`/api/v1/admin/user-role/remove`, { body: body })
+            if (response.failed) {
+                handleException(`Failed to remove selected roles from user`, `Failed to remove selected roles.`, response.exception)
+                return
+            }
+            const json = response.json()
+            const status = response.code
+
+            if (status.ok) {
+                if (user && user.userId === userId) {
+                    selectedRoles.forEach((roleId) => {  
+                        removeString(user!.roles, roleId)
+                    })
+                }
+
+                toggleRoleSelection()
+            } else if (status.serverDown) {
+                handleError(`Server ${status} when removing selected roles`, `Failed to remove selected roles. Server is unavailable.`)
+            } else {
+                handleErrorResponse(json, `Failed to remove selected roles.`)
+            }
+        } finally {
+            removingRoles = false
+        }
+    }
 </script>
 
 
@@ -127,7 +180,11 @@
             {#each user.roles as roleId}
                 {@const role = getRole(roleId)}
                 {#if role}
-                    <a href="/settings/roles/{roleId}" class="detail-content !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
+                    {#if !selectingRoles}
+                        <a href="/settings/roles/{roleId}" class="detail-content !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
+                    {:else}
+                        <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-blue-400 hover:underline {selectedRoles.includes(role.roleId) ? 'ring-2 ring-blue-400' : ''}">{role.name}</button>
+                    {/if}
                 {:else}
                     <div class="detail-card">
                         <p class="detail-label">Invalid role</p>
@@ -157,6 +214,26 @@
                         </div>
                     </div>
                 </Popover>
+            {/if}
+        </div>
+        <!-- Role selection buttons -->
+        <div class="flex gap-3 mt-4">
+            <button disabled={removingRoles} on:click={toggleRoleSelection} class:opacity-60={!selectingRoles} class="size-fit text-sm py-2 px-3 rounded bg-neutral-300 dark:bg-neutral-800/60 hover:opacity-100 hover:bg-neutral-300 dark:hover:bg-neutral-700">
+                {#if !selectingRoles}
+                    Select roles to remove
+                {:else}
+                    Cancel selection
+                {/if}
+            </button>
+
+            {#if selectingRoles}
+                <button on:click={removeSelectedRoles} disabled={selectedRoles.length < 1 || removingRoles} class="size-fit text-sm py-2 px-3 rounded bg-neutral-300 dark:bg-neutral-800/60 hover:bg-neutral-300 dark:hover:bg-neutral-700 disabled:opacity-60">
+                    {#if !removingRoles}
+                        Removes roles
+                    {:else}
+                        Removing...
+                    {/if}
+                </button>
             {/if}
         </div>
 
@@ -212,7 +289,7 @@
         @apply whitespace-nowrap;
     }
     .detail-hr {
-        @apply border-neutral-800 my-6;
+        @apply border-neutral-300 dark:border-neutral-800 my-6;
     }
     .detail-section-title {
         @apply text-lg font-medium;

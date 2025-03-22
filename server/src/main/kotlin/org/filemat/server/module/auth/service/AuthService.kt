@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap
 @Service
 class AuthService(
     private val authTokenService: AuthTokenService,
-    private val roleService: RoleService,
     private val userRoleService: UserRoleService,
     private val userService: UserService,
     private val logService: LogService
@@ -77,6 +76,18 @@ class AuthService(
         }
     }
 
+    /**
+     * Update a users principal in memory
+     */
+    fun updatePrincipal(userId: Ulid, block: (existing: Principal) -> Principal) {
+        principalMap.computeIfPresent(userId) { _: Ulid, existing: Principal ->
+            return@computeIfPresent block(existing)
+        }
+    }
+
+    /**
+     * Get a user principal by auth token
+     */
     fun getPrincipalByToken(token: String): Result<Principal> {
         return getPrincipalFromMemoryByToken(token)?.toResult() ?: let {
             val p = getPrincipalFromDatabaseByToken(token)
@@ -85,19 +96,9 @@ class AuthService(
         }
     }
 
-    fun getPrincipalByUserId(userId: Ulid): Result<Principal> {
-        principalMap[userId]?.let {
-            return it.toResult()
-        }
-
-        val userR = userService.getUserByUserId(userId, UserAction.GENERIC_GET_PRINCIPAL)
-        if (userR.hasError) return Result.error(userR.error)
-        if (userR.notFound) return Result.notFound()
-        val user = userR.value
-
-        return TODO()
-    }
-
+    /**
+     * Get user principal from database using auth token
+     */
     private fun getPrincipalFromDatabaseByToken(token: String): Result<Principal> {
         val authTokenResult: Result<AuthToken> = authTokenService.getToken(token)
         if (authTokenResult.hasError) return Result.error(authTokenResult.error)
@@ -114,6 +115,9 @@ class AuthService(
         return principal
     }
 
+    /**
+     * Get user principal from database using user object
+     */
     private fun getPrincipalFromDatabaseByUser(user: User): Result<Principal> {
         val rolesR = userRoleService.getRolesByUserId(user.userId)
         if (rolesR.isNotSuccessful) return Result.error(rolesR.error)
@@ -139,6 +143,9 @@ class AuthService(
         return principal.toResult()
     }
 
+    /**
+     * Get user principal from database using auth token
+     */
     private fun getPrincipalFromMemoryByToken(token: String): Principal? {
         val authToken = tokenToUserIdMap[token] ?: return null
         if (authToken.isExpired()) {
