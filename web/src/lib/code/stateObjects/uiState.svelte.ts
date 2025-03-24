@@ -1,5 +1,3 @@
-
-
 class UiState {
     /**
      * Indicates whether mobile navigation menu is open
@@ -25,6 +23,8 @@ class UiState {
         title: "preferences",
         menuOpen: false as boolean
     })
+
+
 
     /**
      * Binds methods to this context

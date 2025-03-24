@@ -206,7 +206,9 @@ export function toStatus(s: number): httpStatus {
     return result
 }
 
-
+/**
+ * Checks if a list contains items of another list
+ */
 export function includesList<T>(list: T[], includedItems: T[]): boolean {
     return includedItems.every(i => list.includes(i));
 }
@@ -233,7 +235,40 @@ export function lockFunction<T, Args extends any[]>(block: (...args: Args) => T 
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
+/**
+ * Removes a string element from a string array
+ */
 export function removeString(arr: string[], str: string) {
     const index = arr.indexOf(str)
     if (index !== -1) arr.splice(index, 1)
+}
+
+/**
+ * Iterates through an object
+ */
+export function forEachObject<T>(obj: Record<string, T>, block: (key: string, value: T) => void): void {
+    Object.entries(obj).forEach(([key, value]) => block(key, value))
+}
+
+/**
+ * Filters an object with a predicate
+ */
+export function filterObject<T>(obj: Record<string, T>, predicate: (key: string, value: T) => boolean): Record<string, T> {
+    const newObj: Record<string, T> = {}
+
+    forEachObject(obj, ((k, v) => {
+        if (predicate(k, v)) {
+            newObj[k] = v
+        }
+    }))
+
+    return newObj
+}
+
+
+/**
+ * Returns current unix timestamp
+ */
+export function unixNow(): number { 
+    return Date.now() / 1000
 }

@@ -3,6 +3,7 @@ package org.filemat.server.module.auth.service
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.coroutines.*
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.iterate
 import org.filemat.server.common.util.unixNow
@@ -88,9 +89,20 @@ class AuthService(
     /**
      * Get a user principal by auth token
      */
-    fun getPrincipalByToken(token: String): Result<Principal> {
+    fun getPrincipalByToken(token: String, cacheInMemory: Boolean): Result<Principal> {
         return getPrincipalFromMemoryByToken(token)?.toResult() ?: let {
-            val p = getPrincipalFromDatabaseByToken(token)
+            val p = getPrincipalFromDatabaseByToken(token, cacheInMemory)
+            if (p.isNotSuccessful) return p
+            return@let p.value.toResult()
+        }
+    }
+
+    /**
+     * Get a user principal by user ID
+     */
+    fun getPrincipalByUserId(userId: Ulid, cacheInMemory: Boolean): Result<Principal> {
+        return getPrincipalFromMemoryByUserId(userId)?.toResult() ?: let {
+            val p = getPrincipalFromDatabaseByUserId(userId, cacheInMemory)
             if (p.isNotSuccessful) return p
             return@let p.value.toResult()
         }
@@ -99,26 +111,35 @@ class AuthService(
     /**
      * Get user principal from database using auth token
      */
-    private fun getPrincipalFromDatabaseByToken(token: String): Result<Principal> {
+    private fun getPrincipalFromDatabaseByToken(token: String, cacheInMemory: Boolean): Result<Principal> {
         val authTokenResult: Result<AuthToken> = authTokenService.getToken(token)
         if (authTokenResult.hasError) return Result.error(authTokenResult.error)
         if (authTokenResult.notFound) return Result.notFound()
         val authToken = authTokenResult.value
 
-        val userR = userService.getUserByUserId(authToken.userId, UserAction.GENERIC_GET_PRINCIPAL)
+        val principalResult = getPrincipalFromDatabaseByUserId(authToken.userId, cacheInMemory)
+
+        tokenToUserIdMap[token] = authToken
+        return principalResult
+    }
+
+    /**
+     * Get principal from database with the user ID
+     */
+    private fun getPrincipalFromDatabaseByUserId(userId: Ulid, cacheInMemory: Boolean): Result<Principal> {
+        val userR = userService.getUserByUserId(userId, UserAction.GENERIC_GET_PRINCIPAL)
         if (userR.hasError) return Result.error(userR.error)
         if (userR.notFound) return Result.notFound()
         val user = userR.value
 
-        tokenToUserIdMap[token] = authToken
-        val principal = getPrincipalFromDatabaseByUser(user)
+        val principal = getPrincipalFromDatabaseByUser(user, cacheInMemory)
         return principal
     }
 
     /**
      * Get user principal from database using user object
      */
-    private fun getPrincipalFromDatabaseByUser(user: User): Result<Principal> {
+    private fun getPrincipalFromDatabaseByUser(user: User, cacheInMemory: Boolean): Result<Principal> {
         val rolesR = userRoleService.getRolesByUserId(user.userId)
         if (rolesR.isNotSuccessful) return Result.error(rolesR.error)
         val roles = rolesR.value
@@ -136,7 +157,7 @@ class AuthService(
                 roles = roles.map { it.roleId }.toMutableList()
             )
 
-            principalMap[user.userId] = principal
+            if (cacheInMemory) principalMap[user.userId] = principal
             principal
         }
 
@@ -152,7 +173,9 @@ class AuthService(
             tokenToUserIdMap.remove(token)
             return null
         }
-        return principalMap[authToken.userId]
+        return getPrincipalFromMemoryByUserId(authToken.userId)
     }
+
+    private fun getPrincipalFromMemoryByUserId(userId: Ulid): Principal? = principalMap[userId]
 
 }

@@ -20,13 +20,16 @@ import org.springframework.web.bind.annotation.RestController
 @Authenticated([SystemPermission.MANAGE_USERS])
 @RestController
 @RequestMapping("/v1/admin/user-role")
-class AdminUserRoleController(private val adminUserRoleService: AdminUserRoleService, private val authService: AuthService) : AController() {
+class AdminUserRoleController(
+    private val adminUserRoleService: AdminUserRoleService,
+    private val authService: AuthService
+) : AController() {
 
     @PostMapping("/remove")
     fun adminRemoveUserRolesMapping(
         request: HttpServletRequest,
         @RequestParam("userId") rawUserId: String,
-        @RequestParam("roleId") rawRoleIdList: String,
+        @RequestParam("roleIdList") rawRoleIdList: String,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
 
@@ -41,7 +44,7 @@ class AdminUserRoleController(private val adminUserRoleService: AdminUserRoleSer
         if (r.isNotSuccessful) return bad(r.error, "")
 
         val removedRoles = r.value
-        val serialized = Json.encodeToString(removedRoles)
+        val serialized = Json.encodeToString(removedRoles.map { it.toString() })
 
         return ok(serialized)
     }

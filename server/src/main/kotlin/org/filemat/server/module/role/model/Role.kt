@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.config.UlidSerializer
 import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.SystemPermission
+import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
@@ -39,12 +40,21 @@ data class Role(
     override val permissions: List<SystemPermission>,
 ) : ARole()
 
+fun ARole.toRoleDto(): RoleDto {
+    return RoleDto(
+        roleId = this.roleId,
+        name = this.name,
+        createdDate = this.createdDate,
+        permissions = Json.encodeToString(this.permissions.map { it.index })
+    )
+}
 
 /**
  * Role DTO for database
  */
 @Table("role")
 data class RoleDto(
+    @Id
     @Column("role_id")
     override val roleId: Ulid,
     @Column("name")

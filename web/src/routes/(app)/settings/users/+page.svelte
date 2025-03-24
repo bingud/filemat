@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { loadUserList } from "$lib/code/admin/loadUserList";
     import type { PublicUser } from "$lib/code/auth/types";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
@@ -13,30 +14,14 @@
 
     onMount(() => {
         uiState.settings.title = title
-        loadUserList()
+        loadList()
     })
 
 
-    async function loadUserList() {
-        if (loading) return; loading = true; try {
-
-        const response = await safeFetch(`/api/v1/admin/user/list`, { method: "POST", credentials: "same-origin" })
-        if (response.failed) {
-            handleError(response.exception, `Failed to load list of users.`)
-            users = null
-            return
-        }
-        const status = response.code
-        const json = response.json()
-
-        if (status.ok) {
-            if (json) {
-                users = json
-            }
-        } else if (status.serverDown) {
-            handleError(`Server ${status} when fetching user list.`, "Failed to load users. The server is unavailable.")
-        } else {
-            handleErrorResponse(json, `Failed to load the list of all users. (${status})`)
+    async function loadList() {if (loading) return; loading = true; try {
+        const r = await loadUserList()
+        if (r) {
+            users = r
         }
     } finally { loading = false }}
 

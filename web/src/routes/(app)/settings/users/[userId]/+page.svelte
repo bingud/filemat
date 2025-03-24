@@ -2,6 +2,7 @@
     import { dev } from "$app/environment";
     import { page } from "$app/state";
     import type { FullPublicUser } from "$lib/code/auth/types";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types";
@@ -20,10 +21,11 @@
     let selectingRoles = $state(false)
     let selectedRoles: ulid[] = $state([])
 
+    let addRolesButton: undefined | HTMLElement = $state()
     let addRolesDisabled = $derived.by(() => {
-        if (!user || !auth.roleList) return true
+        if (!user || !appState.roleList) return true
 
-        return includesList(user.roles, auth.roleList.map(v=>v.roleId))
+        return includesList(user.roles, appState.roleList.map(v=>v.roleId))
     })
 
     $effect(() => {
@@ -113,10 +115,13 @@
 
     let removingRoles = $state(false)
     async function removeSelectedRoles() {
-        finish
         if (removingRoles) return; removingRoles = true
         try {
             if (selectedRoles.length < 1 || !selectingRoles || !user) return
+
+            if (auth.principal!.userId === user.userId && selectedRoles.includes(appState.systemRoleIds!.admin)) {
+                if (!confirm("Are you sure you want to remove your own admin role?")) return
+            }
 
             const userId = user.userId
             const body = formData({ userId: userId, roleIdList: JSON.stringify(selectedRoles) })
@@ -129,10 +134,16 @@
             const status = response.code
 
             if (status.ok) {
+                const removedRoles = json as ulid[]
                 if (user && user.userId === userId) {
-                    selectedRoles.forEach((roleId) => {  
+                    removedRoles.forEach((roleId) => {
                         removeString(user!.roles, roleId)
                     })
+                }
+
+                const removedRolesDifference = selectedRoles.length - removedRoles.length
+                if (removedRolesDifference > 0) {
+                    handleError(`Failed to remove ${removedRolesDifference} roles from user`, `Failed to remove ${removedRolesDifference} ${removedRolesDifference === 1 ? "role" : "roles"}.`)
                 }
 
                 toggleRoleSelection()
@@ -183,7 +194,7 @@
                     {#if !selectingRoles}
                         <a href="/settings/roles/{roleId}" class="detail-content !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
                     {:else}
-                        <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-blue-400 hover:underline {selectedRoles.includes(role.roleId) ? 'ring-2 ring-blue-400' : ''}">{role.name}</button>
+                        <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-red-400 {selectedRoles.includes(role.roleId) ? 'ring-2 ring-red-400' : ''}">{role.name}</button>
                     {/if}
                 {:else}
                     <div class="detail-card">
@@ -193,19 +204,19 @@
                 {/if}
             {/each}
 
-            {#if !addRolesDisabled}
-                <button id="add-roles" title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none">
+            {#if !addRolesDisabled && !selectingRoles}
+                <button bind:this={addRolesButton} id="add-roles" title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none">
                     <div class="size-4 rotate-45">
                         <CloseIcon></CloseIcon>
                     </div>
                 </button>
             {/if}
 
-            {#if auth.roleList && !addRolesDisabled}
-                <Popover buttonId="add-roles" marginRem={1} fadeDuration={40} open={dev}>
+            {#if appState.roleList && !addRolesDisabled && addRolesButton}
+                <Popover button={addRolesButton} marginRem={1} fadeDuration={40} open={false}>
                     <div class="max-w-full w-[13rem] rounded-md bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
                         <div class="flex flex-col gap-2 p-2">
-                            {#each auth.roleList as role}
+                            {#each appState.roleList as role}
                                 {@const hasRole = user.roles.includes(role.roleId)}
                                 {#if !hasRole}
                                     <button on:click={() => { assignRole(role.roleId) }} class="rounded w-full bg-neutral-900 text-left px-2 py-1 hover:bg-neutral-700">{role.name}</button>

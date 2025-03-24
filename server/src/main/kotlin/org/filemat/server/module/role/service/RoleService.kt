@@ -14,6 +14,8 @@ import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.model.serialize
 import org.filemat.server.module.permission.model.toIntList
 import org.filemat.server.module.role.model.Role
+import org.filemat.server.module.role.model.RoleDto
+import org.filemat.server.module.role.model.toRoleDto
 import org.filemat.server.module.role.repository.RoleRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -23,6 +25,30 @@ class RoleService(
     private val roleRepository: RoleRepository,
     private val logService: LogService,
 ) {
+
+    fun create(role: Role): Result<Unit> {
+        try {
+            val roleDto = role.toRoleDto()
+
+            roleRepository.insert(
+                roleId = roleDto.roleId,
+                name = roleDto.name,
+                createdDate = roleDto.createdDate,
+                permissions = roleDto.permissions
+            )
+            State.Auth.roleMap[role.roleId] = role
+
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to create new role in database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to create new role.")
+        }
+    }
 
     fun loadRolesToMemory(): Boolean {
         try {
@@ -111,7 +137,7 @@ class RoleService(
         rolesToCreate.forEach { role ->
             try {
                 val inserted = roleRepository.insert(
-                    roleId = role.roleId.toString(),
+                    roleId = role.roleId,
                     name = role.name,
                     createdDate = role.createdDate,
                     permissions = role.permissions.toIntList().toString()

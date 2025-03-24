@@ -19,7 +19,7 @@ class AuthenticationFilter(private val authService: AuthService) : OncePerReques
             return chain.doFilter(request, response)
         }
 
-        val principal = authService.getPrincipalByToken(token)
+        val principal = authService.getPrincipalByToken(token, true)
         if (principal.hasError) {
             response.status = 500
             response.writer.write(principal.error)

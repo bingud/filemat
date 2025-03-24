@@ -53,9 +53,9 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
 
                 if (status === 200) {
                     const roleList = data.roles.value
-                    auth.roleList = roleList
+                    appState.roleList = roleList
                 } else if (status === 401) {
-                    auth.roleList = null
+                    appState.roleList = null
                 } else {
                     handleError(`Status ${status} for role list when fetching state.`, `Failed to load roles (${status})`)
                     return false
@@ -77,7 +77,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
 
                 if (status === 200) {
                     const ids = data.systemRoleIds.value
-                    auth.systemRoleIds = ids
+                    appState.systemRoleIds = ids
                 } else {
                     handleError(`Status ${status} for system role IDs when fetching state.`, `Failed to load system roles (${status})`)
                 }

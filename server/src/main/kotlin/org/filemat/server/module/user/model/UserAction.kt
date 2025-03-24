@@ -18,4 +18,5 @@ enum class UserAction {
     LIST_USERS,                             // 9
     ASSIGN_ROLE,                            // 9
     UNASSIGN_ROLES,                         // 10
+    CREATE_ROLE,                            // 11
 }

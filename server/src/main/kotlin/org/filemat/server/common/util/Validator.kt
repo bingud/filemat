@@ -33,4 +33,9 @@ object Validator {
         return null
     }
 
+    fun roleName(s: String): String? {
+        if (s.isBlank()) return "Role name is empty."
+        if (s.length > 128) return "Role name is too long."
+        return null
+    }
 }

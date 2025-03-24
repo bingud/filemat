@@ -7,13 +7,16 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.service.AuthService
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.hasSufficientPermissionsFor
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 
 @Service
-class AdminUserRoleService(private val userRoleService: UserRoleService, private val authService: AuthService) {
+class AdminUserRoleService(private val userRoleService: UserRoleService, private val authService: AuthService, private val logService: LogService) {
 
     /**
      * Remove a list of roles from a user
@@ -23,28 +26,48 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
     fun removeRoles(principal: Principal, targetId: Ulid, allRoles: List<Ulid>): Result<List<Ulid>> {
         val userPermissions = principal.getPermissions()
 
-        val roles = allRoles.filter { roleId ->
+        val roles = allRoles.map { roleId ->
             val role = State.Auth.roleMap[roleId]
-                ?: return@filter false
+                ?: return@map null
 
-            if (userPermissions.hasSufficientPermissionsFor(role.permissions)) return@filter false
-            true
+            if (userPermissions.hasSufficientPermissionsFor(role.permissions) == false) return@map null
+            role
+        }.filterNotNull()
+        val roleIds = roles.map { it.roleId }
+
+        val targetPrincipal = authService.getPrincipalByUserId(targetId, false).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
         }
 
         userRoleService.removeList(
             userId = targetId,
-            roles = roles,
+            roles = roleIds,
             action = UserAction.UNASSIGN_ROLES,
         ).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        authService.updatePrincipal(targetId) { targetPrincipal ->
-            targetPrincipal.roles.removeAll(roles)
-            targetPrincipal
+        authService.updatePrincipal(targetId) { currentPrincipal ->
+            currentPrincipal.roles.removeAll(roleIds)
+            currentPrincipal
         }
 
-        return Result.ok(roles)
+        // Log
+        if (roles.isNotEmpty()) {
+            logService.info(
+                LogType.AUDIT,
+                action = UserAction.UNASSIGN_ROLES,
+                description = "Unassigned ${roles.size} roles from user ${targetPrincipal.username}",
+                message = "User ${principal.username} unassigned roles from user ${targetPrincipal.username}:\n${roles.joinToString(", ") { it.name }}",
+                initiatorId = principal.userId,
+                initiatorIp = null,
+                targetId = targetId,
+                meta = null
+            )
+        }
+
+        return Result.ok(roleIds)
     }
 
     /**
@@ -57,17 +80,19 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
         val userPermissions = principal.getPermissions()
 
         // Check if user has high enough roles to assign role
-        if (!userPermissions.hasSufficientPermissionsFor(role.permissions)) return Result.reject("")
+        if (userPermissions.hasSufficientPermissionsFor(role.permissions) == false) return Result.reject("")
 
-        // Get roles of target user
-        val targetRoles = userRoleService.getRolesByUserId(targetId).let {
+        // Get targets principal
+        val targetPrincipal = authService.getPrincipalByUserId(targetId, false).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
+        val targetRoles = targetPrincipal.roles
 
         // Check if user already has role
-        if (targetRoles.any { it.roleId == roleId }) return Result.error("User already has this role.")
+        if (targetRoles.any { it == roleId }) return Result.error("User already has this role.")
 
+        // Add role in database
         userRoleService.assign(
             userId = targetId,
             roleId = roleId,
@@ -76,10 +101,23 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
             if (it.isNotSuccessful) return it.cast()
         }
 
+        // Update principal in memory
         authService.updatePrincipal(targetId) {
             it.roles.add(roleId)
             it
         }
+
+        // Log
+        logService.info(
+            LogType.AUDIT,
+            action = UserAction.ASSIGN_ROLE,
+            description = "Assigned role: ${role.name} to user ${targetPrincipal.username}",
+            message = "User ${principal.username} assigned role ${role.name} to user ${targetPrincipal.username}",
+            initiatorId = principal.userId,
+            initiatorIp = null,
+            targetId = targetId,
+            meta = meta("roleId" to roleId.toString())
+        )
 
         return Result.ok()
     }

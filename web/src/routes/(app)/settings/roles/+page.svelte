@@ -1,6 +1,7 @@
 <script lang="ts">
+    import { goto } from "$app/navigation";
     import { PermissionType } from "$lib/code/auth/types";
-    import { getPermissionInfo } from "$lib/code/data/permissions";
+    import { getPermissionInfo, hasPermissionLevel } from "$lib/code/data/permissions";
     import { fetchState } from "$lib/code/state/stateFetcher";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
@@ -15,6 +16,11 @@
 
     onMount(() => {
         uiState.settings.title = title
+
+        if (!hasPermissionLevel(3)) {
+            goto(`/settings`)
+            return
+        }
 
         if (!appState.isInitialPageOpen) {
             loading = true
@@ -31,11 +37,12 @@
 </svelte:head>
 
 
-<div class="page">
-    {#if auth.roleList}
+<div class="page flex-col gap-4">
+    {#if appState.roleList}
+        <a href="/settings/roles/new" class="rounded bg-neutral-800/50 px-3 py-2 w-fit hover:bg-neutral-800 hover:text-blue-400">Create a new role</a>
         <div in:fade={{duration: 70}} class="w-full overflow-y-auto scrollbar h-fit pb-1">
             <div class="flex flex-col gap-4">
-                {#each auth.roleList as role}
+                {#each appState.roleList as role}
                     <div class="p-4 rounded-lg bg-neutral-200 dark:bg-neutral-800/50">
                         <!-- Role Name -->
                         <a href="/settings/roles/{role.roleId}" class="font-medium text-lg mb-2 text-blue-400 hover:underline">

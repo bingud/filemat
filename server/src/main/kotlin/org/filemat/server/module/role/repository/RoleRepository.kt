@@ -14,7 +14,7 @@ interface RoleRepository : CrudRepository<RoleDto, Ulid> {
 
     @Modifying
     @Query("INSERT INTO role (role_id, name, created_date, permissions) VALUES (:roleId, :name, :createdDate, :permissions)")
-    fun insert(roleId: String, name: String, createdDate: Long, permissions: String): Int
+    fun insert(roleId: Ulid, name: String, createdDate: Long, permissions: String): Int
 
     @Query("SELECT EXISTS(SELECT 1 FROM role WHERE role_id = :roleId)")
     fun exists(roleId: Ulid): Boolean

@@ -1,12 +1,11 @@
 <script lang="ts">
     import { debounceFunction } from "$lib/code/util/codeUtil.svelte";
     import { onMount, type Snippet } from "svelte";
-    import { preventDefault } from "svelte/legacy";
     import { fade } from "svelte/transition";
 
-    let { children, buttonId, marginRem = 0, fadeDuration = 0, open = false }: {
+    let { children, button = $bindable(), marginRem = 0, fadeDuration = 0, open = false }: {
         children: Snippet<[]>,
-        buttonId: string,
+        button: HTMLElement,
         marginRem?: number,
         fadeDuration?: number,
         open?: boolean
@@ -15,7 +14,6 @@
     /**
      * Button to toggle popover
      */
-    let button: HTMLElement | null = $state(null)
     let visible = $state(open)
 
     /**
@@ -31,16 +29,22 @@
     let popoverWidth = $state(0)
 
     onMount(() => {
-        button = document.getElementById(buttonId)
         if (button == null) return
 
         button.addEventListener('click', onClick)
         document.addEventListener('scroll', calcCoords, true)
 
         return () => {
-            button?.removeEventListener('click', onClick)
             document.removeEventListener('scroll', calcCoords)
+            button?.removeEventListener('click', onClick)
         }
+    })
+
+    $effect(() => {
+        if (button) {
+            button.removeEventListener('click', onClick)
+            button.addEventListener('click', onClick)
+        } 
     })
 
     $effect(() => { calcCoords(); button })

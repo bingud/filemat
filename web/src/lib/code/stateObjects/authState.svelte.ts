@@ -1,5 +1,7 @@
 import type { Principal, Role } from "../auth/types"
+import { getAuthPermissionLevel } from "../data/permissions"
 import type { ulid } from "../types"
+import { appState } from "./appState.svelte"
 
 
 class AuthState {
@@ -7,24 +9,23 @@ class AuthState {
      * User authentication object
      */
     principal: Principal | null = $state(null)
-    /**
-     * List of all roles in the system
-     */
-    roleList: Role[] | null = $state(null)
+
     /**
      * Indicates whether user is logged in.
      */
     authenticated: boolean | null = $state(false)
-    /**
-     * List of default system role IDs
-     */
-    systemRoleIds: { user: ulid, admin: ulid } | null = $state(null)
+
     /**
      * Indicates whether user has the admin role
      */
     isAdmin = $derived.by(() => {
-        if (!this.principal || !this.systemRoleIds) return null
-        return this.principal.roles.includes(this.systemRoleIds.admin)
+        if (!this.principal || !appState.systemRoleIds) return null
+        return this.principal.roles.includes(appState.systemRoleIds.admin)
+    })
+
+    permissionLevel = $derived.by(() => {
+        if (!this.principal || !this.principal.roles) return 0
+        return getAuthPermissionLevel()
     })
 
     constructor() {
@@ -36,9 +37,7 @@ class AuthState {
      */
     reset() {
         this.principal = null
-        this.roleList = null
         this.authenticated = null
-        this.systemRoleIds = null
         console.log(`Auth state wiped.`)
     }
 }

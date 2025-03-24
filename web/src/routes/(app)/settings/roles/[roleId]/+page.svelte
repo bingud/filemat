@@ -1,13 +1,18 @@
 <script lang="ts">
+    import { dev } from "$app/environment";
     import { page } from "$app/state";
-    import { PermissionType, type MiniUser, type Role, type RoleMeta } from "$lib/code/auth/types";
-    import { formatPermission, getPermissionInfo } from "$lib/code/data/permissions";
+    import { loadUserList } from "$lib/code/admin/loadUserList";
+    import { PermissionType, type MiniUser, type PublicUser, type Role, type RoleMeta } from "$lib/code/auth/types";
+    import { formatPermission, getMaxPermissionLevel, getPermissionInfo, hasPermissionLevel } from "$lib/code/data/permissions";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types";
     import { formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, pageTitle, parseJson, safeFetch, toStatus } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import Loader from "$lib/component/Loader.svelte";
+    import Popover from "$lib/component/Popover.svelte";
+    import { A } from "flowbite-svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
 
@@ -15,6 +20,13 @@
     let role = $state(null) as RoleMeta & { miniUsers: MiniUser[] } | null
     let status: "loading" | "failed" | "ready" | undefined = $state()
     let title = $derived(role ? `Manage role: ${role.name}` : "Manage role")
+
+    let addUsersButton: HTMLElement | undefined = $state()
+    let allUsers: null | PublicUser[] = $state(null)
+    let allUsersLoading = $state(false)
+    let addingUser = $state(false)
+
+    let highestRolePermissionLevel = $derived(role ? getMaxPermissionLevel(role.permissions) : null)
 
     onMount(() => {
         uiState.settings.title = title
@@ -62,6 +74,9 @@
         }
     }
 
+    /**
+     * Load list of users with this role
+     */
     async function loadMiniUsers(userIds: ulid[]): Promise<MiniUser[] | null> {
         const response = await safeFetch(`/api/v1/admin/user/minilist`, 
             { method: "POST", credentials: "same-origin", body: formData({ userIdList: JSON.stringify(userIds) }) }
@@ -83,6 +98,24 @@
             return null
         }
     }
+
+    /**
+     * Load list of all filemat users
+     */
+    async function loadAllUserList() {if (allUsersLoading) return; allUsersLoading = true; try {
+        allUsers = null
+        const r = await loadUserList()
+        if (r) {
+            allUsers = r
+        }
+    } finally { allUsersLoading = false }}
+
+    /**
+     * Assign this role to user
+     */
+    async function addUser() {if (addingUser) return; addingUser = true; try {
+        
+    } finally { addingUser = true }}
 </script>
 
 
@@ -96,9 +129,9 @@
         <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-neutral-200 dark:bg-neutral-800/50">
             <h1 class="text-lg">{role.name}</h1>
             <p class="dark:text-neutral-300">Created on: {formatUnixTimestamp(role.createdDate)}</p>
-            {#if auth.systemRoleIds?.admin === role.roleId}
+            {#if appState.systemRoleIds?.admin === role.roleId}
                 <p>This is a system role that was created automatically. It has all available permissions.</p>
-            {:else if auth.systemRoleIds?.user === role.roleId}
+            {:else if appState.systemRoleIds?.user === role.roleId}
                 <p>This is a system role that was created automatically. Every user has this role.</p>
             {/if}
         </div>
@@ -106,10 +139,12 @@
         <div class="flex flex-col gap-4">
             {#if role.miniUsers}
                 <h2 class="text-lg">Users with this role:</h2>
-                {#if role.roleId !== auth.systemRoleIds?.user}
+                {#if role.roleId !== appState.systemRoleIds?.user}
                     <div class="flex gap-3 flex-wrap w-full">
                         {#each role.miniUsers as mini}
                             <a href="/settings/users/{mini.userId}" title={mini.userId} class="p-3 rounded bg-neutral-200 dark:bg-neutral-900 hover:text-blue-400 hover:underline">{mini.username}</a>
+                        {:else}
+                            <p class="opacity-80">Nobody</p>
                         {/each}
                     </div>
                 {:else}
@@ -117,6 +152,35 @@
                 {/if}
             {:else}
                 <p class="p-6 bg-neutral-300 dark:bg-neutral-800">Failed to load users with this role.</p>
+            {/if}
+
+            {#if highestRolePermissionLevel && hasPermissionLevel(highestRolePermissionLevel)}
+                <button bind:this={addUsersButton} on:click={loadAllUserList} class="w-fit px-4 py-2 rounded bg-neutral-800/80">Add users</button>
+            {/if}
+            
+            {#if addUsersButton}
+                <Popover button={addUsersButton} open={dev} fadeDuration={40} marginRem={1}>
+                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                        {#if allUsers}
+                            <div in:fade={{duration:40}} class="flex flex-col gap-2 p-2">
+                                {#each allUsers as user}
+                                    {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
+                                    {#if !hasRole}
+                                        <button on:click={() => {  }} class="rounded w-full bg-neutral-900 text-left px-2 py-1 hover:bg-neutral-700">{user.username}</button>
+                                    {/if}
+                                {/each}
+                            </div>
+                        {:else if allUsersLoading}
+                            <div class="center !h-[3rem]">
+                                <Loader></Loader>
+                            </div>
+                        {:else}
+                            <div class="center !h-[3rem]">
+                                <p class="">Failed to load list of users.</p>
+                            </div>
+                        {/if}
+                    </div>
+                </Popover>
             {/if}
         </div>
 
