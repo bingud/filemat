@@ -6,7 +6,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, pageTitle } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, pageTitle, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -39,8 +39,9 @@
 
 <div class="page flex-col gap-4">
     {#if appState.roleList}
-        <a href="/settings/roles/new" class="rounded bg-neutral-800/50 px-3 py-2 w-fit hover:bg-neutral-800 hover:text-blue-400">Create a new role</a>
-        <div in:fade={{duration: 70}} class="w-full overflow-y-auto scrollbar h-fit pb-1">
+        <a href="/settings/roles/new" class="rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800/50 dark:hover:bg-neutral-800 px-3 py-2 w-fit dark:hover:text-blue-400">Create a new role</a>
+
+        <div in:fade={{duration: 70}} class="w-full overflow-y-auto custom-scrollbar h-fit pb-1">
             <div class="flex flex-col gap-4">
                 {#each appState.roleList as role}
                     <div class="p-4 rounded-lg bg-neutral-200 dark:bg-neutral-800/50">
@@ -64,7 +65,7 @@
                 
                         <!-- Permissions (wrapped) -->
                         <div title="Permissions of this role" class="flex flex-wrap gap-2">
-                            {#each role.permissions.map(v => getPermissionInfo(v)) as permission}
+                            {#each sortArrayByNumberDesc(role.permissions.map(v => getPermissionInfo(v)), o => o.level) as permission}
                                 <span class="px-2 py-1 bg-neutral-300 dark:bg-neutral-700/40 rounded text-xs">
                                     {permission.name}
                                 </span>

@@ -29,6 +29,7 @@
 		"@jill64/svelte-toast": "^2.1.6",
 		"@tailwindcss/postcss": "^4.0.14",
 		"@tailwindcss/vite": "^4.0.14",
-		"flowbite-svelte": "^0.48.4"
+		"flowbite-svelte": "^0.48.4",
+		"tailwind-scrollbar": "^4.0.1"
 	}
 }

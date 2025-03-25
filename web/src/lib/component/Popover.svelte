@@ -3,18 +3,19 @@
     import { onMount, type Snippet } from "svelte";
     import { fade } from "svelte/transition";
 
-    let { children, button = $bindable(), marginRem = 0, fadeDuration = 0, open = false }: {
+    let { children, button = $bindable(), marginRem = 0, fadeDuration = 0, isOpen = $bindable() }: {
         children: Snippet<[]>,
         button: HTMLElement,
         marginRem?: number,
         fadeDuration?: number,
-        open?: boolean
+        isOpen?: boolean
     } = $props()
 
     /**
      * Button to toggle popover
      */
-    let visible = $state(open)
+    let visible = $state(isOpen || false)
+    let showPopover = $derived(isOpen !== undefined ? isOpen : visible)
 
     /**
      * Coordinations of top-middle of button
@@ -29,9 +30,7 @@
     let popoverWidth = $state(0)
 
     onMount(() => {
-        if (button == null) return
-
-        button.addEventListener('click', onClick)
+        button?.addEventListener('click', onClick)
         document.addEventListener('scroll', calcCoords, true)
 
         return () => {
@@ -41,7 +40,7 @@
     })
 
     $effect(() => {
-        if (button) {
+        if (button && popoverHeight && popoverWidth) {
             button.removeEventListener('click', onClick)
             button.addEventListener('click', onClick)
         } 
@@ -77,6 +76,7 @@
      */
     function hide() {
         visible = false
+        if (isOpen) isOpen = false
     }
 
     /**
@@ -105,12 +105,12 @@
 <svelte:window on:resize={onResize}></svelte:window>
 <svelte:document on:keydown={onKeydown}></svelte:document>
 
-{#if visible && button && topY != null && topX != null}
+{#if showPopover && topY != null && topX != null}
     <!-- Close popover by clicking off -->
     <button aria-label="Close the popover" class="z-10 fixed top-0 left-0 w-full h-full !cursor-default" on:wheel|passive={hide} on:mousedown={hide} on:click={hide}></button>
 
     <!-- Popover -->
-    <div transition:fade={{duration: fadeDuration}} bind:offsetHeight={popoverHeight} bind:offsetWidth={popoverWidth} class="fixed z-20 rounded flex flex-col" style="top: {topY - popoverHeight}px; left: {topX - (popoverWidth / 2)}px; padding-bottom: {marginRem}rem;">
+    <div transition:fade={{duration: fadeDuration}} bind:offsetHeight={popoverHeight} bind:offsetWidth={popoverWidth} class="fixed z-20 rounded flex flex-col" style="top: {Math.max(topY - popoverHeight, 0)}px; left: {Math.max(topX - (popoverWidth / 2), 0)}px; padding-bottom: {marginRem}rem;">
         {@render children()}
     </div>
 {/if}

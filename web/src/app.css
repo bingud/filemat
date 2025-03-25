@@ -2,10 +2,11 @@
 
 @import "$lib/css/forms.css";
 @import "$lib/css/loader.css";
-@import "$lib/css/layout.css";
-
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@plugin 'tailwind-scrollbar' {
+}
+
 
 html {
     @apply fill-neutral-950 dark:fill-neutral-50;
@@ -40,6 +41,10 @@ html {
 
 .bg-layout {
     @apply bg-(--bg-light-layout) dark:bg-(--bg-dark-layout);
+}
+
+.custom-scrollbar {
+    @apply scrollbar scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
 }
 
 

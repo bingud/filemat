@@ -1,16 +1,19 @@
 <script lang="ts">
     import { dev } from "$app/environment";
     import { page } from "$app/state";
+    import { addRoleToUser } from "$lib/code/admin/roles";
     import type { FullPublicUser } from "$lib/code/auth/types";
+    import { getMaxPermissionLevel } from "$lib/code/data/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types";
-    import { delay, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { delay, forEachObject, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import Popover from "$lib/component/Popover.svelte";
+    import { get } from "svelte/store";
     import { fade } from "svelte/transition";
 
     const title = "Manage user"
@@ -73,16 +76,8 @@
     const assignRole = lockFunction(async (roleId: ulid) => {
         if (!user) return
 
-        const body = formData({ userId: user.userId, roleId: roleId })
-        const response = await safeFetch(`/api/v1/admin/user-role/assign`, { body: body })
-        if (response.failed) {
-            handleException(`Failed to assign role to user.`, `Failed to assign role.`, response.exception)
-            return
-        }
-        const status = response.code
-        const json = response.json()
-
-        if (status.ok) {
+        const result = await addRoleToUser(user.userId, roleId)
+        if (result === true) {
             if (user) {
                 user.roles.push(roleId)
 
@@ -90,10 +85,6 @@
                     auth.principal!.roles.push(roleId)
                 }
             }
-        } else if (status.serverDown) {
-            handleError(`Server ${status} when assigning role`, `Server is unavilable.`)
-        } else {
-            handleErrorResponse(json, `Failed to assign role.`)
         }
     })
 
@@ -188,19 +179,11 @@
 
         <h2 class="detail-section-title">Roles</h2>
         <div class="details-holder">
-            {#each user.roles as roleId}
-                {@const role = getRole(roleId)}
-                {#if role}
-                    {#if !selectingRoles}
-                        <a href="/settings/roles/{roleId}" class="detail-content !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
-                    {:else}
-                        <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-red-400 {selectedRoles.includes(role.roleId) ? 'ring-2 ring-red-400' : ''}">{role.name}</button>
-                    {/if}
+            {#each sortArrayByNumberDesc(user.roles.map(v => getRole(v)).filter(v => v != null), v => getMaxPermissionLevel(v.permissions)) as role}
+                {#if !selectingRoles}
+                    <a href="/settings/roles/{role.roleId}" class="detail-content !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
                 {:else}
-                    <div class="detail-card">
-                        <p class="detail-label">Invalid role</p>
-                        <p class="detail-content text-red-300">{roleId}</p>
-                    </div>
+                    <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-red-400 {selectedRoles.includes(role.roleId) ? 'ring-2 ring-red-400' : ''}">{role.name}</button>
                 {/if}
             {/each}
 
@@ -213,13 +196,13 @@
             {/if}
 
             {#if appState.roleList && !addRolesDisabled && addRolesButton}
-                <Popover button={addRolesButton} marginRem={1} fadeDuration={40} open={false}>
-                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                <Popover button={addRolesButton} marginRem={1} fadeDuration={40}>
+                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
                         <div class="flex flex-col gap-2 p-2">
-                            {#each appState.roleList as role}
+                            {#each sortArrayByNumberDesc(appState.roleList, v => getMaxPermissionLevel(v.permissions)) as role}
                                 {@const hasRole = user.roles.includes(role.roleId)}
                                 {#if !hasRole}
-                                    <button on:click={() => { assignRole(role.roleId) }} class="rounded w-full bg-neutral-900 text-left px-2 py-1 hover:bg-neutral-700">{role.name}</button>
+                                    <button on:click={() => { assignRole(role.roleId) }} class="rounded w-full hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1">{role.name}</button>
                                 {/if}
                             {/each}
                         </div>

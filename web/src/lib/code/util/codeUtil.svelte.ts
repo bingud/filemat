@@ -246,8 +246,8 @@ export function removeString(arr: string[], str: string) {
 /**
  * Iterates through an object
  */
-export function forEachObject<T>(obj: Record<string, T>, block: (key: string, value: T) => void): void {
-    Object.entries(obj).forEach(([key, value]) => block(key, value))
+export function forEachObject<T>(obj: Record<string, T>, block: (key: string, value: T) => any): void {
+    Object.entries(obj).forEach(([key, value]) => { block(key, value) })
 }
 
 /**
@@ -271,4 +271,29 @@ export function filterObject<T>(obj: Record<string, T>, predicate: (key: string,
  */
 export function unixNow(): number { 
     return Date.now() / 1000
+}
+
+/**
+ * Alphabetically sorts array of objects
+ */
+export function sortArrayAlphabetically<T>(arr: T[], accessor: (obj: T) => string): T[] {
+    return [...arr].sort((a, b) => accessor(a).localeCompare(accessor(b)))
+}
+
+/**
+ * Sorts array of objects 
+ * 
+ * Ascending order
+ */
+export function sortArrayByNumber<T>(arr: T[], accessor: (obj: T) => number): T[] {
+    return [...arr].sort((a, b) => accessor(a) - accessor(b));
+}
+
+/**
+ * Sorts array of objects 
+ * 
+ * Descending order
+ */
+export function sortArrayByNumberDesc<T>(arr: T[], accessor: (obj: T) => number): T[] {
+    return [...arr].sort((a, b) => accessor(b) - accessor(a));
 }

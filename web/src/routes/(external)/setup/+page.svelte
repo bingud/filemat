@@ -273,7 +273,7 @@
                 </div>
 
                 <div class="w-[35rem] max-w-full h-fit max-h-svh sm:max-h-fit sm:flex-grow flex flex-col gap-8 items-center sm:overflow-y-hidden py-12 border-y-2 border-neutral-900">
-                    <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto desktop-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
+                    <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto custom-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
                         {#each exposedFolders as folder, index}
                             <div class="flex flex-col sm:flex-row items-center gap-2 shrink-0">
                                 <input placeholder="Full folder path" class="sm:order-2 max-sm:w-full sm:flex-grow shrink-0" bind:value={folder.path}>
@@ -329,7 +329,7 @@
             </div>
 
             {#if appState.sensitiveFolders}
-                <div class="min-h-fit max-h-svh overflow-y-auto scrollbar flex flex-col gap-2 max-w-full">
+                <div class="min-h-fit max-h-svh overflow-y-auto custom-scrollbar flex flex-col gap-2 max-w-full">
                     {#each appState.sensitiveFolders as folder}
                         <div>
                             {folder}

@@ -10,11 +10,11 @@
     }
 
     .desktop-scrollbar::-webkit-scrollbar-thumb {
-        @apply rounded-full bg-neutral-800;
+        @apply rounded-full bg-neutral-300 dark:bg-neutral-800;
     }
 
     .desktop-scrollbar::-webkit-scrollbar-thumb:hover {
-        @apply bg-neutral-700;
+        @apply bg-neutral-400 dark:bg-neutral-700;
     }
 
     /* mozilla scrollbar */
@@ -39,15 +39,15 @@
 }
 
 .scrollbar::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-neutral-800;
+    @apply bg-neutral-300 dark:bg-neutral-800;
 }
 
 .scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-700;
+    @apply bg-neutral-400 dark:bg-neutral-700;
 }
 
 /* mozilla scrollbar */
-    @-moz-document url-prefix() {
+@-moz-document url-prefix() {
     .scrollbar {
         scrollbar-width: thin;
         scrollbar-color: #262626 transparent;

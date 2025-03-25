@@ -6,7 +6,7 @@
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
     import type { ulid } from "$lib/code/types";
-    import { formData, handleError, handleErrorResponse, handleException, isBlank, pageTitle, removeString, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { formData, handleError, handleErrorResponse, handleException, isBlank, pageTitle, removeString, safeFetch, sortArrayByNumberDesc, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte"
 
@@ -81,12 +81,12 @@
             <input required disabled={running} bind:value={nameInput} id="name-input" minlength="1" maxlength="128">
         </div>
 
-        <div class="flex flex-col w-[27rem] max-w-full gap-2">
+        <div class="flex flex-col w-[35rem] max-w-full gap-2">
             <label for="permissions-input">Permissions</label>
             <div id="permissions-input" class="w-full flex flex-wrap gap-3">
-                {#each valuesOf(systemPermissionMeta) as permission}
+                {#each sortArrayByNumberDesc(valuesOf(systemPermissionMeta), v=>v.level) as permission}
                     {#if auth.permissionLevel && auth.permissionLevel >= permission.level}
-                        <button type="button" class="rounded bg-neutral-800 px-2 py-1 hover:text-blue-400 {selectedPermissions.includes(permission.id) ? 'ring-2 ring-blue-400' : ''}" on:click={()=>{ selectPermission(permission.id) }}>{permission.name}</button>
+                        <button type="button" class="rounded bg-neutral-200 dark:bg-neutral-800 px-2 py-1 hover:text-blue-500 dark:hover:text-blue-400 {selectedPermissions.includes(permission.id) ? 'ring-2 ring-blue-400' : ''}" on:click={()=>{ selectPermission(permission.id) }}>{permission.name}</button>
                     {/if}
                 {/each}
             </div>

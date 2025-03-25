@@ -1,9 +1,10 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { loadUserList } from "$lib/code/admin/loadUserList";
+    
+    import { loadUserList } from "$lib/code/admin/users";
     import type { PublicUser } from "$lib/code/auth/types";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -33,9 +34,11 @@
 </svelte:head>
 
 
-<div class="page">
+<div class="page flex-col gap-8">
     {#if users}
-        <div in:fade={{duration: 70}} class="w-full overflow-y-auto scrollbar h-fit pb-1">
+        <a href="/settings/users/new" class="rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800/50 dark:hover:bg-neutral-800 px-3 py-2 w-fit dark:hover:text-blue-400">Create a new user</a>
+
+        <div in:fade={{duration: 70}} class="w-full overflow-y-auto custom-scrollbar h-fit pb-1">
             <table class="w-full max-w-fit">
                 <thead>
                     <tr class="dark:bg-neutral-900 text-left">
@@ -49,7 +52,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#each users as user, index}
+                    {#each sortArrayByNumber(users, v => v.createdDate) as user, index}
                         <tr on:click={() => { goto(`/settings/users/${user.userId}`) }} class="{index % 2 === 0 ? 'bg-neutral-200 dark:bg-neutral-800' : 'bg-neutral-100 dark:bg-neutral-900'} whitespace-nowrap">
                             <td>
                                 <a href="/settings/users/{user.userId}" class="py-2 px-4 hover:text-blue-400 hover:underline">{user.email}</a>
@@ -72,7 +75,7 @@
             </table>
         </div>
     {:else if loading}
-    <div in:fade={{duration: 200}} class="size-full flex items-center justify-center">
+        <div in:fade={{duration: 200}} class="size-full flex items-center justify-center">
             <Loader />
         </div>
     {:else}
