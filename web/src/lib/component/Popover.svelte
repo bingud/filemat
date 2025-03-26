@@ -107,7 +107,7 @@
 
 {#if showPopover && topY != null && topX != null}
     <!-- Close popover by clicking off -->
-    <button aria-label="Close the popover" class="z-10 fixed top-0 left-0 w-full h-full !cursor-default" on:wheel|passive={hide} on:mousedown={hide} on:click={hide}></button>
+    <button aria-label="Close the popover" class="z-10 fixed top-0 left-0 !w-full !h-full !cursor-default" on:wheel|passive={hide} on:mousedown={hide} on:click={hide}></button>
 
     <!-- Popover -->
     <div transition:fade={{duration: fadeDuration}} bind:offsetHeight={popoverHeight} bind:offsetWidth={popoverWidth} class="fixed z-20 rounded flex flex-col" style="top: {Math.max(topY - popoverHeight, 0)}px; left: {Math.max(topX - (popoverWidth / 2), 0)}px; padding-bottom: {marginRem}rem;">

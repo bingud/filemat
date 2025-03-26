@@ -31,6 +31,8 @@
 
     let highestRolePermissionLevel = $derived(role ? getMaxPermissionLevel(role.permissions) : null)
 
+    let editingPermissions = $state(false)
+
     onMount(() => {
         uiState.settings.title = title
     })
@@ -136,8 +138,8 @@
 
 
 {#if role}
-    <div in:fade={{duration: 70}} class="page flex-col gap-8">
-        <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-neutral-200 dark:bg-neutral-800/50">
+    <div in:fade={{duration: 70}} class="page flex-col gap-12">
+        <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-neutral-200 dark:bg-neutral-850">
             <h1 class="text-lg">{role.name}</h1>
             <p class="dark:text-neutral-300">Created on: {formatUnixTimestamp(role.createdDate)}</p>
             {#if appState.systemRoleIds?.admin === role.roleId}
@@ -147,61 +149,63 @@
             {/if}
         </div>
 
-        <div class="flex flex-col gap-4">
-            {#if role.miniUsers}
-                <h2 class="text-lg">Users with this role:</h2>
-                {#if role.roleId !== appState.systemRoleIds?.user}
-                    <div class="flex gap-3 flex-wrap w-full">
-                        {#each sortArrayAlphabetically(role.miniUsers, v => v.username) as mini}
-                            <a href="/settings/users/{mini.userId}" title={mini.userId} class="p-3 rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-900 dark:hover:bg-neutral-800">{mini.username}</a>
-                        {:else}
-                            <p class="opacity-80">Nobody</p>
-                        {/each}
-                    </div>
+        {#if auth.permissions?.includes("MANAGE_USERS")}
+            <div class="flex flex-col gap-4">
+                {#if role.miniUsers}
+                    <h2 class="text-lg">Users with this role:</h2>
+                    {#if role.roleId !== appState.systemRoleIds?.user}
+                        <div class="flex gap-3 flex-wrap w-full">
+                            {#each sortArrayAlphabetically(role.miniUsers, v => v.username) as mini}
+                                <a href="/settings/users/{mini.userId}" title={mini.userId} class="p-3 rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-900 dark:hover:bg-neutral-800">{mini.username}</a>
+                            {:else}
+                                <p class="opacity-80">Nobody</p>
+                            {/each}
+                        </div>
+                    {:else}
+                        <a href="/settings/users" class="p-3 rounded bg-neutral-200 dark:bg-neutral-900 hover:text-blue-400 hover:underline w-fit">All users have this role</a>
+                    {/if}
                 {:else}
-                    <a href="/settings/users" class="p-3 rounded bg-neutral-200 dark:bg-neutral-900 hover:text-blue-400 hover:underline w-fit">All users have this role</a>
+                    <p class="p-6 bg-neutral-300 dark:bg-neutral-800">Failed to load users with this role.</p>
                 {/if}
-            {:else}
-                <p class="p-6 bg-neutral-300 dark:bg-neutral-800">Failed to load users with this role.</p>
-            {/if}
 
-            <div class="w-full"><hr class="border-neutral-300 dark:border-neutral-700"></div>
+                <hr class="basic-hr max-w-full w-[10rem]">
 
-            {#if highestRolePermissionLevel && hasPermissionLevel(highestRolePermissionLevel)}
-                <button bind:this={addUsersButton} on:click={() => { addUserPopoverOpen = true }} on:click={loadAllUserList} class="w-fit px-4 py-2 rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800/80 dark:hover:bg-neutral-700">Add users</button>
-            {/if}
-            
-            {#if addUsersButton}
-                <Popover bind:isOpen={addUserPopoverOpen} fadeDuration={40} marginRem={1} button={addUsersButton}>
-                    <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
-                        {#if allUsers}
-                            {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
-                                <div in:fade={{duration:40}} class="flex flex-col gap-2 p-2">
-                                    {#each sortArrayAlphabetically(allUsers, v => v.username) as user}
-                                        {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
-                                        {#if !hasRole}
-                                            <button disabled={addingUser} on:click={() => { addUser(user) }} class="rounded w-full bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1">{user.username}</button>
-                                        {/if}
-                                    {/each}
+                {#if highestRolePermissionLevel && hasPermissionLevel(highestRolePermissionLevel)}
+                    <button bind:this={addUsersButton} on:click={() => { addUserPopoverOpen = true }} on:click={loadAllUserList} class="basic-button">Add users</button>
+                {/if}
+                
+                {#if addUsersButton}
+                    <Popover bind:isOpen={addUserPopoverOpen} fadeDuration={40} marginRem={1} button={addUsersButton}>
+                        <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                            {#if allUsers}
+                                {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
+                                    <div in:fade={{duration:40}} class="flex flex-col gap-2 p-2">
+                                        {#each sortArrayAlphabetically(allUsers, v => v.username) as user}
+                                            {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
+                                            {#if !hasRole}
+                                                <button disabled={addingUser} on:click={() => { addUser(user) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{user.username}</button>
+                                            {/if}
+                                        {/each}
+                                    </div>
+                                {:else}
+                                    <div class="center !h-[3rem]">
+                                        <p>All users have this role.</p>
+                                    </div>
+                                {/if}
+                            {:else if allUsersLoading}
+                                <div class="center !h-[3rem] py-2">
+                                    <Loader></Loader>
                                 </div>
                             {:else}
                                 <div class="center !h-[3rem]">
-                                    <p>All users have this role.</p>
+                                    <p class="">Failed to load list of users.</p>
                                 </div>
                             {/if}
-                        {:else if allUsersLoading}
-                            <div class="center !h-[3rem] py-2">
-                                <Loader></Loader>
-                            </div>
-                        {:else}
-                            <div class="center !h-[3rem]">
-                                <p class="">Failed to load list of users.</p>
-                            </div>
-                        {/if}
-                    </div>
-                </Popover>
-            {/if}
-        </div>
+                        </div>
+                    </Popover>
+                {/if}
+            </div>
+        {/if}
 
         <div class="flex flex-col gap-4">
             <h2 class="text-lg">Permissions:</h2>
@@ -216,6 +220,10 @@
                     <p class="text-sm dark:text-neutral-300 p-2 rounded bg-neutral-200 dark:bg-neutral-900">No permissions</p>
                 {/each}
             </div>
+
+            <hr class="basic-hr max-w-full w-[10rem]">
+
+            <button on:click={() => { editingPermissions = !editingPermissions }} class="basic-button">{#if !editingPermissions}Edit{:else}Cancel editing{/if} permissions</button>
         </div>
     </div>
 {:else if status === "failed"}

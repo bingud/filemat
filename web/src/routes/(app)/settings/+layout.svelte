@@ -4,7 +4,7 @@
     import { onMount } from "svelte";
     import SettingsSidebar from "./components/SettingsSidebar.svelte";
     import { page } from "$app/state";
-    import { isAdminSettingsSection, settingSectionLists, settingSections } from "./settings";
+    import { settingSections } from "./settings";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { openSettingsSection } from "$lib/code/util/uiUtil";
 
@@ -17,18 +17,16 @@
      * Subscribe to changes to the URL and change JS state based on it
     */
     $effect(() => {
-        const urlSection = page.url.pathname.split("/settings/")[1]?.split("/")[0]?.split("?")[0] as any
+        const urlSection = page.url.pathname.toLowerCase().split("/settings/")[1]?.split("/")[0]?.split("?")[0] as any
         setSectionFromUrl(urlSection)
     })
 
     function setSectionFromUrl(urlSection: any) {
-        if (settingSections.includes(urlSection)) {
-            if (isAdminSettingsSection(urlSection) && !auth.isAdmin) {
-                openSettingsSection(null)
-                return;
-            }
-            uiState.settings.section = urlSection
+        if (settingSections.hasPermission(urlSection) === false) {
+            openSettingsSection(null)
+            return
         }
+        uiState.settings.section = urlSection
     }
 </script>
 

@@ -19,12 +19,10 @@ class UiState {
      */
     settings = $state({
         defaultSection: "preferences" as "preferences",
-        section: "preferences" as "preferences" | "users" | "userinfo" | "roles",
+        section: "preferences" as SettingSectionId,
         title: "preferences",
         menuOpen: false as boolean
     })
-
-
 
     /**
      * Binds methods to this context
@@ -60,4 +58,4 @@ class UiState {
  */
 export const uiState = new UiState()
 
-
+export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles"

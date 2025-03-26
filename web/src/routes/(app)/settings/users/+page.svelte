@@ -3,6 +3,7 @@
     
     import { loadUserList } from "$lib/code/admin/users";
     import type { PublicUser } from "$lib/code/auth/types";
+    import { hasPermissionLevel } from "$lib/code/data/permissions";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -15,6 +16,10 @@
 
     onMount(() => {
         uiState.settings.title = title
+        if (!hasPermissionLevel(3)) {
+            goto(`/settings`)
+            return
+        }
         loadList()
     })
 
@@ -79,7 +84,7 @@
             <Loader />
         </div>
     {:else}
-        <div class="p-6 bg-neutral-800 rounded size-fit">
+        <div class="p-6 bg-neutral-300 dark:bg-neutral-800 rounded size-fit">
             <p>Failed to load users.</p>
         </div>
     {/if}

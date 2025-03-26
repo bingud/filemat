@@ -2,6 +2,7 @@
 
 @import "$lib/css/forms.css";
 @import "$lib/css/loader.css";
+@import "$lib/css/buttons.css";
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 @plugin 'tailwind-scrollbar' {
@@ -29,6 +30,8 @@ html {
     --spacing-sidebar-desktop: 14rem;
 
     --spacing-navbar: 3.5rem;
+
+    --color-neutral-850: #202020;
 }
 
 
@@ -68,7 +71,7 @@ html {
 }
 
 button {
-    @apply hover:cursor-pointer;
+    @apply cursor-pointer w-fit;
 }
 
 h1 {

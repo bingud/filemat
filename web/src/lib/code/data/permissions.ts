@@ -1,7 +1,7 @@
 import { PermissionType, type Permission, type Role } from "../auth/types";
 import { auth } from "../stateObjects/authState.svelte";
 import { filterObject } from "../util/codeUtil.svelte";
-import { mapRoles } from "../util/stateUtils";
+import { getRole, mapRoles } from "../util/stateUtils";
 
 
 export type PermissionMeta = { id: Permission, name: string, description: string, type: PermissionType, level: number }
@@ -17,7 +17,8 @@ export const permissionMeta: Record<Permission, PermissionMeta> = {
     "MANAGE_ALL_FILE_PERMISSIONS": { id: "MANAGE_ALL_FILE_PERMISSIONS", name: "Manage all file permissions", description: "Manage file permissions for all files", type: PermissionType.system, level: 2},
     "MANAGE_USERS": { id: "MANAGE_USERS", name: "Manage users", description: "Manage user accounts", type: PermissionType.system, level: 3},
     "EDIT_ROLES": { id: "EDIT_ROLES", name: "Edit roles", description: "Edit any role", type: PermissionType.system, level: 3},
-    "MANAGE_SYSTEM": { id: "MANAGE_SYSTEM", name: "Mange system", description: "Manage the system", type: PermissionType.system, level: 4},
+    "MANAGE_SYSTEM": { id: "MANAGE_SYSTEM", name: "Manage system", description: "Manage the system", type: PermissionType.system, level: 3},
+    "SUPER_ADMIN": { id: "SUPER_ADMIN", name: "Super admin", description: "Has all permissions to manage the entire system", type: PermissionType.system, level: 4},
 }
 export const systemPermissionMeta = filterObject(permissionMeta, ((k, v) => v.type === PermissionType.system ))
 
@@ -77,4 +78,13 @@ export function rolesToPermissions(roles: Role[]): PermissionMeta[] {
     })
 
     return allPermissions
+}
+
+export function getCurrentPermissions(): PermissionMeta[] | null {
+    if (!auth.principal) return null
+    const roleIds = auth.principal.roles
+    const roles = roleIds.map(v => getRole(v)).filter(v => v != null)
+
+    const permissions = rolesToPermissions(roles)
+    return permissions
 }

@@ -1,0 +1,9 @@
+
+
+.basic-button {
+    @apply px-3 py-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-850 dark:hover:bg-neutral-700 rounded select-none w-fit;
+}
+
+.basic-hr {
+    @apply border-neutral-300 dark:border-neutral-700;
+}

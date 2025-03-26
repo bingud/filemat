@@ -1,20 +1,24 @@
 <script lang="ts">
-    import { auth } from "$lib/code/stateObjects/authState.svelte";
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
+    import { uiState, type SettingSectionId } from "$lib/code/stateObjects/uiState.svelte";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
-    import { settingSectionLists } from "../settings";
     import { goto } from "$app/navigation";
+    import { settingSections, type SettingsSection } from "../settings";
 
-    export let classes: string
+    let { classes }: { classes: string } = $props()
 
-    async function openSection(section: typeof uiState.settings.section) {
+    async function openSection(section: SettingSectionId) {
         await goto(`/settings/${section}`)
         uiState.settings.section = section
         uiState.settings.menuOpen = false
     }
 
     const transitionDuration = 150
+
+    const adminSections = $derived(settingSections.allAdmin().filter(v => 
+        settingSections.hasPermission(v.name)
+    ))
+    
 </script>
 
 
@@ -24,17 +28,22 @@
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar md:w-sidebar-desktop h-full bg-layout pointer-events-auto z-10 flex flex-col justify-between shrink-0 {classes}">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                {#each Object.values(settingSectionLists) as sections, index}
-                    {#if index !== 1 || auth.isAdmin}
-                        {#if index === 1}
-                            <p class="w-full px-4 border-b border-neutral-700 my-4 py-2 font-medium">Admin Settings</p>
-                        {/if}
-                        {#each sections as section}
-                            <a href="/settings/{section}" on:click|preventDefault={() => { openSection(section) }} class="flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none capitalize {uiState.settings.section === section ? 'bg-neutral-300 dark:bg-neutral-800' : ''}">{section}</a>
-                        {/each}
-                    {/if}
+                {#each settingSections.allUser() as section}
+            {@render sectionButton(section)}
+                {/each}
+
+                {#if adminSections.length > 0}
+                    <p class="w-full px-4 border-b border-neutral-700 my-4 py-2 font-medium">Admin Settings</p>
+                {/if}
+
+                {#each adminSections as section}
+                    {@render sectionButton(section)}
                 {/each}
             </div>
+
+            {#snippet sectionButton(section: SettingsSection)}
+                <a href="/settings/{section.name}" on:click|preventDefault={() => { openSection(section.name) }} class="flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none capitalize {uiState.settings.section === section.name ? 'bg-neutral-300 dark:bg-neutral-800' : ''}">{section.name}</a>
+            {/snippet}
 
             <!-- Bottom -->
             <div class="flex flex-col px-2 py-4 gap-1">

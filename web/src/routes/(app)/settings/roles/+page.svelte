@@ -5,20 +5,23 @@
     import { fetchState } from "$lib/code/state/stateFetcher";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
+    import { uiState, type SettingSectionId } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, pageTitle, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
+    import { settingSections } from "../settings";
+    import { openSettingsSection } from "$lib/code/util/uiUtil";
 
     const title = "Roles"
+    const id: SettingSectionId = "roles"
     let loading: boolean | null = $state(null)
 
     onMount(() => {
         uiState.settings.title = title
 
-        if (!hasPermissionLevel(3)) {
-            goto(`/settings`)
+        if (settingSections.hasPermission("roles") === false) {
+            openSettingsSection(null)
             return
         }
 
@@ -39,7 +42,7 @@
 
 <div class="page flex-col gap-4">
     {#if appState.roleList}
-        <a href="/settings/roles/new" class="rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800/50 dark:hover:bg-neutral-800 px-3 py-2 w-fit dark:hover:text-blue-400">Create a new role</a>
+        <a href="/settings/roles/new" class="basic-button">Create a new role</a>
 
         <div in:fade={{duration: 70}} class="w-full overflow-y-auto custom-scrollbar h-fit pb-1">
             <div class="flex flex-col gap-4">

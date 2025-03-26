@@ -16,20 +16,6 @@ export type Role = {
     permissions: Permission[]
 }
 
-// export enum Permission {
-//     READ = "READ",
-//     DELETE = "DELETE",
-//     WRITE = "WRITE",
-//     SHARE = "SHARE",
-//     RENAME = "RENAME",
-//     ACCESS_ALL_FILES = "ACCESS_ALL_FILES",
-//     MANAGE_OWN_FILE_PERMISSIONS = "MANAGE_OWN_FILE_PERMISSIONS",
-//     MANAGE_ALL_FILE_PERMISSIONS = "MANAGE_ALL_FILE_PERMISSIONS",
-//     MANAGE_USERS = "MANAGE_USERS",
-//     MANAGE_SYSTEM = "MANAGE_SYSTEM",
-//     EDIT_ROLES = "EDIT_ROLES",
-// }
-
 export type Permission = (
     "READ" |
     "DELETE" |
@@ -42,7 +28,8 @@ export type Permission = (
     "MANAGE_USERS" |
     "MANAGE_SYSTEM" |
     "EDIT_ROLES" |
-    "EXPOSE_FOLDERS"
+    "EXPOSE_FOLDERS" |
+    "SUPER_ADMIN"
 )
 
 export enum PermissionType {

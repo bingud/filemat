@@ -201,8 +201,9 @@
                         <div class="flex flex-col gap-2 p-2">
                             {#each sortArrayByNumberDesc(appState.roleList, v => getMaxPermissionLevel(v.permissions)) as role}
                                 {@const hasRole = user.roles.includes(role.roleId)}
-                                {#if !hasRole}
-                                    <button on:click={() => { assignRole(role.roleId) }} class="rounded w-full hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1">{role.name}</button>
+                                {@const rolePermissionLevel = getMaxPermissionLevel(role.permissions)}
+                                {#if !hasRole && (auth.permissionLevel ?? 0) >= rolePermissionLevel}
+                                    <button on:click={() => { assignRole(role.roleId) }} class="rounded hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{role.name}</button>
                                 {/if}
                             {/each}
                         </div>

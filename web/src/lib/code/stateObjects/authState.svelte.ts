@@ -1,6 +1,7 @@
 import type { Principal, Role } from "../auth/types"
-import { getAuthPermissionLevel } from "../data/permissions"
+import { getAuthPermissionLevel, rolesToPermissions } from "../data/permissions"
 import type { ulid } from "../types"
+import { getRole } from "../util/stateUtils"
 import { appState } from "./appState.svelte"
 
 
@@ -27,6 +28,8 @@ class AuthState {
         if (!this.principal || !this.principal.roles) return 0
         return getAuthPermissionLevel()
     })
+
+    permissions = $derived(this.principal ? rolesToPermissions(this.principal.roles.map(roleId => getRole(roleId)!))?.map(perm => perm.id) : null)
 
     constructor() {
         this.reset = this.reset.bind(this)

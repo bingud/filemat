@@ -5,8 +5,6 @@
     import { onDestroy, onMount } from 'svelte';
     import Navbar from './components/Navbar.svelte';
     import Sidebar from './components/Sidebar.svelte';
-    import { dev } from '$app/environment';
-    import { uiState } from '$lib/code/stateObjects/uiState.svelte';
     import { fetchState } from '$lib/code/state/stateFetcher';
 
     let { children } = $props()

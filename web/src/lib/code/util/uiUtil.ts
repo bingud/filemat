@@ -1,6 +1,6 @@
 import { goto } from "$app/navigation"
 import { desktopWidth } from "../config/values"
-import { uiState } from "../stateObjects/uiState.svelte"
+import { uiState, type SettingSectionId } from "../stateObjects/uiState.svelte"
 
 
 /**
@@ -40,7 +40,7 @@ export async function loadDarkModeState() {
 }
 
 
-export async function openSettingsSection(_section: typeof uiState.settings.section | null) {
+export async function openSettingsSection(_section: SettingSectionId | null) {
     const section = _section ?? uiState.settings.defaultSection as any
     uiState.settings.section = section
     await goto(`/settings/${section}`)
