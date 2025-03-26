@@ -30,10 +30,24 @@ class LogService(
     private val lastLogTimes = ConcurrentHashMap<String, Long>()
     private val rateLimitMillis = 10_000L // 10 seconds
 
-    @PostConstruct
-    fun postConstruct() {
-
+    /**
+     * Log service utilities / premade log methods
+     */
+    inner class Util {
+        fun logServiceException(message: String, exception: Exception, userAction: UserAction, meta: MutableMap<String, String>? = null) {
+            error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = message,
+                message = exception.stackTraceToString(),
+                initiatorId = null,
+                initiatorIp = null,
+                targetId = null,
+                meta = meta
+            )
+        }
     }
+    val util = Util()
 
     fun debug(
         type: LogType,
@@ -219,7 +233,7 @@ class LogService(
                 s.append("FAILED TO SAVE LOG TO DATABASE")
             }
             s.appendLine().append(level).div().append(type).div().append(action).appendLine()
-            s.append("At ").append(Instant.ofEpochSecond(createdDate)).div().append("Initiated by ID: ").append(initiatorIp).div()
+            s.append("At ").append(Instant.ofEpochSecond(createdDate)).div().append("Initiated by ID: ").append(initiatorId).div()
 
             if (!meta.isNullOrEmpty()) {
                 s.appendLine()

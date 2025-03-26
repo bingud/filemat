@@ -31,9 +31,10 @@ enum class SystemPermission(override val index: Int, val level: Int) : Permissio
     MANAGE_OWN_FILE_PERMISSIONS(101, 1),
     MANAGE_ALL_FILE_PERMISSIONS(102, 1),
     MANAGE_USERS(103, 3),
-    MANAGE_SYSTEM(104, 4),
+    MANAGE_SYSTEM(104, 3),
     EDIT_ROLES(105, 3),
-    EXPOSE_FOLDERS(106, 1);
+    EXPOSE_FOLDERS(106, 1),
+    SUPER_ADMIN(107, 4);
 
     companion object {
         fun fromInt(int: Int) = Permission.fromInt(int, entries)

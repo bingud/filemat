@@ -17,6 +17,21 @@ class UserService(
     private val userRepository: UserRepository,
     private val logService: LogService,
 ) {
+    /**
+     * @return Email existence, Username existence
+     */
+    fun checkExistsByEmailOrUsername(email: String, username: String): Result<Pair<Boolean, Boolean>> {
+        try {
+            return userRepository.exists(email = email, username = username).let { r ->
+                if (r == "email") return@let true to false
+                if (r == "username") return@let false to true
+                return@let false to false
+            }.toResult()
+        } catch (e: Exception) {
+            logService.util.logServiceException("Failed to check whether user exists by email or username", e, UserAction.CHECK_USER_EXISTENCE)
+            return Result.error("Failed to check whether user exists already.")
+        }
+    }
 
     fun setLastLoginDate(userId: Ulid, date: Long) {
         try {
@@ -43,7 +58,7 @@ class UserService(
                 mfaTotpCodes = user.mfaTotpCodes.toJsonOrNull(),
                 createdDate = user.createdDate,
                 lastLoginDate = user.lastLoginDate,
-                isBanned = user.isBanned.toInt(),
+                isBanned = user.isBanned,
             )
 
             return Result.ok(Unit)

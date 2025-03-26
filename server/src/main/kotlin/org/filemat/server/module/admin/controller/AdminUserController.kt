@@ -1,19 +1,19 @@
 package org.filemat.server.module.admin.controller
 
+import com.fasterxml.jackson.module.kotlin.jsonMapper
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.util.*
+import org.filemat.server.common.util.classes.ArgonHash
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.decodeFromStringOrNull
-import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.service.AdminUserService
-import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.FullPublicUser
 import org.springframework.http.ResponseEntity
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -29,8 +29,40 @@ import org.springframework.web.bind.annotation.RestController
 class AdminUserController(
     private val adminUserService: AdminUserService,
     private val roleService: RoleService,
-    private val userRoleService: UserRoleService
+    private val userRoleService: UserRoleService,
+    private val passwordEncoder: PasswordEncoder
 ) : AController() {
+
+    @PostMapping("/create")
+    fun adminCreateUserMapping(
+        request: HttpServletRequest,
+        @RequestParam("email") rawEmail: String,
+        @RequestParam("username") username: String,
+        @RequestParam("password") rawPassword: String,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+        val email = StringUtils.normalizeEmail(rawEmail)
+
+        Validator.email(email)
+            ?: Validator.username(username)
+            ?: Validator.password(rawPassword)
+            ?.let { return bad(it, "validation") }
+
+        val password = passwordEncoder.encode(rawPassword)
+
+        adminUserService.createUser(
+            creator = principal,
+            email = email,
+            username = username,
+            password = ArgonHash(password = password)
+        ).let {
+            if (it.hasError) return internal(it.error, "")
+            if (it.isNotSuccessful) return bad(it.error, "")
+
+            val r = json { put("userId", it.value) }
+            return ok(r)
+        }
+    }
 
     /**
      * Returns a list of mini users

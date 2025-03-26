@@ -73,7 +73,7 @@ class AdminRoleController(
             initiatorIp = request.realIp()
         )
 
-        return ok(role.roleId.toString())
+        return ok(json { put("roleId", role.roleId.toString()) })
     }
 
     /**

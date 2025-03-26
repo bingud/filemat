@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.user.model.UserAction
 import org.springframework.transaction.TransactionStatus
 import java.nio.file.Paths
 import java.time.Instant
@@ -118,8 +119,6 @@ fun getActualCallerPackage(): String {
     return "Unknown"
 }
 
-
-
 // SHITERS
 
 private fun gPackagePrefix(): String {
@@ -140,7 +139,12 @@ class JsonBuilder {
     fun put(key: String, element: String) = content.put(key, JsonPrimitive(element))
     fun put(key: String, element: Int) = content.put(key, JsonPrimitive(element))
     fun put(key: String, element: Boolean) = content.put(key, JsonPrimitive(element))
+    fun put(key: String, element: Any) = content.put(key, JsonPrimitive(element.toString()))
 
     fun build() = JsonObject(content)
     override fun toString() = build().toString()
+}
+
+fun json(block: JsonBuilder.() -> Unit): String {
+    return JsonBuilder().apply { block() }.toString()
 }

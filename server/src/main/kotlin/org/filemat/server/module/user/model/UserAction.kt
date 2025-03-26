@@ -19,4 +19,7 @@ enum class UserAction {
     ASSIGN_ROLE,                            // 9
     UNASSIGN_ROLES,                         // 10
     CREATE_ROLE,                            // 11
+    CREATE_USER,                            // 12
+    GET_USER,                               // 13
+    CHECK_USER_EXISTENCE                    // 14
 }

@@ -11,6 +11,9 @@ import org.springframework.stereotype.Repository
 @Repository
 interface UserRepository : CrudRepository<User, Ulid> {
 
+    @Query("SELECT CASE WHEN email = :email THEN 'email' WHEN username = :username THEN 'username' END AS conflict FROM users WHERE email = :email OR username = :username LIMIT 1")
+    fun exists(email: String, username: String): String?
+
     @Modifying
     @Query("INSERT INTO users " +
             "(user_id, email, username, password, mfa_totp_secret, mfa_totp_status, mfa_totp_codes, created_date, last_login_date, is_banned) " +
@@ -25,7 +28,7 @@ interface UserRepository : CrudRepository<User, Ulid> {
         mfaTotpCodes: String?,
         createdDate: Long,
         lastLoginDate: Long?,
-        isBanned: Int,
+        isBanned: Boolean,
     )
 
     @Query("SELECT * FROM users WHERE username = :username")
