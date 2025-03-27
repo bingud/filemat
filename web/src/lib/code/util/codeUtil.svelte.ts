@@ -244,6 +244,15 @@ export function removeString(arr: string[], str: string) {
 }
 
 /**
+ * Removes an element from an array
+ */
+export function arrayRemove<T>(arr: T[], predicate: (value: T) => boolean) {
+    const index = arr.findIndex(predicate)
+    if (index !== -1) arr.splice(index, 1)
+}
+
+
+/**
  * Iterates through an object
  */
 export function forEachObject<T>(obj: Record<string, T>, block: (key: string, value: T) => any): void {
@@ -296,4 +305,11 @@ export function sortArrayByNumber<T>(arr: T[], accessor: (obj: T) => number): T[
  */
 export function sortArrayByNumberDesc<T>(arr: T[], accessor: (obj: T) => number): T[] {
     return [...arr].sort((a, b) => accessor(b) - accessor(a));
+}
+
+/**
+ * Checks if array includes any of provided items
+ */
+export function includesAny<T>(list: T[], items: T[]): boolean {
+    return list.some(item => items.includes(item));
 }

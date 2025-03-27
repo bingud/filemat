@@ -1,6 +1,6 @@
 import { PermissionType, type Permission, type Role } from "../auth/types";
 import { auth } from "../stateObjects/authState.svelte";
-import { filterObject } from "../util/codeUtil.svelte";
+import { filterObject, includesAny } from "../util/codeUtil.svelte";
 import { getRole, mapRoles } from "../util/stateUtils";
 
 
@@ -40,6 +40,12 @@ export function hasPermissionLevel(required: number): boolean {
     const highestPermissionLevel = getAuthPermissionLevel()
     
     if (highestPermissionLevel >= required) return true
+    return false
+}
+
+export function hasPermission(permissions: Permission[] | null, id: Permission): boolean {
+    if (!permissions) return false
+    if (includesAny<Permission>(permissions, [id, "SUPER_ADMIN"])) return true
     return false
 }
 

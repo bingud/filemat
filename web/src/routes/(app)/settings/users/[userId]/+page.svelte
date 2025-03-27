@@ -3,7 +3,7 @@
     import { page } from "$app/state";
     import { addRoleToUser } from "$lib/code/admin/roles";
     import type { FullPublicUser } from "$lib/code/auth/types";
-    import { getMaxPermissionLevel } from "$lib/code/data/permissions";
+    import { getMaxPermissionLevel, rolesToPermissions } from "$lib/code/data/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
@@ -110,8 +110,17 @@
         try {
             if (selectedRoles.length < 1 || !selectingRoles || !user) return
 
-            if (auth.principal!.userId === user.userId && selectedRoles.includes(appState.systemRoleIds!.admin)) {
-                if (!confirm("Are you sure you want to remove your own admin role?")) return
+            if (auth.principal!.userId === user.userId) {
+                if (selectedRoles.includes(appState.systemRoleIds!.admin)) {
+                    if (!confirm("Are you sure you want to remove your own admin role?")) return
+                }
+
+                const roles = selectedRoles.map(v => getRole(v)!)
+                const permissions = rolesToPermissions(roles).map(v => v.id)
+
+                if (permissions.includes("SUPER_ADMIN")) {
+                    if (!confirm("Are you sure you want to remove your own super admin role?")) return
+                }
             }
 
             const userId = user.userId

@@ -49,6 +49,10 @@ fun ARole.toRoleDto(): RoleDto {
     )
 }
 
+fun ARole.withNewPermissions(new: List<SystemPermission>): Role {
+    return Role(roleId = this.roleId, name = this.name, createdDate = this.createdDate, permissions = new)
+}
+
 /**
  * Role DTO for database
  */

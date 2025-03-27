@@ -21,5 +21,5 @@ interface RoleRepository : CrudRepository<RoleDto, Ulid> {
 
     @Modifying
     @Query("UPDATE role SET permissions = :permissions WHERE role_id = :roleId")
-    fun updatePermissions(roleId: Ulid, permissions: String /* JDBC is a stupid fucking bitch and will not be forgiven */): Boolean
+    fun updatePermissions(roleId: Ulid, permissions: String /* JDBC is a stupid fucking bitch and will not be forgiven */): Int
 }

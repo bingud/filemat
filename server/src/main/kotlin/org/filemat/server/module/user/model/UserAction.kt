@@ -21,5 +21,7 @@ enum class UserAction {
     CREATE_ROLE,                            // 11
     CREATE_USER,                            // 12
     GET_USER,                               // 13
-    CHECK_USER_EXISTENCE                    // 14
+    CHECK_USER_EXISTENCE,                   // 14
+    UPDATE_ROLE_PERMISSIONS,                // 15
+    DELETE_ROLE,                            // 16
 }

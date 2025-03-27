@@ -36,6 +36,50 @@ class AdminRoleController(
     private val logService: LogService,
 ) : AController() {
 
+    @PostMapping("/delete")
+    fun adminDeleteRoleMapping(
+        request: HttpServletRequest,
+        @RequestParam("roleId") rawRoleId: String,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+
+        val roleId = parseUlidOrNull(rawRoleId)
+            ?: return bad("Invalid role ID.", "validation")
+
+        roleService.remove(principal, roleId, UserAction.DELETE_ROLE).let {
+            if (it.hasError) return internal(it.error, "")
+            if (it.isNotSuccessful) return bad(it.error, "")
+        }
+
+        return ok()
+    }
+
+    @PostMapping("/update-permissions")
+    fun adminUpdateRolePermissionsMapping(
+        request: HttpServletRequest,
+        @RequestParam("roleId") rawRoleId: String,
+        @RequestParam("newPermissionList") rawNewPermissionList: String
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+
+        val roleId = parseUlidOrNull(rawRoleId)
+            ?: return bad("Role ID is invalid", "validation")
+        val newPermissionList = Json.decodeFromStringOrNull<List<SystemPermission>>(rawNewPermissionList)
+            ?: return bad("List of permissions is invalid.", "validation")
+
+        roleService.updatePermissionList(
+            user = principal,
+            roleId = roleId,
+            newList = newPermissionList,
+            userAction = UserAction.UPDATE_ROLE_PERMISSIONS
+        ).let {
+            if (it.hasError) return internal(it.error, "")
+            if (it.isNotSuccessful) return bad(it.error, "")
+        }
+
+        return ok()
+    }
+
     /**
      * Returns new role ID
      */

@@ -8,6 +8,7 @@ import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.endpointAuthMap
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
+import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -24,7 +25,7 @@ class AuthorizationFilter : OncePerRequestFilter() {
         }
 
         // Check if user has authorization for secured endpoint
-        if (endpoint.authenticated) {
+        if (endpoint.authenticated) let {
             val auth = request.getPrincipal()
             if (auth == null) {
                 response.status = 401
@@ -32,14 +33,17 @@ class AuthorizationFilter : OncePerRequestFilter() {
                 return
             }
 
-            if (endpoint.requiredPermissions.isNotEmpty()) {
-                val permissions = auth.getPermissions()
-                endpoint.requiredPermissions.forEach {
-                    if (!permissions.contains(it)) {
-                        response.status = 403
-                        response.writer.write("unauthorized")
-                        return
-                    }
+            if (endpoint.requiredPermissions.isEmpty()) return@let
+
+            val permissions = auth.getPermissions()
+            if (permissions.contains(SystemPermission.SUPER_ADMIN)) return@let
+
+            // Check permissions
+            endpoint.requiredPermissions.forEach {
+                if (!permissions.contains(it)) {
+                    response.status = 403
+                    response.writer.write("unauthorized")
+                    return
                 }
             }
         }

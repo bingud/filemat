@@ -3,19 +3,19 @@ package org.filemat.server.module.role.service
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.toBoolean
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
+import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.permission.model.Permission
-import org.filemat.server.module.permission.model.SystemPermission
-import org.filemat.server.module.permission.model.serialize
-import org.filemat.server.module.permission.model.toIntList
+import org.filemat.server.module.permission.model.*
 import org.filemat.server.module.role.model.Role
-import org.filemat.server.module.role.model.RoleDto
 import org.filemat.server.module.role.model.toRoleDto
+import org.filemat.server.module.role.model.withNewPermissions
 import org.filemat.server.module.role.repository.RoleRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -25,6 +25,106 @@ class RoleService(
     private val roleRepository: RoleRepository,
     private val logService: LogService,
 ) {
+
+    fun remove(user: Principal, roleId: Ulid, userAction: UserAction): Result<Unit> {
+        val role = State.Auth.roleMap[roleId]
+            ?: return Result.notFound()
+
+        // Check if user has permissions to delete role
+        val userPermissions = user.getPermissions()
+        val rolePermissions = role.permissions
+        val hasSufficientPermissions = userPermissions.hasSufficientPermissionsFor(rolePermissions)
+        if (!hasSufficientPermissions) return Result.reject("Cannot delete role with higher permissions than you have.")
+
+        // Delete role from database
+        deleteRoleFromDatabase(roleId, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        State.Auth.roleMap.remove(roleId)
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = userAction,
+            description = "Deleted role: ${role.name}",
+            message = "User '${user.username}' deleted role '${role.name}'.",
+            initiatorId = user.userId,
+            targetId = roleId
+        )
+
+        return Result.ok()
+    }
+
+    /**
+     * Update the permission list of a role
+     */
+    fun updatePermissionList(user: Principal, roleId: Ulid, newList: List<SystemPermission>, userAction: UserAction): Result<Unit> {
+        val role = State.Auth.roleMap[roleId]
+            ?: return Result.notFound()
+
+        // Check if user has sufficient permissions to edit this role's permissions
+        val userPermissions = user.getPermissions()
+        val rolePermissions = role.permissions
+        val hasSufficientPermissions = userPermissions.hasSufficientPermissionsFor(rolePermissions)
+        if (!hasSufficientPermissions) return Result.reject("Cannot edit role with higher permissions than you have.")
+
+        // Update permissions in database
+        updateDatabasePermissionList(roleId, newList, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Update permissions in memory
+        State.Auth.roleMap.computeIfPresent(roleId) { _, existing ->
+            existing.withNewPermissions(newList)
+        }
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = userAction,
+            description = "Updated permissions of role: ${role.name}",
+            message = "User '${user.username}' updated the permissions of role '${role.name}'. \nNew permissions: \n${newList.joinToString(", ")}",
+            initiatorId = user.userId,
+            targetId = roleId
+        )
+
+        return Result.ok()
+    }
+
+    /**
+     * Delete a role from the database
+     */
+    private fun deleteRoleFromDatabase(roleId: Ulid, userAction: UserAction): Result<Unit> {
+        try {
+            roleRepository.deleteById(roleId)
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to delete role from database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to delete role.")
+        }
+    }
+
+    /**
+     * Update the permission list of a role in the database
+     */
+    private fun updateDatabasePermissionList(roleId: Ulid, newList: List<Permission>, userAction: UserAction): Result<Unit> {
+        try {
+            roleRepository.updatePermissions(roleId, newList.serialize())
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to update role permissions in database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to save new role permissions.")
+        }
+    }
 
     fun create(role: Role): Result<Unit> {
         try {
