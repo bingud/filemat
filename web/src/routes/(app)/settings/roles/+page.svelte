@@ -1,12 +1,9 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { PermissionType } from "$lib/code/auth/types";
-    import { getPermissionInfo, hasPermissionLevel } from "$lib/code/data/permissions";
+    import { getPermissionMeta } from "$lib/code/module/permissions";
     import { fetchState } from "$lib/code/state/stateFetcher";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
-    import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState, type SettingSectionId } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, pageTitle, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, pageTitle, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -68,7 +65,7 @@
                 
                         <!-- Permissions (wrapped) -->
                         <div title="Permissions of this role" class="flex flex-wrap gap-2">
-                            {#each sortArrayByNumberDesc(role.permissions.map(v => getPermissionInfo(v)), o => o.level) as permission}
+                            {#each sortArrayByNumberDesc(role.permissions.map(v => getPermissionMeta(v)), o => o.level) as permission}
                                 <span class="px-2 py-1 bg-neutral-300 dark:bg-neutral-700/40 rounded text-xs">
                                     {permission.name}
                                 </span>

@@ -4,8 +4,9 @@
     import { addRoleToUser, changeRolePermissions, deleteRole } from "$lib/code/admin/roles";
     
     import { loadUserList } from "$lib/code/admin/users";
-    import { PermissionType, type MiniUser, type Permission, type PublicUser, type Role, type RoleMeta } from "$lib/code/auth/types";
-    import { formatPermission, getMaxPermissionLevel, getPermissionInfo, hasPermission, hasPermissionLevel, permissionMeta } from "$lib/code/data/permissions";
+    import { PermissionType, type MiniUser, type SystemPermission, type PublicUser, type Role, type RoleMeta } from "$lib/code/auth/types";
+    import { systemPermissionMeta } from "$lib/code/data/permissions";
+    import { getMaxPermissionLevel, getPermissionMeta, hasPermission, hasPermissionLevel } from "$lib/code/module/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
@@ -36,7 +37,7 @@
     let editingPermissions = $state(false)
     let addPermissionButton: HTMLElement | undefined = $state()
     let canEditPermissions = $derived((highestRolePermissionLevel != null && auth.permissionLevel != null) ? (highestRolePermissionLevel <= (auth.permissionLevel)) : null)
-    let newPermissionList: Permission[] | null = $state(null)
+    let newPermissionList: SystemPermission[] | null = $state(null)
     let savingEditedPermissions = $state(false)
 
     const displayedPermissionList = $derived.by(() => {
@@ -147,7 +148,7 @@
     /**
      * Add permission to role while editing
      */
-    function addPermission(id: Permission) {
+    function addPermission(id: SystemPermission) {
         if (!newPermissionList) return
         if (newPermissionList.includes(id)) return
         newPermissionList.push(id)
@@ -156,7 +157,7 @@
     /**
      * Remove permission from role while editing
      */
-    function removePermission(id: Permission) {
+    function removePermission(id: SystemPermission) {
         if (!newPermissionList) return
         removeString(newPermissionList, id)
     }
@@ -276,7 +277,7 @@
             <h2 class="text-lg">Permissions:</h2>
             <div class="flex gap-3 flex-wrap rounded-lg w-full bg-neutral-200 dark:bg-neutral-850 p-4">
                 {#if displayedPermissionList}
-                    {#each sortArrayByNumberDesc(displayedPermissionList.map(v => getPermissionInfo(v)), v => v.level) as meta}
+                    {#each sortArrayByNumberDesc(displayedPermissionList.map(v => getPermissionMeta(v)), v => v.level) as meta}
                         {#if !editingPermissions}
                             <span title={meta.description} class="px-2 py-1 bg-neutral-300 dark:bg-neutral-800 ring ring-neutral-400 dark:ring-neutral-700 rounded w-fit">
                                 {meta.name}
@@ -292,13 +293,13 @@
                 {/if}
             </div>
 
-            {#if editingPermissions && newPermissionList && !includesList(newPermissionList, valuesOf(permissionMeta).filter(v=>v.type !== PermissionType.file).map(v=>v.id))}
+            {#if editingPermissions && newPermissionList && !includesList(newPermissionList, valuesOf(systemPermissionMeta).filter(v=>v.type !== PermissionType.file).map(v=>v.id))}
                 <button bind:this={addPermissionButton} class="basic-button text-sm">Add permission</button>
 
                 <Popover marginRem={1} fadeDuration={40} button={addPermissionButton}>
                     <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
                         <div class="flex flex-col gap-2 p-2">
-                            {#each sortArrayByNumberDesc(valuesOf(permissionMeta).filter(m => m.type !== PermissionType.file && newPermissionList?.includes(m.id) != true), v => v.level) as meta}
+                            {#each sortArrayByNumberDesc(valuesOf(systemPermissionMeta).filter(m => m.type !== PermissionType.file && newPermissionList?.includes(m.id) != true), v => v.level) as meta}
                                 <button on:click={() => { addPermission(meta.id) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{meta.name}</button>
                             {/each}
                         </div>

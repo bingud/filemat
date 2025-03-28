@@ -1,12 +1,12 @@
-import type { Permission } from "$lib/code/auth/types";
-import { getCurrentPermissions, getMaxPermissionLevel, rolesToPermissions } from "$lib/code/data/permissions";
+import type { SystemPermission } from "$lib/code/auth/types";
+import { getCurrentPermissions, getMaxPermissionLevel, rolesToPermissions } from "$lib/code/module/permissions";
 import { auth } from "$lib/code/stateObjects/authState.svelte";
 import type { SettingSectionId, uiState } from "$lib/code/stateObjects/uiState.svelte";
 import { includesList, valuesOf } from "$lib/code/util/codeUtil.svelte";
 import { getRole } from "$lib/code/util/stateUtils";
 
 
-export type SettingsSection = { name: SettingSectionId, permissions: Permission[], admin: boolean }
+export type SettingsSection = { name: SettingSectionId, permissions: SystemPermission[], admin: boolean }
 export const settingSections = {
     all() {
         return valuesOf(settingSections.sections)

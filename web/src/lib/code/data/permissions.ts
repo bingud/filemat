@@ -1,16 +1,10 @@
-import { PermissionType, type Permission, type Role } from "../auth/types";
-import { auth } from "../stateObjects/authState.svelte";
-import { filterObject, includesAny } from "../util/codeUtil.svelte";
-import { getRole, mapRoles } from "../util/stateUtils";
+import { PermissionType, type AnyPermission, type FilePermission, type SystemPermission } from "../auth/types";
 
 
-export type PermissionMeta = { id: Permission, name: string, description: string, type: PermissionType, level: number }
-export const permissionMeta: Record<Permission, PermissionMeta> = {
-    "READ": { id: "READ", name: "Read", description: "Read a file", type: PermissionType.file, level: 0},
-    "DELETE": { id: "DELETE", name: "Delete", description: "Delete a file", type: PermissionType.file, level: 0},
-    "WRITE": { id: "WRITE", name: "Write", description: "Save or edit a file", type: PermissionType.file, level: 0},
-    "SHARE": { id: "SHARE", name: "Share", description: "Publicly share a file", type: PermissionType.file, level: 0},
-    "RENAME": { id: "RENAME", name: "Rename", description: "Rename a file", type: PermissionType.file, level: 0},
+export type PermissionMeta = { id: AnyPermission, name: string, description: string, type: PermissionType, level: number }
+export const unknownPermission = { name: "Unknown permission", description: "No description (unknown permission)", type: 0}
+
+export const systemPermissionMeta: Record<SystemPermission, PermissionMeta> = {
     "MANAGE_OWN_FILE_PERMISSIONS": { id: "MANAGE_OWN_FILE_PERMISSIONS", name: "Manage own file permissions", description: "User can manage their own file permissions", type: PermissionType.system, level: 1},
     "EXPOSE_FOLDERS": { id: "EXPOSE_FOLDERS", name: "Expose folders", description: "Manage exposed folders", type: PermissionType.system, level: 1},
     "ACCESS_ALL_FILES": { id: "ACCESS_ALL_FILES", name: "Access all files", description: "Read all files in the system", type: PermissionType.system, level: 1},
@@ -20,77 +14,11 @@ export const permissionMeta: Record<Permission, PermissionMeta> = {
     "MANAGE_SYSTEM": { id: "MANAGE_SYSTEM", name: "Manage system", description: "Manage the system", type: PermissionType.system, level: 3},
     "SUPER_ADMIN": { id: "SUPER_ADMIN", name: "Super admin", description: "Has all permissions to manage the entire system", type: PermissionType.system, level: 4},
 }
-export const systemPermissionMeta = filterObject(permissionMeta, ((k, v) => v.type === PermissionType.system ))
 
-const unknownPermission = { name: "Unknown permission", description: "No description (unknown permission)", type: 0}
-
-
-export function formatPermission(p: Permission): string {
-    return permissionMeta[p]?.name ?? "Unknown permission"
-}
-
-export function getPermissionInfo(p: Permission): PermissionMeta {
-    return permissionMeta[p] ?? unknownPermission
-}
-
-export function hasPermissionLevel(required: number): boolean {
-    if (!auth.principal) return false
-    if (required < 1) return true
-
-    const highestPermissionLevel = getAuthPermissionLevel()
-    
-    if (highestPermissionLevel >= required) return true
-    return false
-}
-
-export function hasPermission(permissions: Permission[] | null, id: Permission): boolean {
-    if (!permissions) return false
-    if (includesAny<Permission>(permissions, [id, "SUPER_ADMIN"])) return true
-    return false
-}
-
-
-export function getAuthPermissionLevel(): number {
-    if (!auth.principal) return 0
-
-    const roles = mapRoles(auth.principal.roles)
-    if (!roles) return 0
-    const permissions = rolesToPermissions(roles)
-    const levels = permissions.map(p => p.level)
-    const max = Math.max(...levels)
-
-    return max
-}
-
-export function getMaxPermissionLevel(list: Permission[]): number {
-    const permissions = list.map(v => getPermissionInfo(v))
-    return Math.max(...permissions.map(v => v.level))
-}
-
-
-export function rolesToPermissions(roles: Role[]): PermissionMeta[] {
-    const addedPermissions: Permission[] = []
-    const allPermissions: PermissionMeta[] = []
-
-    roles.forEach(r => {
-        const permissions = r.permissions
-        permissions.forEach(perm => {
-            if (addedPermissions.includes(perm)) return
-            addedPermissions.push(perm)
-            
-            const meta = permissionMeta[perm]
-            allPermissions.push(meta)
-        })
-    })
-
-    return allPermissions
-}
-
-export function getCurrentPermissions(): PermissionMeta[] | null {
-    if (!auth.principal) return null
-    const roleIds = auth.principal.roles
-    const roles = roleIds.map(v => getRole(v)).filter(v => v != null)
-
-    const permissions = rolesToPermissions(roles)
-    return permissions
+export const filePermissionMeta: Record<FilePermission, PermissionMeta> = {
+    "READ": { id: "READ", name: "Read", description: "Read a file", type: PermissionType.file, level: 0},
+    "DELETE": { id: "DELETE", name: "Delete", description: "Delete a file", type: PermissionType.file, level: 0},
+    "WRITE": { id: "WRITE", name: "Write", description: "Save or edit a file", type: PermissionType.file, level: 0},
+    "SHARE": { id: "SHARE", name: "Share", description: "Publicly share a file", type: PermissionType.file, level: 0},
+    "RENAME": { id: "RENAME", name: "Rename", description: "Rename a file", type: PermissionType.file, level: 0},
 }

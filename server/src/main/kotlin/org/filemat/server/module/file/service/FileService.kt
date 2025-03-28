@@ -7,15 +7,15 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.classes.Either
 import org.filemat.server.common.util.getFileType
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.auth.model.Principal
-import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
+import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.FilePermission
-import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
@@ -41,6 +41,13 @@ class FileService(
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
+     * Returns either a file or entries for a folder for a path
+     */
+    fun getFileOrFolderEntries(user: Principal, path: String): Result<Either<FileMetadata, List<FileMetadata>>>{
+        TODO()
+    }
+
+    /**
      * Returns list of entries in a folder.
      *
      * Verifies user permissions.
@@ -57,7 +64,7 @@ class FileService(
         if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
         // Check if user can read any files
-        val hasAdminAccess = principal.hasPermission(SystemPermission.ACCESS_ALL_FILES)
+        val hasAdminAccess = principal.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
         val permissionResult = hasReadPermission(path = path, principal = principal, hasAdminAccess = hasAdminAccess)
         if (permissionResult.isNotSuccessful) return permissionResult.cast()
 
@@ -149,8 +156,8 @@ class FileService(
 
         return FileMetadata(
             filename = path.fileName.toString(),
-            modificationTime = modificationTime,
-            creationTime = creationTime,
+            modifiedDate = modificationTime,
+            createdDate = creationTime,
             fileType = type,
             size = attributes.size(),
         )

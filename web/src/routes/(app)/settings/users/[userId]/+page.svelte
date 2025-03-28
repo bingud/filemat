@@ -3,7 +3,8 @@
     import { page } from "$app/state";
     import { addRoleToUser } from "$lib/code/admin/roles";
     import type { FullPublicUser } from "$lib/code/auth/types";
-    import { getMaxPermissionLevel, rolesToPermissions } from "$lib/code/data/permissions";
+    
+    import { getMaxPermissionLevel, rolesToPermissions } from "$lib/code/module/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";

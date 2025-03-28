@@ -15,12 +15,12 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 
 
 @RestController
-@RequestMapping("/v1/folder")
+@RequestMapping("/v1")
 class FileController(private val fileService: FileService) : AController() {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    @PostMapping("/list")
+    @PostMapping("/folder/list")
     fun listFolderItemsMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String
@@ -40,5 +40,14 @@ class FileController(private val fileService: FileService) : AController() {
         return ok(serialized)
     }
 
+    @PostMapping("/file-or-folder-entries")
+    fun filerOrFolderEntriesMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+
+        TODO()
+    }
 
 }

@@ -1,4 +1,4 @@
-import type { Permission } from "../auth/types"
+import type { SystemPermission } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 import type { ulid } from "../types"
 import { arrayRemove, formData, handleError, handleErrorResponse, handleException, removeString, safeFetch } from "../util/codeUtil.svelte"
@@ -31,7 +31,7 @@ export async function addRoleToUser(userId: ulid, roleId: ulid): Promise<boolean
 /**
  * Changes list of permissions for a role
  */
-export async function changeRolePermissions(roleId: ulid, newList: Permission[]): Promise<boolean> {
+export async function changeRolePermissions(roleId: ulid, newList: SystemPermission[]): Promise<boolean> {
     const list = JSON.stringify(newList)
     const body = formData({ roleId: roleId, newPermissionList: list })
     const response = await safeFetch(`/api/v1/admin/role/update-permissions`, { body: body })

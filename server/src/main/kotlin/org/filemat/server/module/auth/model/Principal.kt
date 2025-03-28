@@ -1,12 +1,9 @@
 package org.filemat.server.module.auth.model
 
 import com.github.f4b6a3.ulid.Ulid
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.filemat.server.common.State
-import org.filemat.server.config.UlidListSerializer
 import org.filemat.server.config.UlidSerializer
-import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.model.Role
 
@@ -26,15 +23,26 @@ data class Principal(
             return roles.map { State.Auth.roleMap[it] ?: throw IllegalStateException("Role is null") }
         }
 
-        fun Principal.hasPermission(permission: Permission): Boolean {
-            roles.forEach { roleId ->
-                State.Auth.roleMap[roleId]?.let { role ->
-                    if (role.permissions.contains(permission)) return true
-                }
-            }
+        /**
+         * Checks if user has permission
+         */
+        fun Principal.hasPermission(searched: SystemPermission): Boolean {
+            val permissions = this.getPermissions()
+            return permissions.contains(searched)
+        }
+
+        /**
+         * Returns if user has the input permission
+         */
+        fun Principal.hasAnyPermission(searched: Collection<SystemPermission>): Boolean {
+            val permissions = this.getPermissions()
+            permissions.forEach { if (searched.contains(it)) return true }
             return false
         }
 
+        /**
+         * Returns users list of permissions
+         */
         fun Principal.getPermissions(): List<SystemPermission> {
             val roles = this.getRoles()
             val permissions = roles.map { it.permissions }.flatten().distinct()

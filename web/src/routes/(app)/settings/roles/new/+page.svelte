@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import type { Permission, Role } from "$lib/code/auth/types";
-    import { permissionMeta, systemPermissionMeta } from "$lib/code/data/permissions";
+    import type { SystemPermission, Role } from "$lib/code/auth/types";
+    import { systemPermissionMeta, systemPermissionMeta } from "$lib/code/data/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
@@ -12,7 +12,7 @@
 
     const title = "Create a new role"
 
-    let selectedPermissions: Permission[] = $state([])
+    let selectedPermissions: SystemPermission[] = $state([])
     let running = $state(false)
 
     let nameInput = $state('')
@@ -59,7 +59,7 @@
         }
     } finally { running = false }}
 
-    function selectPermission(id: Permission) {
+    function selectPermission(id: SystemPermission) {
         if (selectedPermissions.includes(id)) {
             removeString(selectedPermissions, id)
         } else {

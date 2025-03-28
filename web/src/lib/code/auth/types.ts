@@ -1,5 +1,21 @@
 import type { ulid } from "../types"
 
+export type FileMetadata = {
+    filename: string,
+    modifiedDate: number,
+    createdDate: number,
+    fileType: FileType,
+    size: number
+}
+
+export type FileType =
+    | "FILE" 
+    | "FOLDER" 
+    | "FILE_LINK" 
+    | "FOLDER_LINK" 
+    | "ANY_LINK" 
+    | "OTHER"
+
 export type Principal = {
     userId: ulid,
     email: string,
@@ -13,24 +29,28 @@ export type Role = {
     roleId: ulid,
     name: string,
     createdDate: number,
-    permissions: Permission[]
+    permissions: SystemPermission[]
 }
 
-export type Permission = (
-    "READ" |
-    "DELETE" |
-    "WRITE" |
-    "SHARE" |
-    "RENAME" |
-    "ACCESS_ALL_FILES" |
-    "MANAGE_OWN_FILE_PERMISSIONS" |
-    "MANAGE_ALL_FILE_PERMISSIONS" |
-    "MANAGE_USERS" |
-    "MANAGE_SYSTEM" |
-    "EDIT_ROLES" |
-    "EXPOSE_FOLDERS" |
-    "SUPER_ADMIN"
-)
+export type SystemPermission =
+  | "ACCESS_ALL_FILES"
+  | "MANAGE_OWN_FILE_PERMISSIONS"
+  | "MANAGE_ALL_FILE_PERMISSIONS"
+  | "MANAGE_USERS"
+  | "MANAGE_SYSTEM"
+  | "EDIT_ROLES"
+  | "EXPOSE_FOLDERS"
+  | "SUPER_ADMIN";
+
+export type FilePermission =
+  | "READ"
+  | "DELETE"
+  | "WRITE"
+  | "SHARE"
+  | "RENAME";
+
+export type AnyPermission = SystemPermission | FilePermission;
+
 
 export enum PermissionType {
     "file" = 1,

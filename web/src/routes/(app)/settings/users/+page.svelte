@@ -3,7 +3,8 @@
     
     import { loadUserList } from "$lib/code/admin/users";
     import type { PublicUser } from "$lib/code/auth/types";
-    import { hasPermissionLevel } from "$lib/code/data/permissions";
+    
+    import { hasPermissionLevel } from "$lib/code/module/permissions";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
