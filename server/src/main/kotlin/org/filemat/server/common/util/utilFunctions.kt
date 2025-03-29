@@ -92,7 +92,9 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
     }
 }
 
-fun String.normalizePath() = Paths.get(this).normalize().toString()
+fun String.normalizePath() = Paths.get(this.addPrefixIfNotPresent('/')).normalize().toString()
+
+fun String.addPrefixIfNotPresent(prefix: Char) = if (this.startsWith(prefix)) this else prefix + this
 
 ////
 

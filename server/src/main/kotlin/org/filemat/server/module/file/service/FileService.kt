@@ -9,12 +9,14 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.classes.Either
 import org.filemat.server.common.util.getFileType
-import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.FileMetadata
+import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FileType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
@@ -41,19 +43,45 @@ class FileService(
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
-     * Returns either a file or entries for a folder for a path
+     * Returns file metadata
+     *
+     * if file is a folder, also returns entries
      */
-    fun getFileOrFolderEntries(user: Principal, path: String): Result<Either<FileMetadata, List<FileMetadata>>>{
-        TODO()
+    fun getFileOrFolderEntries(user: Principal, path: FilePath): Result<Pair<FileMetadata, List<FileMetadata>?>>{
+        val metadata = getMetadata(user, path).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        val type = metadata.fileType
+
+        if (type == FileType.FOLDER || type == FileType.FOLDER_LINK && State.App.followSymLinks) {
+            val entries = getFolderEntries(user = user, path).let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+            return Result.ok(metadata to entries)
+        } else if (type == FileType.FILE || type == FileType.FILE_LINK && State.App.followSymLinks) {
+            return Result.ok(metadata to null)
+        } else {
+            return Result.error("Requested path is not a file or folder.")
+        }
     }
 
     /**
-     * Returns list of entries in a folder.
-     *
-     * Verifies user permissions.
+     * Returns file metadata. Authenticates user
      */
-    fun getFolderEntries(folderPath: String, principal: Principal): Result<List<FileMetadata>> {
-        val path = folderPath.normalizePath()
+    fun getMetadata(user: Principal, path: FilePath): Result<FileMetadata> {
+        isAllowedToAccessFile(user, path).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        return filesystem.getMetadata(path)?.toResult()
+            ?: Result.notFound()
+    }
+
+    fun isAllowedToAccessFile(user: Principal, pathObject: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
+        val path = pathObject.path
 
         // Deny blocked folder
         val isAllowedResult = isPathAllowed(path)
@@ -64,9 +92,23 @@ class FileService(
         if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
         // Check if user can read any files
-        val hasAdminAccess = principal.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
-        val permissionResult = hasReadPermission(path = path, principal = principal, hasAdminAccess = hasAdminAccess)
+        val isAdmin = hasAdminAccess ?: hasAdminAccess(user)
+        val permissionResult = hasReadPermission(path = path, principal = user, hasAdminAccess = isAdmin)
         if (permissionResult.isNotSuccessful) return permissionResult.cast()
+
+        return Result.ok()
+    }
+
+    /**
+     * Returns list of entries in a folder.
+     *
+     * Verifies user permissions.
+     */
+    fun getFolderEntries(user: Principal, path: FilePath): Result<List<FileMetadata>> {
+        val hasAdminAccess = hasAdminAccess(user)
+
+        val isAllowed = isAllowedToAccessFile(user, path, hasAdminAccess = hasAdminAccess)
+        if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         // Get folder entries
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
@@ -77,18 +119,20 @@ class FileService(
         val folderEntries = if (hasAdminAccess) {
             unfilteredFolderEntries
         } else {
-            filterPermittedFiles(unfilteredFolderEntries, folderPath, principal)
+            filterPermittedFiles(unfilteredFolderEntries, path, user)
         }
 
         return folderEntries.toResult()
     }
 
+    fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
+
     /**
      * Filters list of files for which user has read permission
      */
-    fun filterPermittedFiles(list: List<FileMetadata>, folderPath: String, principal: Principal): List<FileMetadata> {
+    fun filterPermittedFiles(list: List<FileMetadata>, folderPath: FilePath, principal: Principal): List<FileMetadata> {
         return list.filter { meta ->
-            val permission = entityPermissionService.getUserPermission(filePath = "$folderPath/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
+            val permission = entityPermissionService.getUserPermission(filePath = "${folderPath.path}/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
             return@filter permission != null && permission.permissions.contains(FilePermission.READ)
         }
     }
@@ -118,14 +162,14 @@ class FileService(
     /**
      * Directly gets entries from a folder. Is not authenticated.
      */
-    private fun internalGetFolderEntries(path: String, userAction: UserAction): Result<List<FileMetadata>> {
+    private fun internalGetFolderEntries(path: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
         try {
-            val file = File(path)
+            val file = File(path.path)
             val filenames = filesystem.listFiles(file)
                 ?: return Result.notFound()
 
             val files = filenames.map {
-                getMetadata(it.absolutePath, true) ?: throw IllegalStateException("Metadata object was null for a known file.")
+                filesystem.getMetadata(FilePath(it.absolutePath)) ?: throw IllegalStateException("Metadata object was null for a known file.")
             }
 
             return files.toResult()
@@ -140,28 +184,6 @@ class FileService(
         }
     }
 
-    /**
-     * Gets metadata for a file.
-     */
-    private fun getMetadata(rawPath: String, isNormalized: Boolean): FileMetadata? {
-        val normalized = if (isNormalized) rawPath else rawPath.normalizePath()
-        val path = Paths.get(normalized)
-
-        val attributes = filesystem.readAttributes(path, State.App.followSymLinks)
-            ?: return null
-
-        val type = attributes.getFileType()
-        val creationTime = attributes.creationTime().toMillis()
-        val modificationTime = attributes.lastModifiedTime().toMillis()
-
-        return FileMetadata(
-            filename = path.fileName.toString(),
-            modifiedDate = modificationTime,
-            createdDate = creationTime,
-            fileType = type,
-            size = attributes.size(),
-        )
-    }
 
 
     private val verifyLocks = ConcurrentHashMap<String, ReentrantLock>()
