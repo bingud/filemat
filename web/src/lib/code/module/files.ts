@@ -2,7 +2,7 @@ import type { FileMetadata, FileType } from "../auth/types";
 import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "../util/codeUtil.svelte";
 
 
-export type FileData = { meta: FileMetadata, folderEntries: FileMetadata[] | null }
+export type FileData = { meta: FileMetadata, entries: FileMetadata[] | null }
 
 export async function getFileData(path: string): Promise<FileData | null> {
     const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path }) })

@@ -59,7 +59,7 @@ class AdminUserController(
             if (it.hasError) return internal(it.error, "")
             if (it.isNotSuccessful) return bad(it.error, "")
 
-            val r = json { put("userId", it.value) }
+            val r = json { put("userId", it.value.toString()) }
             return ok(r)
         }
     }

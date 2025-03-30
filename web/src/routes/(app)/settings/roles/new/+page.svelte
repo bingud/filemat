@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import type { SystemPermission, Role } from "$lib/code/auth/types";
-    import { systemPermissionMeta, systemPermissionMeta } from "$lib/code/data/permissions";
+    import { systemPermissionMeta } from "$lib/code/data/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"

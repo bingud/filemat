@@ -3,10 +3,8 @@ package org.filemat.server.common.util
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json.Default.encodeToJsonElement
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.service.LogService
@@ -135,13 +133,17 @@ private fun gPackagePrefix(): String {
 ////
 
 class JsonBuilder {
-    private val content = linkedMapOf<String, JsonElement>()
+    val content = linkedMapOf<String, JsonElement>()
 
-    fun put(key: String, element: JsonElement) = content.put(key, element)
-    fun put(key: String, element: String) = content.put(key, JsonPrimitive(element))
-    fun put(key: String, element: Int) = content.put(key, JsonPrimitive(element))
-    fun put(key: String, element: Boolean) = content.put(key, JsonPrimitive(element))
-    fun put(key: String, element: Any) = content.put(key, JsonPrimitive(element.toString()))
+    // You can still keep the specialized put() for primitives if you want:
+    fun put(key: String, element: String) = content.put(key, Json.encodeToJsonElement(element))
+    fun put(key: String, element: Int) = content.put(key, Json.encodeToJsonElement(element))
+    fun put(key: String, element: Boolean) = content.put(key, Json.encodeToJsonElement(element))
+
+    // Generic put that serializes any object into a JsonElement:
+    inline fun <reified T> put(key: String, value: T) {
+        content[key] = Json.encodeToJsonElement(value)
+    }
 
     fun build() = JsonObject(content)
     override fun toString() = build().toString()

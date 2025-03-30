@@ -1,7 +1,6 @@
 <script lang="ts">
     import { page } from "$app/state";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { isBlank, removeSpaces } from "$lib/code/util/codeUtil.svelte";
     import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
@@ -9,13 +8,13 @@
     let currentButton = $derived.by(() => {
         const path = page.url.pathname
 
-        if (path === "/") {
+        if (path === "/files") {
             return "all"
         } else if (path.startsWith("/settings")) {
             return "settings"
         }
 
-        return "whothefuckknows"
+        return ""
     })
 
     function hide() { uiState.menuOpen = false }
@@ -30,8 +29,8 @@
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar md:w-sidebar-desktop h-full bg-layout pointer-events-auto z-10 flex flex-col justify-between shrink-0">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
-                <a href="/" on:click={hide} class="sidebar-button">Home Folder</a>
+                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
+                <a href="/files" on:click={hide} class="sidebar-button">Home Folder</a>
             </div>
 
             <!-- Bottom -->

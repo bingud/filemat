@@ -71,7 +71,7 @@ html {
 }
 
 button {
-    @apply cursor-pointer w-fit;
+    cursor: pointer;
 }
 
 h1 {

@@ -313,3 +313,12 @@ export function sortArrayByNumberDesc<T>(arr: T[], accessor: (obj: T) => number)
 export function includesAny<T>(list: T[], items: T[]): boolean {
     return list.some(item => items.includes(item));
 }
+
+/**
+ * Returns filename from a file path
+ */
+export function filenameFromPath(path: string): string {
+    const segments = path.split("/")
+    const last = segments[segments.length - 1]
+    return last
+}

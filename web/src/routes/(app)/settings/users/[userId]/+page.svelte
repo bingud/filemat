@@ -198,7 +198,7 @@
             {/each}
 
             {#if !addRolesDisabled && !selectingRoles}
-                <button bind:this={addRolesButton} id="add-roles" title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none">
+                <button bind:this={addRolesButton} id="add-roles" title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none cursor-pointer">
                     <div class="size-4 rotate-45">
                         <CloseIcon></CloseIcon>
                     </div>

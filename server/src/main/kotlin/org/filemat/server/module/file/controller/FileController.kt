@@ -67,7 +67,6 @@ class FileController(private val fileService: FileService) : AController() {
             }
         }
 
-        println(serialized)
         return ok(serialized)
     }
 
