@@ -2,10 +2,9 @@ package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
 import org.filemat.server.common.util.FileUtils
-import org.filemat.server.common.util.getFileType
-import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FileType
 import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.file.Files
@@ -15,6 +14,7 @@ import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
 
 /**
  * Service that provides low level filesystem access
@@ -31,7 +31,19 @@ class FilesystemService {
         val attributes = readAttributes(path.pathObject, State.App.followSymLinks)
             ?: return null
 
-        val type = attributes.getFileType()
+        val type = when {
+            attributes.isRegularFile -> FileType.FILE
+            attributes.isDirectory -> FileType.FOLDER
+            attributes.isSymbolicLink -> {
+                if (State.App.followSymLinks) {
+                    val target = Files.readSymbolicLink(path.pathObject)
+                    if (target.isDirectory()) FileType.FOLDER_LINK else FileType.FILE_LINK
+                } else {
+                    FileType.FILE
+                }
+            }
+            else -> FileType.OTHER
+        }
         val creationTime = attributes.creationTime().toMillis()
         val modificationTime = attributes.lastModifiedTime().toMillis()
 
@@ -59,7 +71,7 @@ class FilesystemService {
             if (followSymbolicLinks) {
                 Files.readAttributes(path, BasicFileAttributes::class.java)
             } else {
-                Files.readAttributes(path.toRealPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
             }
         }.getOrNull()
     }

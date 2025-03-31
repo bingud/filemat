@@ -174,6 +174,10 @@ export function formatUnixTimestamp(unixTimestamp: number) {
     return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
+export function formatUnixMillis(millis: number) {
+    return formatUnixTimestamp(millis / 1000)
+}
+
 
 /**
  * Creates FormData object
@@ -290,6 +294,13 @@ export function sortArrayAlphabetically<T>(arr: T[], accessor: (obj: T) => strin
 }
 
 /**
+ * Sorts an array using custom property indexes
+ */
+export function sortArray<T>(arr: T[], accessor: (obj: T) => number): T[] {
+    return arr.sort((a, b) => accessor(a) - accessor(b));
+}
+
+/**
  * Sorts array of objects 
  * 
  * Ascending order
@@ -321,4 +332,14 @@ export function filenameFromPath(path: string): string {
     const segments = path.split("/")
     const last = segments[segments.length - 1]
     return last
+}
+
+/**
+ * Formats byte number to readable
+ */
+export function formatBytes(bytes: number) {
+    if (bytes === 0) return '0 B';
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + sizes[i];
 }

@@ -7,8 +7,6 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
-import org.filemat.server.common.util.classes.Either
-import org.filemat.server.common.util.getFileType
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.FileMetadata
@@ -16,7 +14,6 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
@@ -113,13 +110,13 @@ class FileService(
         // Get folder entries
         val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
         if (result.isNotSuccessful) return result.cast()
-        val unfilteredFolderEntries = result.value
+        val allEntries = result.value.filter { folderVisibilityService.isPathAllowed(it.filename) == null }
 
         // Check permissions for folder entries
         val folderEntries = if (hasAdminAccess) {
-            unfilteredFolderEntries
+            allEntries
         } else {
-            filterPermittedFiles(unfilteredFolderEntries, path, user)
+            filterPermittedFiles(allEntries, path, user)
         }
 
         return folderEntries.toResult()

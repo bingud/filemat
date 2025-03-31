@@ -12,4 +12,6 @@ data class FilePath(
     val path by lazy { inputPath.normalizePath() }
 
     val pathObject by lazy { Paths.get(path) }
+
+    override fun toString() = path
 }

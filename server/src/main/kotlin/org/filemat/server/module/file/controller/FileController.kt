@@ -56,6 +56,7 @@ class FileController(private val fileService: FileService) : AController() {
             path = path
         )
         if (result.hasError) return internal(result.error, "")
+        if (result.notFound) return bad("This path does not exist.", "")
         if (result.isNotSuccessful) return bad(result.error, "")
 
         val pair = result.value

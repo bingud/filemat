@@ -20,7 +20,7 @@ object State {
         val nonSensitiveFolders = env("FM_NON_SENSITIVE_FOLDERS").getNonSensitiveFolders()
         val hiddenFolders = env("FM_HIDDEN_FOLDER_PATHS").getHiddenFolders()
 
-        private val followSymLinksEnv = env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull() ?: false
+        private val followSymLinksEnv = (env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull() ?: false).also { println("Follow symbolic links: $it\n") }
         var followSymLinks: Boolean = followSymLinksEnv
             set(new) {
                 if (followSymLinksEnv == true) return
@@ -46,14 +46,15 @@ private fun env(name: String): String?= System.getenv(name)
 private fun String?.getNonSensitiveFolders(): HashSet<String> {
     this ?: return hashSetOf()
     return this.split(":")
-        .map { it.removeSuffix("/") }
-        .toHashSet()
+        .map { it.normalizePath() }
         .also { println("Some folders were marked as not sensitive:\n${it.joinToString("\n")}") }
+        .toHashSet()
 }
 
 private fun String?.getHiddenFolders(): HashSet<String> {
     this ?: return hashSetOf()
     return this.split(":")
         .map { it.normalizePath() }
-        .also { println("Hidden folders:\n${it.joinToString("\n")}") }.toHashSet()
+        .also { println("Hidden folders:\n${it.joinToString("\n")}") }
+        .toHashSet()
 }

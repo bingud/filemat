@@ -35,7 +35,7 @@
 
             <!-- Bottom -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/settings" on:click={hide} class="sidebar-button" class:current-button={currentButton === "settings"}>Settings</a>
+                <a href="/settings/{uiState.settings.defaultSection}" on:click={hide} class="sidebar-button" class:current-button={currentButton === "settings"}>Settings</a>
                 <button on:click={toggleDarkMode} class="sidebar-button">{uiState.isDark ? "Dark" : "Light"} mode</button>
             </div>
         </div>

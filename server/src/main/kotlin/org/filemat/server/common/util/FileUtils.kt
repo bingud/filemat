@@ -38,5 +38,3 @@ object FileUtils {
         return if (result.isNotEmpty()) result else null
     }
 }
-
-fun BasicFileAttributes.getFileType(): FileType = if (this.isRegularFile) FileType.FILE else if (this.isSymbolicLink) FileType.ANY_LINK else if (this.isDirectory) FileType.FOLDER else FileType.OTHER

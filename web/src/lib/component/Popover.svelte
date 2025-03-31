@@ -3,12 +3,13 @@
     import { onMount, type Snippet } from "svelte";
     import { fade } from "svelte/transition";
 
-    let { children, button = $bindable(), marginRem = 0, fadeDuration = 0, isOpen = $bindable() }: {
+    let { children, button = $bindable(), marginRem = 0, fadeDuration = 0, isOpen = $bindable(), onClose }: {
         children: Snippet<[]>,
         button: HTMLElement,
         marginRem?: number,
         fadeDuration?: number,
-        isOpen?: boolean
+        isOpen?: boolean,
+        onClose: Function,
     } = $props()
 
     /**
@@ -77,6 +78,7 @@
     function hide() {
         visible = false
         if (isOpen) isOpen = false
+        onClose()
     }
 
     /**
