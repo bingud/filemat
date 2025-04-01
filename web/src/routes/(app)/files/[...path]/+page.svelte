@@ -209,6 +209,18 @@
                                     {/each}
                                 </tbody>
                             </table>
+                        {:else if data.meta.fileType.startsWith("FILE")}
+                            {#if fileContent}
+                                <div></div>
+                            {:else if loadingContent}
+                                <div class="center">
+                                    <Loader />
+                                </div>
+                            {:else}
+                                <div class="center">
+                                    <p class="text-lg">Failed to open file</p>
+                                </div>
+                            {/if}                            
                         {/if}
                     {:else if !loading && !data}
                         <div class="center">

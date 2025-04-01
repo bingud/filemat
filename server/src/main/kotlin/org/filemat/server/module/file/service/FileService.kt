@@ -20,9 +20,15 @@ import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.io.path.absolutePathString
 
 
 /**
@@ -38,6 +44,27 @@ class FileService(
 ) {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * Returns an input stream for the content of a file
+     */
+    fun getFileContent(user: Principal, rawPath: FilePath): Result<FileInputStream> {
+        isAllowedToAccessFile(user, rawPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val path = try {
+            if (State.App.followSymLinks) rawPath.pathObject.toRealPath() else rawPath.pathObject.toRealPath(LinkOption.NOFOLLOW_LINKS)
+        } catch (e: NoSuchFileException) {
+            return Result.notFound()
+        } catch (e: Exception) {
+            return Result.error("Failed to load file.")
+        }
+
+        val file = File(path.absolutePathString())
+        if (!file.isFile) return Result.notFound()
+        return runCatching { file.inputStream().toResult() }.getOrElse { Result.error("Failed to stream file.") }
+    }
 
     /**
      * Returns file metadata

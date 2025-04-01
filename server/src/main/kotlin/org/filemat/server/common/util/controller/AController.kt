@@ -1,6 +1,8 @@
 package org.filemat.server.common.util.controller
 
 import org.springframework.http.ResponseEntity
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
+import java.io.OutputStream
 
 abstract class AController {
 
@@ -12,4 +14,14 @@ abstract class AController {
     fun unauthenticated(body: String, error: String): ResponseEntity<String> = ResponseEntity.status(401).body(ErrorResponse(body, error).serialize())
     fun internal(body: String, error: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, error).serialize())
 
+    fun streamBad(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 400)
+    fun streamUnauthenticated(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 401)
+    fun streamInternal(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 500)
+
+    private fun streamResponse(body: String, status: Int): ResponseEntity<StreamingResponseBody> {
+        val streamBody = StreamingResponseBody { outputStream: OutputStream ->
+            outputStream.write(body.toByteArray())
+        }
+        return ResponseEntity.status(status).body(streamBody)
+    }
 }
