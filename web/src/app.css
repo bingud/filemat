@@ -50,6 +50,10 @@ html {
     @apply scrollbar scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
 }
 
+.scrollbar-padding {
+    scrollbar-gutter: stable both-edges;
+}
+
 
 /* 
     Text Colors

@@ -76,7 +76,7 @@
 
 
 {#if dev}
-    <div class="fixed left-0 top-1/2 flex h-12 w-12 items-center justify-center bg-neutral-200 text-lg font-medium text-black pointer-events-none">
+    <div class="fixed z-30 left-0 top-1/2 flex h-12 w-12 items-center justify-center bg-neutral-200 text-lg font-medium text-black pointer-events-none">
         <span class="block xs:hidden">-</span>
         <span class="hidden xs:block sm:hidden">XS</span>
         <span class="hidden sm:block md:hidden">SM</span>

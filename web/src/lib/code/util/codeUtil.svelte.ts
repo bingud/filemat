@@ -76,7 +76,7 @@ type SafeFetchResult = Omit<Response, 'json'> & { failed: boolean, exception: an
  * 
  * Default request is POST and credentials same-origin
  */
-export async function safeFetch(url: string, args?: RequestInit): Promise<SafeFetchResult> {
+export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boolean = false): Promise<SafeFetchResult> {
     try {
         let arg = args ? args : {}
         if (!arg.credentials) arg.credentials = "same-origin"
@@ -86,8 +86,10 @@ export async function safeFetch(url: string, args?: RequestInit): Promise<SafeFe
         response.failed = false
         response.exception = null
         response.code = toStatus(response.status)
-        response.content = await response.text()
-        response.json = () => { return parseJson(response.content) }
+        if (!ignoreBody) {
+            response.content = await response.text()
+            response.json = () => { return parseJson(response.content) }
+        }
 
         return response
     } catch (e) { 
@@ -182,7 +184,7 @@ export function formatUnixMillis(millis: number) {
 /**
  * Creates FormData object
  */
-export function formData(obj: { [key: string]: string }): FormData {
+export function formData(obj: { [key: string]: any }): FormData {
     const data = new FormData()
     Object.keys(obj).forEach((v: string) => {
         data.append(v, obj[v])
@@ -329,9 +331,7 @@ export function includesAny<T>(list: T[], items: T[]): boolean {
  * Returns filename from a file path
  */
 export function filenameFromPath(path: string): string {
-    const segments = path.split("/")
-    const last = segments[segments.length - 1]
-    return last
+    return path.substring(path.lastIndexOf("/") + 1);
 }
 
 /**

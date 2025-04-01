@@ -241,7 +241,7 @@
                 {/if}
                     
                 {#if addUsersButton}
-                    <Popover bind:isOpen={addUserPopoverOpen} fadeDuration={40} marginRem={1} button={addUsersButton}>
+                    <Popover bind:isOpen={addUserPopoverOpen} fadeDuration={40} marginRem={1} button={addUsersButton} onClose={() => {}}>
                         <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
                             {#if allUsers}
                                 {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
@@ -296,7 +296,7 @@
             {#if editingPermissions && newPermissionList && !includesList(newPermissionList, valuesOf(systemPermissionMeta).filter(v=>v.type !== PermissionType.file).map(v=>v.id))}
                 <button bind:this={addPermissionButton} class="basic-button text-sm">Add permission</button>
 
-                <Popover marginRem={1} fadeDuration={40} button={addPermissionButton}>
+                <Popover marginRem={1} fadeDuration={40} button={addPermissionButton} onClose={() => {}}>
                     <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
                         <div class="flex flex-col gap-2 p-2">
                             {#each sortArrayByNumberDesc(valuesOf(systemPermissionMeta).filter(m => m.type !== PermissionType.file && newPermissionList?.includes(m.id) != true), v => v.level) as meta}
