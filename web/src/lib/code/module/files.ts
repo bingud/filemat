@@ -1,4 +1,5 @@
 import type { FileMetadata, FileType } from "../auth/types";
+import type { fileCategory } from "../data/files";
 import { formData, handleError, handleErrorResponse, handleException, parseJson, safeFetch } from "../util/codeUtil.svelte";
 
 
@@ -64,4 +65,24 @@ export async function streamFileContent(path: string, signal: AbortSignal): Prom
 
     const blob = new Blob(chunks, { type: response.headers.get("Content-Type") || "application/octet-stream" });
     return blob
+}
+
+/**
+ * Get the contents of a blob
+ */
+export async function getBlobContent(blob: Blob, fileCategory: fileCategory): Promise<any | null> {
+    switch (fileCategory) {
+        case "html":
+        case "text":
+        case "md":
+            return await blob.text();
+        case "image":
+        case "video":
+        case "audio":
+            return URL.createObjectURL(blob); // Use as a source in media elements
+        case "pdf":
+            return blob.arrayBuffer(); // Can be used with PDF viewers
+        default:
+            return null;
+    }
 }

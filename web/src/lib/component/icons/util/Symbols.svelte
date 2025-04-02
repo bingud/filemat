@@ -30,5 +30,10 @@
         <symbol id="symbol-folder" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" class="size-full aspect-square" viewBox="0,0,256,256">
             <g fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal"><g transform="scale(10.66667,10.66667)"><path d="M4,4c-1.09425,0 -2,0.90575 -2,2v12c0,1.09426 0.90575,2 2,2h16c1.09426,0 2,-0.90574 2,-2v-10c0,-1.09425 -0.90574,-2 -2,-2h-8l-2,-2zM4,6h5.17188l2,2h8.82813v10h-16z"></path></g></g>
         </symbol>
+
+        <!-- Tall arrow right -->
+        <symbol id="chevron-right" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" class="size-full aspect-square" viewBox="0,0,16.16">
+            <g><path fill-rule="evenodd" d="M5.665 3.13a.5.5 0 0 0-.036.705L9.395 8l-3.766 4.165a.5.5 0 1 0 .742.67l3.948-4.367a.697.697 0 0 0 0-.936L6.371 3.165a.5.5 0 0 0-.706-.036Z"></path></g>
+        </symbol>
     </svg>
 </div>

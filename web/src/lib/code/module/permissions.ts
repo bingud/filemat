@@ -8,7 +8,7 @@ import { mapRoles, getRole } from "../util/stateUtils";
 /**
  * Returns a permission metadata object
  */
-export function getPermissionMeta(p: SystemPermission): PermissionMeta {
+export function getPermissionMeta(p: SystemPermission): PermissionMeta<SystemPermission> {
     return systemPermissionMeta[p] ?? unknownPermission;
 }
 
@@ -60,9 +60,9 @@ export function getMaxPermissionLevel(list: SystemPermission[]): number {
 /**
  * Extracts list of permissions from a list of roles
  */
-export function rolesToPermissions(roles: Role[]): PermissionMeta[] {
+export function rolesToPermissions(roles: Role[]): PermissionMeta<SystemPermission>[] {
     const addedPermissions: SystemPermission[] = [];
-    const allPermissions: PermissionMeta[] = [];
+    const allPermissions: PermissionMeta<SystemPermission>[] = [];
 
     roles.forEach(r => {
         const permissions = r.permissions;
@@ -81,7 +81,7 @@ export function rolesToPermissions(roles: Role[]): PermissionMeta[] {
 /**
  * Returns list of permissions for the current user
  */
-export function getCurrentPermissions(): PermissionMeta[] | null {
+export function getCurrentPermissions(): PermissionMeta<SystemPermission>[] | null {
     if (!auth.principal) return null;
     const roleIds = auth.principal.roles;
     const roles = roleIds.map(v => getRole(v)).filter(v => v != null);

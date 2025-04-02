@@ -26,10 +26,16 @@
 		"vite": "^6.2.2"
 	},
 	"dependencies": {
+		"@codemirror/lang-javascript": "^6.2.3",
+		"@codemirror/state": "^6.5.2",
+		"@codemirror/theme-one-dark": "^6.1.2",
+		"@codemirror/view": "^6.36.5",
 		"@jill64/svelte-toast": "^2.1.6",
 		"@tailwindcss/postcss": "^4.0.14",
 		"@tailwindcss/vite": "^4.0.14",
+		"codemirror": "^6.0.1",
 		"flowbite-svelte": "^0.48.4",
-		"tailwind-scrollbar": "^4.0.1"
+		"tailwind-scrollbar": "^4.0.1",
+		"thememirror": "^2.0.1"
 	}
 }
