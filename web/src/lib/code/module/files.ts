@@ -1,12 +1,12 @@
 import type { FileMetadata, FileType } from "../auth/types";
-import type { fileCategory } from "../data/files";
+import type { FileCategory } from "../data/files";
 import { formData, handleError, handleErrorResponse, handleException, parseJson, safeFetch } from "../util/codeUtil.svelte";
 
 
 export type FileData = { meta: FileMetadata, entries: FileMetadata[] | null }
 
 export async function getFileData(path: string, signal: AbortSignal): Promise<FileData | null> {
-    const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path, signal: signal }) })
+    const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path }), signal: signal })
     if (response.failed) {
         handleException(`Failed to fetch folder entries`, `Failed to open folder.`, response.exception)
         return null
@@ -27,7 +27,7 @@ export async function getFileData(path: string, signal: AbortSignal): Promise<Fi
 
 
 export async function streamFileContent(path: string, signal: AbortSignal): Promise<Blob | null> {
-    const response = await safeFetch(`/api/v1/file/content`, { body: formData({ path: path, signal: signal }) }, true)
+    const response = await safeFetch(`/api/v1/file/content`, { body: formData({ path: path }), signal: signal }, true)
     if (response.failed) {
         const exception = response.exception
         if (exception.name === "AbortError") {
@@ -70,7 +70,7 @@ export async function streamFileContent(path: string, signal: AbortSignal): Prom
 /**
  * Get the contents of a blob
  */
-export async function getBlobContent(blob: Blob, fileCategory: fileCategory): Promise<any | null> {
+export async function getBlobContent(blob: Blob, fileCategory: FileCategory): Promise<any | null> {
     switch (fileCategory) {
         case "html":
         case "text":

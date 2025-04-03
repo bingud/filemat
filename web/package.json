@@ -39,9 +39,7 @@
 		"@tailwindcss/postcss": "^4.0.14",
 		"@tailwindcss/vite": "^4.0.14",
 		"codemirror": "^6.0.1",
-		"flowbite-svelte": "^0.48.4",
 		"tailwind-scrollbar": "^4.0.1",
-		"tailwindcss-animate": "^1.0.7",
 		"thememirror": "^2.0.1"
 	}
 }

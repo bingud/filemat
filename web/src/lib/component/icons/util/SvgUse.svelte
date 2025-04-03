@@ -5,6 +5,6 @@
 </script>
 
 
-<svg class="size-full aspect-square">
+<svg class="h-full aspect-square">
     <use href="#{id}" />
 </svg>

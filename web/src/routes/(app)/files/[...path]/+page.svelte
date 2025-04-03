@@ -1,32 +1,31 @@
 <script lang="ts">
-    import { afterNavigate, beforeNavigate, goto } from "$app/navigation";
+    import { beforeNavigate, goto } from "$app/navigation";
     import { page } from "$app/state"
     import type { FileMetadata } from "$lib/code/auth/types";
     import { getFileData, streamFileContent, type FileData } from "$lib/code/module/files";
     import type { ulid } from "$lib/code/types";
-    import { debounceFunction, filenameFromPath, forEachReversed, formatBytes, formatUnixMillis, formatUnixTimestamp, getFileExtension, isBlank, pageTitle, sortArray, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, forEachReversed, formatBytes, formatUnixMillis, formatUnixTimestamp, getFileExtension, isBlank, pageTitle, sortArray, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import { untrack } from "svelte";
-    import FileViewer from "./FileViewer.svelte";
+    import { onDestroy, onMount, untrack } from "svelte";
+    import FileViewer from "./code/FileViewer.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
-    //@ts-ignore
-    import { Popover } from "bits-ui";
-    import { dev } from "$app/environment";
+    import { Popover } from "$lib/component/bits-ui-wrapper";
+    import { browser, dev } from "$app/environment";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { calculateTextWidth, remToPx } from "$lib/code/util/uiUtil";
-    import SettingsSidebar from "../../settings/components/SettingsSidebar.svelte";
-    import { PopoverTrigger } from "$lib/components/ui/popover";
+    import { isFileCategory } from "$lib/code/data/files";
+    import { createFilesState, destroyFilesState, filesState } from "./code/files.svelte";
     
-    const path = $derived.by(() => {
-        const param = page.params.path
-        if (isBlank(param)) return "/"
-        return param
+    createFilesState()
+
+    onDestroy(() => {
+        destroyFilesState()
     })
-    const segments = $derived(path.split("/"))
-    const title = $derived(pageTitle(segments[segments.length - 1] || "Files"))
+
+    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
 
     let loading = $state(true)
     let loadingContent = $state(true)
@@ -66,9 +65,9 @@
         const paddingWidth = remToPx(1)
         const totalAdditionalWidth = chevronWidth + paddingWidth
 
-        const fullSegments = segments.map((seg, index) => {
+        const fullSegments = filesState.segments.map((seg, index) => {
             const width = calculateTextWidth(seg)
-            const fullPath = segments.slice(0, index + 1).join("/")
+            const fullPath = filesState.segments.slice(0, index + 1).join("/")
             return { name: seg, path: fullPath, width: width }
         })
 
@@ -101,10 +100,12 @@
     })
 
     $effect(() => {
-        if (path) {
+        if (filesState.path) {
             untrack(() => {
                 if (abortController) {
-                    abortController.abort()
+                    try {
+                        abortController.abort()
+                    } catch (e) {}
                 }
                 abortController = new AbortController()
 
@@ -114,11 +115,11 @@
                 menuEntry = null
                 fileContent = null
 
-                if (path === "/") {
+                if (filesState.path === "/") {
                     pathScrollPositions = {}
                 }
 
-                loadPageData(path).then(() => {
+                loadPageData(filesState.path).then(() => {
                     recoverScrollPosition()
                 })
             })
@@ -140,9 +141,11 @@
         if (result) {
             data = result
             if (data.meta.fileType.startsWith("FILE")) {
-                loadingContent = true
-                await loadFileContent(filePath)
-                loadingContent = false
+                if (isFileCategory(data.meta.filename)) {
+                    loadingContent = true
+                    await loadFileContent(filePath)
+                    loadingContent = false
+                }
             }
         }
         loading = false
@@ -194,14 +197,14 @@
 
     // Scrolling position
     function saveScrollPosition() {
-        if (!path || !scrollContainer) return
+        if (!filesState.path || !scrollContainer) return
         const pos = scrollContainer.scrollTop
-        pathScrollPositions[path] = pos
+        pathScrollPositions[filesState.path] = pos
     }
 
     function recoverScrollPosition() {
-        if (!path || !scrollContainer) return
-        const pos = pathScrollPositions[path]
+        if (!filesState.path || !scrollContainer) return
+        const pos = pathScrollPositions[filesState.path]
         if (!pos) return
         scrollContainer.scrollTo({top: pos})
     }
@@ -221,23 +224,23 @@
             <div class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
                 <!-- Breadcrumbs -->
                 <div bind:offsetWidth={breadcrumbContainerWidth} class="flex items-center h-[2rem] w-[85%]">
-                    {#if path === "/"}
+                    {#if filesState.path === "/"}
                         <p class="px-2 py-1">Files</p>
                     {:else}
                         {@const hiddenEmpty = breadcrumbs.hidden.length < 1}
                         <!-- Change chevron width in breadcrumb calculator -->
 
                         {#snippet breadcrumbButton(segment: Segment, className: string)}
-                            <button disabled={path === segment.path} title={segment.name} on:click={() => { openEntry(`/${segment.path}`) }} class="py-1 px-2 {className}">{segment.name}</button>
+                            <button disabled={filesState.path === segment.path} title={segment.name} on:click={() => { openEntry(`/${segment.path}`) }} class="py-1 px-2 {className}">{segment.name}</button>
                         {/snippet}
 
                         {#if !hiddenEmpty}
                             <Popover.Root>
-                                <PopoverTrigger>
+                                <Popover.Trigger>
                                     <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
-                                </PopoverTrigger>
+                                </Popover.Trigger>
                                 <Popover.Content align="start" sideOffset={8}>
-                                    <div class="w-[20rem] max-w-screen rounded-lg bg-neutral-800 py-2">
+                                    <div class="w-[min(20rem,fit-content)] max-w-screen rounded-lg bg-neutral-800 py-2">
                                         {#each breadcrumbs.hidden as segment}
                                             {@render breadcrumbButton(segment, "truncate w-full text-start hover:bg-neutral-700")}
                                         {/each}
@@ -354,17 +357,9 @@
 
 
 {#snippet entryMenuPopover(entry: FileMetadata)}
-    <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-800 py-2 flex flex-col">
-        <button class="popover-button">Permissions</button>
+    <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col">
+        <button class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700">Permissions</button>
         <hr class="basic-hr my-2">
         <p class="px-4 truncate opacity-70">File: {filenameFromPath(entry.filename)}</p>
     </div>
 {/snippet}
-
-<style>
-    @import "/src/app.css" reference;
-
-    .popover-button {
-        @apply py-1 px-4 text-start hover:bg-neutral-300 dark:hover:bg-neutral-700;
-    }
-</style>

@@ -1,7 +1,17 @@
+import { getFileExtension } from "../util/codeUtil.svelte";
 
 
-export type fileCategory = "html" | "text" | "image" | "video" | "audio" | "pdf" | "md";
-export const fileCategories: Record<string, fileCategory> = {
+const fileCategoryList = ["html", "text", "image", "video", "audio", "pdf", "md"] as const;
+export type FileCategory = (typeof fileCategoryList)[number]
+
+/**
+ * Returns if a string is a valid file type category
+ */
+export function isFileCategory(value: string): value is FileCategory {
+    return fileCategoryList.includes(value as FileCategory)
+}
+
+export const fileCategories: Record<string, FileCategory> = {
     // HTML and Web Files
     "html": "html",
     "htm": "html",
@@ -44,5 +54,5 @@ export const fileCategories: Record<string, fileCategory> = {
     "aac": "audio",
 
     // PDF Files
-    "pdf": "pdf"
+    "pdf": "pdf",
 }

@@ -31,6 +31,7 @@ html {
     --spacing-navbar: 3.5rem;
 
     --color-neutral-850: #202020;
+    --color-neutral-250: #dddddd;
 }
 
 
@@ -58,7 +59,7 @@ html {
     Text Colors
 */
 .text-main {
-    @apply text-neutral-950 dark:text-neutral-50;
+    @apply text-neutral-950 dark:text-neutral-50 text-neutral-300;
 }
 
 
