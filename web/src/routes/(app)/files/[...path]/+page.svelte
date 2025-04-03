@@ -4,22 +4,27 @@
     import type { FileMetadata } from "$lib/code/auth/types";
     import { getFileData, streamFileContent, type FileData } from "$lib/code/module/files";
     import type { ulid } from "$lib/code/types";
-    import { debounceFunction, filenameFromPath, formatBytes, formatUnixMillis, formatUnixTimestamp, getFileExtension, isBlank, pageTitle, sortArray, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { debounceFunction, filenameFromPath, forEachReversed, formatBytes, formatUnixMillis, formatUnixTimestamp, getFileExtension, isBlank, pageTitle, sortArray, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import Popover from "$lib/component/Popover.svelte";
     import { untrack } from "svelte";
     import FileViewer from "./FileViewer.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
-
+    //@ts-ignore
+    import { Popover } from "bits-ui";
+    import { dev } from "$app/environment";
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
+    import { calculateTextWidth, remToPx } from "$lib/code/util/uiUtil";
+    import SettingsSidebar from "../../settings/components/SettingsSidebar.svelte";
+    import { PopoverTrigger } from "$lib/components/ui/popover";
+    
     const path = $derived.by(() => {
         const param = page.params.path
         if (isBlank(param)) return "/"
         return param
     })
-    const urlPath = $derived(page.url.pathname)
     const segments = $derived(path.split("/"))
     const title = $derived(pageTitle(segments[segments.length - 1] || "Files"))
 
@@ -49,6 +54,51 @@
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
     let menuEntry: FileMetadata | null = $state(null)
+    let entryMenuPopoverOpen = $state(dev)
+
+    // Breadcrumbs
+    let breadcrumbContainerWidth: number = $state(0)
+    type Segment = { name: string, path: string, width: number }
+    let breadcrumbs = $derived.by(() => {
+        uiState.screenWidth
+
+        const chevronWidth = remToPx(1)
+        const paddingWidth = remToPx(1)
+        const totalAdditionalWidth = chevronWidth + paddingWidth
+
+        const fullSegments = segments.map((seg, index) => {
+            const width = calculateTextWidth(seg)
+            const fullPath = segments.slice(0, index + 1).join("/")
+            return { name: seg, path: fullPath, width: width }
+        })
+
+        const visible: Segment[] = []
+        const hidden: Segment[] = []
+
+        // width of visible breadcrumbs
+        const hiddenSegmentsButton = calculateTextWidth('...') + paddingWidth
+        let width = 0 + hiddenSegmentsButton
+        let outOfSpace = false
+
+        // calculate which breadcrumbs will be visible
+        forEachReversed(fullSegments, (seg, index) => {
+            if (outOfSpace) {
+                hidden.push(seg)
+                return
+            }
+
+            const segmentWidth = index === 0 ? seg.width : seg.width + totalAdditionalWidth
+            width += segmentWidth
+            if (width > breadcrumbContainerWidth) {
+                hidden.push(seg)
+                outOfSpace = true
+            } else {
+                visible.push(seg)
+            }
+        })
+
+        return { hidden: hidden, visible: visible.reverse() }
+    })
 
     $effect(() => {
         if (path) {
@@ -58,13 +108,11 @@
                 }
                 abortController = new AbortController()
 
-                // untrck(() => {
-                    data = null
-                    selectedEntry = null
-                    entryMenuButton = null
-                    menuEntry = null
-                    fileContent = null
-                // })
+                data = null
+                selectedEntry = null
+                entryMenuButton = null
+                menuEntry = null
+                fileContent = null
 
                 if (path === "/") {
                     pathScrollPositions = {}
@@ -112,7 +160,6 @@
      */
     function entryOnClick(entry: FileMetadata) {
         if (selectedEntry === entry.filename) {
-            // goto(`${urlPath}/${filenameFromPath(entry.filename)}`)
             openEntry(entry.filename)
         } else {
             selectedEntry = entry.filename
@@ -136,10 +183,13 @@
     function entryMenuOnClick(button: HTMLButtonElement, entry: FileMetadata) {
         entryMenuButton = button
         menuEntry = entry
+        entryMenuPopoverOpen = true
     }
-    function entryMenuOnClose() {
-        entryMenuButton = null
-        menuEntry = null
+    function entryMenuPopoverOnOpenChange(open: boolean) {
+        if (!open) {
+            entryMenuButton = null
+            menuEntry = null
+        }
     }
 
     // Scrolling position
@@ -166,28 +216,51 @@
 
 <div class="page">
     <div on:click={containerOnClick} class="w-full flex h-full">
-        <div  bind:this={scrollContainer} class="w-full lg:w-[calc(100%-20rem)] flex flex-col h-full overflow-y-auto custom-scrollbar scrollbar-padding">
+        <div bind:this={scrollContainer} class="w-full lg:w-[calc(100%-20rem)] flex flex-col h-full overflow-y-auto custom-scrollbar scrollbar-padding">
+            <!-- Header -->
             <div class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
-                <div id="breadcrumbs" class="flex items-center h-[2rem]">
+                <!-- Breadcrumbs -->
+                <div bind:offsetWidth={breadcrumbContainerWidth} class="flex items-center h-[2rem] w-[85%]">
                     {#if path === "/"}
                         <p class="px-2 py-1">Files</p>
                     {:else}
-                        {#each segments as segment, index}
-                            {@const sliced = segments.slice(0, index + 1).join("/")}
+                        {@const hiddenEmpty = breadcrumbs.hidden.length < 1}
+                        <!-- Change chevron width in breadcrumb calculator -->
 
+                        {#snippet breadcrumbButton(segment: Segment, className: string)}
+                            <button disabled={path === segment.path} title={segment.name} on:click={() => { openEntry(`/${segment.path}`) }} class="py-1 px-2 {className}">{segment.name}</button>
+                        {/snippet}
+
+                        {#if !hiddenEmpty}
+                            <Popover.Root>
+                                <PopoverTrigger>
+                                    <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
+                                </PopoverTrigger>
+                                <Popover.Content align="start" sideOffset={8}>
+                                    <div class="w-[20rem] max-w-screen rounded-lg bg-neutral-800 py-2">
+                                        {#each breadcrumbs.hidden as segment}
+                                            {@render breadcrumbButton(segment, "truncate w-full text-start hover:bg-neutral-700")}
+                                        {/each}
+                                    </div>
+                                </Popover.Content>
+                            </Popover.Root>
+                        {/if}
+                        
+                        {#each breadcrumbs.visible as segment, index}
                             <div class="flex items-center h-full">
-                                {#if index !== 0}
+                                {#if index !== 0 || !hiddenEmpty}
                                     <div class="h-full py-2 flex items-center justify-center">
                                         <ChevronRightIcon />
                                     </div>
                                 {/if}
-                                <button title={sliced} on:click={() => { openEntry(`/${sliced}`) }} class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">{segment}</button>
+                                {@render breadcrumbButton(segment, "rounded hover:bg-neutral-300 dark:hover:bg-neutral-800")}
                             </div>
                         {/each}
                     {/if}
                 </div>
             </div>
 
+            <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full">
                 {#if !loading && data}
                     {#if data.meta.fileType === "FOLDER" && sortedEntries}
@@ -260,11 +333,13 @@
             </div>
 
             {#if entryMenuButton && menuEntry}
-                <Popover button={entryMenuButton} isOpen={true} marginRem={0.1} onClose={entryMenuOnClose}>
-                    <div class="rounded bg-neutral-300 dark:bg-neutral-800 py-2 flex flex-col max-w-full w-[18rem]">
-                        <button>Permissions</button>
-                    </div>
-                </Popover>
+                {#key entryMenuButton || menuEntry}
+                    <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
+                        <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
+                            {@render entryMenuPopover(menuEntry)}
+                        </Popover.Content>
+                    </Popover.Root>
+                {/key}
             {/if}
         </div>
 
@@ -276,3 +351,20 @@
         </div>
     </div>
 </div>
+
+
+{#snippet entryMenuPopover(entry: FileMetadata)}
+    <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-800 py-2 flex flex-col">
+        <button class="popover-button">Permissions</button>
+        <hr class="basic-hr my-2">
+        <p class="px-4 truncate opacity-70">File: {filenameFromPath(entry.filename)}</p>
+    </div>
+{/snippet}
+
+<style>
+    @import "/src/app.css" reference;
+
+    .popover-button {
+        @apply py-1 px-4 text-start hover:bg-neutral-300 dark:hover:bg-neutral-700;
+    }
+</style>

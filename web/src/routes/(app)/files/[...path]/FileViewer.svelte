@@ -2,13 +2,14 @@
     import { fileCategories } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
     import { getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
-    import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     
     import {basicSetup} from "codemirror"
     import {EditorView} from "@codemirror/view"
     import { barf, ayuLight } from 'thememirror';
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
+    import * as Popover from "$lib/components/ui/popover";
+    import Loader from "$lib/component/Loader.svelte";
 
 
     let { filename, blob }: { 

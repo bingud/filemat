@@ -32,7 +32,7 @@
         </symbol>
 
         <!-- Tall arrow right -->
-        <symbol id="chevron-right" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" class="size-full aspect-square" viewBox="0,0,16.16">
+        <symbol id="chevron-right" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" class="size-full aspect-square" viewBox="0,0,16,16">
             <g><path fill-rule="evenodd" d="M5.665 3.13a.5.5 0 0 0-.036.705L9.395 8l-3.766 4.165a.5.5 0 1 0 .742.67l3.948-4.367a.697.697 0 0 0 0-.936L6.371 3.165a.5.5 0 0 0-.706-.036Z"></path></g>
         </symbol>
     </svg>

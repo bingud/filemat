@@ -5,8 +5,7 @@
 @import "$lib/css/buttons.css";
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-@plugin 'tailwind-scrollbar' {
-}
+@plugin 'tailwind-scrollbar';
 
 
 html {

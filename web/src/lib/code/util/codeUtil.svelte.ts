@@ -347,3 +347,9 @@ export function formatBytes(bytes: number) {
 export function getFileExtension(name: string): string {
     return name.substring(name.lastIndexOf(".") + 1)
 }
+
+export function forEachReversed<T>(array: T[], callback: (value: T, index: number) => any) {
+    for (let i = array.length - 1; i >= 0; i--) {
+        callback(array[i], i)
+    }
+}

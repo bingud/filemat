@@ -14,6 +14,8 @@ class UiState {
      */
     isDesktop: boolean = $state(false)
 
+    screenWidth: number = $state(0)
+
     /**
      * Holds settings UI state
      */
