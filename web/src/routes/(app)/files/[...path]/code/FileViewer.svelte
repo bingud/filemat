@@ -2,7 +2,6 @@
     import { fileCategories, isFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
     import { getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
-    import { onMount } from "svelte";
     import {basicSetup} from "codemirror"
     import {EditorView} from "@codemirror/view"
     import { barf, ayuLight } from 'thememirror';
@@ -10,23 +9,14 @@
     import Loader from "$lib/component/Loader.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
+    import { filesState } from "./filesState.svelte";
 
-
-    let { filename, blob }: { 
-        filename: string,
-        blob: Blob,
-    } = $props()
-
-    const extension = getFileExtension(filename)
-    const fileType = fileCategories[extension]
-    let displayedFileCategory = $state(fileType)
+    const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.filename) : null)
+    const fileType = $derived(extension ? fileCategories[extension] : null)
+    let displayedFileCategory = $derived(fileType)
     let content: any | null = $state(null)
 
     let textEditorContainer: HTMLElement | undefined = $state()
-
-    onMount(async () => {
-        content = await getBlobContent(blob, fileType)
-    })
 
     let textEditor: EditorView | undefined
     function createTextEditor() {
@@ -63,41 +53,47 @@
 
 <div class="size-full flex flex-col">
     
-    {#if content == null && displayedFileCategory != null}
-        <Loader></Loader>
-    {:else if isFileCategory(displayedFileCategory)}
-        {@const type = displayedFileCategory}
+    {#if filesState.data.meta}
+        {#if content == null && displayedFileCategory != null}
+            <Loader></Loader>
+        {:else if isFileCategory(displayedFileCategory)}
+            {@const type = displayedFileCategory}
 
-        <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
-        {#if displayedFileCategory !== fileType}
-            <div class="w-full h-fit p-2 shrink-0 flex justify-end">
-                {@render openAsButton()}
+            <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
+            {#if displayedFileCategory !== fileType}
+                <div class="w-full h-fit p-2 shrink-0 flex justify-end">
+                    {@render openAsButton()}
+                </div>
+            {/if}
+            
+            <div class="w-full flex-grow flex items-center justify-center">
+                {#if type === "text" || type === "md" || type === "html"}
+                    <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
+                {:else if type === "image"}
+                    <img src={content} alt={filename} class="w-full h-auto">
+                {:else if type === "video"}
+                    <video controls>
+                        <source src={content}>
+                        <track kind="captions" srclang="en" label="No captions" />
+                    </video>
+                {:else if type === "audio"}
+                    <audio src={content} controls></audio>
+                {:else if type === "pdf"}
+                    <iframe src={content} title={filename} class="w-full h-auto max-h-full"></iframe>
+                {/if}
+            </div>
+        {:else}
+            <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
+                <p class="">This file type doesn't have a preview.</p>
+                <div class="flex items-center gap-4">
+                    <button class="basic-button">Download</button>
+                    {@render openAsButton()}
+                </div>
             </div>
         {/if}
-        
-        <div class="w-full flex-grow flex items-center justify-center">
-            {#if type === "text" || type === "md" || type === "html"}
-                <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
-            {:else if type === "image"}
-                <img src={content} alt={filename} class="w-full h-auto">
-            {:else if type === "video"}
-                <video controls>
-                    <source src={content}>
-                    <track kind="captions" srclang="en" label="No captions" />
-                </video>
-            {:else if type === "audio"}
-                <audio src={content} controls></audio>
-            {:else if type === "pdf"}
-                <iframe src={content} title={filename} class="w-full h-auto max-h-full"></iframe>
-            {/if}
-        </div>
-    {:else}
-        <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
-            <p class="">This file type doesn't have a preview.</p>
-            <div class="flex items-center gap-4">
-                <button class="basic-button">Download</button>
-                {@render openAsButton()}
-            </div>
+    {:else if !filesState.data.meta}
+        <div class="center">
+            <p class="">No file is open.</p>
         </div>
     {/if}
 </div>

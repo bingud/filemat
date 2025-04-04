@@ -7,7 +7,7 @@ export type FileCategory = (typeof fileCategoryList)[number]
 /**
  * Returns if a string is a valid file type category
  */
-export function isFileCategory(value: string): value is FileCategory {
+export function isFileCategory(value: any): value is FileCategory {
     return fileCategoryList.includes(value as FileCategory)
 }
 
