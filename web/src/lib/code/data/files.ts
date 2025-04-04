@@ -1,14 +1,20 @@
 import { getFileExtension } from "../util/codeUtil.svelte";
 
 
-const fileCategoryList = ["html", "text", "image", "video", "audio", "pdf", "md"] as const;
+const textFileCategoryList = ["html", "text", "md"]
+const fileCategoryList = [...textFileCategoryList, "image", "video", "audio", "pdf"] as const;
 export type FileCategory = (typeof fileCategoryList)[number]
+export type TextFileCategory = (typeof textFileCategoryList)[number]
 
 /**
  * Returns if a string is a valid file type category
  */
 export function isFileCategory(value: any): value is FileCategory {
     return fileCategoryList.includes(value as FileCategory)
+}
+
+export function isTextFileCategory(value: any): value is TextFileCategory {
+    return textFileCategoryList.includes(value)
 }
 
 export const fileCategories: Record<string, FileCategory> = {

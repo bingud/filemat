@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { fileCategories, isFileCategory, type FileCategory } from "$lib/code/data/files";
+    import { fileCategories, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
     import { getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
     import {basicSetup} from "codemirror"
@@ -10,42 +10,78 @@
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import { filesState } from "./filesState.svelte";
+    import { loadFileContent } from "./util/files";
+    import { onMount } from "svelte";
 
     const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.filename) : null)
     const fileType = $derived(extension ? fileCategories[extension] : null)
     let displayedFileCategory = $derived(fileType)
-    let content: any | null = $state(null)
+    let isViewableFile = $derived(isFileCategory(displayedFileCategory))
+    let isText = $derived(isTextFileCategory(displayedFileCategory))
 
     let textEditorContainer: HTMLElement | undefined = $state()
-
     let textEditor: EditorView | undefined
+
+    onMount(() => {
+        if (isViewableFile && displayedFileCategory) {
+            openAsFileType(displayedFileCategory)
+        }
+    })
+
+    $effect(() => {
+        if (filesState.data.decodedContent != null) return
+        if (filesState.data.content == null) return
+        if (!isViewableFile || !displayedFileCategory) return
+
+        getBlobContent(filesState.data.content, displayedFileCategory).then((result) => {
+            filesState.data.decodedContent = result
+        })
+    })
+
+    // Re-create text editor
+    $effect(() => {
+        uiState.isDark
+        filesState.data.decodedContent
+        textEditorContainer
+        
+        if (isText) {
+            createTextEditor()
+        }
+    })
+
     function createTextEditor() {
         if (textEditor) {
             try { textEditor.destroy() } catch (e) {}
         }
 
-        if (content == null || !textEditorContainer) return
+        if (filesState.data.decodedContent == null || !textEditorContainer) return
 
         const theme = uiState.isDark ? barf : ayuLight
         textEditor = new EditorView({
-            doc: content,
+            doc: filesState.data.decodedContent,
             parent: textEditorContainer,
             extensions: [basicSetup, theme]
         })
     }
 
-    // Re-create text editor
-    $effect(() => {
-        uiState.isDark
-        content
-        textEditorContainer
-        
-        createTextEditor()
-    })
-
     async function openAsFileType(type: FileCategory) {
         displayedFileCategory = type
-        content = await getBlobContent(blob, displayedFileCategory)
+        // Do not manually download file if not text
+        if (!isTextFileCategory(type)) return
+
+        if (filesState.data.content == null) {
+            if (filesState.contentLoading) return
+
+            if (isText) {
+                downloadContent()
+            }
+        }
+    }
+
+    async function downloadContent() {
+        filesState.contentLoading = true
+        await loadFileContent(filesState.path)
+        filesState.contentLoading = false
     }
 
 </script>
@@ -54,9 +90,11 @@
 <div class="size-full flex flex-col">
     
     {#if filesState.data.meta}
-        {#if content == null && displayedFileCategory != null}
-            <Loader></Loader>
-        {:else if isFileCategory(displayedFileCategory)}
+        {#if filesState.contentLoading}
+            <div class="center">
+                <Loader></Loader>
+            </div>
+        {:else if isViewableFile && (!isText || filesState.data.decodedContent != null)}
             {@const type = displayedFileCategory}
 
             <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
@@ -67,26 +105,26 @@
             {/if}
             
             <div class="w-full flex-grow flex items-center justify-center">
-                {#if type === "text" || type === "md" || type === "html"}
+                {#if isText}
                     <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                 {:else if type === "image"}
-                    <img src={content} alt={filename} class="w-full h-auto">
+                    <img src={filesState.data.contentUrl} alt={filesState.data.meta.filename} class="max-w-full max-h-full size-auto">
                 {:else if type === "video"}
                     <video controls>
-                        <source src={content}>
+                        <source src={filesState.data.contentUrl}>
                         <track kind="captions" srclang="en" label="No captions" />
                     </video>
                 {:else if type === "audio"}
-                    <audio src={content} controls></audio>
+                    <audio src={filesState.data.contentUrl} controls></audio>
                 {:else if type === "pdf"}
-                    <iframe src={content} title={filename} class="w-full h-auto max-h-full"></iframe>
+                    <iframe src={filesState.data.contentUrl} title={filesState.data.meta.filename} class="w-full h-auto max-h-full"></iframe>
                 {/if}
             </div>
         {:else}
             <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
                 <p class="">This file type doesn't have a preview.</p>
                 <div class="flex items-center gap-4">
-                    <button class="basic-button">Download</button>
+                    <a href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
                     {@render openAsButton()}
                 </div>
             </div>

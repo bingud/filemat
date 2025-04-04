@@ -8,14 +8,21 @@ import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
+import java.io.BufferedInputStream
+import java.io.ByteArrayInputStream
+import java.io.FileInputStream
 import java.io.OutputStream
+import java.net.URLConnection
 
 
 @RestController
@@ -23,6 +30,12 @@ import java.io.OutputStream
 class FileController(private val fileService: FileService) : AController() {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    @GetMapping("/content")
+    fun getListFolderItemsMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+    ) = listFolderItemsMapping(request = request, rawPath = rawPath)
 
     @PostMapping("/content")
     fun listFolderItemsMapping(
@@ -36,22 +49,37 @@ class FileController(private val fileService: FileService) : AController() {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
-            it.value
+            BufferedInputStream(it.value)
         }
 
-        val responseBody = StreamingResponseBody { outputStream: OutputStream ->
-            val buffer = ByteArray(1024)
-            var bytesRead: Int
-            while ((inputStream.read(buffer).also { bytesRead = it }) != -1) {
-                outputStream.write(buffer, 0, bytesRead)
-                outputStream.flush()
+        val filename = path.path.substringAfterLast("/")
+
+        // Mark the stream at the beginning
+        inputStream.mark(512)
+
+        // Guess the MIME type using the initial bytes
+        val mimeType = URLConnection.guessContentTypeFromStream(inputStream)
+            ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
+
+        // Reset to the beginning after reading
+        inputStream.reset()
+
+        // Create the response body for streaming
+        val responseBody = StreamingResponseBody { outputStream ->
+            inputStream.use { stream ->
+                val buffer = ByteArray(8192) // 8 KB buffer for efficiency
+                var bytesRead: Int
+                while (stream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                    outputStream.flush()
+                }
             }
-            inputStream.close()
+
         }
 
         return ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .contentType(MediaType.parseMediaType(mimeType))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"$filename\"")
             .body(responseBody)
     }
-
 }

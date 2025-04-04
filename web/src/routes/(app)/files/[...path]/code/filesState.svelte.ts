@@ -31,6 +31,8 @@ class FilesState {
     private FileDataClass = class {
         meta = $state(null) as FileMetadata | null
         content = $state(null) as Blob | null
+        decodedContent = $state(null) as any | null
+        contentUrl = $derived(`/api/v1/file/content?path=${filesState.path}`)
         entries = $state(null) as FileMetadata[] | null
         sortedEntries = $derived.by(() => {
             if (!filesState.data || !filesState.data.entries) return null
@@ -45,7 +47,13 @@ class FilesState {
     }
     data = new this.FileDataClass()
 
-    abortController = $state(new AbortController())
+    abortController = new AbortController()
+    abort() {
+        try {
+            this.abortController.abort()
+        } catch (e) {}
+        this.abortController = new AbortController()
+    }
 
     /**
      * Scrolling state
@@ -57,12 +65,15 @@ class FilesState {
 
     selectedEntry = $state(null) as ulid | null
 
+    lastFilePathLoaded = $state(null) as string | null
+
     /**
      * Clear state on file navigation
      */
     clearState() {
         this.data.meta = null
         this.data.content = null
+        this.data.decodedContent = null
         this.data.entries = null
         this.selectedEntry = null
     }

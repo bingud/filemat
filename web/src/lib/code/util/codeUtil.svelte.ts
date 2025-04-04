@@ -353,3 +353,7 @@ export function forEachReversed<T>(array: T[], callback: (value: T, index: numbe
         callback(array[i], i)
     }
 }
+
+export function run<T>(block: () => T): T {
+    return block()
+}

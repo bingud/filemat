@@ -3,8 +3,11 @@
     import { Popover } from 'bits-ui';
     import { filesState } from './filesState.svelte';
     import { breadcrumbState, type Segment } from './breadcrumbState.svelte';
+    import { goto } from '$app/navigation';
 
-
+    function openEntry(path: string) {
+        goto(`/files${path}`)
+    }
 
 </script>
 
@@ -17,7 +20,7 @@
         <!-- Change chevron width in breadcrumb calculator -->
 
         {#snippet breadcrumbButton(segment: Segment, className: string)}
-            <button disabled={filesState.path === segment.path} title={segment.name} on:click={() => { opener(`/${segment.path}`) }} class="py-1 px-2 {className}">{segment.name}</button>
+            <button disabled={filesState.path === segment.path} title={segment.name} on:click={() => { openEntry(`/${segment.path}`) }} class="py-1 px-2 {className}">{segment.name}</button>
         {/snippet}
 
         {#if !hiddenEmpty}

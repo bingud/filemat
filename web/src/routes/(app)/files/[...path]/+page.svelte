@@ -1,19 +1,16 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation";
-    import type { FileMetadata } from "$lib/code/auth/types";
     import { getFileData, streamFileContent, type FileData } from "$lib/code/module/files";
-    import type { ulid } from "$lib/code/types";
-    import { filenameFromPath, pageTitle } from "$lib/code/util/codeUtil.svelte";
+    import { getFileExtension, pageTitle, run } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import { onDestroy, onMount, untrack } from "svelte";
+    import { onDestroy, untrack } from "svelte";
     import FileViewer from "./code/FileViewer.svelte";
-    import { Popover } from "$lib/component/bits-ui-wrapper";
-    import { dev } from "$app/environment";
-    import { isFileCategory } from "$lib/code/data/files";
+    import { fileCategories, isFileCategory } from "$lib/code/data/files";
     import { createFilesState, destroyFilesState, filesState } from "./code/filesState.svelte";
     import { createBreadcrumbState, destroyBreadcrumbState, type Segment } from "./code/breadcrumbState.svelte";
     import Breadcrumbs from "./code/Breadcrumbs.svelte";
     import FileBrowser from "./code/FileBrowser.svelte";
+    import { loadFileContent } from "./code/util/files";
     
     createFilesState()
     createBreadcrumbState()
@@ -28,13 +25,7 @@
     $effect(() => {
         if (filesState.path) {
             untrack(() => {
-                if (filesState.abortController) {
-                    try {
-                        filesState.abortController.abort()
-                    } catch (e) {}
-                }
-                filesState.abortController = new AbortController()
-
+                filesState.abort()
                 filesState.clearState()
 
                 filesState.data.content = null
@@ -54,35 +45,21 @@
         saveScrollPosition()
     })
 
-    let lastFetchedPath: string | null = $state(null)
     async function loadPageData(filePath: string) {
-        lastFetchedPath = filePath
+        filesState.lastFilePathLoaded = filePath
         filesState.metaLoading = true
 
         const result = await getFileData(filePath, filesState.abortController?.signal)
-        if (lastFetchedPath !== filePath) return
+        if (filesState.lastFilePathLoaded !== filePath) return
         
         if (result) {
             filesState.data.meta = result.meta
             filesState.data.entries = result.entries || null
-
-            if (filesState.data.meta.fileType.startsWith("FILE")) {
-                if (isFileCategory(filesState.data.meta.filename)) {
-                    filesState.contentLoading = true
-                    await loadFileContent(filePath)
-                    filesState.contentLoading = false
-                }
-            }
         }
         filesState.metaLoading = false
     }
 
-    async function loadFileContent(filePath: string) {
-        const blob = await streamFileContent(filePath, filesState.abortController.signal)
-        if (lastFetchedPath !== filePath) return
-        if (!blob) return
-        filesState.data.content = blob
-    }
+    
 
     /**
      * onClick for entry list container
@@ -127,19 +104,9 @@
                     {#if filesState.data.meta.fileType === "FOLDER" && filesState.data.sortedEntries}
                         <FileBrowser />
                     {:else if filesState.data.meta.fileType.startsWith("FILE")}
-                        {#if filesState.data.content}
-                            <div class="center">
-                                <FileViewer />
-                            </div>
-                        {:else if filesState.contentLoading}
-                            <div class="center">
-                                <Loader />
-                            </div>
-                        {:else}
-                            <div class="center">
-                                <p class="text-lg">Failed to open file</p>
-                            </div>
-                        {/if}                            
+                        <div class="center">
+                            <FileViewer />
+                        </div>                    
                     {/if}
                 {:else if !filesState.metaLoading && !filesState.data.meta}
                     <div class="center">
