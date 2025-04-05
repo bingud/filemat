@@ -2,6 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata } from "$lib/code/auth/types";
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types";
     import { filenameFromPath, formatBytes, formatUnixMillis } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
@@ -49,12 +50,12 @@
 
 
 {#if filesState.data.sortedEntries}
-    <table on:click|stopPropagation class="w-full h-fit">
+    <table on:click|stopPropagation class="w-full h-fit overflow-x-hidden">
         <thead>
             <tr class="text-neutral-700 dark:text-neutral-400">
                 <th class="font-medium text-left px-4 py-2 w-auto min-w-[50%]">Name</th>
-                <th class="font-medium text-right px-4 py-2 whitespace-nowrap">Last Modified</th>
-                <th class="font-medium text-right px-4 py-2 whitespace-nowrap">Size</th>
+                <th class="font-medium text-right px-4 py-2 whitespace-nowrap max-md:hidden">Last Modified</th>
+                <th class="font-medium text-right px-4 py-2 whitespace-nowrap max-sm:hidden">Size</th>
                 <th class="font-medium text-center px-4 py-2 w-12"></th>
             </tr>
         </thead>
@@ -63,10 +64,10 @@
                 {@const selected = filesState.selectedEntry === entry.filename}
                 <tr 
                     on:click={()=>{ entryOnClick(entry) }} 
-                    class="!h-[2.5rem] !max-h-[2.5rem] cursor-pointer px-2 {selected ? 'bg-blue-200 dark:bg-sky-950 select-none' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
+                    class="!h-[2.5rem] w-full !max-h-[2.5rem] cursor-pointer px-2 {selected ? 'bg-blue-200 dark:bg-sky-950 select-none' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
                 >
                     <td class="h-full px-4 py-0 align-middle">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
                             <div class="h-6 aspect-square fill-neutral-500 flex-shrink-0 flex items-center justify-center">
                                 {#if entry.fileType.startsWith("FILE")}
                                     <FileIcon></FileIcon>
@@ -74,15 +75,15 @@
                                     <FolderIcon></FolderIcon>
                                 {/if}
                             </div>
-                            <p class="truncate">{filenameFromPath(entry.filename)}</p>
+                            <p class="truncate max-w-full">{filenameFromPath(entry.filename)}</p>
                         </div>
                     </td>
-                    <td class="h-full px-4 py-0 opacity-70 whitespace-nowrap align-middle text-right">{formatUnixMillis(entry.modifiedDate)}</td>
-                    <td class="h-full px-4 py-0 whitespace-nowrap align-middle text-right">{formatBytes(entry.size)}</td>
+                    <td class="h-full px-4 py-0 opacity-70 whitespace-nowrap align-middle text-right max-md:hidden">{formatUnixMillis(entry.modifiedDate)}</td>
+                    <td class="h-full px-4 py-0 whitespace-nowrap align-middle text-right max-sm:hidden">{formatBytes(entry.size)}</td>
                     <td class="h-full text-center align-middle w-12 p-1">
                         <button 
                             on:click|stopPropagation={(e) => { entryMenuOnClick(e.currentTarget, entry) }} 
-                            class="items-center h-full aspect-square justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:hover:fill-neutral-500"
+                            class="items-center h-full aspect-square justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500 dark:fill-neutral-400"
                         >
                             <ThreeDotsIcon></ThreeDotsIcon>
                         </button>

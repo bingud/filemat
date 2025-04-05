@@ -28,24 +28,9 @@ class FilesState {
     /**
      * File data
      */
-    private FileDataClass = class {
-        meta = $state(null) as FileMetadata | null
-        content = $state(null) as Blob | null
-        decodedContent = $state(null) as any | null
-        contentUrl = $derived(`/api/v1/file/content?path=${filesState.path}`)
-        entries = $state(null) as FileMetadata[] | null
-        sortedEntries = $derived.by(() => {
-            if (!filesState.data || !filesState.data.entries) return null
-            const files = filesState.data.entries.filter((v) => v.fileType === "FILE" || v.fileType === "FILE_LINK")
-            const folders = filesState.data.entries.filter((v) => v.fileType === "FOLDER" || v.fileType === "FOLDER_LINK")
-            
-            const sortedFiles = sortArrayByNumberDesc(files, f => f.modifiedDate)
-            const sortedFolders = sortArrayByNumberDesc(folders, f => f.modifiedDate)
-    
-            return [...sortedFolders, ...sortedFiles]
-        })
-    }
-    data = new this.FileDataClass()
+    data = new FileDataStateClass()
+
+    ui = new FileUiStateClasss()
 
     abortController = new AbortController()
     abort() {
@@ -71,14 +56,57 @@ class FilesState {
      * Clear state on file navigation
      */
     clearState() {
-        this.data.meta = null
-        this.data.content = null
-        this.data.decodedContent = null
-        this.data.entries = null
         this.selectedEntry = null
+        this.data.clear()
+        this.ui.clear()
+    }
+
+    unselect() {
+        filesState.selectedEntry = null
     }
 }
 
+class FileUiStateClasss {
+    /**
+     * Is details side panel toggled on desktop
+     */
+    detailsToggled = $state(true)
+    /**
+     * Is details opened
+     */
+    detailsOpen = $state(false)
+
+    clear() {
+        this.detailsToggled = true
+        this.detailsOpen = false
+    }
+}
+
+
+class FileDataStateClass {
+    meta = $state(null) as FileMetadata | null
+    content = $state(null) as Blob | null
+    decodedContent = $state(null) as any | null
+    contentUrl = $derived(`/api/v1/file/content?path=${filesState.path}`)
+    entries = $state(null) as FileMetadata[] | null
+    sortedEntries = $derived.by(() => {
+        if (!filesState.data || !filesState.data.entries) return null
+        const files = filesState.data.entries.filter((v) => v.fileType === "FILE" || v.fileType === "FILE_LINK")
+        const folders = filesState.data.entries.filter((v) => v.fileType === "FOLDER" || v.fileType === "FOLDER_LINK")
+        
+        const sortedFiles = sortArrayByNumberDesc(files, f => f.modifiedDate)
+        const sortedFolders = sortArrayByNumberDesc(folders, f => f.modifiedDate)
+
+        return [...sortedFolders, ...sortedFiles]
+    })
+
+    clear() {
+        this.meta = null
+        this.content = null
+        this.decodedContent = null
+        this.entries = null
+    }
+}
 
 
 export let filesState: FilesState

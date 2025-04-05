@@ -12,7 +12,7 @@
 </script>
 
 <!-- Breadcrumbs -->
-<div bind:offsetWidth={breadcrumbState.containerWidth} class="flex items-center h-[2rem] w-[85%]">
+<div bind:offsetWidth={breadcrumbState.containerWidth} class="flex items-center h-[2rem]">
     {#if filesState.path === "/"}
         <p class="px-2 py-1">Files</p>
     {:else}

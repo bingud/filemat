@@ -50,10 +50,6 @@ html {
     @apply scrollbar scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
 }
 
-.scrollbar-padding {
-    scrollbar-gutter: stable both-edges;
-}
-
 
 /* 
     Text Colors
@@ -82,9 +78,10 @@ h1 {
     @apply text-2xl;
 }
 
-.gutter-stable-both {
+@utility gutter-stable-both {
     scrollbar-gutter: stable both-edges;
 }
+
 
 .center {
     @apply size-full flex flex-col items-center justify-center;

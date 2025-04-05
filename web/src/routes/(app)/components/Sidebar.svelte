@@ -4,6 +4,7 @@
     import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
+    import { filesState } from "../files/[...path]/code/filesState.svelte";
 
     let currentButton = $derived.by(() => {
         const path = page.url.pathname
@@ -23,7 +24,7 @@
 </script>
 
 
-<div class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none md:contents">
+<div on:click={filesState.unselect} class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none md:contents">
     <!-- Navbar -->
     {#if uiState.menuOpen || uiState.isDesktop}
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar md:w-sidebar-desktop h-full bg-layout pointer-events-auto z-10 flex flex-col justify-between shrink-0">

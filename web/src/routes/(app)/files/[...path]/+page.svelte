@@ -1,16 +1,15 @@
 <script lang="ts">
-    import { beforeNavigate, goto } from "$app/navigation";
-    import { getFileData, streamFileContent, type FileData } from "$lib/code/module/files";
-    import { getFileExtension, pageTitle, run } from "$lib/code/util/codeUtil.svelte";
+    import { beforeNavigate } from "$app/navigation";
+    import { getFileData } from "$lib/code/module/files";
+    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onDestroy, untrack } from "svelte";
     import FileViewer from "./code/FileViewer.svelte";
-    import { fileCategories, isFileCategory } from "$lib/code/data/files";
     import { createFilesState, destroyFilesState, filesState } from "./code/filesState.svelte";
-    import { createBreadcrumbState, destroyBreadcrumbState, type Segment } from "./code/breadcrumbState.svelte";
+    import { createBreadcrumbState, destroyBreadcrumbState } from "./code/breadcrumbState.svelte";
     import Breadcrumbs from "./code/Breadcrumbs.svelte";
     import FileBrowser from "./code/FileBrowser.svelte";
-    import { loadFileContent } from "./code/util/files";
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -21,6 +20,8 @@
     })
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
+    let detailsBarWidth: number = $state(0)
+    let isDetailsBarVisible = $derived(detailsBarWidth > 1)
 
     $effect(() => {
         if (filesState.path) {
@@ -91,15 +92,23 @@
 
 
 <div class="page">
-    <div on:click={containerOnClick} class="w-full flex h-full">
-        <div bind:this={filesState.scroll.container} class="w-full lg:w-[calc(100%-20rem)] flex flex-col h-full overflow-y-auto custom-scrollbar scrollbar-padding">
+    <div class="w-full flex h-full">
+        <div bind:this={filesState.scroll.container} class="w-full {isDetailsBarVisible ? 'w-[calc(100%-20rem)]' : 'w-full'} flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
             <!-- Header -->
-            <div class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
-                <Breadcrumbs></Breadcrumbs>
+            <div on:click={filesState.unselect} class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
+                <div class="w-[85%] h-full flex items-center">
+                    <Breadcrumbs></Breadcrumbs>                    
+                </div>
+
+                <div class="w-[15%] h-full flex items-center justify-end">
+                    <button on:click={() => { filesState.ui.detailsToggled = !filesState.ui.detailsToggled }} class="h-full aspect-square p-3 group text-sm hidden lg:flex">
+                        <p class="size-full rounded-full center ring ring-neutral-400 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
+                    </button>
+                </div>
             </div>
 
             <!-- Files -->
-            <div class="h-[calc(100%-3rem)] w-full">
+            <div on:click={() => { filesState.unselect() }} class="h-[calc(100%-3rem)] w-full">
                 {#if !filesState.metaLoading && filesState.data.meta}
                     {#if filesState.data.meta.fileType === "FOLDER" && filesState.data.sortedEntries}
                         <FileBrowser />
@@ -121,10 +130,12 @@
         </div>
 
         <!-- File info sidebar -->
-        <div class="hidden lg:flex flex-col h-full w-[20rem] xpy-4">
-            <div class="size-full overflow-auto xrounded-xl bg-neutral-200 dark:bg-neutral-850">
+        {#if filesState.ui.detailsToggled || filesState.ui.detailsOpen}
+            <div bind:offsetWidth={detailsBarWidth} class="hidden lg:flex flex-col h-full w-[20rem] xpy-4 shrink-0">
+                <div class="size-full overflow-auto xrounded-xl bg-neutral-200 dark:bg-neutral-850">
 
+                </div>
             </div>
-        </div>
+        {/if}
     </div>
 </div>
