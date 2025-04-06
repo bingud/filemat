@@ -8,11 +8,10 @@
     function openEntry(path: string) {
         goto(`/files${path}`)
     }
-
 </script>
 
 <!-- Breadcrumbs -->
-<div bind:offsetWidth={breadcrumbState.containerWidth} class="flex items-center h-[2rem]">
+<div class="w-full flex items-center h-[2rem]">
     {#if filesState.path === "/"}
         <p class="px-2 py-1">Files</p>
     {:else}
@@ -24,18 +23,20 @@
         {/snippet}
 
         {#if !hiddenEmpty}
-            <Popover.Root>
-                <Popover.Trigger>
-                    <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
-                </Popover.Trigger>
-                <Popover.Content align="start" sideOffset={8}>
-                    <div class="w-[min(20rem,fit-content)] max-w-screen rounded-lg bg-neutral-800 py-2">
-                        {#each breadcrumbState.hidden as segment}
-                            {@render breadcrumbButton(segment, "truncate w-full text-start hover:bg-neutral-700")}
-                        {/each}
-                    </div>
-                </Popover.Content>
-            </Popover.Root>
+            <div class="size-fit z-10">
+                <Popover.Root>
+                    <Popover.Trigger>
+                        <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
+                    </Popover.Trigger>
+                    <Popover.Content align="start" sideOffset={8}>
+                        <div class="min-w-[20rem] w-fit max-w-[min(100vw,40rem)] rounded-lg bg-neutral-300 dark:bg-neutral-800 py-2">
+                            {#each breadcrumbState.hidden as segment}
+                                {@render breadcrumbButton(segment, "truncate w-full text-start hover:bg-neutral-400 dark:hover:bg-neutral-700")}
+                            {/each}
+                        </div>
+                    </Popover.Content>
+                </Popover.Root>
+            </div>
         {/if}
         
         {#each breadcrumbState.visible as segment, index}

@@ -5,7 +5,7 @@
     import Loader from "$lib/component/Loader.svelte";
     import { onDestroy, untrack } from "svelte";
     import FileViewer from "./content/FileViewer.svelte";
-    import { createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte";
+    import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte";
     import Breadcrumbs from "./content/Breadcrumbs.svelte";
     import FileBrowser from "./content/FileBrowser.svelte";
     import DetailsSidebar from "./content/DetailsSidebar.svelte";
@@ -72,6 +72,10 @@
         filesState.scroll.container.scrollTo({top: pos})
     }
 
+    // let breadcrumbContainerWidth = $state(0)
+    // $effect(() => {
+    //     breadcrumbState.containerWidth = breadcrumbContainerWidth
+    // })
 </script>
 
 
@@ -85,7 +89,7 @@
         <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsToggled ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
             <!-- Header -->
             <div on:click={filesState.unselect} class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
-                <div class="w-[85%] h-full flex items-center">
+                <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-[85%] h-full flex items-center">
                     <Breadcrumbs></Breadcrumbs>                    
                 </div>
 
