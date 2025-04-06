@@ -9,8 +9,8 @@
     import Loader from "$lib/component/Loader.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
-    import { filesState } from "./filesState.svelte";
-    import { loadFileContent } from "./util/files";
+    import { filesState } from "./code/filesState.svelte";
+    import { loadFileContent } from "./code/files";
     import { onMount } from "svelte";
 
     const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.filename) : null)

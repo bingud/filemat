@@ -4,12 +4,12 @@
     import { pageTitle } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onDestroy, untrack } from "svelte";
-    import FileViewer from "./code/FileViewer.svelte";
-    import { createFilesState, destroyFilesState, filesState } from "./code/filesState.svelte";
-    import { createBreadcrumbState, destroyBreadcrumbState } from "./code/breadcrumbState.svelte";
-    import Breadcrumbs from "./code/Breadcrumbs.svelte";
-    import FileBrowser from "./code/FileBrowser.svelte";
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
+    import FileViewer from "./content/FileViewer.svelte";
+    import { createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte";
+    import Breadcrumbs from "./content/Breadcrumbs.svelte";
+    import FileBrowser from "./content/FileBrowser.svelte";
+    import DetailsSidebar from "./content/DetailsSidebar.svelte";
+    import { createFilesState, destroyFilesState, filesState } from "./content/code/filesState.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -20,8 +20,6 @@
     })
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
-    let detailsBarWidth: number = $state(0)
-    let isDetailsBarVisible = $derived(detailsBarWidth > 1)
 
     $effect(() => {
         if (filesState.path) {
@@ -60,15 +58,6 @@
         filesState.metaLoading = false
     }
 
-    
-
-    /**
-     * onClick for entry list container
-     */
-    function containerOnClick() {
-        filesState.selectedEntry = null
-    }
-
     // Scrolling position
     function saveScrollPosition() {
         if (!filesState.path || !filesState.scroll.container) return
@@ -93,7 +82,7 @@
 
 <div class="page">
     <div class="w-full flex h-full">
-        <div bind:this={filesState.scroll.container} class="w-full {isDetailsBarVisible ? 'w-[calc(100%-20rem)]' : 'w-full'} flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
+        <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsToggled ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
             <!-- Header -->
             <div on:click={filesState.unselect} class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
                 <div class="w-[85%] h-full flex items-center">
@@ -102,7 +91,7 @@
 
                 <div class="w-[15%] h-full flex items-center justify-end">
                     <button on:click={() => { filesState.ui.detailsToggled = !filesState.ui.detailsToggled }} class="h-full aspect-square p-3 group text-sm hidden lg:flex">
-                        <p class="size-full rounded-full center ring ring-neutral-400 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
+                        <p class="size-full rounded-full center ring ring-neutral-500 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
                     </button>
                 </div>
             </div>
@@ -131,10 +120,8 @@
 
         <!-- File info sidebar -->
         {#if filesState.ui.detailsToggled || filesState.ui.detailsOpen}
-            <div bind:offsetWidth={detailsBarWidth} class="hidden lg:flex flex-col h-full w-[20rem] xpy-4 shrink-0">
-                <div class="size-full overflow-auto xrounded-xl bg-neutral-200 dark:bg-neutral-850">
-
-                </div>
+            <div class="hidden lg:flex flex-col h-full w-[20rem] xpy-4 shrink-0">
+                <DetailsSidebar />
             </div>
         {/if}
     </div>

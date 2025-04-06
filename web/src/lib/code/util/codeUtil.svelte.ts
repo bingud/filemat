@@ -344,6 +344,18 @@ export function formatBytes(bytes: number) {
     return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+export function formatBytesRounded(bytes: number): string {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    let index = 0;
+
+    while (bytes >= 1024 && index < units.length - 1) {
+        bytes /= 1024;
+        index++;
+    }
+
+    return `${Math.ceil(bytes)} ${units[index]}`;
+}
+
 export function getFileExtension(name: string): string {
     return name.substring(name.lastIndexOf(".") + 1)
 }

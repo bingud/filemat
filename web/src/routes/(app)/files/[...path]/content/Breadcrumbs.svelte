@@ -1,9 +1,9 @@
 <script lang="ts">
     import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte';
     import { Popover } from 'bits-ui';
-    import { filesState } from './filesState.svelte';
-    import { breadcrumbState, type Segment } from './breadcrumbState.svelte';
     import { goto } from '$app/navigation';
+    import { breadcrumbState, type Segment } from './code/breadcrumbState.svelte';
+    import { filesState } from './code/filesState.svelte';
 
     function openEntry(path: string) {
         goto(`/files${path}`)
