@@ -1,7 +1,9 @@
 import { page } from "$app/state"
 import type { FileMetadata } from "$lib/code/auth/types"
+import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import type { ulid } from "$lib/code/types"
 import { isBlank, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte"
+import { SingleChildBooleanTree } from "./files"
 
 
 class FilesState {
@@ -48,40 +50,59 @@ class FilesState {
         pathPositions: {} as Record<string, number>,
     })
 
-    selectedEntry = $state(null) as ulid | null
+    /**
+     * Selected entry state
+     */
+    selectedEntry = new SelectedEntryStateClass()
 
     lastFilePathLoaded = $state(null) as string | null
+    
 
     /**
      * Clear state on file navigation
      */
     clearState() {
-        this.selectedEntry = null
         this.data.clear()
         this.ui.clear()
     }
 
     unselect() {
-        filesState.selectedEntry = null
+        if (this.selectedEntry) {
+            this.selectedEntry.path = null
+        }
     }
+}
+
+
+/**
+ * # Classes
+ */
+
+
+class SelectedEntryStateClass {
+    selectedPositions = new SingleChildBooleanTree()
+
+    path = $state(null) as ulid | null
+    meta = $derived.by(() => {
+        if (!filesState.data.entries || !this.path) return null
+        return filesState.data.entries.find(v => v.filename === this.path)
+    })
 }
 
 class FileUiStateClasss {
     /**
-     * Is details side panel toggled on desktop
-     */
-    detailsToggled = $state(true)
-    /**
      * Is details opened
      */
-    detailsOpen = $state(false)
+    detailsOpen = $state(uiState.isDesktop)
+
+    toggleSidebar() {
+        this.detailsOpen = !this.detailsOpen
+    }
 
     clear() {
-        this.detailsToggled = true
-        this.detailsOpen = false
+        if (!uiState.isDesktop) this.detailsOpen = false
     }
 }
-
 
 class FileDataStateClass {
     meta = $state(null) as FileMetadata | null
@@ -107,6 +128,11 @@ class FileDataStateClass {
         this.entries = null
     }
 }
+
+
+/**
+ * # Util
+ */
 
 
 export let filesState: FilesState

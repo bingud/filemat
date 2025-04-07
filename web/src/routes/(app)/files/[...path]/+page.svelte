@@ -10,6 +10,9 @@
     import FileBrowser from "./content/FileBrowser.svelte";
     import DetailsSidebar from "./content/DetailsSidebar.svelte";
     import { createFilesState, destroyFilesState, filesState } from "./content/code/filesState.svelte";
+    import { fade, fly } from "svelte/transition";
+    import { linear } from "svelte/easing";
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -72,10 +75,6 @@
         filesState.scroll.container.scrollTo({top: pos})
     }
 
-    // let breadcrumbContainerWidth = $state(0)
-    // $effect(() => {
-    //     breadcrumbState.containerWidth = breadcrumbContainerWidth
-    // })
 </script>
 
 
@@ -86,15 +85,15 @@
 
 <div class="page">
     <div class="w-full flex h-full">
-        <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsToggled ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
+        <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
             <!-- Header -->
-            <div on:click={filesState.unselect} class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
+            <div class="w-full h-[3rem] shrink-0 flex px-2 items-center justify-between">
                 <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-[85%] h-full flex items-center">
                     <Breadcrumbs></Breadcrumbs>                    
                 </div>
 
                 <div class="w-[15%] h-full flex items-center justify-end">
-                    <button on:click={() => { filesState.ui.detailsToggled = !filesState.ui.detailsToggled }} class="h-full aspect-square p-3 group text-sm hidden lg:flex">
+                    <button on:click={() => { filesState.ui.toggleSidebar() }} class="h-full aspect-square p-3 group text-sm flex">
                         <p class="size-full rounded-full center ring ring-neutral-500 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
                     </button>
                 </div>
@@ -122,11 +121,21 @@
             </div>
         </div>
 
-        <!-- File info sidebar -->
-        {#if filesState.ui.detailsToggled || filesState.ui.detailsOpen}
-            <div class="hidden lg:flex flex-col h-full w-[20rem] xpy-4 shrink-0">
-                <DetailsSidebar />
-            </div>
-        {/if}
+
+        <div class="contents">
+            <!-- File info sidebar -->
+            {#if filesState.ui.detailsOpen}
+                <div on:click={filesState.unselect} class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex justify-end pointer-events-none lg:contents">
+                    <div transition:fly={{ duration: 150, x: 400, opacity: 1 }} class="flex flex-col h-full max-w-full w-[20rem] shrink-0 pointer-events-auto">
+                        <DetailsSidebar />
+                    </div>
+                </div>
+            {/if}
+
+            <!-- Close sidebar background button -->
+            {#if !uiState.isDesktop && filesState.ui.detailsOpen}
+                <button aria-label="Close details sidebar" on:click={() => { filesState.ui.detailsOpen = false }} transition:fade={{ duration: 150, easing: linear }} class="absolute top-0 left-0 size-full bg-black/40 !cursor-default pointer-events-auto"></button>
+            {/if}
+        </div>
     </div>
 </div>

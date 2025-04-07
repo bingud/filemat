@@ -1,5 +1,5 @@
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { forEachReversed } from "$lib/code/util/codeUtil.svelte"
+import { arrayRemove, forEachReversed, removeString } from "$lib/code/util/codeUtil.svelte"
 import { calculateTextWidth, remToPx } from "$lib/code/util/uiUtil"
 import { filesState } from "./filesState.svelte"
 
@@ -38,7 +38,7 @@ class BreadcrumbState {
     
             const segmentWidth = index === 0 ? seg.width : seg.width + totalAdditionalWidth
             width += segmentWidth
-            if (width > this.containerWidth) {
+            if (width > this.containerWidth && index !== 0) {
                 hidden.push(seg)
                 outOfSpace = true
             } else {
@@ -46,6 +46,12 @@ class BreadcrumbState {
             }
         })
     
+        if (visible.length === 0 && hidden.length > 1) {
+            const path = hidden[0]
+            arrayRemove(hidden, p => p === path)
+            visible.push(path)
+        }
+
         return { hidden: hidden, visible: visible.reverse() }
     })
     
