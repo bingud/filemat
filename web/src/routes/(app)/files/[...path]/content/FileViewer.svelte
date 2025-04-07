@@ -87,7 +87,7 @@
 </script>
 
 
-<div class="size-full flex flex-col">
+<div on:click|stopPropagation class="size-full flex flex-col">
     
     {#if filesState.data.meta}
         {#if filesState.contentLoading}

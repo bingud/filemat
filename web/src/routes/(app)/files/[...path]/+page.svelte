@@ -94,13 +94,13 @@
 
                 <div class="w-[15%] h-full flex items-center justify-end">
                     <button on:click={() => { filesState.ui.toggleSidebar() }} class="h-full aspect-square p-3 group text-sm flex">
-                        <p class="size-full rounded-full center ring ring-neutral-500 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
+                        <p class="size-full rounded-full center ring ring-neutral-600 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
                     </button>
                 </div>
             </div>
 
             <!-- Files -->
-            <div on:click={() => { filesState.unselect() }} class="h-[calc(100%-3rem)] w-full">
+            <div class="h-[calc(100%-3rem)] w-full">
                 {#if !filesState.metaLoading && filesState.data.meta}
                     {#if filesState.data.meta.fileType === "FOLDER" && filesState.data.sortedEntries}
                         <FileBrowser />

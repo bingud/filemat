@@ -58,6 +58,11 @@
             menuEntry = null
         }
     }
+
+    function option_details(entry: FileMetadata) {
+        filesState.selectedEntry.path = entry.filename
+        filesState.ui.detailsOpen = true    
+    }
 </script>
 
 <style>
@@ -119,7 +124,7 @@
                 <!-- Menu button (stopPropagation) -->
                 <div class="h-full text-center">
                     <button
-                        on:click|stopPropagation={(e) => entryMenuOnClick(e.currentTarget, entry)}
+                        on:click={(e) => { if (filesState.selectedEntry.path === entry.filename) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
                         class="h-full aspect-square flex items-center justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
                     >
                         <ThreeDotsIcon />
@@ -137,7 +142,7 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col">
-                            <button class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700">Permissions</button>
+                            <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700">Details</button>
                             <hr class="basic-hr my-2">
                             <p class="px-4 truncate opacity-70">File: {filenameFromPath(menuEntry.filename)}</p>
                         </div>
