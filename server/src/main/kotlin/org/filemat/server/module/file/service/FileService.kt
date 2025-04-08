@@ -18,6 +18,7 @@ import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.FileInputStream
@@ -37,7 +38,7 @@ import kotlin.io.path.absolutePathString
 @Service
 class FileService(
     private val folderVisibilityService: FolderVisibilityService,
-    private val entityPermissionService: EntityPermissionService,
+    @Lazy private val entityPermissionService: EntityPermissionService,
     private val entityService: EntityService,
     private val logService: LogService,
     private val filesystem: FilesystemService,

@@ -24,4 +24,5 @@ enum class UserAction {
     CHECK_USER_EXISTENCE,                   // 14
     UPDATE_ROLE_PERMISSIONS,                // 15
     DELETE_ROLE,                            // 16
+    GET_ENTITY_PERMISSIONS,                 // 17
 }

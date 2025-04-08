@@ -47,7 +47,7 @@ html {
 }
 
 .custom-scrollbar {
-    @apply scrollbar scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
+    @apply scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
 }
 
 

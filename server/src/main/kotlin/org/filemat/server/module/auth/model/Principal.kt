@@ -34,9 +34,12 @@ data class Principal(
         /**
          * Returns if user has the input permission
          */
-        fun Principal.hasAnyPermission(searched: Collection<SystemPermission>): Boolean {
+        fun Principal.hasAnyPermission(searched: Collection<SystemPermission>, ignoreSuperAdmin: Boolean = false): Boolean {
             val permissions = this.getPermissions()
-            permissions.forEach { if (searched.contains(it)) return true }
+            permissions.forEach {
+                if (searched.contains(it)) return true
+                else if (!ignoreSuperAdmin && it == SystemPermission.SUPER_ADMIN) return true
+            }
             return false
         }
 

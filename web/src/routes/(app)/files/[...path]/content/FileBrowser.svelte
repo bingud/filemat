@@ -61,7 +61,13 @@
 
     function option_details(entry: FileMetadata) {
         filesState.selectedEntry.path = entry.filename
-        filesState.ui.detailsOpen = true    
+        filesState.ui.detailsOpen = true
+        closeEntryPopover()
+    }
+
+    function closeEntryPopover() {
+        entryMenuButton = null
+        menuEntry = null
     }
 </script>
 
@@ -138,10 +144,10 @@
 
     {#if entryMenuButton && menuEntry}
         {#key entryMenuButton || menuEntry}
-            <div class="z-50">
+            <div class="z-50 relative">
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
-                        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col">
+                        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
                             <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700">Details</button>
                             <hr class="basic-hr my-2">
                             <p class="px-4 truncate opacity-70">File: {filenameFromPath(menuEntry.filename)}</p>

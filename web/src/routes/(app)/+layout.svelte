@@ -38,7 +38,7 @@
 
 
 {#if mounted}
-    <div class="flex flex-col md:flex-row w-full h-full overflow-hidden">
+    <div class="flex flex-col md:flex-row w-full h-full overflow-hidden min-h-0">
         <nav class="contents">
             <!-- Mobile Top Bar -->
             <div class="contents md:hidden">
@@ -49,7 +49,7 @@
             <Sidebar />
         </nav>
         
-        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-without-navbar md:h-full">
+        <main id="app-page" class="w-full md:w-without-sidebar-desktop h-without-navbar md:h-full min-h-0">
             {@render children()}
         </main>
     </div>

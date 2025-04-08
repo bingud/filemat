@@ -23,7 +23,7 @@ class EntityPermissionTree {
         // Permissions for users for this node
         val userPermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf(),
         // Permissions for roles for this node
-        val rolePermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf()
+        val rolePermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf(),
     )
 
     private val root = Node(segment = "", parent = null)
@@ -157,4 +157,18 @@ class EntityPermissionTree {
             }
         }
     }
+
+    fun getAllPermissionsForPath(path: String): List<EntityPermission> {
+        val node = findNode(path) ?: return emptyList()
+        return collectAllPermissions(node)
+    }
+
+    private fun collectAllPermissions(node: Node): List<EntityPermission> {
+        val results = mutableListOf<EntityPermission>()
+        results.addAll(node.userPermissions.values)
+        results.addAll(node.rolePermissions.values)
+
+        return results
+    }
+
 }

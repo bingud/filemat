@@ -28,11 +28,24 @@ export function hasPermissionLevel(required: number): boolean {
 /**
  * Returns whether input permission list has a sufficient permission
  */
-export function hasPermission(permissions: SystemPermission[] | null, id: SystemPermission): boolean {
+export function containsPermission(permissions: SystemPermission[] | null, id: SystemPermission): boolean {
     if (!permissions) return false;
     if (includesAny<SystemPermission>(permissions, [id, "SUPER_ADMIN"])) return true;
     return false;
 }
+
+/**
+ * Returns whether input permission list has a sufficient permission
+ */
+export function hasAnyPermission(requiredPermissions: SystemPermission[], ignoreSuperAdmin: boolean = false): boolean {
+    const permissions = auth.permissions
+    if (!permissions) return false
+
+    if (!ignoreSuperAdmin) requiredPermissions.push("SUPER_ADMIN")
+    if (includesAny<SystemPermission>(permissions, requiredPermissions)) return true;
+    return false;
+}
+
 
 /**
  * Returns permission level for current user

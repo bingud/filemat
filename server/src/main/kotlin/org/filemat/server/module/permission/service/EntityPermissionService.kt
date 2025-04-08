@@ -1,15 +1,24 @@
 package org.filemat.server.module.permission.service
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
+import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.classes.Token
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.config.Props
+import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
+import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.EntityPermission
+import org.filemat.server.module.permission.model.EntityPermissionMeta
 import org.filemat.server.module.permission.model.EntityPermissionTree
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.repository.PermissionRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -23,13 +32,36 @@ class EntityPermissionService(
     private val permissionRepository: PermissionRepository,
     private val logService: LogService,
     private val entityService: EntityService,
+    private val fileService: FileService,
 ) {
 
     /**
-     * Holds user and role permissions for file paths in a tree.
+     * Holds user and role permissions and owner ID for file paths in a tree.
      */
     private val pathTree = EntityPermissionTree()
 
+    fun getEntityPermissions(user: Principal, path: FilePath): Result<EntityPermissionMeta> {
+        fileService.isAllowedToAccessFile(user, path).let {
+            if (it.isNotSuccessful) return it.cast<EntityPermissionMeta, Unit>().also { println("shider") }
+        }
+
+        val ownerId = entityService.getByPath(path = path.path, userAction = UserAction.GET_ENTITY_PERMISSIONS).let {
+            if (it.hasError) return it.cast()
+            it.valueOrNull
+        }?.ownerId
+
+        val isAllowed = user.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS) || user.userId == ownerId && user.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        if (!isAllowed) return Result.reject("You do not have permission to view the permissions of this file.")
+
+        val permissions = pathTree.getAllPermissionsForPath(path.path)
+
+        val result = EntityPermissionMeta(
+            ownerId = ownerId,
+            permissions = permissions
+        )
+
+        return result.toResult()
+    }
 
     /**
      * Remove permission for an entity ID from a specific file path

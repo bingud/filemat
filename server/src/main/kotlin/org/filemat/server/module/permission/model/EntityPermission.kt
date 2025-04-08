@@ -1,15 +1,22 @@
 package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
+import kotlinx.serialization.Serializable
+import org.filemat.server.config.UlidSerializer
 import org.filemat.server.module.file.model.FilesystemEntityType
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
+@Serializable
 data class EntityPermission(
+    @Serializable(UlidSerializer::class)
     val permissionId: Ulid,
     val permissionType: PermissionType,
+    @Serializable(UlidSerializer::class)
     val entityId: Ulid,
+    @Serializable(UlidSerializer::class)
     val userId: Ulid?,
+    @Serializable(UlidSerializer::class)
     val roleId: Ulid?,
     val permissions: List<FilePermission>,
     val createdDate: Long,

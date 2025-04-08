@@ -1,9 +1,5 @@
 .loader {
-    width: 50px;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    @apply border-blue-600 border-8;
-    /* border: 8px solid #514b82; */
+    @apply rounded-[50%] h-full aspect-square max-w-[3.125rem] max-h-[3.125rem] aspect-square border-blue-600 border-6;
     animation:
         l20-1 0.8s infinite linear alternate,
         l20-2 1.6s infinite linear;

@@ -6,7 +6,7 @@
     import { loadUserList } from "$lib/code/admin/users";
     import { PermissionType, type MiniUser, type SystemPermission, type PublicUser, type Role, type RoleMeta } from "$lib/code/auth/types";
     import { systemPermissionMeta } from "$lib/code/data/permissions";
-    import { getMaxPermissionLevel, getPermissionMeta, hasPermission, hasPermissionLevel } from "$lib/code/module/permissions";
+    import { getMaxPermissionLevel, getPermissionMeta, containsPermission, hasPermissionLevel } from "$lib/code/module/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
@@ -214,7 +214,7 @@
             {/if}
         </div>
 
-        {#if hasPermission(auth.permissions, "MANAGE_USERS")}
+        {#if containsPermission(auth.permissions, "MANAGE_USERS")}
             <div class="flex flex-col w-full gap-4">
                 <h2 class="text-lg">Users with this role:</h2>
                 
