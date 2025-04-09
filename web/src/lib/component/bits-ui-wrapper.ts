@@ -1,3 +1,3 @@
 import * as BitsUI from "bits-ui";
 
-export const { Popover } = BitsUI;
+export const { Popover, Dialog } = BitsUI;

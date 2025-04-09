@@ -7,6 +7,7 @@
     import { PermissionType, type MiniUser, type SystemPermission, type PublicUser, type Role, type RoleMeta } from "$lib/code/auth/types";
     import { systemPermissionMeta } from "$lib/code/data/permissions";
     import { getMaxPermissionLevel, getPermissionMeta, containsPermission, hasPermissionLevel } from "$lib/code/module/permissions";
+    import { loadMiniUsers } from "$lib/code/module/users";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
@@ -28,7 +29,7 @@
 
     // Adding user
     let addUsersButton: HTMLElement | undefined = $state()
-    let allUsers: null | PublicUser[] = $state(null)
+    let allUsers: null | MiniUser[] = $state(null)
     let allUsersLoading = $state(false)
     let addingUser = $state(false)
     let addUserPopoverOpen = $state(false)
@@ -94,37 +95,14 @@
         }
     }
 
-    /**
-     * Load list of users with this role
-     */
-    async function loadMiniUsers(userIds: ulid[]): Promise<MiniUser[] | null> {
-        const response = await safeFetch(`/api/v1/admin/user/minilist`, 
-            { method: "POST", credentials: "same-origin", body: formData({ userIdList: JSON.stringify(userIds) }) }
-        )
-        if (response.failed) {
-            handleException(`Failed to fetch list of user mini metadata: ${status}`, "Failed to load users with this role.", response.exception)
-            return null
-        }
-        const st = response.code
-        const json = response.json()
 
-        if (st.ok) {
-            return json
-        } else if (st.serverDown) {
-            handleError(`Server ${st} while fetching yser mini metadata`, `Server is unavailable.`)
-            return null
-        } else {
-            handleErrorResponse(json, `Failed to load users with this role.`)
-            return null
-        }
-    }
 
     /**
      * Load list of all filemat users
      */
     async function loadAllUserList() {if (allUsersLoading) return; allUsersLoading = true; try {
         allUsers = null
-        const r = await loadUserList()
+        const r = await loadMiniUsers(null, true)
         if (r) {
             allUsers = r
         }

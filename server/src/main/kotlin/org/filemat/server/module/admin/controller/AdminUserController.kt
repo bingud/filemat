@@ -69,13 +69,19 @@ class AdminUserController(
      */
     @PostMapping("/minilist")
     fun adminUserMiniListMapping(
-        @RequestParam("userIdList") rawIdList: String
+        @RequestParam("userIdList", required = false) rawIdList: String?,
+        @RequestParam("allUsers", required = false) rawAllUsers: String?,
     ): ResponseEntity<String> {
-        val userIds = Json.decodeFromStringOrNull<List<String>>(rawIdList)?.map {
-            parseUlidOrNull(it) ?: return bad("List of user IDs contains an invalid ID.", "validation")
-        } ?: return bad("List of user IDs is invalid.", "validation")
+        val allUsers = rawAllUsers?.toBooleanStrictOrNull() ?: false
+        if (allUsers && rawIdList != null) return bad("User ID list is present when loading all users.", "validation")
 
-        val list = adminUserService.getUserMiniList(userIds).let {
+        val userIds = if (rawIdList != null) {
+            Json.decodeFromStringOrNull<List<String>>(rawIdList)?.map {
+                parseUlidOrNull(it) ?: return bad("List of user IDs contains an invalid ID.", "validation")
+            } ?: return bad("List of user IDs is invalid.", "validation")
+        } else null
+
+        val list = adminUserService.getUserMiniList(userIds, allUsers).let {
             if (it.isNotSuccessful) return internal(it.error, "")
             it.value
         }

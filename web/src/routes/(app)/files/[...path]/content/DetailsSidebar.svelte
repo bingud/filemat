@@ -3,21 +3,15 @@
     import { onDestroy, onMount } from "svelte";
     import { filesState } from "./code/filesState.svelte";
     import type { ulid } from "$lib/code/types";
-    import type { FilePermission, MiniUser, PermissionType } from "$lib/code/auth/types";
+    import type { EntityPermission, FilePermission, MiniUser, PermissionType } from "$lib/code/auth/types";
     import { hasAnyPermission } from "$lib/code/module/permissions";
     import Loader from "$lib/component/Loader.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import { fade } from "svelte/transition";
+    import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
+    import { Dialog } from "$lib/component/bits-ui-wrapper";
+    import FilePermissionCreator from "./FilePermissionCreator.svelte";
 
-    type EntityPermission = {
-        permissionId: ulid,
-        permissionType: "USER" | "ROLE",
-        entityId: ulid,
-        userId: ulid | null,
-        roleId: ulid | null,
-        permissions: FilePermission[],
-        createdDate: number,
-    }
     type PermissionData = {
         permissions: EntityPermission[],
         owner: ulid,
@@ -27,6 +21,23 @@
     let abortController = new AbortController()
     let permissionData: PermissionData | null = $state(null)
     let permissionDataLoading = $state(false)
+
+    // Role and user IDs that already have a file permission
+    let existing = $derived.by(() => {
+        if (!permissionData) return null
+        let users: ulid[] = []
+        let roles: ulid[] = []
+
+        permissionData.permissions.forEach(v => {
+            if (v.permissionType === "USER") {
+                users.push(v.userId!)
+            } else {
+                users.push(v.roleId!)
+            }
+        })
+
+        return { users: users, roles: roles }
+    })
 
     let lastLoaded = ""
     $effect(() => {
@@ -72,12 +83,15 @@
                 json.miniUserList[v.userId] = v.username
             })
             permissionData = json
-            console.log(json)
         } else if (status.serverDown) {
             handleError(`Server ${status} when fetching file permissions`, `Failed to load file permissions. Server is unavailable.`)
         } else {
             handleErrorResponse(json, `Failed to load file permissions.`)
         }
+    }
+
+    function onFilePermissionCreated(perm: EntityPermission) {
+        
     }
 
 </script>
@@ -88,9 +102,10 @@
         <div></div>
     {:else if filesState.selectedEntry.meta || filesState.data.meta}
         {@const file = (filesState.selectedEntry.meta || filesState.data.meta)!}
+        {@const filename = filenameFromPath(file.filename) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
-            <h3 class="truncate text-lg">{filenameFromPath(file.filename) || "/"}</h3>
+            <h3 title={filename} class="truncate text-lg">{filename}</h3>
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
@@ -115,9 +130,42 @@
         <hr class="basic-hr flex-none">
 
         <div class="w-full flex flex-col gap-6 flex-auto min-h-0 max-h-fit">
-            <p class="px-6 flex-none">Permissions</p>
+            <div class="flex w-full justify-between items-center px-6 h-[2.5rem] flex-none">
+                <h4 class="">Permissions</h4>
 
-            <div class="flex flex-col bg-neutral-900 rounded-lg px-4 py-4 mx-2 overflow-y-auto min-h-[5rem] flex-auto custom-scrollbar">
+                {#if permissionData}
+                    <Dialog.Root>
+                        <Dialog.Trigger>
+                            <button title="Create a permission for this file" class="size-[2.5rem] p-3 rounded-lg bg-neutral-300 hover:bg-neutral-400/50 dark:bg-neutral-700/50 dark:hover:bg-neutral-700">
+                                <div class="size-full aspect-square rotate-45">
+                                    <CloseIcon></CloseIcon>
+                                </div>
+                            </button>
+                        </Dialog.Trigger>
+
+                        <Dialog.Portal>
+                            <Dialog.Overlay
+                                class="fixed inset-0 z-50 bg-black/50"
+                            />
+                            <Dialog.Content>
+                                <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
+                                    <div class="flex items-center justify-between w-full">
+                                        <h3>Create a file permission</h3>
+                                        <Dialog.Close>
+                                            <div class="rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] p-2">
+                                                <CloseIcon></CloseIcon>
+                                            </div>
+                                        </Dialog.Close>
+                                    </div>
+                                    <FilePermissionCreator onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
+                                </div>
+                            </Dialog.Content>
+                        </Dialog.Portal>
+                    </Dialog.Root>
+                {/if}
+            </div>
+
+            <div class="flex flex-col bg-neutral-300 dark:bg-neutral-900 rounded-lg px-4 py-4 mx-2 overflow-y-auto min-h-[5rem] flex-auto custom-scrollbar">
                 {#if permissionData && permissionData.permissions.length < 0}
                     <!-- User Permissions -->
                     {#each permissionData.permissions.filter(v => v.permissionType === "USER") as meta}
@@ -128,10 +176,6 @@
                             <div class="flex gap-x-4 flex-wrap">
                                 {#each meta.permissions as perm}
                                     <p>{perm}</p>
-                                    <!-- <div class="flex gap-1 items-center">
-                                        <input id="id-{perm}" type="checkbox">
-                                        <label for="id-{perm}">{perm}</label>
-                                    </div> -->
                                 {/each}
                             </div>
                         </div>
@@ -146,10 +190,6 @@
                             <div class="flex gap-x-4 flex-wrap">
                                 {#each meta.permissions as perm}
                                     <p>{perm}</p>
-                                    <!-- <div class="flex gap-1 items-center">
-                                        <input id="id-{perm}" type="checkbox">
-                                        <label for="id-{perm}">{perm}</label>
-                                    </div> -->
                                 {/each}
                             </div>
                         </div>

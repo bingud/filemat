@@ -80,3 +80,13 @@ export type MiniUser = {
     userId: ulid,
     username: string
 }
+
+export type EntityPermission = {
+    permissionId: ulid,
+    permissionType: "USER" | "ROLE",
+    entityId: ulid,
+    userId: ulid | null,
+    roleId: ulid | null,
+    permissions: FilePermission[],
+    createdDate: number,
+}

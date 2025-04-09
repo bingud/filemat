@@ -261,8 +261,8 @@ export function arrayRemove<T>(arr: T[], predicate: (value: T) => boolean) {
 /**
  * Iterates through an object
  */
-export function forEachObject<T>(obj: Record<string, T>, block: (key: string, value: T) => any): void {
-    Object.entries(obj).forEach(([key, value]) => { block(key, value) })
+export function forEachObject<K extends string, V>(obj: Record<K, V>, block: (key: K, value: V) => any): void {
+    Object.entries(obj).forEach(([key, value]) => { block(key as K, value as V) })
 }
 
 /**

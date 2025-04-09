@@ -14,4 +14,7 @@ interface PublicUserRepository : CrudRepository<PublicUser, Ulid> {
     @Query("SELECT user_id, username FROM users WHERE user_id IN (:list)")
     fun getMiniUserList(list: List<Ulid>): List<MiniUser>?
 
+    @Query("SELECT user_id, username FROM users")
+    fun getAllMiniUserList(): List<MiniUser>?
+
 }

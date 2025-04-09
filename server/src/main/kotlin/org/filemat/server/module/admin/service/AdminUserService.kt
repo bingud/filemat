@@ -85,9 +85,17 @@ class AdminUserService(
         return userId.toResult()
     }
 
-    fun getUserMiniList(list: List<Ulid>): Result<List<MiniUser>> {
+    fun getUserMiniList(list: List<Ulid>?, allUsers: Boolean = false): Result<List<MiniUser>> {
         try {
-            return publicUserRepository.getMiniUserList(list)?.toResult()
+            val result = if (allUsers) {
+                publicUserRepository.getAllMiniUserList()
+            } else if (list != null) {
+                publicUserRepository.getMiniUserList(list)
+            } else {
+                return Result.error("User ID list cannot be null if not requesting a list of all users.")
+            }
+
+            return result?.toResult()
                 ?: throw IllegalStateException("Database result for user mini list by user ID list is null instead of empty list.")
         } catch (e: Exception) {
             logService.error(

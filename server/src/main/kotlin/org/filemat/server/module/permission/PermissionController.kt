@@ -25,6 +25,17 @@ class PermissionController(
     private val adminUserService: AdminUserService
 ) : AController() {
 
+    @PostMapping("/create-entity")
+    fun createEntityPermissionsMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+        @RequestParam("mode") rawMode: String,
+        @RequestParam("id") rawId: String,
+        @RequestParam("permissionList") rawPermissionList: String,
+    ): ResponseEntity<String> {
+        TODO()
+    }
+
     @PostMapping("/entity")
     fun getEntityPermissionsMapping(
         request: HttpServletRequest,
