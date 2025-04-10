@@ -25,6 +25,13 @@ import kotlin.io.path.isDirectory
 class FilesystemService {
 
     /**
+     * Returns whether file is in a supported filesystem
+     */
+    fun isSupportedFilesystem(path: FilePath): Boolean? {
+        return FileUtils.isSupportedFilesystem(path.pathObject)
+    }
+
+    /**
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {

@@ -26,9 +26,13 @@ data class Principal(
         /**
          * Checks if user has permission
          */
-        fun Principal.hasPermission(searched: SystemPermission): Boolean {
+        fun Principal.hasPermission(searched: SystemPermission, ignoreSuperAdmin: Boolean = false): Boolean {
             val permissions = this.getPermissions()
-            return permissions.contains(searched)
+            return if (ignoreSuperAdmin) {
+                permissions.contains(searched)
+            } else {
+                permissions.any { perm -> perm == searched || perm == SystemPermission.SUPER_ADMIN }
+            }
         }
 
         /**
@@ -36,11 +40,7 @@ data class Principal(
          */
         fun Principal.hasAnyPermission(searched: Collection<SystemPermission>, ignoreSuperAdmin: Boolean = false): Boolean {
             val permissions = this.getPermissions()
-            permissions.forEach {
-                if (searched.contains(it)) return true
-                else if (!ignoreSuperAdmin && it == SystemPermission.SUPER_ADMIN) return true
-            }
-            return false
+            return permissions.any { it in searched || (!ignoreSuperAdmin && it == SystemPermission.SUPER_ADMIN) }
         }
 
         /**

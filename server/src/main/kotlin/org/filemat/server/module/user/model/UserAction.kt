@@ -25,4 +25,5 @@ enum class UserAction {
     UPDATE_ROLE_PERMISSIONS,                // 15
     DELETE_ROLE,                            // 16
     GET_ENTITY_PERMISSIONS,                 // 17
+    CREATE_ENTITY_PERMISSION,               // 18
 }

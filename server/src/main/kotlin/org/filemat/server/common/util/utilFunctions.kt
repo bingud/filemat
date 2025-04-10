@@ -54,6 +54,10 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
     return result!!
 }
 
+inline fun <reified E : Enum<E>> valueOfOrNull(name: String): E? {
+    return enumValues<E>().find { it.name == name }
+}
+
 inline fun <T> runIf(condition: Boolean, block: () -> T): T? {
     return if (condition) block() else null
 }

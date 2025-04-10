@@ -33,7 +33,10 @@ class JdbcConfig() : AbstractJdbcConfiguration() {
             StringToFilePermissionListConverter(),
 
             FilePermissionToStringConverter(),
-            StringToFilePermissionConverter()
+            StringToFilePermissionConverter(),
+
+            PermissionTypeToStringConverter(),
+            StringToPermissionTypeConverter()
         )
     }
 }

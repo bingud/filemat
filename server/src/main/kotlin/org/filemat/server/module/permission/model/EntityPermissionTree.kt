@@ -171,4 +171,14 @@ class EntityPermissionTree {
         return results
     }
 
+    fun getDirectPermissionForUser(path: String, userId: Ulid): EntityPermission? {
+        val node = findNode(path, onlyClosest = false) ?: return null
+        println(node.segment)
+        println(node.userPermissions[userId])
+        return node.userPermissions[userId]
+    }
+    fun getDirectPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
+        val node = findNode(path, onlyClosest = false) ?: return null
+        return node.rolePermissions[roleId]
+    }
 }

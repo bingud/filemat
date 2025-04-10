@@ -1,11 +1,13 @@
 package org.filemat.server.module.permission.service
 
 import com.github.f4b6a3.ulid.Ulid
+import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.classes.Token
 import org.filemat.server.common.util.normalizePath
+import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
@@ -15,10 +17,8 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.permission.model.EntityPermission
-import org.filemat.server.module.permission.model.EntityPermissionMeta
-import org.filemat.server.module.permission.model.EntityPermissionTree
-import org.filemat.server.module.permission.model.SystemPermission
+import org.filemat.server.module.log.service.meta
+import org.filemat.server.module.permission.model.*
 import org.filemat.server.module.permission.repository.PermissionRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -34,15 +34,105 @@ class EntityPermissionService(
     private val entityService: EntityService,
     private val fileService: FileService,
 ) {
-
     /**
      * Holds user and role permissions and owner ID for file paths in a tree.
      */
     private val pathTree = EntityPermissionTree()
 
+
+    /**
+     * Create an entity permission
+     */
+    fun createPermission(user: Principal, path: FilePath, targetId: Ulid, mode: PermissionType, permissions: List<FilePermission>): Result<EntityPermission> {
+        val action = UserAction.CREATE_ENTITY_PERMISSION
+        // Check if user has file permission
+        fileService.isAllowedToAccessFile(user = user, pathObject = path).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Verify / validate the file
+        fileService.verifyEntityInode(filePath = path.path, userAction = action).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val existingEntity = entityService.getByPath(path = path.path, userAction = action).let {
+            if (it.hasError) return it.cast()
+            it.valueOrNull
+        }
+
+        // Check if user has permission to edit file permissions
+        val hasPermission = user.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
+                || (user.userId == existingEntity?.ownerId) && user.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        if (!hasPermission) return Result.reject("You do not have permission to modify the permissions of this file.")
+
+        // Check existing permission
+        val existingPermission = if (mode == PermissionType.USER) {
+            pathTree.getDirectPermissionForUser(path.path, targetId)
+        } else {
+            pathTree.getDirectPermissionForRole(path.path, targetId)
+        }
+        if (existingPermission != null) return Result.reject("This ${mode.name.lowercase()} already has a permission.")
+
+        val entity = existingEntity
+            ?: entityService.create(path, user.userId, action).let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val permission = EntityPermission(
+            permissionId = UlidCreator.getUlid(),
+            permissionType = mode,
+            entityId = entity.entityId,
+            userId = if (mode == PermissionType.USER) targetId else null,
+            roleId = if (mode == PermissionType.ROLE) targetId else null,
+            permissions = permissions,
+            createdDate = unixNow()
+        )
+
+        // Create and add permission
+        db_create(permission, action).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        pathTree.addPermission(path.path, permission)
+
+        return permission.toResult()
+    }
+
+    /**
+     * Insert file permission to database
+     */
+    private fun db_create(permission: EntityPermission, action: UserAction): Result<Unit> {
+        try {
+            permissionRepository.insert(
+                permissionId = permission.permissionId,
+                permissionType = permission.permissionType,
+                entityId = permission.entityId,
+                userId = permission.userId,
+                roleId = permission.roleId,
+                permissions = permission.permissions.serialize(),
+                createdDate = permission.createdDate,
+            )
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = action,
+                description = "",
+                message = e.stackTraceToString(),
+                targetId = permission.userId ?: permission.userId,
+                meta = meta("permissionType" to permission.permissionType.toString())
+            )
+            return Result.error("Failed to create file permission.", source = "entityPermService.db_create-exception")
+        }
+    }
+
+    /**
+     * Returns list of permissions for an entity along with affected usernames
+     */
     fun getEntityPermissions(user: Principal, path: FilePath): Result<EntityPermissionMeta> {
         fileService.isAllowedToAccessFile(user, path).let {
-            if (it.isNotSuccessful) return it.cast<EntityPermissionMeta, Unit>().also { println("shider") }
+            if (it.isNotSuccessful) return it.cast()
         }
 
         val ownerId = entityService.getByPath(path = path.path, userAction = UserAction.GET_ENTITY_PERMISSIONS).let {
@@ -66,12 +156,12 @@ class EntityPermissionService(
     /**
      * Remove permission for an entity ID from a specific file path
      */
-    fun removeEntity(path: String, entityId: Ulid) = pathTree.removePermissionByEntityId(path, entityId, null)
+    fun memory_removeEntity(path: String, entityId: Ulid) = pathTree.removePermissionByEntityId(path, entityId, null)
 
     /**
      * Update the file path of an entity
      */
-    fun updateEntityPath(oldPath: String, newPath: String?, entityId: Ulid) = pathTree.updatePermissionPath(oldPath, newPath, entityId, null)
+    fun memory_updateEntityPath(oldPath: String, newPath: String?, entityId: Ulid) = pathTree.updatePermissionPath(oldPath, newPath, entityId, null)
 
     /**
      * Get the closest (inherited) file permission for a user.

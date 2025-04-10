@@ -1,8 +1,11 @@
 package org.filemat.server.module.file.service
 
 import com.github.f4b6a3.ulid.Ulid
+import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
 import org.filemat.server.module.log.model.LogType
@@ -23,7 +26,54 @@ class EntityService(
     private val entityRepository: EntityRepository,
     private val logService: LogService,
     @Lazy private val entityPermissionService: EntityPermissionService,
+    private val filesystemService: FilesystemService,
 ) {
+    fun create(path: FilePath, ownerId: Ulid, userAction: UserAction): Result<FilesystemEntity> {
+        val isFilesystemSupported = filesystemService.isSupportedFilesystem(path)
+            ?: return Result.notFound(source = "entityService.create-isFsSupp-notfound")
+
+        val inode = if (isFilesystemSupported == true) {
+            filesystemService.getInode(path.path)
+                ?: return Result.notFound(source = "entityService.create-getInode-notfound")
+        } else null
+
+        val entity = FilesystemEntity(
+            entityId = UlidCreator.getUlid(),
+            path = path.path,
+            inode = inode,
+            isFilesystemSupported = isFilesystemSupported,
+            ownerId = ownerId,
+        )
+
+        db_create(entity, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        return entity.toResult()
+    }
+
+    private fun db_create(entity: FilesystemEntity, userAction: UserAction): Result<Unit> {
+        try {
+            entityRepository.insert(
+                entityId = entity.entityId,
+                path = entity.path,
+                inode = entity.inode,
+                isFilesystemSupported = entity.isFilesystemSupported,
+                ownerId = entity.ownerId,
+            )
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to insert file permission to database.",
+                message = e.stackTraceToString(),
+                meta = meta("ownerId" to entity.ownerId.toString()),
+            )
+            return Result.error("Failed to create file permission.", source = "entityService.db_create-exception")
+        }
+    }
+
     fun updateInode(entityId: Ulid, newInode: Long?, userAction: UserAction): Result<Unit> {
         try {
             entityRepository.updateInode(entityId, newInode)
@@ -62,7 +112,7 @@ class EntityService(
 
         // Update path of permissions that are tied to this entity ID
         if (entity.path != null) {
-            entityPermissionService.updateEntityPath(entity.path, newPath, entity.entityId)
+            entityPermissionService.memory_updateEntityPath(entity.path, newPath, entity.entityId)
         }
         return Result.ok(Unit)
     }
@@ -88,7 +138,7 @@ class EntityService(
         }
 
         entity.path?.let { path ->
-            entityPermissionService.removeEntity(path, entityId)
+            entityPermissionService.memory_removeEntity(path, entityId)
         }
 
         return Result.ok(Unit)
@@ -96,7 +146,7 @@ class EntityService(
 
     fun getByPath(path: String, userAction: UserAction): Result<FilesystemEntity> {
         return try {
-            entityRepository.getByPath(path)?.toResult() ?: Result.notFound()
+            entityRepository.getByPath(path)?.toResult() ?: Result.notFound(source = "entityService.getByPath-notfound")
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -104,7 +154,7 @@ class EntityService(
                 description = "Failed to get filesystem entity by path",
                 message = e.stackTraceToString()
             )
-            Result.error("Failed to get file from database.")
+            Result.error("Failed to get file from database.", source = "entityService.getByPath-exception")
         }
     }
 

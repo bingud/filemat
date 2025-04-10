@@ -17,6 +17,16 @@ object FileUtils {
         }
     }
 
+    fun isSupportedFilesystem(path: Path): Boolean? {
+        if (!Files.exists(path)) return null
+        return try {
+            Files.getFileStore(path).supportsFileAttributeView("unix")
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+
     fun getInode(attributes: BasicFileAttributes): Long? {
         return attributes.fileKey()?.toString().orEmpty()
             .substringAfter("ino=").let {

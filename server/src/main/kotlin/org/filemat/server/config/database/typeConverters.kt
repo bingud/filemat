@@ -4,6 +4,7 @@ import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.json.Json
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.Permission
+import org.filemat.server.module.permission.model.PermissionType
 import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.core.convert.converter.Converter
 import org.springframework.data.convert.ReadingConverter
@@ -134,5 +135,21 @@ class FilePermissionToStringConverter : Converter<FilePermission, String> {
 class StringToFilePermissionConverter : Converter<String, FilePermission> {
     override fun convert(source: String): FilePermission {
         return FilePermission.fromInt(source.toInt())
+    }
+}
+
+@Component
+@WritingConverter
+class PermissionTypeToStringConverter : Converter<PermissionType, String> {
+    override fun convert(source: PermissionType): String {
+        return source.ordinal.toString()
+    }
+}
+
+@Component
+@ReadingConverter
+class StringToPermissionTypeConverter : Converter<String, PermissionType> {
+    override fun convert(source: String): PermissionType {
+        return PermissionType.fromInt(source.toInt())
     }
 }

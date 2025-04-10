@@ -82,6 +82,12 @@ h1 {
     scrollbar-gutter: stable both-edges;
 }
 
+@utility all-inherit {
+    all: inherit;
+    margin: 0px;
+    padding: 0px    
+}
+
 
 .center {
     @apply size-full flex flex-col items-center justify-center;

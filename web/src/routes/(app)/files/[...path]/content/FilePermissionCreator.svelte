@@ -5,7 +5,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import type { ulid } from "$lib/code/types";
-    import { forEachObject, formData, handleError, handleErrorResponse, handleException, keysOf, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { forEachObject, formData, handleError, handleErrorResponse, handleException, keysOf, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
 
@@ -17,12 +17,12 @@
     }: {
         excludedRoles: ulid[],
         excludedUsers: ulid[],
-        onFinish: (perm: EntityPermission) => any,
+        onFinish: (perm: EntityPermission, target: {user: MiniUser | null, roleId: ulid | null}) => any,
         path: string,
     } = $props()
 
-    let selectedMode = $state('user') as 'user' | 'role'
-    let mode = $derived(selectedMode === 'user' ? { user: true, role: false } : { user: false, role: true })
+    let selectedMode = $state('USER') as 'USER' | 'ROLE'
+    let mode = $derived(selectedMode === 'USER' ? { user: true, role: false } : { user: false, role: true })
 
     let selectedId = $state(null) as ulid | null
     let selectedPermissions = $state({ "READ": true }) as Record<FilePermission, boolean>
@@ -77,7 +77,16 @@
 
             if (status.ok) {
                 const newPermission = json as EntityPermission
-                onCompleted(newPermission)
+
+                let target = run(() => {
+                    if (mode.user) {
+                        return { user: miniList!.find(v => v.userId === selectedId)!, roleId: null }
+                    } else {
+                        return { user: null, roleId: selectedId! }
+                    }
+                })
+
+                onCompleted(newPermission, target)
             } else if (status.serverDown) {
                 handleError(`Server ${status} when creating file permission`, `Failed to create permission. Server is unavailable.`)
                 return
@@ -96,8 +105,8 @@
     <div class="flex items-center gap-6 select-none">
         <p>For: </p>
         <div class="flex h-[2rem] rounded-lg">
-            <button class="h-full w-1/2 px-4 rounded-l-lg bg-neutral-300 dark:bg-neutral-800 {mode.user ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' : ''}" aria-pressed={mode.user} on:click={() => selectedMode = "user"}>User</button>
-            <button class="h-full w-1/2 px-4 rounded-r-lg bg-neutral-300 dark:bg-neutral-800 {mode.role ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' : ''}" aria-pressed={mode.role} on:click={() => selectedMode = "role"}>Role</button>
+            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-l-lg bg-neutral-300 dark:bg-neutral-800 {mode.user ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' : ''}" aria-pressed={mode.user} on:click={() => selectedMode = "USER"}>User</button>
+            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-r-lg bg-neutral-300 dark:bg-neutral-800 {mode.role ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' : ''}" aria-pressed={mode.role} on:click={() => selectedMode = "ROLE"}>Role</button>
         </div>
     </div>
 

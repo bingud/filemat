@@ -5,5 +5,12 @@ package org.filemat.server.module.permission.model
  */
 enum class PermissionType {
     USER,
-    ROLE
+    ROLE;
+
+    companion object {
+        fun fromInt(i: Int): PermissionType {
+            return PermissionType.entries[i]
+                ?: throw IllegalStateException("Invalid integer for PermissionType enum")
+        }
+    }
 }

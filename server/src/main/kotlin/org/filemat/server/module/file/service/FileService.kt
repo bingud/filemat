@@ -181,7 +181,7 @@ class FileService(
      */
     fun isPathAllowed(path: String): Result<Unit> {
         val result = folderVisibilityService.isPathAllowed(folderPath = path, isNormalized = true)
-        return if (result == null) Result.ok() else Result.reject(result)
+        return if (result == null) Result.ok() else Result.reject(result, source = "isPathAllowed")
     }
 
     /**
@@ -205,7 +205,7 @@ class FileService(
                 description = "Failed to get folder entries with metadata.",
                 message = e.stackTraceToString()
             )
-            return Result.error("Failed to get contents of folder.")
+            return Result.error("Failed to get contents of this folder.")
         }
     }
 
@@ -231,7 +231,7 @@ class FileService(
             if (!entity.isFilesystemSupported || entity.inode == null) {
                 val path = Paths.get(filePath)
                 val exists = filesystem.exists(path, State.App.followSymLinks)
-                return if (exists) Result.ok() else Result.reject("Path does not exist.")
+                return if (exists) Result.ok() else Result.reject("Path does not exist.", source = "verifyEntityByInode-notSupported-notFound")
             }
 
             val newInode = filesystem.getInode(filePath)

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
-
     @Query("SELECT * FROM files WHERE entity_id = :entityId")
     fun getById(entityId: Ulid): FilesystemEntity?
 
@@ -30,4 +29,14 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
     @Modifying
     @Query("UPDATE files SET inode = :inode WHERE entity_id = :entityId")
     fun updateInode(entityId: Ulid, inode: Long?): Int
+
+    @Modifying
+    @Query("INSERT INTO files (entity_id, path, inode, is_filesystem_supported, owner_user_id) VALUES (:entityId, :path, :inode, :isFilesystemSupported, :ownerId)")
+    fun insert(
+        entityId: Ulid,
+        path: String?,
+        inode: Long?,
+        isFilesystemSupported: Boolean,
+        ownerId: Ulid
+    ): Int
 }
