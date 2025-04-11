@@ -155,8 +155,8 @@ export function valuesOf<T>(obj: {[key: string]: T}): T[] {
 /**
  * Returns keys of an object
  */
-export function keysOf<T>(obj: {[key: string]: T}): string[] {
-    return Object.keys(obj)
+export function keysOf<K extends string | number | symbol, V>(obj: Record<K, V>): K[] {
+    return Object.keys(obj) as K[]
 }
 
 
@@ -261,15 +261,15 @@ export function arrayRemove<T>(arr: T[], predicate: (value: T) => boolean) {
 /**
  * Iterates through an object
  */
-export function forEachObject<K extends string, V>(obj: Record<K, V>, block: (key: K, value: V) => any): void {
+export function forEachObject<K extends string | number | symbol, V>(obj: Record<K, V>, block: (key: K, value: V) => any): void {
     Object.entries(obj).forEach(([key, value]) => { block(key as K, value as V) })
 }
 
 /**
  * Filters an object with a predicate
  */
-export function filterObject<T>(obj: Record<string, T>, predicate: (key: string, value: T) => boolean): Record<string, T> {
-    const newObj: Record<string, T> = {}
+export function filterObject<K extends string | number | symbol, V>(obj: Record<K, V>, predicate: (key: K, value: V) => boolean): Record<K, V> {
+    const newObj = {} as Record<K, V>
 
     forEachObject(obj, ((k, v) => {
         if (predicate(k, v)) {
@@ -368,4 +368,13 @@ export function forEachReversed<T>(array: T[], callback: (value: T, index: numbe
 
 export function run<T>(block: () => T): T {
     return block()
+}
+
+export function mapToObject<K extends string | number | symbol, V, T>(arr: T[], mapper: (value: T) => { key: K, value: V }): Record<K, V> {
+    let obj = {} as Record<K, V>
+    arr.forEach((v) => {
+        const entry = mapper(v)
+        obj[entry.key] = entry.value
+    })
+    return obj
 }

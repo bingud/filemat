@@ -25,7 +25,7 @@
     let mode = $derived(selectedMode === 'USER' ? { user: true, role: false } : { user: false, role: true })
 
     let selectedId = $state(null) as ulid | null
-    let selectedPermissions = $state({ "READ": true }) as Record<FilePermission, boolean>
+    let selectedPermissions = $state({}) as Record<FilePermission, boolean>
 
     /**
      * Users that dont have a file role yet
@@ -146,14 +146,14 @@
             {#each (valuesOf(filePermissionMeta)) as perm}
                 {@const id = `input-permission-${perm.id}`}
                 <div class="flex gap-2 items-center">
-                    <input id={id} type="checkbox" checked={selectedPermissions[perm.id]}>
+                    <input bind:checked={selectedPermissions[perm.id]} id={id} type="checkbox">
                     <label for={id}>{perm.name}</label>
                 </div>
             {/each}
         </div>
     </div>
 
-    <button disabled={!canCreatePermission} on:click={createPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
+    <button disabled={!canCreatePermission || createPermissionLoading} on:click={createPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
 </div>
 
 

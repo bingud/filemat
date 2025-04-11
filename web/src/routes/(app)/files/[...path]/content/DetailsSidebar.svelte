@@ -3,7 +3,7 @@
     import { onDestroy, onMount } from "svelte";
     import { filesState } from "./code/filesState.svelte";
     import type { ulid } from "$lib/code/types";
-    import type { EntityPermission, FilePermission, MiniUser, PermissionType } from "$lib/code/auth/types";
+    import type { EntityPermission, FilePermission, MiniUser, PermissionType, Role } from "$lib/code/auth/types";
     import { hasAnyPermission } from "$lib/code/module/permissions";
     import Loader from "$lib/component/Loader.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
@@ -11,6 +11,9 @@
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import { Dialog } from "$lib/component/bits-ui-wrapper";
     import FilePermissionCreator from "./FilePermissionCreator.svelte";
+    import { stringify } from "postcss";
+    import FilePermissionEditor from "./FilePermissionEditor.svelte";
+    import type { EntityPermissionMeta } from "./code/types";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -22,6 +25,8 @@
     let permissionData: PermissionData | null = $state(null)
     let permissionDataLoading = $state(false)
     let permissionCreatorOpen = $state(false)
+
+    let editedPermission: EntityPermissionMeta | null = $state(null)
 
     // Role and user IDs that already have a file permission
     let existing = $derived.by(() => {
@@ -103,6 +108,13 @@
         }
     }
 
+    function onPermissionClicked(perm: EntityPermissionMeta) {
+        editedPermission = perm
+    }
+    function onPermissionUpdated(id: ulid, newPermissions: FilePermission[] | null, deleted: boolean) {
+        
+    }
+
 </script>
 
 
@@ -142,6 +154,7 @@
             <div class="flex w-full justify-between items-center px-6 h-[2.5rem] flex-none">
                 <h4 class="">Permissions</h4>
 
+                <!-- Create permission button -->
                 <Dialog.Root bind:open={permissionCreatorOpen}>
                     <Dialog.Trigger>
                         <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-3 rounded-lg bg-neutral-300 hover:bg-neutral-400/50 dark:bg-neutral-700/50 dark:hover:bg-neutral-700 disabled:opacity-70 duration-150">
@@ -174,31 +187,56 @@
                 </Dialog.Root>
             </div>
 
-            <div class="flex flex-col bg-neutral-400/50 dark:bg-neutral-900 rounded px-2 py-2 mx-2 overflow-y-auto min-h-[4rem] flex-auto custom-scrollbar">
+            <div class="flex flex-col bg-neutral-400/50 dark:bg-neutral-900 rounded px-2 py-2 mx-2 overflow-y-auto min-h-[3rem] flex-auto custom-scrollbar">
                 {#if permissionData && permissionData.permissions.length > 0}
                     <div in:fade={{duration: 75}} class="w-fill min-h-full h-fit flex flex-col gap-1">
                         <!-- User Permissions -->
                         {#each permissionData.permissions.filter(v => v.permissionType === "USER") as meta}
                             {@const username = permissionData.miniUserList[meta.userId!]}
-                            {@render permissionCard(username, meta.permissions, "USER")}
+                            {@render permissionCard({ permission: meta, username: username, role: null } as EntityPermissionMeta)}
                         {/each}
 
                         <!-- Role permissions -->
                         {#each permissionData.permissions.filter(v => v.permissionType === "ROLE") as meta}
                             {@const role = getRole(meta.roleId!)}
-                            {@render permissionCard(role!.name, meta.permissions, "ROLE")}
+                            {@render permissionCard({ permission: meta, username: null, role: role} as EntityPermissionMeta)}
                         {/each}
 
-                        {#snippet permissionCard(name: string, permissions: FilePermission[], type: "USER" | "ROLE")}
-                            <div class="flex flex-col gap-1 rounded bg-neutral-300 w-full px-2 py-1">
-                                <p>{type}: {name}</p>
+                        {#snippet permissionCard(meta: EntityPermissionMeta)}
+                            <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-1 rounded bg-neutral-300 hover:ring-2 ring-blue-500 w-full px-2 py-1">
+                                <p>{meta.permission.permissionType}: {meta.username ?? meta.role!.name}</p>
                                 <div class="flex gap-x-4 flex-wrap">
-                                    {#each permissions as perm}
+                                    {#each meta.permission.permissions as perm}
                                         <p class="rounded bg-neutral-400/30 px-2 py-1 text-sm">{perm}</p>
                                     {/each}
                                 </div>
-                            </div>
+                            </button>
                         {/snippet}
+
+                        {#if editedPermission}
+                            <Dialog.Root onOpenChange={(open) => { if (!open) { editedPermission = null } }} open={true}>
+                                <Dialog.Portal>
+                                    <Dialog.Overlay
+                                        class="fixed inset-0 z-50 bg-black/50"
+                                    />
+
+                                    <Dialog.Content>
+                                        <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
+                                            <div class="flex items-center justify-between w-full">
+                                                <h3>Edit file permission</h3>
+                                                <Dialog.Close>
+                                                    <div class="rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] p-2">
+                                                        <CloseIcon></CloseIcon>
+                                                    </div>
+                                                </Dialog.Close>
+                                            </div>
+                                            
+                                            <FilePermissionEditor onPermissionUpdated={onPermissionUpdated} editedPermission={editedPermission} />
+                                        </div>
+                                    </Dialog.Content>
+                                </Dialog.Portal>
+                            </Dialog.Root>
+                        {/if}
                     </div>
                 {:else if permissionData && permissionData.permissions.length === 0}
                     <div in:fade={{duration: 75}} class="center">
