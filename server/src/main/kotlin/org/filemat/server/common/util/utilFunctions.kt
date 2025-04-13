@@ -30,6 +30,10 @@ inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
     }
 }
 
+inline fun <reified T> String.parseJsonOrNull(): T? {
+    return Json.decodeFromStringOrNull<T>(this)
+}
+
 fun <T> measureNano(block: () -> T): Pair<T, Long> {
     var result: T
 

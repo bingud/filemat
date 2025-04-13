@@ -110,12 +110,12 @@
         </div>
     </div>
 
-    <div class="max-w-full rounded-lg py-3 overflow-y-auto max-h-[25rem] flex flex-col bg-neutral-300 dark:bg-neutral-700 w-fit min-w-[10rem]">
+    <div class="max-w-full rounded-lg py-3 overflow-y-auto max-h-[25rem] flex flex-col bg-neutral-300 dark:bg-neutral-800 w-fit min-w-[10rem]">
         {#if mode.user}
             <!-- Check for list of available users -->
             {#if miniList}
                 {#each miniList as mini}
-                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50">{mini.username}</button>
+                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700/70">{mini.username}</button>
 
                 <!-- No users available -->
                 {:else}
@@ -132,20 +132,19 @@
             {/if}
         {:else}
             {#each appState.roleList! as role}
-                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50">{role.name}</button>
+                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700/70">{role.name}</button>
             {/each}
         {/if}
     </div>
 
     <hr class="basic-hr">
 
-    <div class="flex flex-col gap-4">
-        <p>Permissions:</p>
+    <div class="flex flex-col gap-4 select-none">
 
         <div class="flex flex-col gap-1">
             {#each (valuesOf(filePermissionMeta)) as perm}
                 {@const id = `input-permission-${perm.id}`}
-                <div class="flex gap-2 items-center">
+                <div class="flex gap-2 items-center cursor-pointer">
                     <input bind:checked={selectedPermissions[perm.id]} id={id} type="checkbox">
                     <label for={id}>{perm.name}</label>
                 </div>

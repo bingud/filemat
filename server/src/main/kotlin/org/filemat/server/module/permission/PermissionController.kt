@@ -2,11 +2,8 @@ package org.filemat.server.module.permission
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.json
-import org.filemat.server.common.util.parseUlidOrNull
-import org.filemat.server.common.util.valueOfOrNull
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.service.AdminUserService
 import org.filemat.server.module.file.model.FilePath
@@ -29,6 +26,30 @@ class PermissionController(
     private val userService: UserService,
     private val adminUserService: AdminUserService
 ) : AController() {
+
+    @PostMapping("/update-entity")
+    fun updateEntityPermissionsMapping(
+        request: HttpServletRequest,
+        @RequestParam("permissionId") rawPermissionId: String,
+        @RequestParam("newPermissionList") rawNewPermissionList: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val permissionId = parseUlidOrNull(rawPermissionId)
+            ?: return bad("Invalid permission ID.", "validation")
+        val newPermissionList = rawNewPermissionList.parseJsonOrNull<List<FilePermission>>()
+            ?: return bad("Invalid permission list.", "validation")
+
+        entityPermissionService.updatePermission(
+            user = user,
+            permissionId = permissionId,
+            newPermissions = newPermissionList,
+        ).let {
+            if (it.notFound) return bad("This file was not found.", "")
+            if (it.rejected) return bad(it.error, "")
+            if (it.hasError) return internal(it.error, "")
+            return ok()
+        }
+    }
 
     @PostMapping("/create-entity")
     fun createEntityPermissionsMapping(

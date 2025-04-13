@@ -39,6 +39,45 @@ class EntityPermissionService(
      */
     private val pathTree = EntityPermissionTree()
 
+    /**
+     * Update the list of permissions for a file permission
+     */
+    fun updatePermission(user: Principal, permissionId: Ulid, newPermissions: List<FilePermission>): Result<Unit> {
+        val action = UserAction.UPDATE_ENTITY_PERMISSION
+
+        // Get the entity permission
+        val permission = pathTree.getPermissionById(permissionId)
+            ?: return Result.reject("This permission ID does not exist.")
+
+        // Get the underlying entity
+        val entity = entityService.getById(permission.entityId, action).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        entity.path ?: return Result.error("The path for the indexed file for this permission is null.")
+
+        fileService.isAllowedToAccessFile(user = user, pathObject = FilePath(entity.path)).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Check if user has permission to edit file permissions
+        val hasPermission = user.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
+                || (user.userId == entity.ownerId) && user.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        if (!hasPermission) return Result.reject("You do not have permission to modify the permissions of this file.")
+
+        val newPermission = permission.copy(
+            permissions = newPermissions
+        )
+
+        // Save new permission
+        db_updatePermissions(permissionId = permissionId, newPermissions = newPermissions, action = action).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        pathTree.addPermission(entity.path, newPermission)
+
+        return Result.ok()
+    }
 
     /**
      * Create an entity permission
@@ -118,12 +157,28 @@ class EntityPermissionService(
             logService.error(
                 type = LogType.SYSTEM,
                 action = action,
-                description = "",
+                description = "Failed to create a file permission in database.",
                 message = e.stackTraceToString(),
                 targetId = permission.userId ?: permission.userId,
                 meta = meta("permissionType" to permission.permissionType.toString())
             )
             return Result.error("Failed to create file permission.", source = "entityPermService.db_create-exception")
+        }
+    }
+
+    private fun db_updatePermissions(permissionId: Ulid, newPermissions: List<FilePermission>, action: UserAction): Result<Unit> {
+        try {
+            permissionRepository.updatePermissionList(permissionId, newPermissions.serialize())
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = action,
+                description = "Failed to update permission list of file permission in database.",
+                message = e.stackTraceToString(),
+                targetId = permissionId
+            )
+            return Result.error("Failed to save permissions.")
         }
     }
 

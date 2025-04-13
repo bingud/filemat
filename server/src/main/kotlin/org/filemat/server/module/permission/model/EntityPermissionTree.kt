@@ -181,4 +181,23 @@ class EntityPermissionTree {
         val node = findNode(path, onlyClosest = false) ?: return null
         return node.rolePermissions[roleId]
     }
+
+    fun getPermissionById(permissionId: Ulid): EntityPermission? {
+        return findPermissionById(root, permissionId)
+    }
+
+    private fun findPermissionById(node: Node, permissionId: Ulid): EntityPermission? {
+        // Check userPermissions
+        node.userPermissions.values.firstOrNull { it.permissionId == permissionId }?.let { return it }
+        // Check rolePermissions
+        node.rolePermissions.values.firstOrNull { it.permissionId == permissionId }?.let { return it }
+
+        // Recurse into children
+        for (child in node.children.values) {
+            findPermissionById(child, permissionId)?.let { return it }
+        }
+
+        return null
+    }
+
 }

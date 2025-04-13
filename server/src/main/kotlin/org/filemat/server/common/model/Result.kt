@@ -34,7 +34,7 @@ data class Result<T>(
 
     val value: T
         get() {
-            if (inputValue == null) throw IllegalStateException("Tried to access empty value in result")
+            if (inputValue == null) throw IllegalStateException("Tried to access empty value in result;  notFound $notFound, rejected $rejected, hasError $hasError")
             return inputValue
         }
 

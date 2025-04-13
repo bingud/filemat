@@ -21,6 +21,7 @@
     }))
 
     let loading = $state(false)
+    let deleting = $state(false)
 
     async function editPermission() {
         if (loading) return
@@ -28,8 +29,8 @@
 
         try {
             const permissionList = keysOf(filterObject(selectedPermissions, (k, v) => v))
-            const response = await safeFetch(`/api/v1/permission/update`, { body: formData({ permissionId: perm.permissionId, newPermissions: JSON.stringify(permissionList) }) })
-            if (response.failed) {
+            const response = await safeFetch(`/api/v1/permission/update-entity`, { body: formData({ permissionId: perm.permissionId, newPermissionList: JSON.stringify(permissionList) }) })
+            if (response.failed) {  
                 handleException(`Failed to update file permission`, `Failed to update permission.`, response.exception)
                 return
             }
@@ -50,11 +51,38 @@
         }
     }
 
+    async function deletePermission() {
+        if (deleting) return
+        deleting = true
+
+        try {
+            const response = await safeFetch(`/api/v1/permission/delete-entity`, { body: formData({ permissionId: perm.permissionId }) })
+            if (response.failed) {  
+                handleException(`Failed to delete file permission`, `Failed to delete permission.`, response.exception)
+                return
+            }
+            const status = response.code
+            const json = await response.json()
+
+            if (status.ok) {
+                onPermissionUpdated(perm.permissionId, null, true)
+            } else if (status.serverDown) {
+                handleError(`Server ${status} when deleting file permission`, `Failed to delete permission. Server is unavailable.`)
+                return
+            } else {
+                handleErrorResponse(json, `Failed to delete permission.`)
+                return
+            }
+        } finally {
+            deleting = false
+        }
+    }
+
 </script>
 
 
 <div class="size-full max-h-[80svh] flex flex-col gap-4">
-    <div class="p-4 rounded-lg w-full bg-neutral-200 flex items-center gap-3">
+    <div class="p-4 rounded-lg w-full bg-neutral-200 dark:bg-neutral-800 flex items-center gap-3">
         <p class="capitalize">{perm.permissionType.toLowerCase()}:</p>
         <p>{username ?? role!.name}</p>
     </div>
@@ -73,4 +101,8 @@
     </div>
 
     <button disabled={loading} on:click={editPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !loading}Update permission{:else}Creating...{/if}</button>
+
+    <hr class="basic-hr">
+    
+    <button disabled={deleting} on:click={deletePermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 hover:ring-2 hover:ring-red-500 disabled:opacity-50">{#if !deleting}Delete permission{:else}Deleting...{/if}</button>
 </div>

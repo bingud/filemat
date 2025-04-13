@@ -1,17 +1,15 @@
 <script lang="ts">
     import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleError, handleErrorResponse, handleException, isBlank, safeFetch, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
-    import { onDestroy, onMount } from "svelte";
+    import { onDestroy } from "svelte";
     import { filesState } from "./code/filesState.svelte";
     import type { ulid } from "$lib/code/types";
     import type { EntityPermission, FilePermission, MiniUser, PermissionType, Role } from "$lib/code/auth/types";
     import { hasAnyPermission } from "$lib/code/module/permissions";
-    import Loader from "$lib/component/Loader.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import { fade } from "svelte/transition";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import { Dialog } from "$lib/component/bits-ui-wrapper";
     import FilePermissionCreator from "./FilePermissionCreator.svelte";
-    import { stringify } from "postcss";
     import FilePermissionEditor from "./FilePermissionEditor.svelte";
     import type { EntityPermissionMeta } from "./code/types";
 
@@ -112,7 +110,21 @@
         editedPermission = perm
     }
     function onPermissionUpdated(id: ulid, newPermissions: FilePermission[] | null, deleted: boolean) {
-        
+        if (permissionData) {
+            if (deleted) {
+                // Remove the permission from the list if it was deleted
+                permissionData.permissions = permissionData.permissions.filter(p => p.permissionId !== id);
+            } else {
+                // Update the permissions array for the modified permission
+                const permissionIndex = permissionData.permissions.findIndex(p => p.permissionId === id);
+                if (permissionIndex !== -1 && newPermissions) {
+                    permissionData.permissions[permissionIndex].permissions = newPermissions;
+                }
+            }
+            
+            // Reset the edited permission after update
+            editedPermission = null;
+        }
     }
 
 </script>
@@ -203,11 +215,11 @@
                         {/each}
 
                         {#snippet permissionCard(meta: EntityPermissionMeta)}
-                            <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-1 rounded bg-neutral-300 hover:ring-2 ring-blue-500 w-full px-2 py-1">
+                            <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-1 rounded bg-neutral-300 dark:bg-neutral-700 hover:ring-2 ring-blue-500 w-full px-2 py-1">
                                 <p>{meta.permission.permissionType}: {meta.username ?? meta.role!.name}</p>
                                 <div class="flex gap-x-4 flex-wrap">
                                     {#each meta.permission.permissions as perm}
-                                        <p class="rounded bg-neutral-400/30 px-2 py-1 text-sm">{perm}</p>
+                                        <p class="rounded bg-neutral-400/30 dark:bg-neutral-600/30 px-2 py-1 text-sm">{perm}</p>
                                     {/each}
                                 </div>
                             </button>

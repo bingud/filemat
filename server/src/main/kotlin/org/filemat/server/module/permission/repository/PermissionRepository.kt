@@ -28,4 +28,8 @@ interface PermissionRepository : CrudRepository<EntityPermissionDto, Ulid> {
         createdDate: Long,
     ): Int
 
+    @Modifying
+    @Query("UPDATE permissions SET permissions = :newPermissions WHERE permission_id = :permissionId")
+    fun updatePermissionList(permissionId: Ulid, newPermissions: String): Int
+
 }
