@@ -200,4 +200,35 @@ class EntityPermissionTree {
         return null
     }
 
+    /**
+     * Removes a permission by permissionId from the entire tree.
+     * Returns true if a matching permission was found and removed; false if not.
+     */
+    fun removePermissionByPermissionId(permissionId: Ulid): Boolean {
+        return removePermissionByPermissionIdRecursive(root, permissionId)
+    }
+
+    private fun removePermissionByPermissionIdRecursive(node: Node, permissionId: Ulid): Boolean {
+        // Try removing in userPermissions
+        val userKey = node.userPermissions.entries.find { it.value.permissionId == permissionId }?.key
+        if (userKey != null) {
+            node.userPermissions.remove(userKey)
+            return true
+        }
+
+        // Try removing in rolePermissions
+        val roleKey = node.rolePermissions.entries.find { it.value.permissionId == permissionId }?.key
+        if (roleKey != null) {
+            node.rolePermissions.remove(roleKey)
+            return true
+        }
+
+        // Recurse into children
+        for (child in node.children.values) {
+            if (removePermissionByPermissionIdRecursive(child, permissionId)) {
+                return true
+            }
+        }
+        return false
+    }
 }
