@@ -119,7 +119,7 @@
 
                 <!-- No users available -->
                 {:else}
-                    <p>No users available.</p>
+                    <p class="px-3 py-1">No users available.</p>
                 {/each}
             {:else if miniListLoading}
                 <div class="center">

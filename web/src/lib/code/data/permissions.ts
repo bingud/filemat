@@ -14,6 +14,7 @@ export const systemPermissionMeta: Record<SystemPermission, PermissionMeta<Syste
     "MANAGE_SYSTEM": { id: "MANAGE_SYSTEM", name: "Manage system", description: "Manage the system", type: PermissionType.system, level: 3},
     "SUPER_ADMIN": { id: "SUPER_ADMIN", name: "Super admin", description: "Has all permissions to manage the entire system", type: PermissionType.system, level: 4},
 }
+export const systemPermissionCount = Object.keys(systemPermissionMeta).length
 
 export const filePermissionMeta: Record<FilePermission, PermissionMeta<FilePermission>> = {
     "READ": { id: "READ", name: "Read", description: "Read a file", type: PermissionType.file, level: 0},
@@ -22,3 +23,4 @@ export const filePermissionMeta: Record<FilePermission, PermissionMeta<FilePermi
     "SHARE": { id: "SHARE", name: "Share", description: "Publicly share a file", type: PermissionType.file, level: 0},
     "RENAME": { id: "RENAME", name: "Rename", description: "Rename a file", type: PermissionType.file, level: 0},
 }
+export const filePermissionCount = Object.keys(filePermissionMeta).length

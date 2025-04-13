@@ -12,6 +12,7 @@
     import FilePermissionCreator from "./FilePermissionCreator.svelte";
     import FilePermissionEditor from "./FilePermissionEditor.svelte";
     import type { EntityPermissionMeta } from "./code/types";
+    import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -169,7 +170,7 @@
                 <!-- Create permission button -->
                 <Dialog.Root bind:open={permissionCreatorOpen}>
                     <Dialog.Trigger>
-                        <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-3 rounded-lg bg-neutral-300 hover:bg-neutral-400/50 dark:bg-neutral-700/50 dark:hover:bg-neutral-700 disabled:opacity-70 duration-150">
+                        <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-2 rounded-md bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 shadow-sm">
                             <div class="size-full aspect-square rotate-45">
                                 <CloseIcon></CloseIcon>
                             </div>
@@ -185,7 +186,7 @@
                                 <div class="flex items-center justify-between w-full">
                                     <h3>Create a file permission</h3>
                                     <Dialog.Close>
-                                        <div class="rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] p-2">
+                                        <div class="rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] aspect-square p-2">
                                             <CloseIcon></CloseIcon>
                                         </div>
                                     </Dialog.Close>
@@ -199,7 +200,7 @@
                 </Dialog.Root>
             </div>
 
-            <div class="flex flex-col bg-neutral-400/50 dark:bg-neutral-900 rounded px-2 py-2 mx-2 overflow-y-auto min-h-[3rem] flex-auto custom-scrollbar">
+            <div class="flex flex-col bg-neutral-400/50 dark:bg-neutral-900 rounded-md px-2 py-2 mx-2 overflow-y-auto min-h-[3rem] flex-auto custom-scrollbar">
                 {#if permissionData && permissionData.permissions.length > 0}
                     <div in:fade={{duration: 75}} class="w-fill min-h-full h-fit flex flex-col gap-1">
                         <!-- User Permissions -->
@@ -215,12 +216,21 @@
                         {/each}
 
                         {#snippet permissionCard(meta: EntityPermissionMeta)}
-                            <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-1 rounded bg-neutral-300 dark:bg-neutral-700 hover:ring-2 ring-blue-500 w-full px-2 py-1">
-                                <p>{meta.permission.permissionType}: {meta.username ?? meta.role!.name}</p>
-                                <div class="flex gap-x-4 flex-wrap">
-                                    {#each meta.permission.permissions as perm}
-                                        <p class="rounded bg-neutral-400/30 dark:bg-neutral-600/30 px-2 py-1 text-sm">{perm}</p>
-                                    {/each}
+                            <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-2 rounded-md bg-neutral-200 dark:bg-neutral-800 hover:ring-2 ring-blue-500 w-full px-3 py-2 shadow-sm transition-colors duration-150">
+                                <div class="flex justify-between items-center">
+                                    <p class="">{meta.permission.permissionType}: {meta.username ?? meta.role!.name}</p>
+                                </div>
+                                <div class="flex gap-2 flex-wrap">
+                                    {#if meta.permission.permissions.length === filePermissionCount}
+                                        <span class="inline-flex items-center rounded-md bg-neutral-300/80 dark:bg-neutral-700/80 px-2.5 py-1 text-sm shadow-sm">All Permissions</span>
+                                    {:else if meta.permission.permissions.length === 0}
+                                        <span class="inline-flex items-center rounded-md bg-neutral-300/80 dark:bg-neutral-700/80 px-2.5 py-1 text-sm shadow-sm">No Permissions</span>
+                                    {:else}
+                                        {#each meta.permission.permissions as perm}
+                                            {@const meta = filePermissionMeta[perm]}
+                                            <span class="inline-flex items-center rounded-md bg-neutral-300/80 dark:bg-neutral-700/80 px-2.5 py-1 text-sm shadow-sm">{meta.name}</span>
+                                        {/each}
+                                    {/if}
                                 </div>
                             </button>
                         {/snippet}
@@ -237,7 +247,7 @@
                                             <div class="flex items-center justify-between w-full">
                                                 <h3>Edit file permission</h3>
                                                 <Dialog.Close>
-                                                    <div class="rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] p-2">
+                                                    <div class="rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] aspect-square p-2">
                                                         <CloseIcon></CloseIcon>
                                                     </div>
                                                 </Dialog.Close>
@@ -252,7 +262,7 @@
                     </div>
                 {:else if permissionData && permissionData.permissions.length === 0}
                     <div in:fade={{duration: 75}} class="center">
-                        <p>No permissions</p>
+                        <p class="text-neutral-500 dark:text-neutral-400 py-2">No permissions</p>
                     </div>
                 {:else if permissionDataLoading}
                     <!-- <div in:fade={{duration:75}} class="center py-2">
@@ -260,7 +270,7 @@
                     </div> -->
                 {:else}
                     <div in:fade={{duration: 75}} class="center">
-                        <p>Failed to load permissions.</p>
+                        <p class="text-neutral-600 dark:text-neutral-400 py-2">Failed to load permissions.</p>
                     </div>
                 {/if}
             </div>
