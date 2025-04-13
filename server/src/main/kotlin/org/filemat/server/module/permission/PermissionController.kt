@@ -27,6 +27,26 @@ class PermissionController(
     private val adminUserService: AdminUserService
 ) : AController() {
 
+    @PostMapping("/delete-entity")
+    fun deleteEntityPermissionsMapping(
+        request: HttpServletRequest,
+        @RequestParam("permissionId") rawPermissionId: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val permissionId = parseUlidOrNull(rawPermissionId)
+            ?: return bad("Invalid permission ID.", "validation")
+
+        entityPermissionService.deletePermission(
+            user = user,
+            permissionId = permissionId,
+        ).let {
+            if (it.notFound) return bad("This file was not found.", "")
+            if (it.rejected) return bad(it.error, "")
+            if (it.hasError) return internal(it.error, "")
+            return ok()
+        }
+    }
+
     @PostMapping("/update-entity")
     fun updateEntityPermissionsMapping(
         request: HttpServletRequest,

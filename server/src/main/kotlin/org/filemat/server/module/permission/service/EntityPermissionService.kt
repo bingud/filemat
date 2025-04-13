@@ -39,6 +39,39 @@ class EntityPermissionService(
      */
     private val pathTree = EntityPermissionTree()
 
+
+    fun deletePermission(user: Principal, permissionId: Ulid): Result<Unit> {
+        val action = UserAction.DELETE_ENTITY_PERMISSION
+
+        // Get the entity permission
+        val permission = pathTree.getPermissionById(permissionId)
+            ?: return Result.reject("This permission ID does not exist.")
+
+        // Get the underlying entity
+        val entity = entityService.getById(permission.entityId, action).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        entity.path ?: return Result.error("The path for the indexed file for this permission is null.")
+
+        fileService.isAllowedToAccessFile(user = user, pathObject = FilePath(entity.path)).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Check if user has permission to edit file permissions
+        val hasPermission = user.canEditEntityPermission(entityOwnerId = entity .ownerId)
+        if (!hasPermission) return Result.reject("You do not have permission to modify the permissions of this file.")
+
+        // Delete permission
+        db_deletePermission(permissionId, action).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        pathTree.removePermissionByPermissionId(permissionId)
+
+        return Result.ok()
+    }
+
     /**
      * Update the list of permissions for a file permission
      */
@@ -61,8 +94,7 @@ class EntityPermissionService(
         }
 
         // Check if user has permission to edit file permissions
-        val hasPermission = user.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
-                || (user.userId == entity.ownerId) && user.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        val hasPermission = user.canEditEntityPermission(entityOwnerId = entity.ownerId)
         if (!hasPermission) return Result.reject("You do not have permission to modify the permissions of this file.")
 
         val newPermission = permission.copy(
@@ -100,8 +132,7 @@ class EntityPermissionService(
         }
 
         // Check if user has permission to edit file permissions
-        val hasPermission = user.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
-                || (user.userId == existingEntity?.ownerId) && user.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        val hasPermission = user.canEditEntityPermission(entityOwnerId = existingEntity?.ownerId)
         if (!hasPermission) return Result.reject("You do not have permission to modify the permissions of this file.")
 
         // Check existing permission
@@ -136,6 +167,16 @@ class EntityPermissionService(
         pathTree.addPermission(path.path, permission)
 
         return permission.toResult()
+    }
+
+    /**
+     * Returns if user has sufficient permissions to edit an entity permission
+     */
+    private fun Principal.canEditEntityPermission(entityOwnerId: Ulid?): Boolean {
+        val hasManageAll = this.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
+        if (hasManageAll) return true
+
+        return (this.userId == entityOwnerId) && this.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
     }
 
     /**
@@ -179,6 +220,22 @@ class EntityPermissionService(
                 targetId = permissionId
             )
             return Result.error("Failed to save permissions.")
+        }
+    }
+
+    private fun db_deletePermission(permissionId: Ulid, action: UserAction): Result<Unit> {
+        try {
+            permissionRepository.deletePermission(permissionId)
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = action,
+                description = "Failed to delete file permission from database.",
+                message = e.stackTraceToString(),
+                targetId = permissionId
+            )
+            return Result.error("Failed to delete permissions.")
         }
     }
 
