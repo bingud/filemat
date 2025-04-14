@@ -3,10 +3,13 @@ package org.filemat.server.module.auth.filter
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.filemat.server.common.util.measureMillis
 import org.filemat.server.module.auth.service.AuthService
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
+import kotlin.system.measureNanoTime
+import kotlin.system.measureTimeMillis
 
 @Order(2)
 @Component
@@ -27,6 +30,7 @@ class AuthenticationFilter(private val authService: AuthService) : OncePerReques
         }
 
         request.setAttribute("auth", principal.valueOrNull)
-        return chain.doFilter(request, response)
+
+        chain.doFilter(request, response)
     }
 }

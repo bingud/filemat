@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.State
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.measureMillis
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.endpointAuthMap
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
@@ -12,6 +13,7 @@ import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
+import kotlin.system.measureTimeMillis
 
 @Order(3)
 @Component

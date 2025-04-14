@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.State
+import org.filemat.server.common.util.measureMillis
+import org.filemat.server.common.util.print
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -18,7 +20,6 @@ class UtilityFilter : OncePerRequestFilter() {
         // Check if application has finished starting
         if (!State.App.isInitialized) return
 
-
-        return filterChain.doFilter(request, response)
+        filterChain.doFilter(request, response)
     }
 }

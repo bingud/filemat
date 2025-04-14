@@ -34,7 +34,7 @@ inline fun <reified T> String.parseJsonOrNull(): T? {
     return Json.decodeFromStringOrNull<T>(this)
 }
 
-fun <T> measureNano(block: () -> T): Pair<T, Long> {
+inline fun <T> measureNano(block: () -> T): Pair<T, Long> {
     var result: T
 
     val nano = measureNanoTime {
@@ -44,7 +44,7 @@ fun <T> measureNano(block: () -> T): Pair<T, Long> {
     return result to nano
 }
 
-fun <T> measureMillis(block: () -> T): Pair<T, Double> {
+inline fun <T: Any?> measureMillis(block: () -> T): Pair<T, Double> {
     return measureNano(block).let { it.first to it.second.toDouble() / 1_000_000 }
 }
 
@@ -126,6 +126,8 @@ fun getActualCallerPackage(): String {
 
     return "Unknown"
 }
+
+fun <T> T.print() = println(this)
 
 // SHITERS
 

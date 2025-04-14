@@ -6,7 +6,9 @@ import kotlinx.serialization.json.encodeToJsonElement
 import org.filemat.server.common.State
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.getPackage
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.measureMillis
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
@@ -35,6 +37,8 @@ class StateController : AController() {
         @RequestParam("systemRoleIds", required = false) rawrSysRoleIds: String?,
         @RequestParam("app", required = false) rawApp: String?,
     ): ResponseEntity<String> {
+        Exception().printStackTrace()
+
         val principal = request.getPrincipal()
 
         val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
@@ -93,6 +97,7 @@ class StateController : AController() {
 
             builder.put("systemRoleIds", valueBuilder.build())
         }
+
 
         val serialized = builder.toString()
         return ok(serialized)

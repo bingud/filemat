@@ -9,8 +9,10 @@ import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
+import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.EntityPermissionDto
+import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.PermissionType
 import org.filemat.server.module.permission.repository.PermissionRepository
@@ -27,12 +29,13 @@ class EntityPermissionServiceTest {
     private val permissionRepository = mockk<PermissionRepository>()
     private val logService = mockk<LogService>()
     private val entityService = mockk<EntityService>()
+    private val fileService = mockk<FileService>()
 
     private lateinit var entityPermissionService: EntityPermissionService
 
     private val entityIdA = UlidCreator.getUlid()
     private val entityIdB = UlidCreator.getUlid()
-    private val roleId = Props.userRoleId
+    private val roleId = Props.Roles.userRoleId
     private val userId = UlidCreator.getUlid()
     private val pathA = "/home/wsl/test"
     private val pathB = "/"
@@ -44,7 +47,8 @@ class EntityPermissionServiceTest {
         entityPermissionService = EntityPermissionService(
             permissionRepository = permissionRepository,
             logService = logService,
-            entityService = entityService
+            entityService = entityService,
+            fileService = fileService
         )
 
         // permission
@@ -121,7 +125,7 @@ class EntityPermissionServiceTest {
         )
 
         assertTrue {
-            result != null && result.permissions.contains(Permission.READ)
+            result != null && result.permissions.contains(FilePermission.READ)
         }
     }
 
