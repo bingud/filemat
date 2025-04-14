@@ -47,6 +47,7 @@
     let lastLoaded = ""
     $effect(() => {
         const selected = filesState.selectedEntry.path
+
         if (!selected) return
         if (!filesState.ui.detailsOpen) return
         if (lastLoaded === selected) return

@@ -58,6 +58,12 @@
         if (result) {
             filesState.data.meta = result.meta
             filesState.data.entries = result.entries || null
+            
+            // If no entry is selected and this is a folder, select the current folder
+            if (filesState.selectedEntry.path === null && result.meta.fileType === "FOLDER") {
+                filesState.selectedEntry.path = result.meta.filename
+                console.log(`selected`, filesState.selectedEntry.path)
+            }
         }
         filesState.metaLoading = false
     }
