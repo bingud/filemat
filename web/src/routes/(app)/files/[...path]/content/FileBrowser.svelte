@@ -7,6 +7,7 @@
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
+    import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import { onMount } from "svelte";
     import { filesState } from "./code/filesState.svelte";
 
@@ -148,7 +149,12 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
-                            <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700">Details</button>
+                            <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                <div class="size-5 flex-shrink-0">
+                                    <InfoIcon />
+                                </div>
+                                <span>Details</span>
+                            </button>
                             <hr class="basic-hr my-2">
                             <p class="px-4 truncate opacity-70">File: {filenameFromPath(menuEntry.filename)}</p>
                         </div>

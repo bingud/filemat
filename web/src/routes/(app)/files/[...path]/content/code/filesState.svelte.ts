@@ -105,11 +105,17 @@ class FileUiStateClasss {
 }
 
 class FileDataStateClass {
+    // Metadata of currently open file
     meta = $state(null) as FileMetadata | null
+    // Raw content of currently open file
     content = $state(null) as Blob | null
+    // Decoded content of currently open file
     decodedContent = $state(null) as any | null
+    // Download URL of currently open file
     contentUrl = $derived(`/api/v1/file/content?path=${filesState.path}`)
+    // All entries in the current directory
     entries = $state(null) as FileMetadata[] | null
+    // Sorted entries in the current directory
     sortedEntries = $derived.by(() => {
         if (!filesState.data || !filesState.data.entries) return null
         const files = filesState.data.entries.filter((v) => v.fileType === "FILE" || v.fileType === "FILE_LINK")

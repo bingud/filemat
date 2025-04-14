@@ -4,22 +4,65 @@
     import { goto } from '$app/navigation';
     import { breadcrumbState, type Segment } from './code/breadcrumbState.svelte';
     import { filesState } from './code/filesState.svelte';
+    import InfoIcon from '$lib/component/icons/InfoIcon.svelte';
+    import { calculateTextWidth } from "$lib/code/util/uiUtil";
 
     function openEntry(path: string) {
         goto(`/files${path}`)
+    }
+
+    // Context menu for breadcrumb buttons
+    let contextMenuButton: HTMLButtonElement | null = $state(null);
+    let menuSegment: Segment | null = $state(null);
+    let contextMenuOpen = $state(false);
+
+    function onContextMenu(event: MouseEvent, segment: Segment, button: HTMLButtonElement) {
+        event.preventDefault();
+        contextMenuButton = button;
+        menuSegment = segment;
+        contextMenuOpen = true;
+    }
+
+    function onContextMenuOpenChange(open: boolean) {
+        if (!open) {
+            contextMenuButton = null;
+            menuSegment = null;
+        }
+    }
+
+    function option_details(segment: Segment) {
+        filesState.selectedEntry.path = `/${segment.path}`;
+        filesState.ui.detailsOpen = true;
+        closeContextMenu();
+    }
+
+    function closeContextMenu() {
+        contextMenuButton = null;
+        menuSegment = null;
     }
 </script>
 
 <!-- Breadcrumbs -->
 <div class="w-full flex items-center h-[2rem] overflow-hidden">
     {#if filesState.path === "/"}
-        <p class="px-2 py-1">Files</p>
+        <button 
+            title="Files" 
+            on:click={() => { openEntry(`/`) }}
+            on:contextmenu={(e) => { onContextMenu(e, { name: "Files", path: "", width: calculateTextWidth("Files") }, e.currentTarget) }}
+            class="py-1 px-2 whitespace-nowrap max-w-full truncate rounded hover:bg-neutral-300 dark:hover:bg-neutral-800"
+        >Files</button>
     {:else}
         {@const hiddenEmpty = breadcrumbState.hidden.length < 1}
         <!-- Change chevron width in breadcrumb calculator -->
 
         {#snippet breadcrumbButton(segment: Segment, className: string)}
-            <button disabled={filesState.path === segment.path} title={segment.name} on:click={() => { openEntry(`/${segment.path}`) }} class="py-1 px-2 whitespace-nowrap max-w-full truncate {className}">{segment.name}</button>
+            <button 
+                disabled={filesState.path === segment.path} 
+                title={segment.name} 
+                on:click={() => { openEntry(`/${segment.path}`) }} 
+                on:contextmenu={(e) => { onContextMenu(e, segment, e.currentTarget) }}
+                class="py-1 px-2 whitespace-nowrap max-w-full truncate {className}"
+            >{segment.name}</button>
         {/snippet}
 
         {#if !hiddenEmpty}
@@ -53,3 +96,23 @@
         </div>
     {/if}
 </div>
+
+<!-- Context menu for breadcrumb buttons -->
+{#if contextMenuButton && menuSegment}
+    {#key contextMenuButton || menuSegment}
+        <div class="z-50 relative">
+            <Popover.Root bind:open={contextMenuOpen} onOpenChange={onContextMenuOpenChange}>
+                <Popover.Content onInteractOutside={() => { contextMenuOpen = false }} customAnchor={contextMenuButton} align="start" >
+                    <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
+                        <button on:click={() => { option_details(menuSegment!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                            <div class="size-5 flex-shrink-0">
+                                <InfoIcon />
+                            </div>
+                            <span>Details</span>
+                        </button>
+                    </div>
+                </Popover.Content>
+            </Popover.Root>
+        </div>
+    {/key}
+{/if}

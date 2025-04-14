@@ -13,6 +13,7 @@
     import { fade, fly } from "svelte/transition";
     import { linear } from "svelte/easing";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
+    import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -93,8 +94,10 @@
                 </div>
 
                 <div class="w-[15%] h-full flex items-center justify-end">
-                    <button on:click={() => { filesState.ui.toggleSidebar() }} class="h-full aspect-square p-3 group text-sm flex">
-                        <p class="size-full rounded-full center ring ring-neutral-600 group-hover:bg-neutral-300 dark:group-hover:bg-neutral-700">i</p>
+                    <button on:click={() => { filesState.ui.toggleSidebar() }} class="h-full aspect-square p-3 group flex items-center justify-center">
+                        <div class="size-full rounded-full hover:bg-neutral-300 dark:hover:bg-neutral-700">
+                            <InfoIcon />
+                        </div>
                     </button>
                 </div>
             </div>
