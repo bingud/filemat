@@ -45,5 +45,10 @@
         <symbol id="chevron-down" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="size-full aspect-square" viewBox="0,0,256,256">
             <g fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal"><g transform="scale(8.53333,8.53333)"><path d="M24.99023,8.98633c-0.26377,0.00624 -0.51439,0.11645 -0.69727,0.30664l-9.29297,9.29297l-9.29297,-9.29297c-0.18827,-0.19353 -0.4468,-0.30272 -0.7168,-0.30273c-0.40692,0.00011 -0.77321,0.24676 -0.92633,0.62377c-0.15312,0.37701 -0.06255,0.80921 0.22907,1.09303l10,10c0.39053,0.39037 1.02353,0.39037 1.41406,0l10,-10c0.29724,-0.28583 0.38857,-0.7248 0.23,-1.10546c-0.15857,-0.38066 -0.53454,-0.62497 -0.94679,-0.61524z"></path></g></g>
         </symbol>
+
+        <!-- Plus icon -->
+        <symbol id="symbol-plus" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" class="size-full aspect-square" viewBox="0,0,256,256">
+            <g fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal"><g transform="scale(10.66667,10.66667)"><path d="M12,2c-0.55228,0 -1,0.44772 -1,1v8h-8c-0.55228,0 -1,0.44772 -1,1c0,0.55228 0.44772,1 1,1h8v8c0,0.55228 0.44772,1 1,1c0.55228,0 1,-0.44772 1,-1v-8h8c0.55228,0 1,-0.44772 1,-1c0,-0.55228 -0.44772,-1 -1,-1h-8v-8c0,-0.55228 -0.44772,-1 -1,-1z"></path></g></g>
+        </symbol>
     </svg>
 </div>
