@@ -20,7 +20,7 @@ data class Principal(
 ) {
     companion object {
         fun Principal.getRoles(): List<Role> {
-            return roles.map { State.Auth.roleMap[it] ?: throw IllegalStateException("Role is null") }
+            return roles.mapNotNull { State.Auth.roleMap[it] }
         }
 
         /**

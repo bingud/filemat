@@ -77,6 +77,12 @@ class AuthService(
         }
     }
 
+    fun removeRoleFromAllPrincipals(roleId: Ulid) {
+        principalMap.forEach { userId, principal ->
+            principal.roles.remove(roleId)
+        }
+    }
+
     /**
      * Update a users principal in memory
      */

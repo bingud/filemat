@@ -37,8 +37,6 @@ class StateController : AController() {
         @RequestParam("systemRoleIds", required = false) rawrSysRoleIds: String?,
         @RequestParam("app", required = false) rawApp: String?,
     ): ResponseEntity<String> {
-        Exception().printStackTrace()
-
         val principal = request.getPrincipal()
 
         val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()

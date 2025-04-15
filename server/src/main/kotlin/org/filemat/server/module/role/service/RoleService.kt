@@ -9,6 +9,7 @@ import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
+import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service
 class RoleService(
     private val roleRepository: RoleRepository,
     private val logService: LogService,
+    private val authService: AuthService,
 ) {
 
     fun remove(user: Principal, roleId: Ulid, userAction: UserAction): Result<Unit> {
@@ -42,6 +44,7 @@ class RoleService(
         }
 
         State.Auth.roleMap.remove(roleId)
+        authService.removeRoleFromAllPrincipals(roleId)
 
         logService.info(
             type = LogType.AUDIT,
