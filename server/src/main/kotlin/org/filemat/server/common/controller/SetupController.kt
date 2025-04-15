@@ -13,6 +13,7 @@ import org.filemat.server.config.Props
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.PlainFolderVisibility
 import org.filemat.server.module.file.service.FolderVisibilityService
 import org.filemat.server.module.log.model.LogLevel
@@ -91,6 +92,7 @@ class SetupController(
         @RequestParam("folder-visibility-list") rawFolderVisibilities: String,
         @RequestParam("follow-symlinks") rawFollowSymlinks: String,
         @RequestParam("setup-code") setupCode: String,
+        @RequestParam("upload-folder-path") rawUploadFolderPath: String,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
         if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
@@ -99,6 +101,7 @@ class SetupController(
             ?: Validator.password(plainPassword)
             ?: Validator.username(username)
         )?.let { return@run bad(it, "validation") }
+        val uploadFolderPath = FilePath(rawUploadFolderPath)
 
         val codeVerification = appService.verifySetupCode(setupCode)
         if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
@@ -164,6 +167,14 @@ class SetupController(
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction Result.error("Failed to save setup status to database.")
+                }
+            }
+
+            // Save download folder path
+            settingService.setSetting(Props.Settings.uploadFolderPath, uploadFolderPath.path).let { result ->
+                if (result.isNotSuccessful) {
+                    status.setRollbackOnly()
+                    return@runTransaction Result.error("Failed to save upload folder path to database.")
                 }
             }
 

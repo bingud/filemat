@@ -30,6 +30,7 @@ object Props {
         const val appSetupCode = "application_setup_code"
         const val isAppSetup = "is_application_setup"
         const val followSymlinks = "follow_symbolic_links"
+        const val uploadFolderPath = "upload_folder_path"
     }
 
 }

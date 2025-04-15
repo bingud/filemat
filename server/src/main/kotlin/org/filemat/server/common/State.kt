@@ -4,6 +4,7 @@ import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.role.model.Role
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.properties.Delegates
 
 /**
  * Dynamic application state.
@@ -12,8 +13,10 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object State {
     object App {
-        var isSetup: Boolean = false
-        var isInitialized: Boolean = false
+        var isSetup: Boolean by Delegates.notNull()
+        var isInitialized: Boolean by Delegates.notNull()
+        var uploadFolderPath: String by Delegates.notNull()
+
         val isDev = env("FM_DEV_MODE")?.toBooleanStrictOrNull() ?: false
 
         val hideSensitiveFolders = env("FM_HIDE_SENSITIVE_FOLDERS")?.toBooleanStrictOrNull() ?: true

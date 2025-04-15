@@ -35,6 +35,9 @@
     let exposedFolders: { path: string, isExposed: boolean }[] = $state([])
     let followSymlinks = $state(false)
 
+    // Section 4
+    let uploadPathInput = $state("/tmp/filemat/downloads/")
+
     onMount(async () => {
         await getSetupStatus()
         if (dev) {
@@ -116,14 +119,11 @@
     }
 
     async function submit_3() {
-        // if (running) return
-        // running = true
+        increasePhase()
+    }
 
-        try {
-            await submit_finish()
-        } finally {
-            // running = false
-        }
+    async function submit_4() {
+        await submit_finish()
     }
 
     async function submit_finish() {
@@ -140,6 +140,7 @@
             body.append("folder-visibility-list", serializedFolderVisibilities)
             body.append("follow-symlinks", followSymlinks.toString())
             body.append("setup-code", codeInput)
+            body.append("upload-folder-path", uploadPathInput)
 
             const response = await safeFetch(`/api/v1/setup/submit`, { method: "POST", body: body })
             if (response.failed) {
@@ -272,18 +273,18 @@
                     </div>
                 </div>
 
-                <div class="w-[35rem] max-w-full h-fit max-h-svh sm:max-h-fit sm:flex-grow flex flex-col gap-8 items-center sm:overflow-y-hidden py-12 border-y-2 border-neutral-900">
+                <div class="w-[35rem] max-w-full h-fit max-h-svh sm:max-h-fit sm:flex-grow flex flex-col gap-8 items-center sm:overflow-y-hidden py-12 border-y-2 border-neutral-200 dark:border-neutral-900">
                     <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto custom-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
                         {#each exposedFolders as folder, index}
                             <div class="flex flex-col sm:flex-row items-center gap-2 shrink-0">
                                 <input placeholder="Full folder path" class="sm:order-2 max-sm:w-full sm:flex-grow shrink-0" bind:value={folder.path}>
                                 <div class="flex items-center justify-between w-full sm:contents">
-                                    <button on:click={() => { exposedFolders.splice(index, 1) }} title="Remove this folder" class="sm:order-1 flex items-center justify-center w-[1.5rem] hover:bg-neutral-800 h-full rounded opacity-60">
+                                    <button on:click={() => { exposedFolders.splice(index, 1) }} title="Remove this folder" class="sm:order-1 flex items-center justify-center w-[1.5rem] hover:bg-neutral-200 dark:hover:bg-neutral-800 h-full rounded opacity-60">
                                         <div class="size-4">
                                             <Close />
                                         </div>
                                     </button>
-                                    <button on:click={() => { folder.isExposed = !folder.isExposed }} class="sm:order-3 h-full rounded px-4 py-2 flex gap-2 bg-neutral-900 hover:bg-neutral-800 items-center w-[7rem] select-none" title={`Make the selected folder ${folder.isExposed ? 'hidden' : 'visible'} in Filemat`}>
+                                    <button on:click={() => { folder.isExposed = !folder.isExposed }} class="sm:order-3 h-full rounded px-4 py-2 flex gap-2 bg-neutral-200 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 items-center w-[7rem] select-none" title={`Make the selected folder ${folder.isExposed ? 'hidden' : 'visible'} in Filemat`}>
                                         <div class="size-[1.2rem] {folder.isExposed ? 'fill-green-500' : 'fill-red-500'}">
                                             {#if folder.isExposed}
                                                 <Checkmark />
@@ -310,9 +311,21 @@
                         </div>
                         <p><button title="Open information about symbolic links" on:click={openInfo_symbolicLinks} class="underline hover:text-blue-400">Click here</button> to learn about symbolic links.</p>
                     </div>
-                    <button on:click={submit_3} class="tw-form-button">{#if !running}Finish setup{:else}...{/if}</button>
+                    <button on:click={submit_3} class="tw-form-button">{#if !running}Continue{:else}...{/if}</button>
                 </div>
             {:else if phase === 4}
+                <div class="flex flex-col items-center gap-6">
+                    <h1 class="text-2xl font">Set upload folder</h1>
+                    <p>Choose where temporary uploaded files will be stored</p>
+                    
+                    <form class="flex flex-col gap-2 w-[20rem] max-w-full" on:submit|preventDefault={submit_4}>
+                        <label for="download-path-input">Folder path</label>
+                        <input type="text" bind:value={uploadPathInput} id="download-path-input" class="">
+                        <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
+                        <button type="submit" class="tw-form-button mt-4">{running ? "..." : "Continue"}</button>
+                    </form>
+                </div>
+            {:else if phase === 5}
                 <div class="flex flex-col items-center gap-6">
                     <h1 class="text-2xl font">Filemat was set up.</h1>
                     <a href="/" class="tw-form-button">Continue</a>

@@ -75,12 +75,18 @@ class DatabaseSetup(
             }
         }
 
+        // Upload folder path setting
+        settingService.getSetting(Props.Settings.uploadFolderPath).let { result ->
+            result.valueOrNull?.value?.toBooleanStrictOrNull()?.let { bool ->
+                State.App.followSymLinks = bool
+            }
+        }
+
         // Is app setup setting
         settingService.getSetting(Props.Settings.isAppSetup).let { result ->
             result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->
-                if (bool == true) {
-                    State.App.isSetup = bool
-                } else {
+                State.App.isSetup = bool ?: false
+                if (bool != true) {
                     appService.generateSetupCode()
                 }
             }
