@@ -36,7 +36,7 @@
     let followSymlinks = $state(false)
 
     // Section 4
-    let uploadPathInput = $state("/tmp/filemat/downloads/")
+    let uploadPathInput = $state("/tmp/filemat")
 
     onMount(async () => {
         await getSetupStatus()
@@ -322,6 +322,7 @@
                         <label for="download-path-input">Folder path</label>
                         <input type="text" bind:value={uploadPathInput} id="download-path-input" class="">
                         <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
+                        <p class="text-sm text-neutral-500">Files will appear in: <CodeChunk>{uploadPathInput}/uploads</CodeChunk></p>
                         <button type="submit" class="tw-form-button mt-4">{running ? "..." : "Continue"}</button>
                     </form>
                 </div>

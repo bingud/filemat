@@ -18,6 +18,7 @@
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
+    import * as tus from 'tus-js-client';
     
     createFilesState()
     createBreadcrumbState()
@@ -33,9 +34,64 @@
     
     // Functions for new item actions
     function handleUpload() {
-        newButtonPopoverOpen = false
+        newButtonPopoverOpen = false;
 
-        
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.style.display = 'none'; // Keep it hidden
+
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) {
+                return;
+            }
+
+            // Construct the full target path
+            const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
+            const targetFilename = `${currentPath}/${file.name}`;
+
+            console.log(`Attempting to upload ${file.name} to ${targetFilename}`);
+
+            const upload = new tus.Upload(file, {
+                endpoint: "/api/v1/file/upload", // Your TUS endpoint
+                retryDelays: [0, 3000, 5000, 10000, 20000],
+                metadata: {
+                    filename: targetFilename,
+                    // Add any other metadata your server needs
+                    // filetype: file.type 
+                },
+                onError: (error) => {
+                    console.error("Failed because:", error);
+                    // Add user feedback for error
+                    alert(`Upload failed: ${error}`);
+                },
+                onProgress: (bytesUploaded, bytesTotal) => {
+                    const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
+                    console.log(bytesUploaded, bytesTotal, percentage + "%");
+                    // Update UI with progress if needed
+                },
+                onSuccess: () => {
+                    // Cast upload.file to File to access the name property safely
+                    const uploadedFile = upload.file as File;
+                    console.log("Download %s from %s", uploadedFile.name, upload.url);
+                    // Add user feedback for success
+                    alert(`Successfully uploaded ${uploadedFile.name}`);
+                    // Optionally, refresh the file list after upload
+                    // loadPageData(filesState.path); // <-- Be mindful of potential race conditions if uploads are very fast
+                }
+            });
+
+            // Start the upload
+            upload.start();
+
+            // Clean up the input element
+            document.body.removeChild(input);
+        };
+
+        // Append to body, trigger click, and remove
+        document.body.appendChild(input);
+        input.click();
+        // Note: Removal is now handled in the onchange event after selection or cancellation
     }
     
     function handleNewFolder() {
