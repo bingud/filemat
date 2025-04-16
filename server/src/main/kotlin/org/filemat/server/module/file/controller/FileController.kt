@@ -1,35 +1,46 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import me.desair.tus.server.TusFileUploadService
+import me.desair.tus.server.upload.UploadInfo
+import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.parseTusHttpHeader
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
-import java.io.ByteArrayInputStream
-import java.io.FileInputStream
-import java.io.OutputStream
 import java.net.URLConnection
 
 
 @RestController
 @RequestMapping("/v1/file")
-class FileController(private val fileService: FileService) : AController() {
+class FileController(
+    private val fileService: FileService,
+) : AController() {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    @RequestMapping(value = ["/upload", "/upload/{uploadId}"], method = [RequestMethod.OPTIONS, RequestMethod.POST, RequestMethod.HEAD, RequestMethod.PATCH])
+    fun handleTusRequest(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        @PathVariable("uploadId", required = false) uploadId: String?
+    ) {
+        fileService.handleTusUpload(
+            request = request,
+            response = response,
+        )
+    }
 
     @GetMapping("/content")
     fun getListFolderItemsMapping(

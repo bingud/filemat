@@ -4,14 +4,14 @@ import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.*
-import kotlinx.serialization.json.Json.Default.encodeToJsonElement
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.user.model.UserAction
 import org.springframework.transaction.TransactionStatus
 import java.nio.file.Paths
 import java.time.Instant
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureNanoTime
 
@@ -126,6 +126,23 @@ fun getActualCallerPackage(): String {
 
     return "Unknown"
 }
+
+fun parseTusHttpHeader(header: String): Map<String, String> {
+    return header.split(",").mapNotNull {
+        val parts = it.trim().split(" ", limit = 2)
+        if (parts.size == 2) {
+            try {
+                val key = parts[0]
+                val decodedValue = String(Base64.getDecoder().decode(parts[1]))
+                key to decodedValue
+            } catch (_: IllegalArgumentException) {
+                null // Skip invalid base64
+            }
+        } else null
+    }.toMap()
+}
+
+fun String.toFilePath() = FilePath(this)
 
 fun <T> T.print() = println(this)
 

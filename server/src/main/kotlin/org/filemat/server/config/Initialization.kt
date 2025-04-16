@@ -1,5 +1,6 @@
 package org.filemat.server.config
 
+import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.*
 import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
@@ -10,7 +11,7 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import kotlin.system.exitProcess
 
-@Component
+@Component("initialization")
 class Initialization(
     private val databaseSetup: DatabaseSetup,
     private val folderVisibilityService: FolderVisibilityService,
@@ -20,8 +21,8 @@ class Initialization(
     /**
      * #### Initializes the application.
      */
-    @EventListener(ApplicationReadyEvent::class)
-    fun initialize() = CoroutineScope(Dispatchers.Default).launch {
+    @PostConstruct //(ApplicationReadyEvent::class)
+    fun initialize() {
         databaseSetup.initialize_setUpSchema().line()
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()

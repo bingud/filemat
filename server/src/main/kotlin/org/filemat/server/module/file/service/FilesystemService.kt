@@ -1,16 +1,14 @@
 package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
+import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.FileUtils
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
 import org.springframework.stereotype.Service
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.LinkOption
-import java.nio.file.Path
-import java.nio.file.Paths
+import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
@@ -30,6 +28,22 @@ class FilesystemService {
     fun isSupportedFilesystem(path: FilePath): Boolean? {
         return FileUtils.isSupportedFilesystem(path.pathObject)
     }
+
+    fun moveFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean): Result<Unit> {
+        return try {
+            Files.move(
+                source.pathObject,
+                destination.pathObject,
+                *if (overwriteDestination) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
+            )
+            Result.ok()
+        } catch (e: NoSuchFileException) {
+            Result.notFound()
+        } catch (e: Exception) {
+            Result.error("Failed to move file")
+        }
+    }
+
 
     /**
      * Gets metadata for a file.

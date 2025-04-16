@@ -1,12 +1,20 @@
 package org.filemat.server.module.file.service
 
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import me.desair.tus.server.TusFileUploadService
+import me.desair.tus.server.upload.UploadInfo
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
+import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.parseTusHttpHeader
+import org.filemat.server.common.util.toFilePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.FileMetadata
@@ -22,8 +30,6 @@ import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.FileInputStream
-import java.io.InputStream
-import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
@@ -42,9 +48,84 @@ class FileService(
     private val entityService: EntityService,
     private val logService: LogService,
     private val filesystem: FilesystemService,
+    private val tusService: TusFileUploadService,
 ) {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * Uses TUS to handle a file upload request
+     */
+    fun handleTusUpload(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        val user = request.getPrincipal()!!
+
+        // Check file permissions
+        if (request.method == "POST") {
+            val rawMeta: String? = request.getHeader("Upload-Metadata")
+            if (rawMeta == null) {
+                response.writer.write("Invalid upload metadata")
+                response.status = 400
+                return
+            }
+            val meta = parseTusHttpHeader(rawMeta)
+
+            val filename = meta["filename"]
+            if (filename == null) {
+                response.writer.write("Invalid filename")
+                response.status = 400
+                return
+            }
+
+            val isAllowed = isAllowedToAccessFile(user = user, pathObject = FilePath(filename))
+            if (isAllowed.isNotSuccessful) {
+                response.writer.write(isAllowed.errorOrNull ?: "You do not have permission to access this folder.")
+                response.status = 400
+                return
+            }
+        }
+
+        // Wrap request to change the path, so that TUS receives the api prefix
+        val wrappedRequest = RequestPathOverrideWrapper(request, "/api${request.requestURI}")
+        // Make TUS handle uploads
+        tusService.process(wrappedRequest, response)
+
+        // Required to commit response headers/status
+        if (!response.isCommitted) {
+            response.flushBuffer()
+        }
+
+        if (request.method == "PATCH") {
+            val info: UploadInfo? = tusService.getUploadInfo(wrappedRequest.requestURI)
+            if (info != null && !info.isUploadInProgress) {
+                val isUploaded = info.length == info.offset
+
+                // Handle when the file was successfully uploaded
+                if (isUploaded) {
+                    // Move the file from the uploads folder to the target destination
+                    val result = run<Result<Unit>> {
+                        val source = "${State.App.uploadFolderPath}/uploads/${info.id}".toFilePath()
+                        val destination = FilePath(info.metadata["filename"] ?: return@run Result.error("Destination filename is not in upload metadata."))
+
+                        // Move the file to the target folder
+                        val fileMoved = filesystem.moveFile(source = source, destination = destination, overwriteDestination = false)
+                        if (fileMoved.isNotSuccessful) return@run Result.error("Failed to move file from uploads folder.")
+
+                        // Create an entity
+                        entityService.create(
+                            path = destination,
+                            ownerId = user.userId,
+                            userAction = UserAction.UPLOAD_FILE,
+                        )
+
+                        Result.ok()
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Returns an input stream for the content of a file

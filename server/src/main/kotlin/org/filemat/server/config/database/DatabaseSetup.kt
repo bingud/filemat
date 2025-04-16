@@ -1,6 +1,7 @@
 package org.filemat.server.config.database
 
 import org.filemat.server.common.State
+import org.filemat.server.common.util.addPrefixIfNotPresent
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.module.role.service.RoleService
@@ -77,8 +78,8 @@ class DatabaseSetup(
 
         // Upload folder path setting
         settingService.getSetting(Props.Settings.uploadFolderPath).let { result ->
-            result.valueOrNull?.value?.toBooleanStrictOrNull()?.let { bool ->
-                State.App.followSymLinks = bool
+            result.valueOrNull?.value?.let { path ->
+                State.App.uploadFolderPath = path.removeSuffix("/").addPrefixIfNotPresent('/')
             }
         }
 
