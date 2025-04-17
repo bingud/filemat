@@ -71,15 +71,15 @@ class DatabaseSetup(
     fun initialize_loadSettings() {
         // Follow symlinks setting
         settingService.getSetting(Props.Settings.followSymlinks).let { result ->
-            result.valueOrNull?.value?.toBooleanStrictOrNull()?.let { bool ->
-                State.App.followSymLinks = bool
+            result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->
+                State.App.followSymLinks = bool ?: false
             }
         }
 
         // Upload folder path setting
         settingService.getSetting(Props.Settings.uploadFolderPath).let { result ->
-            result.valueOrNull?.value?.let { path ->
-                State.App.uploadFolderPath = path.removeSuffix("/").addPrefixIfNotPresent('/')
+            result.valueOrNull?.value.let { path ->
+                State.App.uploadFolderPath = path?.removeSuffix("/")?.addPrefixIfNotPresent('/') ?: Props.defaultUploadFolderPath
             }
         }
 

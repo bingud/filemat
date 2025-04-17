@@ -4,10 +4,9 @@ import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.*
 import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
+import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.FolderVisibilityService
 import org.filemat.server.module.permission.service.EntityPermissionService
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import kotlin.system.exitProcess
 
@@ -16,6 +15,7 @@ class Initialization(
     private val databaseSetup: DatabaseSetup,
     private val folderVisibilityService: FolderVisibilityService,
     private val filePermissionService: EntityPermissionService,
+    private val filesystemService: FilesystemService,
 ) {
 
     /**
@@ -40,7 +40,7 @@ class Initialization(
             filePermissionService.loadPermissionsFromDatabase()
                 .also { if (!it) shutdown(1) }.line()
 
-
+            filesystemService.initializeTusService()
         }
 
         println("${Props.appName} is initialized.")

@@ -15,6 +15,7 @@ import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.PlainFolderVisibility
+import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.FolderVisibilityService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
@@ -52,6 +53,7 @@ class SetupController(
     private val settingService: SettingService,
     private val authTokenService: AuthTokenService,
     private val folderVisibilityService: FolderVisibilityService,
+    private val filesystemService: FilesystemService,
 ) : AController() {
 
     val submitLock = Locker()
@@ -211,6 +213,8 @@ class SetupController(
         appService.deleteSetupCode()
         State.App.isSetup = true
         State.App.followSymLinks = followSymlinks
+
+        filesystemService.initializeTusService()
 
         val tokenR = authTokenService.createToken(user.userId, "", UserAction.APP_SETUP)
         if (tokenR.isSuccessful) {

@@ -1,17 +1,15 @@
 package org.filemat.server.module.file.model
 
-import org.filemat.server.common.util.normalizePath
-import java.nio.file.Path
-import java.nio.file.Paths
+import org.filemat.server.common.util.getNormalizedPath
 
 data class FilePath(
     private val inputPath: String,
 ) {
 
     val originalPath = inputPath
-    val path by lazy { inputPath.normalizePath() }
 
-    val pathObject by lazy { Paths.get(path) }
+    val pathObject by lazy { originalPath.getNormalizedPath() }
+    val path by lazy { pathObject.toString() }
 
     override fun toString() = path
 }

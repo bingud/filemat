@@ -4,15 +4,21 @@ import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.*
+import org.filemat.server.common.State
+import org.filemat.server.common.model.Result
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
+import java.io.FileNotFoundException
+import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.path.pathString
 import kotlin.system.measureNanoTime
 
 fun unixNow() = Instant.now().epochSecond
@@ -98,7 +104,8 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
     }
 }
 
-fun String.normalizePath() = Paths.get(this.addPrefixIfNotPresent('/')).normalize().toString()
+fun String.normalizePath() = this.getNormalizedPath().toString()
+fun String.getNormalizedPath(): Path = Paths.get("/").resolve(this.trimStart('/')).normalize()
 
 fun String.addPrefixIfNotPresent(prefix: Char) = if (this.startsWith(prefix)) this else prefix + this
 
@@ -141,6 +148,30 @@ fun parseTusHttpHeader(header: String): Map<String, String> {
         } else null
     }.toMap()
 }
+
+
+/**
+ * Returns the real path from an input path
+ *
+ * Resolves the path using the filesystem
+ *
+ * Respects the setting `followSymLinks`
+ */
+fun resolvePath(filePath: FilePath): Result<FilePath> {
+    return try {
+        val resolved = if (State.App.followSymLinks) {
+            filePath.pathObject.toRealPath()
+        } else {
+            filePath.pathObject.toRealPath(LinkOption.NOFOLLOW_LINKS)
+        }
+        Result.ok(resolved.pathString.toFilePath())
+    } catch (e: NoSuchFileException) {
+        return Result.notFound()
+    } catch (e: Exception) {
+        Result.error("Failed to resolve path")
+    }
+}
+
 
 fun String.toFilePath() = FilePath(this)
 

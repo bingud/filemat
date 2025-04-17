@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS files (
     inode INTEGER,
     is_filesystem_supported INTEGER NOT NULL,
     owner_user_id TEXT,
+    follow_symlinks INTEGER,
     FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
 CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);

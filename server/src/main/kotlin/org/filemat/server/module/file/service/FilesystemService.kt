@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service
 
+import me.desair.tus.server.TusFileUploadService
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.FileUtils
@@ -10,9 +11,7 @@ import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.exists
-import kotlin.io.path.isDirectory
+import kotlin.io.path.*
 
 /**
  * Service that provides low level filesystem access
@@ -21,6 +20,15 @@ import kotlin.io.path.isDirectory
  */
 @Service
 class FilesystemService {
+
+    final var tusFileService: TusFileUploadService? = null
+        private set
+
+    fun initializeTusService() {
+        tusFileService = TusFileUploadService()
+            .withUploadUri("/api/v1/file/upload")
+            .withStoragePath(State.App.uploadFolderPath)
+    }
 
     /**
      * Returns whether file is in a supported filesystem
@@ -41,6 +49,22 @@ class FilesystemService {
             Result.notFound()
         } catch (e: Exception) {
             Result.error("Failed to move file")
+        }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    fun deleteFile(target: FilePath, recursive: Boolean): Result<Unit> {
+        return try {
+            if (recursive) {
+                target.pathObject.deleteRecursively()
+            } else {
+                target.pathObject.deleteExisting()
+            }
+            Result.ok()
+        } catch (e: NoSuchFileException) {
+            Result.notFound()
+        } catch (e: Exception) {
+            Result.error("Failed to delete file")
         }
     }
 
@@ -105,6 +129,6 @@ class FilesystemService {
     /**
      * Returns inode number for input path
      */
-    fun getInode(path: String) = FileUtils.getInode(path)
+    fun getInode(path: Path, followSymbolicLinks: Boolean) = FileUtils.getInode(path, followSymbolicLinks)
 
 }

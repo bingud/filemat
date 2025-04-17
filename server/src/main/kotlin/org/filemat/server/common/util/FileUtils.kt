@@ -2,20 +2,22 @@ package org.filemat.server.common.util
 
 import org.filemat.server.module.file.model.FileType
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
 
 object FileUtils {
 
-    fun getInode(path: String) = getInode(Paths.get(path))
-    fun getInode(path: Path): Long? {
+    fun getInode(path: Path, followSymbolicLinks: Boolean): Long? {
+        val options = if (followSymbolicLinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
         return try {
-            Files.getAttribute(path, "unix:ino") as Long
+            Files.getAttribute(path, "unix:ino", *options) as Long
         } catch (e: Exception) {
             null
         }
     }
+
 
     fun isSupportedFilesystem(path: Path): Boolean? {
         if (!Files.exists(path)) return null

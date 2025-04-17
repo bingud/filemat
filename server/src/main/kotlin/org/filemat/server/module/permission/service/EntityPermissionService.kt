@@ -2,6 +2,7 @@ package org.filemat.server.module.permission.service
 
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
+import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
@@ -21,6 +22,7 @@ import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.*
 import org.filemat.server.module.permission.repository.PermissionRepository
 import org.filemat.server.module.user.model.UserAction
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 
 
@@ -32,7 +34,7 @@ class EntityPermissionService(
     private val permissionRepository: PermissionRepository,
     private val logService: LogService,
     private val entityService: EntityService,
-    private val fileService: FileService,
+    @Lazy private val fileService: FileService,
 ) {
     /**
      * Holds user and role permissions and owner ID for file paths in a tree.
@@ -144,7 +146,7 @@ class EntityPermissionService(
         if (existingPermission != null) return Result.reject("This ${mode.name.lowercase()} already has a permission.")
 
         val entity = existingEntity
-            ?: entityService.create(path, user.userId, action).let {
+            ?: entityService.create(path, user.userId, action, State.App.followSymLinks).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
@@ -200,7 +202,7 @@ class EntityPermissionService(
                 action = action,
                 description = "Failed to create a file permission in database.",
                 message = e.stackTraceToString(),
-                targetId = permission.userId ?: permission.userId,
+                targetId = permission.userId ?: permission.roleId,
                 meta = meta("permissionType" to permission.permissionType.toString())
             )
             return Result.error("Failed to create file permission.", source = "entityPermService.db_create-exception")

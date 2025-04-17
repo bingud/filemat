@@ -14,6 +14,7 @@ import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.parseTusHttpHeader
+import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.toFilePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
@@ -28,14 +29,11 @@ import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
-import java.io.File
-import java.io.FileInputStream
+import java.io.InputStream
+import java.nio.file.Files
 import java.nio.file.LinkOption
-import java.nio.file.NoSuchFileException
-import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.io.path.absolutePathString
 
 
 /**
@@ -48,10 +46,7 @@ class FileService(
     private val entityService: EntityService,
     private val logService: LogService,
     private val filesystem: FilesystemService,
-    private val tusService: TusFileUploadService,
 ) {
-
-    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
      * Uses TUS to handle a file upload request
@@ -60,6 +55,13 @@ class FileService(
         request: HttpServletRequest,
         response: HttpServletResponse,
     ) {
+        val tusService = filesystem.tusFileService
+        if (tusService == null) {
+            response.writer.write("File upload service is not running.")
+            response.status = 500
+            return
+        }
+
         val user = request.getPrincipal()!!
 
         // Check file permissions
@@ -106,18 +108,28 @@ class FileService(
                 if (isUploaded) {
                     // Move the file from the uploads folder to the target destination
                     val result = run<Result<Unit>> {
-                        val source = "${State.App.uploadFolderPath}/uploads/${info.id}".toFilePath()
-                        val destination = FilePath(info.metadata["filename"] ?: return@run Result.error("Destination filename is not in upload metadata."))
+                        val sourceFolder = "${State.App.uploadFolderPath}/uploads/${info.id}"
+
+                        val dataSource = "$sourceFolder/data".toFilePath()
+                        val rawDataDestination = info.metadata["filename"]?.toFilePath() ?: return@run Result.error("Destination filename is not in upload metadata.")
+                        val dataDestination = resolvePath(rawDataDestination).let {
+                            if (it.isNotSuccessful) return@run it.cast();
+                            it.value
+                        }
 
                         // Move the file to the target folder
-                        val fileMoved = filesystem.moveFile(source = source, destination = destination, overwriteDestination = false)
+                        val fileMoved = filesystem.moveFile(source = dataSource, destination = dataDestination, overwriteDestination = false)
                         if (fileMoved.isNotSuccessful) return@run Result.error("Failed to move file from uploads folder.")
+
+                        // Delete the TUS upload folder
+                        filesystem.deleteFile(sourceFolder.toFilePath(), recursive = true)
 
                         // Create an entity
                         entityService.create(
-                            path = destination,
+                            path = dataDestination,
                             ownerId = user.userId,
                             userAction = UserAction.UPLOAD_FILE,
+                            followSymLinks = State.App.followSymLinks
                         )
 
                         Result.ok()
@@ -127,26 +139,53 @@ class FileService(
         }
     }
 
-    /**
-     * Returns an input stream for the content of a file
-     */
-    fun getFileContent(user: Principal, rawPath: FilePath): Result<FileInputStream> {
-        isAllowedToAccessFile(user, rawPath).let {
+    fun deleteFile(user: Principal, path: FilePath): Result<Unit> {
+        isAllowedToAccessFile(user, path).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val path = try {
-            if (State.App.followSymLinks) rawPath.pathObject.toRealPath() else rawPath.pathObject.toRealPath(LinkOption.NOFOLLOW_LINKS)
-        } catch (e: NoSuchFileException) {
-            return Result.notFound()
-        } catch (e: Exception) {
-            return Result.error("Failed to load file.")
+        return TODO()
+    }
+
+    /**
+     * Returns an input stream for the content of a file
+     */
+    fun getFileContent(user: Principal, rawPath: FilePath): Result<InputStream> {
+        // Path-based permission
+        isAllowedToAccessFile(user, FilePath(rawPath.path)).let {
+            if (it.isNotSuccessful) return it.cast()
         }
 
-        val file = File(path.absolutePathString())
-        if (!file.isFile) return Result.notFound()
-        return runCatching { file.inputStream().toResult() }.getOrElse { Result.error("Failed to stream file.") }
+        val path = resolvePath(rawPath).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value.pathObject
+        }
+
+        // Check if the input path and resolved path match
+        // Block if they dont
+        if (!State.App.followSymLinks && rawPath.pathObject != path) {
+            return Result.notFound()
+        }
+
+        // Return content of symlink file
+        if (!State.App.followSymLinks && Files.isSymbolicLink(path)) {
+            // stream the link itself
+            return try {
+                Result.ok(Files.readSymbolicLink(path).toString().toByteArray().inputStream())
+            } catch (e: Exception) {
+                Result.error("Failed to read the symlink target path.")
+            }
+        }
+
+        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
+
+        return try {
+            Result.ok(Files.newInputStream(path))
+        } catch (e: Exception) {
+            Result.error("Failed to stream file.")
+        }
     }
+
 
     /**
      * Returns file metadata
@@ -160,7 +199,7 @@ class FileService(
         }
         val type = metadata.fileType
 
-        if (type == FileType.FOLDER || type == FileType.FOLDER_LINK && State.App.followSymLinks) {
+        if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymLinks)) {
             val entries = getFolderEntries(user = user, path).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
@@ -268,14 +307,26 @@ class FileService(
     /**
      * Directly gets entries from a folder. Is not authenticated.
      */
-    private fun internalGetFolderEntries(path: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
+    private fun internalGetFolderEntries(rawPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
         try {
-            val file = File(path.path)
-            val filenames = filesystem.listFiles(file)
-                ?: return Result.notFound()
+            val path = resolvePath(rawPath).let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+            val pathObj = path.pathObject
 
-            val files = filenames.map {
-                filesystem.getMetadata(FilePath(it.absolutePath)) ?: throw IllegalStateException("Metadata object was null for a known file.")
+            // Check if it's a directory, respecting followSymLinks
+            if (!Files.isDirectory(pathObj, *if (State.App.followSymLinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
+                return Result.notFound()
+            }
+
+            // List entries
+            val entries = Files.newDirectoryStream(pathObj).use { it.toList() }
+
+            val files = entries.map {
+                val entryPath = FilePath(it.toAbsolutePath().toString())
+                filesystem.getMetadata(entryPath)
+                    ?: throw IllegalStateException("Metadata object was null for a known file.")
             }
 
             return files.toResult()
@@ -291,7 +342,6 @@ class FileService(
     }
 
 
-
     private val verifyLocks = ConcurrentHashMap<String, ReentrantLock>()
 
     /**
@@ -303,19 +353,22 @@ class FileService(
         val lock = verifyLocks.computeIfAbsent(filePath) { ReentrantLock() }
         lock.lock()
         try {
-            val entityR = entityService.getByPath(filePath, UserAction.NONE)
-            if (entityR.notFound) return Result.ok()
-            if (entityR.isNotSuccessful) return entityR.cast()
-            val entity = entityR.value
+            val entity = entityService.getByPath(filePath, UserAction.NONE).let {
+                if (it.notFound) return Result.ok()
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+            val path = FilePath(filePath)
+            val followSymlinks = entity.followSymlinks
 
             // Do not do inode check on unsupported filesystem.
             if (!entity.isFilesystemSupported || entity.inode == null) {
-                val path = Paths.get(filePath)
-                val exists = filesystem.exists(path, State.App.followSymLinks)
+                val exists = filesystem.exists(path.pathObject, followSymbolicLinks = followSymlinks)
                 return if (exists) Result.ok() else Result.reject("Path does not exist.", source = "verifyEntityByInode-notSupported-notFound")
             }
 
-            val newInode = filesystem.getInode(filePath)
+            val newInode = filesystem.getInode(path.pathObject, followSymbolicLinks = followSymlinks)
+            // Inode matches normally
             if (entity.inode == newInode) return Result.ok()
 
             // Handle if a file with a different inode exists on the path

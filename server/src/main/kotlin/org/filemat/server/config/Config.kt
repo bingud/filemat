@@ -36,14 +36,4 @@ class TransactionTemplateConfig(
         return instance
     }
 
-    @Bean
-    @DependsOn("initialization")
-    fun tusService(): TusFileUploadService {
-        return TusFileUploadService()
-            .withUploadUri("/api/v1/file/upload")
-            .withStoragePath(State.App.uploadFolderPath)
-            // .withUploadExpirationPeriod(7 * 24 * 60 * 60 * 1000)
-    }
-
-
 }

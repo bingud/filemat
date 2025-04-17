@@ -30,6 +30,17 @@ class FileController(
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    @PostMapping("/delete")
+    fun deleteFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val path = FilePath(rawPath)
+
+        TODO()
+    }
+
     @RequestMapping(value = ["/upload", "/upload/{uploadId}"], method = [RequestMethod.OPTIONS, RequestMethod.POST, RequestMethod.HEAD, RequestMethod.PATCH])
     fun handleTusRequest(
         request: HttpServletRequest,
