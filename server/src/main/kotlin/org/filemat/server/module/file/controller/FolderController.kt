@@ -32,7 +32,7 @@ class FolderController(private val fileService: FileService) : AController() {
 
         val result = fileService.getFolderEntries(
             user = principal,
-            path = path,
+            rawPath = path,
         )
         if (result.rejected) return bad(result.error, "rejected")
         if (result.hasError) return bad(result.error, "")

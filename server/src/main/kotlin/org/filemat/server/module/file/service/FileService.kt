@@ -2,20 +2,13 @@ package org.filemat.server.module.file.service
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import me.desair.tus.server.TusFileUploadService
 import me.desair.tus.server.upload.UploadInfo
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
-import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.parseTusHttpHeader
-import org.filemat.server.common.util.resolvePath
-import org.filemat.server.common.util.toFilePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.FileMetadata
@@ -74,14 +67,26 @@ class FileService(
             }
             val meta = parseTusHttpHeader(rawMeta)
 
-            val filename = meta["filename"]
-            if (filename == null) {
+            val rawFilename = meta["filename"]?.toFilePath()
+            if (rawFilename == null) {
                 response.writer.write("Invalid filename")
                 response.status = 400
                 return
             }
+            val rawParentFolder = rawFilename.pathObject.parent.toString()
+            val parentFolderPath = resolvePath(FilePath(rawParentFolder)).let { (result, hasSymlink) ->
+                if (result.notFound) {
+                    response.writer.write("The target folder does not exist.")
+                    response.status = 400
+                    return
+                } else if (result.isNotSuccessful) {
+                    response.writer.write("Failed to save the uploaded file.")
+                    response.status = 500
+                }
+                result.value
+            }
 
-            val isAllowed = isAllowedToAccessFile(user = user, pathObject = FilePath(filename))
+            val isAllowed = isAllowedToAccessFile(user = user, pathObject = parentFolderPath)
             if (isAllowed.isNotSuccessful) {
                 response.writer.write(isAllowed.errorOrNull ?: "You do not have permission to access this folder.")
                 response.status = 400
@@ -112,9 +117,9 @@ class FileService(
 
                         val dataSource = "$sourceFolder/data".toFilePath()
                         val rawDataDestination = info.metadata["filename"]?.toFilePath() ?: return@run Result.error("Destination filename is not in upload metadata.")
-                        val dataDestination = resolvePath(rawDataDestination).let {
-                            if (it.isNotSuccessful) return@run it.cast();
-                            it.value
+                        val dataDestination = resolvePath(rawDataDestination).let { (result, hadSymlink) ->
+                            if (result.isNotSuccessful) return@run result.cast();
+                            result.value
                         }
 
                         // Move the file to the target folder
@@ -126,7 +131,7 @@ class FileService(
 
                         // Create an entity
                         entityService.create(
-                            path = dataDestination,
+                            rawPath = dataDestination,
                             ownerId = user.userId,
                             userAction = UserAction.UPLOAD_FILE,
                             followSymLinks = State.App.followSymLinks
@@ -151,36 +156,49 @@ class FileService(
      * Returns an input stream for the content of a file
      */
     fun getFileContent(user: Principal, rawPath: FilePath): Result<InputStream> {
-        // Path-based permission
-        isAllowedToAccessFile(user, FilePath(rawPath.path)).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
+        TODO()
 
-        val path = resolvePath(rawPath).let {
-            if (it.isNotSuccessful) return it.cast()
-            it.value.pathObject
+        val (pathResult, hasSymlink) = resolvePath(rawPath)
+        val path = pathResult.let {
+            println(hasSymlink)
+            if (it.isNotSuccessful && (!hasSymlink || !it.notFound)) {
+                return it.cast()
+            }
+            it.valueOrNull
         }
+        val pathObj = path?.pathObject
 
-        // Check if the input path and resolved path match
-        // Block if they dont
-        if (!State.App.followSymLinks && rawPath.pathObject != path) {
-            return Result.notFound()
-        }
+        // Check permission
+        if (State.App.followSymLinks) {
+            if (path == null) return Result.error("Failed to resolve path.")
 
-        // Return content of symlink file
-        if (!State.App.followSymLinks && Files.isSymbolicLink(path)) {
-            // stream the link itself
-            return try {
-                Result.ok(Files.readSymbolicLink(path).toString().toByteArray().inputStream())
-            } catch (e: Exception) {
-                Result.error("Failed to read the symlink target path.")
+            isAllowedToAccessFile(user, path).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+        } else {
+            isAllowedToAccessFile(user, rawPath).let {
+                if (it.isNotSuccessful) return it.cast()
             }
         }
 
-        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
+        if (hasSymlink) {
+            // Return content of symlink file
+            if (Files.isSymbolicLink(pathObj)) {
+                // stream the link itself
+                return try {
+                    Result.ok(Files.readSymbolicLink(pathObj).toString().toByteArray().inputStream())
+                } catch (e: Exception) {
+                    Result.error("Failed to read the symlink target path.")
+                }
+            } else {
+                return Result.notFound()
+            }
+        }
+
+        if (!Files.isRegularFile(pathObj, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
 
         return try {
-            Result.ok(Files.newInputStream(path))
+            Result.ok(Files.newInputStream(pathObj))
         } catch (e: Exception) {
             Result.error("Failed to stream file.")
         }
@@ -249,14 +267,19 @@ class FileService(
      *
      * Verifies user permissions.
      */
-    fun getFolderEntries(user: Principal, path: FilePath): Result<List<FileMetadata>> {
-        val hasAdminAccess = hasAdminAccess(user)
+    fun getFolderEntries(user: Principal, rawPath: FilePath): Result<List<FileMetadata>> {
+        val (pathResult, hasSymlink) = resolvePath(rawPath)
+        val canonicalPath = pathResult.let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
 
-        val isAllowed = isAllowedToAccessFile(user, path, hasAdminAccess = hasAdminAccess)
+        val hasAdminAccess = hasAdminAccess(user)
+        val isAllowed = isAllowedToAccessFile(user, canonicalPath, hasAdminAccess = hasAdminAccess)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         // Get folder entries
-        val result = internalGetFolderEntries(path, UserAction.READ_FOLDER)
+        val result = internalGetFolderEntries(rawPath = rawPath, canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER)
         if (result.isNotSuccessful) return result.cast()
         val allEntries = result.value.filter { folderVisibilityService.isPathAllowed(it.filename) == null }
 
@@ -264,7 +287,7 @@ class FileService(
         val folderEntries = if (hasAdminAccess) {
             allEntries
         } else {
-            filterPermittedFiles(allEntries, path, user)
+            filterPermittedFiles(allEntries, canonicalPath, user)
         }
 
         return folderEntries.toResult()
@@ -307,24 +330,18 @@ class FileService(
     /**
      * Directly gets entries from a folder. Is not authenticated.
      */
-    private fun internalGetFolderEntries(rawPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
+    private fun internalGetFolderEntries(rawPath: FilePath, canonicalPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
         try {
-            val path = resolvePath(rawPath).let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }
-            val pathObj = path.pathObject
-
-            // Check if it's a directory, respecting followSymLinks
-            if (!Files.isDirectory(pathObj, *if (State.App.followSymLinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
+            // Check if the resolved path is a folder
+            if (!Files.isDirectory(canonicalPath.pathObject, *if (State.App.followSymLinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
                 return Result.notFound()
             }
 
             // List entries
-            val entries = Files.newDirectoryStream(pathObj).use { it.toList() }
+            val entries = Files.newDirectoryStream(rawPath.pathObject).use { it.toList() }
 
             val files = entries.map {
-                val entryPath = FilePath(it.toAbsolutePath().toString())
+                val entryPath = FilePath(it.toString())
                 filesystem.getMetadata(entryPath)
                     ?: throw IllegalStateException("Metadata object was null for a known file.")
             }

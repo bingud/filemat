@@ -12,21 +12,25 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
 import java.io.FileNotFoundException
+import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.path.exists
 import kotlin.io.path.pathString
 import kotlin.system.measureNanoTime
 
 fun unixNow() = Instant.now().epochSecond
 
+
 fun List<String>?.toJsonOrNull(): String? {
     this ?: return null
     return Json.encodeToString(this)
 }
+
 
 inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
     return try {
@@ -36,9 +40,11 @@ inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
     }
 }
 
+
 inline fun <reified T> String.parseJsonOrNull(): T? {
     return Json.decodeFromStringOrNull<T>(this)
 }
+
 
 inline fun <T> measureNano(block: () -> T): Pair<T, Long> {
     var result: T
@@ -50,11 +56,14 @@ inline fun <T> measureNano(block: () -> T): Pair<T, Long> {
     return result to nano
 }
 
+
 inline fun <T: Any?> measureMillis(block: () -> T): Pair<T, Double> {
     return measureNano(block).let { it.first to it.second.toDouble() / 1_000_000 }
+
 }
 
 fun Boolean.toInt() = if (this) 1 else 0
+
 
 fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
     val result = TransactionTemplateConfig.instance.execute { status ->
@@ -64,20 +73,26 @@ fun <T> runTransaction(block: (status: TransactionStatus) -> T): T {
     return result!!
 }
 
+
 inline fun <reified E : Enum<E>> valueOfOrNull(name: String): E? {
     return enumValues<E>().find { it.name == name }
 }
+
 
 inline fun <T> runIf(condition: Boolean, block: () -> T): T? {
     return if (condition) block() else null
 }
 
+
 fun parseUlidOrNull(str: String): Ulid? = runCatching { Ulid.from(str) }.getOrNull()
+
 
 fun getUlid() = UlidCreator.getUlid()
 
+
 fun Int.toBoolean() = this > 0
 fun Short.toBoolean() = this > 0
+
 
 fun HttpServletRequest.getPrincipal() = this.getAttribute("auth") as Principal?
 
@@ -85,6 +100,7 @@ fun HttpServletRequest.realIp(): String {
     val header: String? = this.getHeader("X-Forwarded-For")
     return header ?: this.remoteAddr
 }
+
 
 fun <K, V> ConcurrentHashMap<K, V>.removeIf(block: (key: K, value: V) -> Boolean) {
     val iterator = this.entries.iterator()
@@ -104,12 +120,117 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
     }
 }
 
-fun String.normalizePath() = this.getNormalizedPath().toString()
+
+/**
+ * Fully normalizes a path, makes it absolute
+ */
 fun String.getNormalizedPath(): Path = Paths.get("/").resolve(this.trimStart('/')).normalize()
+fun String.normalizePath() = this.getNormalizedPath().toString()
+
 
 fun String.addPrefixIfNotPresent(prefix: Char) = if (this.startsWith(prefix)) this else prefix + this
 
-////
+
+fun parseTusHttpHeader(header: String): Map<String, String> {
+    return header.split(",").mapNotNull {
+        val parts = it.trim().split(" ", limit = 2)
+        if (parts.size == 2) {
+            try {
+                val key = parts[0]
+                val decodedValue = String(Base64.getDecoder().decode(parts[1]))
+                key to decodedValue
+            } catch (_: IllegalArgumentException) {
+                null // Skip invalid base64
+            }
+        } else null
+    }.toMap()
+}
+
+
+/**
+ * Returns:
+ *
+ * - Resolved, canonical file path
+ *
+ * - Whether the error was caused because the path had a symlink.
+ */
+fun resolvePath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
+    return try {
+        val resolved = if (State.App.followSymLinks) {
+            filePath.pathObject.toRealPath()
+        } else {
+            val containsSymlink = pathContainsSymlink(filePath.pathObject)
+            if (containsSymlink) return Pair(Result.notFound(), true)
+            if (!filePath.pathObject.exists(LinkOption.NOFOLLOW_LINKS)) return Pair(Result.notFound(), false)
+            filePath.pathObject
+        }
+        Result.ok(resolved.pathString.toFilePath()) to false
+    } catch (e: NoSuchFileException) {
+        Pair(Result.notFound(), false)
+    } catch (e: Exception) {
+        Pair(Result.error("Failed to resolve path"), false)
+    }
+}
+
+
+/**
+ * Returns whether any part of input path is a symlink
+ */
+fun pathContainsSymlink(input: Path): Boolean {
+    // Start from the root (or current working dir for relative paths)
+    var current = when {
+        input.isAbsolute -> input.root
+        else             -> Paths.get("")
+    } ?: Paths.get("")
+
+    for (segment in input.iterator()) {
+        current = current.resolve(segment)
+
+        // If this component is a symlink, bail out
+        if (Files.isSymbolicLink(current)) {
+            return true
+        }
+    }
+    return false
+}
+
+
+fun String.toFilePath() = FilePath(this)
+
+
+fun <T> T.print() = this.also { println(this) }
+
+
+class JsonBuilder {
+    val content = linkedMapOf<String, JsonElement>()
+
+    // You can still keep the specialized put() for primitives if you want:
+    fun put(key: String, element: String) = content.put(key, Json.encodeToJsonElement(element))
+    fun put(key: String, element: Int) = content.put(key, Json.encodeToJsonElement(element))
+    fun put(key: String, element: Boolean) = content.put(key, Json.encodeToJsonElement(element))
+
+    // Generic put that serializes any object into a JsonElement:
+    inline fun <reified T> put(key: String, value: T) {
+        content[key] = Json.encodeToJsonElement(value)
+    }
+
+    fun build() = JsonObject(content)
+    override fun toString() = build().toString()
+}
+
+fun json(block: JsonBuilder.() -> Unit): String {
+    return JsonBuilder().apply { block() }.toString()
+}
+
+
+private fun gPackagePrefix(): String {
+    val stackTrace = Throwable().stackTrace
+    if (stackTrace.size > 1) {
+        val caller = stackTrace[1]
+        return "${caller.className}.${caller.methodName}".split('.').take(3).joinToString(".")
+    }
+    return "Unknown"
+}
 
 val packagePrefix = gPackagePrefix() + "."
 fun getPackage(): String {
@@ -132,81 +253,4 @@ fun getActualCallerPackage(): String {
     }
 
     return "Unknown"
-}
-
-fun parseTusHttpHeader(header: String): Map<String, String> {
-    return header.split(",").mapNotNull {
-        val parts = it.trim().split(" ", limit = 2)
-        if (parts.size == 2) {
-            try {
-                val key = parts[0]
-                val decodedValue = String(Base64.getDecoder().decode(parts[1]))
-                key to decodedValue
-            } catch (_: IllegalArgumentException) {
-                null // Skip invalid base64
-            }
-        } else null
-    }.toMap()
-}
-
-
-/**
- * Returns the real path from an input path
- *
- * Resolves the path using the filesystem
- *
- * Respects the setting `followSymLinks`
- */
-fun resolvePath(filePath: FilePath): Result<FilePath> {
-    return try {
-        val resolved = if (State.App.followSymLinks) {
-            filePath.pathObject.toRealPath()
-        } else {
-            filePath.pathObject.toRealPath(LinkOption.NOFOLLOW_LINKS)
-        }
-        Result.ok(resolved.pathString.toFilePath())
-    } catch (e: NoSuchFileException) {
-        return Result.notFound()
-    } catch (e: Exception) {
-        Result.error("Failed to resolve path")
-    }
-}
-
-
-fun String.toFilePath() = FilePath(this)
-
-fun <T> T.print() = println(this)
-
-// SHITERS
-
-private fun gPackagePrefix(): String {
-    val stackTrace = Throwable().stackTrace
-    if (stackTrace.size > 1) {
-        val caller = stackTrace[1]
-        return "${caller.className}.${caller.methodName}".split('.').take(3).joinToString(".")
-    }
-    return "Unknown"
-}
-
-////
-
-class JsonBuilder {
-    val content = linkedMapOf<String, JsonElement>()
-
-    // You can still keep the specialized put() for primitives if you want:
-    fun put(key: String, element: String) = content.put(key, Json.encodeToJsonElement(element))
-    fun put(key: String, element: Int) = content.put(key, Json.encodeToJsonElement(element))
-    fun put(key: String, element: Boolean) = content.put(key, Json.encodeToJsonElement(element))
-
-    // Generic put that serializes any object into a JsonElement:
-    inline fun <reified T> put(key: String, value: T) {
-        content[key] = Json.encodeToJsonElement(value)
-    }
-
-    fun build() = JsonObject(content)
-    override fun toString() = build().toString()
-}
-
-fun json(block: JsonBuilder.() -> Unit): String {
-    return JsonBuilder().apply { block() }.toString()
 }

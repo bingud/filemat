@@ -28,19 +28,19 @@ class EntityService(
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
 ) {
-    fun create(path: FilePath, ownerId: Ulid, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
-        val isFilesystemSupported = filesystemService.isSupportedFilesystem(path)
+    fun create(rawPath: FilePath, ownerId: Ulid, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
+        val isFilesystemSupported = filesystemService.isSupportedFilesystem(rawPath)
             ?: return Result.notFound(source = "entityService.create-isFsSupp-notfound")
 
         val inode = if (isFilesystemSupported == true) {
             // Get the Inode of file or symlink due to path-based permissions
-            filesystemService.getInode(path.pathObject, false)
+            filesystemService.getInode(rawPath.pathObject, false)
                 ?: return Result.notFound(source = "entityService.create-getInode-notfound")
         } else null
 
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
-            path = path.path,
+            path = rawPath.path,
             inode = inode,
             isFilesystemSupported = isFilesystemSupported,
             ownerId = ownerId,

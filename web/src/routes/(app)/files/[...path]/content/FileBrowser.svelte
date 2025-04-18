@@ -10,11 +10,17 @@
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import { onMount } from "svelte";
     import { filesState } from "./code/filesState.svelte";
+    import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
+	import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
     let menuEntry: FileMetadata | null = $state(null)
     let entryMenuPopoverOpen = $state(dev)
+    
+    // Delete confirmation
+    let entryToDelete: FileMetadata | null = $state(null)
+    let confirmDialog: ConfirmDialog;
 
     onMount(() => {
         const selectedName = filesState.selectedEntry.selectedPositions.getChild(filesState.path)
@@ -64,6 +70,31 @@
         filesState.selectedEntry.path = entry.filename
         filesState.ui.detailsOpen = true
         closeEntryPopover()
+    }
+
+    function option_delete(entry: FileMetadata) {
+        entryToDelete = entry
+        
+        // Show confirmation dialog and handle the result
+        confirmDialog.show({
+            title: "Delete File",
+            message: `Are you sure you want to delete "${filenameFromPath(entry.filename)}"? This cannot be undone.`,
+            confirmText: "Delete",
+            cancelText: "Cancel"
+        }).then((confirmed: boolean) => {
+            if (confirmed) {
+                handleDeleteConfirm();
+            }
+        });
+        
+        closeEntryPopover()
+    }
+    
+    function handleDeleteConfirm() {
+        if (entryToDelete) {
+            
+        }
+        entryToDelete = null
     }
 
     function closeEntryPopover() {
@@ -149,6 +180,13 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
+                            <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                <div class="size-5 flex-shrink-0">
+                                    <TrashIcon />
+                                </div>
+                                <span>Delete</span>
+                            </button>
+
                             <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                 <div class="size-5 flex-shrink-0">
                                     <InfoIcon />
@@ -168,3 +206,7 @@
         <p>No folder is open.</p>
     </div>
 {/if}
+
+
+<!-- Confirmation Dialog -->
+<ConfirmDialog bind:this={confirmDialog} />

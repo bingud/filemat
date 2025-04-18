@@ -1,6 +1,8 @@
 package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.util.print
+import java.util.concurrent.ConcurrentHashMap
 
 
 /**
@@ -19,11 +21,11 @@ class EntityPermissionTree {
         // Parent node
         val parent: Node?,
         // Node children
-        val children: MutableMap<String, Node> = mutableMapOf(),
+        val children: ConcurrentHashMap<String, Node> = ConcurrentHashMap(),
         // Permissions for users for this node
-        val userPermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf(),
+        val userPermissions: ConcurrentHashMap<Ulid, EntityPermission> = ConcurrentHashMap(),
         // Permissions for roles for this node
-        val rolePermissions: MutableMap<Ulid, EntityPermission> = mutableMapOf(),
+        val rolePermissions: ConcurrentHashMap<Ulid, EntityPermission> = ConcurrentHashMap(),
     )
 
     private val root = Node(segment = "", parent = null)
@@ -110,8 +112,10 @@ class EntityPermissionTree {
      * Returns the node for the input path.
      */
     private fun findNode(path: String, onlyClosest: Boolean = false): Node? {
+        if (path == "/") return root
         val segments = path.trim('/').split('/')
         var current = root
+
         for (segment in segments) {
             val child = current.children[segment]
                 ?: return if (onlyClosest) current else null
@@ -159,7 +163,7 @@ class EntityPermissionTree {
     }
 
     fun getAllPermissionsForPath(path: String): List<EntityPermission> {
-        val node = findNode(path) ?: return emptyList()
+        val node = findNode(path, onlyClosest = false) ?: return emptyList()
         return collectAllPermissions(node)
     }
 

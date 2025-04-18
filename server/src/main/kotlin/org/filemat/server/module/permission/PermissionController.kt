@@ -91,7 +91,7 @@ class PermissionController(
 
         entityPermissionService.createPermission(
             user = user,
-            path = FilePath(rawPath),
+            rawPath = FilePath(rawPath),
             targetId = id,
             mode = mode,
             permissions = permissionList
@@ -113,7 +113,7 @@ class PermissionController(
         val path = FilePath(rawPath)
         val includeUsernames = rawIncludeUsernames?.toBooleanStrictOrNull() ?: false
 
-        val meta = entityPermissionService.getEntityPermissions(user = user, path = path).let {
+        val meta = entityPermissionService.getEntityPermissions(user = user, rawPath = path).let {
             if (it.notFound) return bad("This file was not found.", "")
             if (it.rejected) return bad(it.error, "")
             if (it.isNotSuccessful) return internal(it.error, "")

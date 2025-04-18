@@ -116,7 +116,6 @@
             {#if miniList}
                 {#each miniList as mini}
                     <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700/70">{mini.username}</button>
-
                 <!-- No users available -->
                 {:else}
                     <p class="px-3 py-1">No users available.</p>
