@@ -10,6 +10,10 @@ class AppState {
      * List of folder paths that are marked as sensitive.
      */
     sensitiveFolders: string[] | null = $state(null)
+    /**
+     * Whether the system follows symlinks
+     */
+    followSymlinks = $state(false)
     
     /**
      * Indicates whether the first page the user entered is stil open 

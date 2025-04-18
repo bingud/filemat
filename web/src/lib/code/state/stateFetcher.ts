@@ -8,20 +8,21 @@ import type { ErrorResponse, ulid } from "../types"
 type state = {
     principal: { value: Principal, status: HttpStatus }, 
     roles: { value: Role[], status: HttpStatus }, 
-    app: { value: { isSetup: boolean }, status: HttpStatus },
+    app: { value: { isSetup: boolean, followSymlinks: boolean }, status: HttpStatus },
     systemRoleIds: { value: { user: ulid, admin: ulid }, status: HttpStatus },
 }
 
 /**
  * Fetches general application state, such as auth, available roles, app state.
  */
-export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean, systemRoleIds: boolean }): Promise<boolean> {
+export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean, systemRoleIds: boolean, followSymlinks: boolean }): Promise<boolean> {
     try {
         const body = new FormData()
         if (options.principal) body.append("principal", "true")
         if (options.roles) body.append("roles", "true")
         if (options.app) body.append("app", "true")
         if (options.systemRoleIds) body.append("systemRoleIds", "true")
+        if (options.followSymlinks) body.append("followSymlinks", "true")
 
         const response = await fetch(`/api/v1/state/select`, {
             method: "POST", credentials: "same-origin", body: body
@@ -67,6 +68,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                 if (status === 200) {
                     const app = data.app.value
                     appState.isSetup = app.isSetup
+                    appState.followSymlinks = app.followSymlinks
                 } else {
                     handleError(`Status ${status} for app state when fetching state.`, `Failed to load Filemat state (${status})`)
                     return false

@@ -33,6 +33,7 @@ export const settingSections = {
     },
     sections: {
         "preferences": { name: "preferences", permissions: [], admin: false },
+        "settings": { name: "settings", permissions: ["MANAGE_SYSTEM"], admin: true },
         "users": { name: "users", permissions: ["MANAGE_USERS"], admin: true },
         "roles": { name: "roles", permissions: ["EDIT_ROLES"], admin: true },
     } as Record<string, SettingsSection>

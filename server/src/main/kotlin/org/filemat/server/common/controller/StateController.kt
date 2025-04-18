@@ -2,13 +2,12 @@ package org.filemat.server.common.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import org.filemat.server.common.State
 import org.filemat.server.common.util.JsonBuilder
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.getPackage
 import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.measureMillis
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
@@ -34,71 +33,62 @@ class StateController : AController() {
         request: HttpServletRequest,
         @RequestParam("principal", required = false) rawPrincipal: String?,
         @RequestParam("roles", required = false) rawRoles: String?,
-        @RequestParam("systemRoleIds", required = false) rawrSysRoleIds: String?,
+        @RequestParam("systemRoleIds", required = false) rawSysRoleIds: String?,
         @RequestParam("app", required = false) rawApp: String?,
+        @RequestParam("followSymlinks", required = false) rawFollowSymlinks: String?,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()
 
         val getPrincipal = rawPrincipal?.toBooleanStrictOrNull()
         val getRoles = rawRoles?.toBooleanStrictOrNull()
         val getApp = rawApp?.toBooleanStrictOrNull()
-        val getSystemRoleIds = rawrSysRoleIds?.toBooleanStrictOrNull()
+        val getSystemRoleIds = rawSysRoleIds?.toBooleanStrictOrNull()
 
         val builder = JsonBuilder()
 
-        // Return user principal
-        if (getPrincipal == true) {
-            val principalBuilder = JsonBuilder()
+        builder.apply {
+            putResponseField("principal", getPrincipal) { principal?.let { Json.encodeToJsonElement(it) } }
+            putResponseField("roles", getRoles) { principal?.let { Json.encodeToJsonElement(State.Auth.roleMap.values.toList()) } }
 
-            if (principal != null) {
-                principalBuilder.put("value", Json.encodeToJsonElement(principal))
-                principalBuilder.put("status", 200)
-            } else {
-                principalBuilder.put("status", 401)
+            // for “app” and “systemRoleIds” you need a custom inner object:
+            putResponseField("app", getApp) {
+                JsonBuilder().apply {
+                    put("isSetup", State.App.isSetup)
+                    put("followSymlinks", State.App.followSymLinks)
+                }.build()
             }
 
-            builder.put("principal", principalBuilder.build())
-        }
-        // Return all available roles
-        if (getRoles == true) {
-            val roleBuilder = JsonBuilder()
-
-            if (principal != null) {
-                val roles = State.Auth.roleMap.values.toList()
-                roleBuilder.put("value", Json.encodeToJsonElement(roles))
-                roleBuilder.put("status", 200)
-            } else {
-                roleBuilder.put("status", 401)
+            putResponseField("systemRoleIds", getSystemRoleIds) {
+                JsonBuilder().apply {
+                    put("user",  Props.Roles.userRoleIdString)
+                    put("admin", Props.Roles.adminRoleIdString)
+                }.build()
             }
-
-            builder.put("roles", roleBuilder.build())
         }
-        if (getApp == true) {
-            val valueBuilder = JsonBuilder()
-            valueBuilder.put("isSetup", State.App.isSetup)
-
-            val appBuilder = JsonBuilder()
-            appBuilder.put("status", 200)
-            appBuilder.put("value", valueBuilder.build())
-
-            builder.put("app", appBuilder.build())
-        }
-        if (getSystemRoleIds == true) {
-            val valueBuilder = JsonBuilder()
-
-            val roleBuilder = JsonBuilder()
-            roleBuilder.put("user", Props.Roles.userRoleIdString)
-            roleBuilder.put("admin", Props.Roles.adminRoleIdString)
-
-            valueBuilder.put("value", roleBuilder.build())
-            valueBuilder.put("status", 200)
-
-            builder.put("systemRoleIds", valueBuilder.build())
-        }
-
 
         val serialized = builder.toString()
         return ok(serialized)
     }
 
+}
+
+
+inline fun JsonBuilder.putResponseField(
+    name: String,
+    include: Boolean?,
+    valueProvider: () -> JsonElement?
+) {
+    if (include != true) return
+
+    val jsonBody = JsonBuilder().apply {
+        val value = valueProvider()
+        if (value != null) {
+            put("value", value)
+            put("status", 200)
+        } else {
+            put("status", 401)
+        }
+    }
+
+    put(name, jsonBody.build())
 }

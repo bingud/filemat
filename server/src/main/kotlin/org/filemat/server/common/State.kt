@@ -23,10 +23,11 @@ object State {
         val nonSensitiveFolders = env("FM_NON_SENSITIVE_FOLDERS").getNonSensitiveFolders()
         val hiddenFolders = env("FM_HIDDEN_FOLDER_PATHS").getHiddenFolders()
 
-        private val followSymLinksEnv = (env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull() ?: false).also { println("Follow symbolic links: $it\n") }
-        var followSymLinks: Boolean = followSymLinksEnv
+        private val followSymLinksEnv = (env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull()).also { println("Follow symbolic links: $it\n") }
+        var followSymLinks: Boolean = followSymLinksEnv ?: false
             set(new) {
-                if (followSymLinksEnv == true) return
+                // Environment variable overrides setting
+                if (followSymLinksEnv != null) return
                 field = new
             }
 

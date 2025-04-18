@@ -165,7 +165,7 @@ class SetupController(
             }
 
             // Mark app as set up
-            settingService.setSetting(Props.Settings.isAppSetup, "true").let { result ->
+            settingService.db_setSetting(Props.Settings.isAppSetup, "true").let { result ->
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction Result.error("Failed to save setup status to database.")
@@ -173,7 +173,7 @@ class SetupController(
             }
 
             // Save download folder path
-            settingService.setSetting(Props.Settings.uploadFolderPath, uploadFolderPath.path).let { result ->
+            settingService.db_setSetting(Props.Settings.uploadFolderPath, uploadFolderPath.path).let { result ->
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction Result.error("Failed to save upload folder path to database.")
@@ -181,7 +181,7 @@ class SetupController(
             }
 
             // Create setting for following symlinks
-            settingService.setSetting(Props.Settings.followSymlinks, followSymlinks.toString()).let { result ->
+            settingService.db_setSetting(Props.Settings.followSymlinks, followSymlinks.toString()).let { result ->
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction Result.error("Failed to save configuration for following symbolic links.")

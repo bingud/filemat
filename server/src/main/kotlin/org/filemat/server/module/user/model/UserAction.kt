@@ -29,4 +29,5 @@ enum class UserAction {
     UPDATE_ENTITY_PERMISSION,               // 19
     DELETE_ENTITY_PERMISSION,               // 20
     UPLOAD_FILE,                            // 21
+    UPDATE_SYSTEM_SETTING,                  // 22
 }

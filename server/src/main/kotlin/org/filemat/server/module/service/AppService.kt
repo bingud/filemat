@@ -21,7 +21,7 @@ class AppService(private val settingService: SettingService, private val logServ
     fun generateSetupCode() {
         val code = StringUtils.randomLetterString(12).uppercase()
 
-        val op = settingService.setSetting(Props.Settings.appSetupCode, code)
+        val op = settingService.db_setSetting(Props.Settings.appSetupCode, code)
         if (op.isNotSuccessful) {
             println("Failed to generate setup code.")
             return

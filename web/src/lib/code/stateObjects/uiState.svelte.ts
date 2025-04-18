@@ -60,4 +60,4 @@ class UiState {
  */
 export const uiState = new UiState()
 
-export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles"
+export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "settings"
