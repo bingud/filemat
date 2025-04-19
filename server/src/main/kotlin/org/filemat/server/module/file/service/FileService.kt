@@ -11,9 +11,7 @@ import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
-import org.filemat.server.module.file.model.FileMetadata
-import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.model.FileType
+import org.filemat.server.module.file.model.*
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.FilePermission
@@ -41,6 +39,18 @@ class FileService(
     private val filesystem: FilesystemService,
 ) {
 
+    fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {
+        val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+        if (pathResult.isNotSuccessful) return pathResult.cast()
+        val canonicalPath = pathResult.value
+
+        TODO()
+        isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
+
+        }
+
+    }
+
     /**
      * Uses TUS to handle a file upload request
      */
@@ -67,14 +77,15 @@ class FileService(
             }
             val meta = parseTusHttpHeader(rawMeta)
 
+            // Authenticate destination path
             val rawFilename = meta["filename"]?.toFilePath()
             if (rawFilename == null) {
                 response.writer.write("Invalid filename")
                 response.status = 400
                 return
             }
-            val rawParentFolder = rawFilename.pathObject.parent.toString()
-            val parentFolderPath = resolvePath(FilePath(rawParentFolder)).let { (result, hasSymlink) ->
+            val rawDestinationPath = rawFilename.path.parent.toString()
+            val canonicalDestinationPath = resolvePath(FilePath.of(rawDestinationPath)).let { (result, hasSymlink) ->
                 if (result.notFound) {
                     response.writer.write("The target folder does not exist.")
                     response.status = 400
@@ -86,7 +97,7 @@ class FileService(
                 result.value
             }
 
-            val isAllowed = isAllowedToAccessFile(user = user, pathObject = parentFolderPath)
+            val isAllowed = isAllowedToAccessFile(user = user, canonicalPath = canonicalDestinationPath)
             if (isAllowed.isNotSuccessful) {
                 response.writer.write(isAllowed.errorOrNull ?: "You do not have permission to access this folder.")
                 response.status = 400
@@ -131,7 +142,7 @@ class FileService(
 
                         // Create an entity
                         entityService.create(
-                            rawPath = dataDestination,
+                            canonicalPath = dataDestination,
                             ownerId = user.userId,
                             userAction = UserAction.UPLOAD_FILE,
                             followSymLinks = State.App.followSymLinks
@@ -145,9 +156,6 @@ class FileService(
     }
 
     fun deleteFile(user: Principal, path: FilePath): Result<Unit> {
-        isAllowedToAccessFile(user, path).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
 
         return TODO()
     }
@@ -156,37 +164,19 @@ class FileService(
      * Returns an input stream for the content of a file
      */
     fun getFileContent(user: Principal, rawPath: FilePath): Result<InputStream> {
-        TODO()
+        val (pathResult, pathContainsSymlink) = resolvePath(rawPath)
 
-        val (pathResult, hasSymlink) = resolvePath(rawPath)
-        val path = pathResult.let {
-            println(hasSymlink)
-            if (it.isNotSuccessful && (!hasSymlink || !it.notFound)) {
-                return it.cast()
-            }
-            it.valueOrNull
-        }
-        val pathObj = path?.pathObject
-
-        // Check permission
-        if (State.App.followSymLinks) {
-            if (path == null) return Result.error("Failed to resolve path.")
-
-            isAllowedToAccessFile(user, path).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
-        } else {
+        // Return content of symlink file itself
+        // if following symlinks is disabled
+        if (pathContainsSymlink) {
             isAllowedToAccessFile(user, rawPath).let {
                 if (it.isNotSuccessful) return it.cast()
             }
-        }
 
-        if (hasSymlink) {
-            // Return content of symlink file
-            if (Files.isSymbolicLink(pathObj)) {
+            if (Files.isSymbolicLink(rawPath.path)) {
                 // stream the link itself
                 return try {
-                    Result.ok(Files.readSymbolicLink(pathObj).toString().toByteArray().inputStream())
+                    Result.ok(Files.readSymbolicLink(rawPath.path).toString().toByteArray().inputStream())
                 } catch (e: Exception) {
                     Result.error("Failed to read the symlink target path.")
                 }
@@ -195,10 +185,21 @@ class FileService(
             }
         }
 
-        if (!Files.isRegularFile(pathObj, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
+        val canonicalPath = pathResult.let {
+            if (it.isNotSuccessful) {
+                return it.cast()
+            }
+            it.value
+        }
+
+        isAllowedToAccessFile(user, canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        if (!Files.isRegularFile(canonicalPath.path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
 
         return try {
-            Result.ok(Files.newInputStream(pathObj))
+            Result.ok(Files.newInputStream(canonicalPath.path))
         } catch (e: Exception) {
             Result.error("Failed to stream file.")
         }
@@ -210,15 +211,22 @@ class FileService(
      *
      * if file is a folder, also returns entries
      */
-    fun getFileOrFolderEntries(user: Principal, path: FilePath): Result<Pair<FileMetadata, List<FileMetadata>?>>{
-        val metadata = getMetadata(user, path).let {
+    fun getFileOrFolderEntries(user: Principal, rawPath: FilePath): Result<Pair<FileMetadata, List<FileMetadata>?>> {
+        val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+        if (pathResult.isNotSuccessful) return pathResult.cast()
+        val canonicalPath = pathResult.value
+
+        val metadata = getMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
         val type = metadata.fileType
 
         if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymLinks)) {
-            val entries = getFolderEntries(user = user, path).let {
+            val entries = getFolderEntries(
+                user = user,
+                canonicalPath = canonicalPath,
+            ).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
@@ -234,29 +242,27 @@ class FileService(
     /**
      * Returns file metadata. Authenticates user
      */
-    fun getMetadata(user: Principal, path: FilePath): Result<FileMetadata> {
-        isAllowedToAccessFile(user, path).let {
+    fun getMetadata(user: Principal, rawPath: FilePath, canonicalPath: FilePath): Result<FileMetadata> {
+        isAllowedToAccessFile(user, canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        return filesystem.getMetadata(path)?.toResult()
+        return filesystem.getMetadata(rawPath)?.toResult()
             ?: Result.notFound()
     }
 
-    fun isAllowedToAccessFile(user: Principal, pathObject: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
-        val path = pathObject.path
-
+    fun isAllowedToAccessFile(user: Principal, canonicalPath: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
         // Deny blocked folder
-        val isAllowedResult = isPathAllowed(path)
+        val isAllowedResult = isPathAllowed(canonicalPath = canonicalPath)
         if (isAllowedResult.isNotSuccessful) return isAllowedResult.cast()
 
         // Verify the file location and handle conflicts
-        val isFileAvailable = verifyEntityInode(path, UserAction.READ_FOLDER)
+        val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
         if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
         // Check if user can read any files
         val isAdmin = hasAdminAccess ?: hasAdminAccess(user)
-        val permissionResult = hasReadPermission(path = path, principal = user, hasAdminAccess = isAdmin)
+        val permissionResult = hasReadPermission(canonicalPath = canonicalPath, principal = user, hasAdminAccess = isAdmin)
         if (permissionResult.isNotSuccessful) return permissionResult.cast()
 
         return Result.ok()
@@ -267,50 +273,57 @@ class FileService(
      *
      * Verifies user permissions.
      */
-    fun getFolderEntries(user: Principal, rawPath: FilePath): Result<List<FileMetadata>> {
-        val (pathResult, hasSymlink) = resolvePath(rawPath)
-        val canonicalPath = pathResult.let {
-            if (it.isNotSuccessful) return it.cast()
-            it.value
-        }
-
+    fun getFolderEntries(user: Principal, canonicalPath: FilePath): Result<List<FileMetadata>> {
         val hasAdminAccess = hasAdminAccess(user)
-        val isAllowed = isAllowedToAccessFile(user, canonicalPath, hasAdminAccess = hasAdminAccess)
+        val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         // Get folder entries
-        val result = internalGetFolderEntries(rawPath = rawPath, canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER)
+        val result = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER)
         if (result.isNotSuccessful) return result.cast()
-        val allEntries = result.value.filter { folderVisibilityService.isPathAllowed(it.filename) == null }
 
-        // Check permissions for folder entries
-        val folderEntries = if (hasAdminAccess) {
-            allEntries
-        } else {
-            filterPermittedFiles(allEntries, canonicalPath, user)
+        // Filter entries which are allowed and user has sufficient permission
+        // Resolve entries which are symlinks
+        val entries = result.value.filter { meta: FileMetadata ->
+            // Check if `it.fileType` is symlink, resolve if it is
+            val entryPath = if (meta.fileType.isSymLink()) {
+                val (resolvedResult, hasSymlink) = resolvePath(FilePath.of(meta.filename))
+                resolvedResult.let {
+                    if (it.isNotSuccessful) return@filter false
+                    it.value
+                }
+            } else {
+                FilePath.of(meta.filename)
+            }
+
+            val isPathAllowed = folderVisibilityService.isPathAllowed(entryPath) == null
+            if (!isPathAllowed) return@filter false
+
+            // Check permissions for entry
+            if (!hasAdminAccess) {
+                val permission = entityPermissionService.getUserPermission(
+                    canonicalPath = entryPath,
+                    userId = user.userId,
+                    roles = user.roles
+                )
+                val hasPermission = permission != null && permission.permissions.contains(FilePermission.READ)
+                if (!hasPermission) return@filter false
+            }
+
+            true
         }
 
-        return folderEntries.toResult()
+        return entries.toResult()
     }
 
     fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
 
     /**
-     * Filters list of files for which user has read permission
-     */
-    fun filterPermittedFiles(list: List<FileMetadata>, folderPath: FilePath, principal: Principal): List<FileMetadata> {
-        return list.filter { meta ->
-            val permission = entityPermissionService.getUserPermission(filePath = "${folderPath.path}/${meta.filename}", isNormalized = true, userId = principal.userId, roles = principal.roles)
-            return@filter permission != null && permission.permissions.contains(FilePermission.READ)
-        }
-    }
-
-    /**
      * Returns whether user has sufficient read permission for path.
      */
-    fun hasReadPermission(path: String, principal: Principal, hasAdminAccess: Boolean): Result<Unit> {
+    fun hasReadPermission(canonicalPath: FilePath, principal: Principal, hasAdminAccess: Boolean): Result<Unit> {
         if (!hasAdminAccess) {
-            val permissions = entityPermissionService.getUserPermission(filePath = path, isNormalized = true, userId = principal.userId, roles = principal.roles)
+            val permissions = entityPermissionService.getUserPermission(canonicalPath = canonicalPath, userId = principal.userId, roles = principal.roles)
                 ?: return Result.reject("You do not have permission to open this folder.")
 
             if (!permissions.permissions.contains(FilePermission.READ)) return Result.reject("You do not have permission to open this folder.")
@@ -322,26 +335,26 @@ class FileService(
     /**
      * Returns null if path is allowed. Otherwise returns string error.
      */
-    fun isPathAllowed(path: String): Result<Unit> {
-        val result = folderVisibilityService.isPathAllowed(folderPath = path, isNormalized = true)
+    fun isPathAllowed(canonicalPath: FilePath): Result<Unit> {
+        val result = folderVisibilityService.isPathAllowed(canonicalPath = canonicalPath)
         return if (result == null) Result.ok() else Result.reject(result, source = "isPathAllowed")
     }
 
     /**
      * Directly gets entries from a folder. Is not authenticated.
      */
-    private fun internalGetFolderEntries(rawPath: FilePath, canonicalPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
+    private fun internalGetFolderEntries(canonicalPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
         try {
             // Check if the resolved path is a folder
-            if (!Files.isDirectory(canonicalPath.pathObject, *if (State.App.followSymLinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
+            if (!Files.isDirectory(canonicalPath.path, *if (State.App.followSymLinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
                 return Result.notFound()
             }
 
             // List entries
-            val entries = Files.newDirectoryStream(rawPath.pathObject).use { it.toList() }
+            val entries = Files.newDirectoryStream(canonicalPath.path).use { it.toList() }
 
             val files = entries.map {
-                val entryPath = FilePath(it.toString())
+                val entryPath = FilePath(it)
                 filesystem.getMetadata(entryPath)
                     ?: throw IllegalStateException("Metadata object was null for a known file.")
             }
@@ -366,25 +379,24 @@ class FileService(
      *
      * Handles file conflicts like moved files. Can reassign inode or path of an entity.
      */
-    fun verifyEntityInode(filePath: String, userAction: UserAction): Result<Unit> {
-        val lock = verifyLocks.computeIfAbsent(filePath) { ReentrantLock() }
+    fun verifyEntityInode(path: FilePath, userAction: UserAction): Result<Unit> {
+        val lock = verifyLocks.computeIfAbsent(path.pathString) { ReentrantLock() }
         lock.lock()
         try {
-            val entity = entityService.getByPath(filePath, UserAction.NONE).let {
+            val entity = entityService.getByPath(path.pathString, UserAction.NONE).let {
                 if (it.notFound) return Result.ok()
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
-            val path = FilePath(filePath)
             val followSymlinks = entity.followSymlinks
 
             // Do not do inode check on unsupported filesystem.
             if (!entity.isFilesystemSupported || entity.inode == null) {
-                val exists = filesystem.exists(path.pathObject, followSymbolicLinks = followSymlinks)
+                val exists = filesystem.exists(path.path, followSymbolicLinks = followSymlinks)
                 return if (exists) Result.ok() else Result.reject("Path does not exist.", source = "verifyEntityByInode-notSupported-notFound")
             }
 
-            val newInode = filesystem.getInode(path.pathObject, followSymbolicLinks = followSymlinks)
+            val newInode = filesystem.getInode(path.path, followSymbolicLinks = followSymlinks)
             // Inode matches normally
             if (entity.inode == newInode) return Result.ok()
 
@@ -397,7 +409,7 @@ class FileService(
                     // Dangling entity exists with this inode.
                     // Associate this path to it.
                     val existingEntity = existingEntityR.value
-                    entityService.updatePath(existingEntity.entityId, filePath, existingEntity, userAction)
+                    entityService.updatePath(existingEntity.entityId, path.pathString, existingEntity, userAction)
                 } else if (existingEntityR.hasError){
                     return existingEntityR.cast()
                 }
@@ -414,7 +426,7 @@ class FileService(
             return Result.ok()
         } finally {
             lock.unlock()
-            verifyLocks.remove(filePath, lock)
+            verifyLocks.remove(path.pathString, lock)
         }
     }
 }

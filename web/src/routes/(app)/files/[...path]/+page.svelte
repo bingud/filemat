@@ -96,10 +96,77 @@
     
     function handleNewFolder() {
         newButtonPopoverOpen = false
+        
+        const folderName = prompt("Enter folder name:");
+        if (!folderName) return; // Cancel if no name provided
+        
+        // Construct the full target path
+        const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
+        const targetPath = `${currentPath}/${folderName}`;
+        
+        // Call API to create folder
+        fetch('/api/v1/file/folder', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: targetPath })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to create folder: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(`Folder created at ${targetPath}`);
+            // Refresh the file list
+            filesState.abort();
+            loadPageData(filesState.path);
+        })
+        .catch(error => {
+            console.error("Error creating folder:", error);
+            alert(`Failed to create folder: ${error.message}`);
+        });
     }
     
     function handleNewFile() {
         newButtonPopoverOpen = false
+        
+        const fileName = prompt("Enter file name:");
+        if (!fileName) return; // Cancel if no name provided
+        
+        // Construct the full target path
+        const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
+        const targetPath = `${currentPath}/${fileName}`;
+        
+        // Call API to create empty file
+        fetch('/api/v1/file/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                path: targetPath,
+                content: '' // Empty content for new file
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to create file: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(`File created at ${targetPath}`);
+            // Refresh the file list
+            filesState.abort();
+            loadPageData(filesState.path);
+        })
+        .catch(error => {
+            console.error("Error creating file:", error);
+            alert(`Failed to create file: ${error.message}`);
+        });
     }
 
     $effect(() => {

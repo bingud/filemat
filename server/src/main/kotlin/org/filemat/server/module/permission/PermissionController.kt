@@ -91,7 +91,7 @@ class PermissionController(
 
         entityPermissionService.createPermission(
             user = user,
-            rawPath = FilePath(rawPath),
+            rawPath = FilePath.of(rawPath),
             targetId = id,
             mode = mode,
             permissions = permissionList
@@ -110,7 +110,7 @@ class PermissionController(
         @RequestParam("include-mini-user-list", required = false) rawIncludeUsernames: String?,
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
-        val path = FilePath(rawPath)
+        val path = FilePath.of(rawPath)
         val includeUsernames = rawIncludeUsernames?.toBooleanStrictOrNull() ?: false
 
         val meta = entityPermissionService.getEntityPermissions(user = user, rawPath = path).let {

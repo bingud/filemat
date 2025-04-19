@@ -2,22 +2,26 @@ package org.filemat.server.module.file.model
 
 import org.filemat.server.common.util.getNormalizedPath
 import java.nio.file.Path
+import java.nio.file.Paths
 
 data class FilePath(
-    private val inputPath: String,
+    val originalInputPath: Path,
+    private val normalizedPath: Path? = null,
 ) {
+    val path: Path by lazy { normalizedPath ?: originalInputPath.getNormalizedPath() }
+    val pathString: String by lazy { path.toString() }
 
-    val originalPath: String = inputPath
-
-    val pathObject: Path by lazy { originalPath.getNormalizedPath() }
-    val path: String by lazy { pathObject.toString() }
-
-    override fun toString() = path
+    override fun toString() = pathString
     override fun equals(other: Any?): Boolean {
-        return other is FilePath && this.path == other.path
+        return other is FilePath && this.pathString == other.pathString
     }
 
     override fun hashCode(): Int {
-        return path.hashCode()
+        return pathString.hashCode()
+    }
+
+    companion object {
+        fun of(rawPath: String) = FilePath(Paths.get(rawPath))
+        fun ofAlreadyNormalized(path: Path) = FilePath(path, path)
     }
 }

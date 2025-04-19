@@ -5,12 +5,8 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import me.desair.tus.server.TusFileUploadService
-import me.desair.tus.server.upload.UploadInfo
-import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.parseTusHttpHeader
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.springframework.http.HttpHeaders
@@ -36,7 +32,7 @@ class FileController(
         @RequestParam("path") rawPath: String
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
-        val path = FilePath(rawPath)
+        val path = FilePath.of(rawPath)
 
         TODO()
     }
@@ -65,7 +61,7 @@ class FileController(
         @RequestParam("path") rawPath: String
     ): ResponseEntity<StreamingResponseBody> {
         val principal = request.getPrincipal()!!
-        val path = FilePath(rawPath)
+        val path = FilePath.of(rawPath)
 
         val inputStream = fileService.getFileContent(principal, path).let {
             if (it.notFound) return streamBad("This file was not found.", "")
@@ -74,7 +70,7 @@ class FileController(
             BufferedInputStream(it.value)
         }
 
-        val filename = path.path.substringAfterLast("/")
+        val filename = path.pathString.substringAfterLast("/")
 
         // Mark the stream at the beginning
         inputStream.mark(512)

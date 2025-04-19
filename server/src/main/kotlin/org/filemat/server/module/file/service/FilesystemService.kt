@@ -34,14 +34,14 @@ class FilesystemService {
      * Returns whether file is in a supported filesystem
      */
     fun isSupportedFilesystem(path: FilePath): Boolean? {
-        return FileUtils.isSupportedFilesystem(path.pathObject)
+        return FileUtils.isSupportedFilesystem(path.path)
     }
 
     fun moveFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean): Result<Unit> {
         return try {
             Files.move(
-                source.pathObject,
-                destination.pathObject,
+                source.path,
+                destination.path,
                 *if (overwriteDestination) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
             )
             Result.ok()
@@ -56,9 +56,9 @@ class FilesystemService {
     fun deleteFile(target: FilePath, recursive: Boolean): Result<Unit> {
         return try {
             if (recursive) {
-                target.pathObject.deleteRecursively()
+                target.path.deleteRecursively()
             } else {
-                target.pathObject.deleteExisting()
+                target.path.deleteExisting()
             }
             Result.ok()
         } catch (e: NoSuchFileException) {
@@ -73,7 +73,7 @@ class FilesystemService {
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {
-        val attributes = readAttributes(path.pathObject, State.App.followSymLinks)
+        val attributes = readAttributes(path.path, State.App.followSymLinks)
             ?: return null
 
         val type = when {
@@ -81,7 +81,7 @@ class FilesystemService {
             attributes.isDirectory -> FileType.FOLDER
             attributes.isSymbolicLink -> {
                 if (State.App.followSymLinks) {
-                    val target = Files.readSymbolicLink(path.pathObject)
+                    val target = Files.readSymbolicLink(path.path)
                     if (target.isDirectory()) FileType.FOLDER_LINK else FileType.FILE_LINK
                 } else {
                     FileType.FILE
@@ -93,7 +93,7 @@ class FilesystemService {
         val modificationTime = attributes.lastModifiedTime().toMillis()
 
         return FileMetadata(
-            filename = path.pathObject.absolutePathString(),
+            filename = path.path.absolutePathString(),
             modifiedDate = modificationTime,
             createdDate = creationTime,
             fileType = type,

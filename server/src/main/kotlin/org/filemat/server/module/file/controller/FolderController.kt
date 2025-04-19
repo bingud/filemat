@@ -3,6 +3,8 @@ package org.filemat.server.module.file.controller
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.model.cast
+import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.json
@@ -22,18 +24,46 @@ class FolderController(private val fileService: FileService) : AController() {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    @PostMapping("/create")
+    fun createFolderMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+
+        val result = fileService.createFolder(
+            user = principal,
+            rawPath = path
+        )
+
+        if (result.rejected) return bad(result.error, "rejected")
+        if (result.notFound) return bad("Parent folder does not exist.", "parent-folder-not-found")
+        if (result.hasError) return internal(result.error, "")
+
+        return ok("ok")
+    }
+
+
     @PostMapping("/list")
     fun listFolderItemsMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
-        val path = FilePath(rawPath)
+        val path = FilePath.of(rawPath)
 
-        val result = fileService.getFolderEntries(
-            user = principal,
-            rawPath = path,
-        )
+        val result = let {
+            val (pathResult, pathHasSymlink) = resolvePath(path)
+            if (pathResult.isNotSuccessful) return@let pathResult.cast()
+            val canonicalPath = pathResult.value
+
+            fileService.getFolderEntries(
+                user = principal,
+                canonicalPath = canonicalPath,
+            )
+        }
+
         if (result.rejected) return bad(result.error, "rejected")
         if (result.hasError) return bad(result.error, "")
         if (result.notFound) return bad("This folder does not exist.", "folder-not-found")
@@ -49,11 +79,11 @@ class FolderController(private val fileService: FileService) : AController() {
         @RequestParam("path") rawPath: String,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
-        val path = FilePath(rawPath)
+        val path = FilePath.of(rawPath)
 
         val result = fileService.getFileOrFolderEntries(
             user = principal,
-            path = path
+            rawPath = path
         )
         if (result.hasError) return internal(result.error, "")
         if (result.notFound) return bad("This path does not exist.", "")

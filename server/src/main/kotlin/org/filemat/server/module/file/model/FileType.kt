@@ -5,6 +5,8 @@ enum class FileType {
     FOLDER,
     FILE_LINK,
     FOLDER_LINK,
-    ANY_LINK,
     OTHER
 }
+
+fun FileType.isSymLink() = this == FileType.FILE_LINK || this == FileType.FOLDER_LINK
+fun FileType.isRegularFile() = this == FileType.FILE || this == FileType.FOLDER

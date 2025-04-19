@@ -11,16 +11,13 @@ import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
-import java.io.FileNotFoundException
 import java.nio.file.Files
-import java.nio.file.LinkOption
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.io.path.exists
-import kotlin.io.path.pathString
 import kotlin.system.measureNanoTime
 
 fun unixNow() = Instant.now().epochSecond
@@ -125,6 +122,10 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
  * Fully normalizes a path, makes it absolute
  */
 fun String.getNormalizedPath(): Path = Paths.get("/").resolve(this.trimStart('/')).normalize()
+fun Path.getNormalizedPath(): Path =
+    if (isAbsolute) normalize()
+    else Paths.get("/").resolve(this).normalize()
+
 fun String.normalizePath() = this.getNormalizedPath().toString()
 
 
@@ -156,15 +157,14 @@ fun parseTusHttpHeader(header: String): Map<String, String> {
  */
 fun resolvePath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
     return try {
-        val resolved = if (State.App.followSymLinks) {
-            filePath.pathObject.toRealPath()
+        val (canonicalPath, containsSymlink) = if (State.App.followSymLinks) {
+            filePath.path.toRealPath() to false
         } else {
-            val containsSymlink = pathContainsSymlink(filePath.pathObject)
-            if (containsSymlink) return Pair(Result.notFound(), true)
-            if (!filePath.pathObject.exists(LinkOption.NOFOLLOW_LINKS)) return Pair(Result.notFound(), false)
-            filePath.pathObject
+            val containsSymlink = pathContainsSymlink(filePath.path)
+            filePath.path.toRealPath() to containsSymlink
         }
-        Result.ok(resolved.pathString.toFilePath()) to false
+
+        Result.ok(FilePath.ofAlreadyNormalized(canonicalPath)) to containsSymlink
     } catch (e: NoSuchFileException) {
         Pair(Result.notFound(), false)
     } catch (e: Exception) {
@@ -195,8 +195,7 @@ fun pathContainsSymlink(input: Path): Boolean {
 }
 
 
-fun String.toFilePath() = FilePath(this)
-
+fun String.toFilePath() = FilePath.of(this)
 
 fun <T> T.print() = this.also { println(this) }
 

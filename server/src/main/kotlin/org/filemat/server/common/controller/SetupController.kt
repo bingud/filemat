@@ -103,7 +103,7 @@ class SetupController(
             ?: Validator.password(plainPassword)
             ?: Validator.username(username)
         )?.let { return@run bad(it, "validation") }
-        val uploadFolderPath = FilePath(rawUploadFolderPath)
+        val uploadFolderPath = FilePath.of(rawUploadFolderPath)
 
         val codeVerification = appService.verifySetupCode(setupCode)
         if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
@@ -173,7 +173,7 @@ class SetupController(
             }
 
             // Save download folder path
-            settingService.db_setSetting(Props.Settings.uploadFolderPath, uploadFolderPath.path).let { result ->
+            settingService.db_setSetting(Props.Settings.uploadFolderPath, uploadFolderPath.pathString).let { result ->
                 if (result.isNotSuccessful) {
                     status.setRollbackOnly()
                     return@runTransaction Result.error("Failed to save upload folder path to database.")

@@ -2,9 +2,9 @@ package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
-import org.filemat.server.common.util.normalizePath
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.IFolderVisibility
 import org.filemat.server.module.file.model.VisibilityTrie
 import org.filemat.server.module.file.repository.FolderVisibilityRepository
@@ -52,18 +52,16 @@ class FolderVisibilityService(
     /**
      * returns if a folder path is not blocked
      */
-    fun isPathAllowed(folderPath: String, isNormalized: Boolean = false): String? {
-        val path = if (isNormalized) folderPath else folderPath.normalizePath()
-
-        if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(path, isPathNormalized = true)) {
+    fun isPathAllowed(canonicalPath: FilePath): String? {
+        if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(canonicalPath.pathString, isPathNormalized = true)) {
             return "This file is blocked because it is marked as sensitive."
         }
 
-        val isForceHidden = hiddenFolderTrie.getVisibility(path)
+        val isForceHidden = hiddenFolderTrie.getVisibility(canonicalPath.pathString)
         // isExposed is set to true because all folders in this list are forcefully hidden
         if (isForceHidden.isExposed == true) return "This file is blocked."
 
-        val visibility = visibilityTrie.getVisibility(path)
+        val visibility = visibilityTrie.getVisibility(canonicalPath.pathString)
         return if (visibility.isExposed) null else "This file is not exposed."
     }
 
