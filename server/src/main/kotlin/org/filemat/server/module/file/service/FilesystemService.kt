@@ -30,6 +30,15 @@ class FilesystemService {
             .withStoragePath(State.App.uploadFolderPath)
     }
 
+    fun createFolder(folder: FilePath): Result<Unit> {
+        return try {
+            Files.createDirectories(folder.path)
+            Result.ok()
+        } catch (e: Exception) {
+            Result.error("Failed to create folder.")
+        }
+    }
+
     /**
      * Returns whether file is in a supported filesystem
      */
@@ -48,7 +57,7 @@ class FilesystemService {
         } catch (e: NoSuchFileException) {
             Result.notFound()
         } catch (e: Exception) {
-            Result.error("Failed to move file")
+            Result.error("Failed to move file.")
         }
     }
 
@@ -64,7 +73,7 @@ class FilesystemService {
         } catch (e: NoSuchFileException) {
             Result.notFound()
         } catch (e: Exception) {
-            Result.error("Failed to delete file")
+            Result.error("Failed to delete file.")
         }
     }
 

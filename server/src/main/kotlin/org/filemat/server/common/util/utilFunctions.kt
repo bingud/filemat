@@ -8,8 +8,11 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.permission.model.FilePermission
+import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.transaction.TransactionStatus
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException

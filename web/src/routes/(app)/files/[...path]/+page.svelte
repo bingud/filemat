@@ -19,6 +19,7 @@
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
     import * as tus from 'tus-js-client';
+    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -94,7 +95,7 @@
         // Note: Removal is now handled in the onchange event after selection or cancellation
     }
     
-    function handleNewFolder() {
+    async function handleNewFolder() {
         newButtonPopoverOpen = false
         
         const folderName = prompt("Enter folder name:");
@@ -104,69 +105,33 @@
         const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
         const targetPath = `${currentPath}/${folderName}`;
         
-        // Call API to create folder
-        fetch('/api/v1/file/folder', {
+        // Call API to create folder using safeFetch
+        const response = await safeFetch('/api/v1/folder/create', { 
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ path: targetPath })
+            body: formData({ path: targetPath })
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to create folder: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
+        if (response.failed) {
+            handleException("Failed to create folder", "Failed to create folder.", response.exception);
+            return;
+        }
+        
+        const status = response.code;
+        const json = response.json();
+        
+        if (status.ok) {
             console.log(`Folder created at ${targetPath}`);
             // Refresh the file list
             filesState.abort();
             loadPageData(filesState.path);
-        })
-        .catch(error => {
-            console.error("Error creating folder:", error);
-            alert(`Failed to create folder: ${error.message}`);
-        });
+        } else if (status.serverDown) {
+            handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.");
+        } else {
+            handleErrorResponse(json, "Failed to create folder.");
+        }
     }
     
     function handleNewFile() {
         newButtonPopoverOpen = false
-        
-        const fileName = prompt("Enter file name:");
-        if (!fileName) return; // Cancel if no name provided
-        
-        // Construct the full target path
-        const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
-        const targetPath = `${currentPath}/${fileName}`;
-        
-        // Call API to create empty file
-        fetch('/api/v1/file/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                path: targetPath,
-                content: '' // Empty content for new file
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to create file: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log(`File created at ${targetPath}`);
-            // Refresh the file list
-            filesState.abort();
-            loadPageData(filesState.path);
-        })
-        .catch(error => {
-            console.error("Error creating file:", error);
-            alert(`Failed to create file: ${error.message}`);
-        });
     }
 
     $effect(() => {

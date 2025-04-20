@@ -10,6 +10,7 @@ import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.log.model.LogType
@@ -39,16 +40,97 @@ class FileService(
     private val filesystem: FilesystemService,
 ) {
 
-    fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {
-        val (pathResult, pathHasSymlink) = resolvePath(rawPath)
-        if (pathResult.isNotSuccessful) return pathResult.cast()
-        val canonicalPath = pathResult.value
-
+    fun deleteFile(user: Principal, rawPath: FilePath): Result<Unit> {
         TODO()
-        isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
+        // Resolve the target path
+        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
+        if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
+        val canonicalPath = canonicalResult.value
 
+        if (canonicalPath.pathString == "/") return Result.reject("Cannot delete root folder.")
+
+        // Check basic access
+        isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
         }
 
+        // Check delete permission on the file
+        hasFilePermission(
+            canonicalPath = canonicalPath,
+            principal = user,
+            permission = FilePermission.DELETE
+        ).let {
+            if (it == false) return Result.reject("You do not have permission to delete this file.")
+        }
+
+        // Verify file exists
+        val exists = filesystem.exists(canonicalPath.path, followSymbolicLinks = false)
+        if (!exists) return Result.reject("File not found.")
+
+        val entity = entityService.getByPath(canonicalPath.pathString, UserAction.DELETE_ENTITY_PERMISSION).let {
+            if (it.hasError) return it.cast()
+            it.valueOrNull
+        }
+
+        // Perform deletion
+        filesystem.delete(canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Record the deletion event
+        entityService.delete(
+            canonicalPath = canonicalPath,
+            userAction   = UserAction.DELETE_FILE,
+            performedBy  = user.userId,
+            followSymLinks = false
+        )
+
+        return Result.ok()
+    }
+
+
+    fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {
+        val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
+
+        // Get folder parent path
+        val (canonicalParentResult, pathHasSymlink) = resolvePath(rawParentPath)
+        if (canonicalParentResult.isNotSuccessful) return canonicalParentResult.cast()
+        val canonicalParent = canonicalParentResult.value
+
+        // Check permissions
+        isAllowedToAccessFile(user = user, canonicalPath = canonicalParent).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        hasFilePermission(
+            canonicalPath = canonicalParent,
+            principal = user,
+            permission = FilePermission.WRITE
+        ).let {
+            if (it == false) return Result.reject("You do not have permission to modify this folder.")
+        }
+
+        // Get folder canonical path
+        val folderName = rawPath.path.fileName
+        val canonicalPath = FilePath.ofAlreadyNormalized(canonicalParent.path.resolve(folderName))
+
+        // Check if folder already exists
+        val alreadyExists = filesystem.exists(canonicalPath.path, false)
+        if (alreadyExists) return Result.reject("This folder already exists.")
+
+        // Create folder
+        filesystem.createFolder(canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        entityService.create(
+            canonicalPath = canonicalPath,
+            ownerId = user.userId,
+            userAction = UserAction.CREATE_FOLDER,
+            followSymLinks = false
+        )
+
+        return Result.ok()
     }
 
     /**
@@ -155,11 +237,6 @@ class FileService(
         }
     }
 
-    fun deleteFile(user: Principal, path: FilePath): Result<Unit> {
-
-        return TODO()
-    }
-
     /**
      * Returns an input stream for the content of a file
      */
@@ -262,8 +339,10 @@ class FileService(
 
         // Check if user can read any files
         val isAdmin = hasAdminAccess ?: hasAdminAccess(user)
-        val permissionResult = hasReadPermission(canonicalPath = canonicalPath, principal = user, hasAdminAccess = isAdmin)
-        if (permissionResult.isNotSuccessful) return permissionResult.cast()
+        if (isAdmin != true) {
+            val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = user, permission = FilePermission.READ)
+            if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
+        }
 
         return Result.ok()
     }
@@ -316,21 +395,23 @@ class FileService(
         return entries.toResult()
     }
 
-    fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
+    private fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
 
-    /**
-     * Returns whether user has sufficient read permission for path.
-     */
-    fun hasReadPermission(canonicalPath: FilePath, principal: Principal, hasAdminAccess: Boolean): Result<Unit> {
-        if (!hasAdminAccess) {
-            val permissions = entityPermissionService.getUserPermission(canonicalPath = canonicalPath, userId = principal.userId, roles = principal.roles)
-                ?: return Result.reject("You do not have permission to open this folder.")
-
-            if (!permissions.permissions.contains(FilePermission.READ)) return Result.reject("You do not have permission to open this folder.")
+    fun hasFilePermission(canonicalPath: FilePath, principal: Principal, hasAdminAccess: Boolean? = null, permission: FilePermission): Boolean {
+        if (hasAdminAccess == true) return true
+        if (hasAdminAccess == null) {
+            // Check for admin perms
+            principal.getPermissions().let { perms ->
+                if (perms.any { it == SystemPermission.SUPER_ADMIN || it == SystemPermission.ACCESS_ALL_FILES }) return true
+            }
         }
 
-        return Result.ok(Unit)
+        val permissions = entityPermissionService.getUserPermission(canonicalPath = canonicalPath, userId = principal.userId, roles = principal.roles)
+            ?: return false
+
+        return permissions.permissions.contains(permission)
     }
+
 
     /**
      * Returns null if path is allowed. Otherwise returns string error.

@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata } from "$lib/code/auth/types";
-    import { filenameFromPath, formatBytes, formatBytesRounded, formatUnixMillis } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -90,11 +90,38 @@
         closeEntryPopover()
     }
     
-    function handleDeleteConfirm() {
-        if (entryToDelete) {
-            
+    async function handleDeleteConfirm() {
+        if (!entryToDelete) return;
+        
+        const response = await safeFetch(`/api/v1/files/delete`, {
+            method: "POST",
+            body: formData({ path: entryToDelete.filename }),
+            credentials: "same-origin"
+        });
+        
+        if (response.failed) {
+            handleError(response.exception, `Failed to delete "${filenameFromPath(entryToDelete.filename)}".`);
+            return;
         }
-        entryToDelete = null
+        
+        const status = response.code;
+        const json = response.json();
+        
+        if (status.ok) {
+            // Refresh the current page to reload the file list
+            goto(`/files${filesState.path}`, { replaceState: true });
+            
+            // If deleted entry was selected, clear selection
+            if (filesState.selectedEntry.path === entryToDelete.filename) {
+                filesState.selectedEntry.path = null;
+            }
+        } else if (status.serverDown) {
+            handleError(`Server ${status} when deleting file.`, "Failed to delete file. The server is unavailable.");
+        } else {
+            handleErrorResponse(json, `Failed to delete "${filenameFromPath(entryToDelete.filename)}". (${status})`);
+        }
+        
+        entryToDelete = null;
     }
 
     function closeEntryPopover() {

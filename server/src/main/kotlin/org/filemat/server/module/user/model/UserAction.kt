@@ -30,4 +30,6 @@ enum class UserAction {
     DELETE_ENTITY_PERMISSION,               // 20
     UPLOAD_FILE,                            // 21
     UPDATE_SYSTEM_SETTING,                  // 22
+    CREATE_FOLDER,                          // 23
+    CREATE_FILE,                            // 24
 }
