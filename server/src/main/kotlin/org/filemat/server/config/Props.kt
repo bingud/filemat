@@ -1,6 +1,7 @@
 package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.config.properties.NonDeletableSystemPaths
 import org.filemat.server.config.properties.SensitiveFolderPaths
 
 /**
@@ -9,9 +10,12 @@ import org.filemat.server.config.properties.SensitiveFolderPaths
 object Props {
 
     const val appName = "Filemat"
-    const val setupCodeFile = "/var/lib/filemat/setup-code.txt"
-    val sensitiveFolders = SensitiveFolderPaths
+    const val dataFolder = "/var/lib/filemat"
+    const val setupCodeFile = "$dataFolder/setup-code.txt"
     const val defaultUploadFolderPath = "/tmp/filemat"
+
+    val sensitiveFolders = SensitiveFolderPaths
+    val nonDeletableFolders = NonDeletableSystemPaths
 
     /**
      * Holds role-related values

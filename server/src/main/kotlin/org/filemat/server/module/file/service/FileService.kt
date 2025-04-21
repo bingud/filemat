@@ -9,6 +9,7 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
+import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
@@ -41,7 +42,6 @@ class FileService(
 ) {
 
     fun deleteFile(user: Principal, rawPath: FilePath): Result<Unit> {
-        TODO()
         // Resolve the target path
         val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
         if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
@@ -50,40 +50,30 @@ class FileService(
         if (canonicalPath.pathString == "/") return Result.reject("Cannot delete root folder.")
 
         // Check basic access
-        isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
+        isAllowedToDeleteFile(user = user, canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
-        }
-
-        // Check delete permission on the file
-        hasFilePermission(
-            canonicalPath = canonicalPath,
-            principal = user,
-            permission = FilePermission.DELETE
-        ).let {
-            if (it == false) return Result.reject("You do not have permission to delete this file.")
         }
 
         // Verify file exists
         val exists = filesystem.exists(canonicalPath.path, followSymbolicLinks = false)
         if (!exists) return Result.reject("File not found.")
 
-        val entity = entityService.getByPath(canonicalPath.pathString, UserAction.DELETE_ENTITY_PERMISSION).let {
+        val entity = entityService.getByPath(canonicalPath.pathString, UserAction.DELETE_FILE).let {
             if (it.hasError) return it.cast()
             it.valueOrNull
         }
 
         // Perform deletion
-        filesystem.delete(canonicalPath).let {
+        filesystem.deleteFile(canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        // Record the deletion event
-        entityService.delete(
-            canonicalPath = canonicalPath,
-            userAction   = UserAction.DELETE_FILE,
-            performedBy  = user.userId,
-            followSymLinks = false
-        )
+        if (entity != null) {
+            entityService.delete(entity.entityId, UserAction.DELETE_FILE)
+            if (entity.path != null) {
+                entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
+            }
+        }
 
         return Result.ok()
     }
@@ -328,6 +318,9 @@ class FileService(
             ?: Result.notFound()
     }
 
+    /**
+     * Fully verifies if a user is allowed to read a file
+     */
     fun isAllowedToAccessFile(user: Principal, canonicalPath: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
         // Deny blocked folder
         val isAllowedResult = isPathAllowed(canonicalPath = canonicalPath)
@@ -342,6 +335,32 @@ class FileService(
         if (isAdmin != true) {
             val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = user, permission = FilePermission.READ)
             if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
+        }
+
+        return Result.ok()
+    }
+
+    /**
+     * Fully verifies if a user is allowed to read and delete a file.
+     */
+    fun isAllowedToDeleteFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
+        val isAdmin = hasAdminAccess(user)
+
+        if (isAdmin == false) {
+            // Check access permissions
+            isAllowedToAccessFile(user, canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+            // Check delete permissions
+            hasFilePermission(canonicalPath, user, false, FilePermission.DELETE).let {
+                if (it == false) return Result.reject("You do not have permission to delete this file.")
+            }
+        }
+
+        // Check is path is blocked from being deleted
+        isPathDeletable(canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
         }
 
         return Result.ok()
@@ -419,6 +438,19 @@ class FileService(
     fun isPathAllowed(canonicalPath: FilePath): Result<Unit> {
         val result = folderVisibilityService.isPathAllowed(canonicalPath = canonicalPath)
         return if (result == null) Result.ok() else Result.reject(result, source = "isPathAllowed")
+    }
+
+    fun isPathDeletable(canonicalPath: FilePath): Result<Unit> {
+        // Is path a system folder
+        val isProtected = Props.nonDeletableFolders.isProtected(canonicalPath.pathString, true)
+        // Was path made deletable
+        val isForcedDeletable = State.App.forceDeletableFolders.contains(canonicalPath.pathString)
+
+        if (isProtected && !isForcedDeletable) return Result.reject("This system folder cannot be deleted.")
+
+        val containsData = Props.dataFolder.startsWith(canonicalPath.pathString)
+        if (containsData && State.App.allowWriteDataFolder == false) return Result.error("Cannot modify ${Props.appName} data folder.")
+        return Result.ok()
     }
 
     /**

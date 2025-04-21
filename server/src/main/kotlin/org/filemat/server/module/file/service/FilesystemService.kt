@@ -4,6 +4,7 @@ import me.desair.tus.server.TusFileUploadService
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.FileUtils
+import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
@@ -38,6 +39,62 @@ class FilesystemService {
             Result.error("Failed to create folder.")
         }
     }
+
+    fun deleteFile(path: FilePath): Result<Unit> {
+        val file = path.path.toFile()
+        if (!file.exists()) return Result.notFound()
+
+        val dataPath = Props.dataFolder
+
+        // 1) Deleting the data folder itself?
+        if (file.absolutePath == dataPath) {
+            return if (State.App.allowWriteDataFolder) {
+                if (file.deleteRecursively()) Result.ok()
+                else Result.error("Failed to delete data folder.")
+            } else {
+                Result.reject("Cannot delete ${Props.appName} data folder.")
+            }
+        }
+
+        // 2) Deleting a directory that contains the data folder, but write is disallowed?
+        if (!State.App.allowWriteDataFolder
+            && file.isDirectory
+            && dataPath.startsWith(file.absolutePath)
+        ) {
+            return deleteChildrenManually(file, dataPath)
+        }
+
+        // 3) Everything else: normal recursive delete
+        return if (file.deleteRecursively()) Result.ok()
+        else Result.error("File deletion failed.")
+    }
+
+    private fun deleteChildrenManually(directory: File, dataPath: String): Result<Unit> {
+        val children = directory.listFiles()
+            ?: return Result.error("Failed to list directory contents.")
+        var failed = false
+
+        for (child in children) {
+            when {
+                // 3a) the data folder itself: dive in but never remove it
+                child.absolutePath == dataPath -> {
+                    val sub = deleteChildrenManually(child, dataPath)
+                    if (sub.hasError) failed = true
+                }
+                // 3b) anything else: drop the whole subtree
+                else -> {
+                    if (!child.deleteRecursively()) {
+                        System.err.println("Failed to delete: ${child.absolutePath}")
+                        failed = true
+                    }
+                }
+            }
+        }
+
+        return if (failed) Result.error("Some files could not be deleted.")
+        else Result.ok()
+    }
+
 
     /**
      * Returns whether file is in a supported filesystem

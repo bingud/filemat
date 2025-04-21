@@ -32,4 +32,5 @@ enum class UserAction {
     UPDATE_SYSTEM_SETTING,                  // 22
     CREATE_FOLDER,                          // 23
     CREATE_FILE,                            // 24
+    DELETE_FILE,                            // 25
 }

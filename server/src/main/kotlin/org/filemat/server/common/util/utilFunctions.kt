@@ -126,7 +126,7 @@ fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () 
  */
 fun String.getNormalizedPath(): Path = Paths.get("/").resolve(this.trimStart('/')).normalize()
 fun Path.getNormalizedPath(): Path =
-    if (isAbsolute) normalize()
+    if (this.isAbsolute) normalize()
     else Paths.get("/").resolve(this).normalize()
 
 fun String.normalizePath() = this.getNormalizedPath().toString()

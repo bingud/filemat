@@ -9,6 +9,10 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
+    @Modifying
+    @Query("DELETE FROM files WHERE entity_id = :entityId")
+    fun delete(entityId: Ulid): Int
+
     @Query("SELECT * FROM files WHERE entity_id = :entityId")
     fun getById(entityId: Ulid): FilesystemEntity?
 

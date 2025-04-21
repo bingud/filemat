@@ -28,6 +28,22 @@ class EntityService(
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
 ) {
+    fun delete(entityId: Ulid, userAction: UserAction): Result<Unit> {
+        return try {
+            entityRepository.delete(entityId)
+            Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to delete file entity from database",
+                message = e.stackTraceToString(),
+                targetId = entityId
+            )
+            Result.error("Failed to get file from database.")
+        }
+    }
+
     fun create(canonicalPath: FilePath, ownerId: Ulid, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
         val isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
             ?: return Result.notFound(source = "entityService.create-isFsSupp-notfound")
