@@ -215,7 +215,7 @@
 
                 <div class="w-full md:w-[15%] h-1/2 md:h-full flex items-center justify-end">
                     <Popover.Root bind:open={newButtonPopoverOpen}>
-                        <Popover.Trigger class="h-full flex items-center justify-center py-2">
+                        <Popover.Trigger class="h-full flex items-center justify-center py-2" hidden={filesState.data.meta?.fileType.startsWith("FILE")}>
                             <div class="h-full flex items-center justify-center bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-md px-2">
                                 <span class="">New</span>
                             </div>
