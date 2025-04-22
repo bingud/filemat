@@ -26,7 +26,7 @@
         const selectedName = filesState.selectedEntry.selectedPositions.getChild(filesState.path)
         if (!selectedName) return
 
-        const filename = filesState.path === "/" ? `/${selectedName}` : `/${filesState.path}/${selectedName}`
+        const filename = filesState.path === "/" ? `${selectedName}` : `${filesState.path}/${selectedName}`
 
         if (filesState.data.entries?.some(v => v.filename === filename)) {
             filesState.selectedEntry.path = filename
@@ -92,8 +92,9 @@
     
     async function handleDeleteConfirm() {
         if (!entryToDelete) return;
+        const deletedPath = entryToDelete.filename
         
-        const response = await safeFetch(`/api/v1/files/delete`, {
+        const response = await safeFetch(`/api/v1/file/delete`, {
             method: "POST",
             body: formData({ path: entryToDelete.filename }),
             credentials: "same-origin"
@@ -108,8 +109,10 @@
         const json = response.json();
         
         if (status.ok) {
-            // Refresh the current page to reload the file list
-            goto(`/files${filesState.path}`, { replaceState: true });
+            // Remove the deleted entry from the current entries list
+            if (filesState.data.entries && entryToDelete) {
+                filesState.data.entries = filesState.data.entries.filter(e => e.filename !== deletedPath);
+            }
             
             // If deleted entry was selected, clear selection
             if (filesState.selectedEntry.path === entryToDelete.filename) {
@@ -118,7 +121,7 @@
         } else if (status.serverDown) {
             handleError(`Server ${status} when deleting file.`, "Failed to delete file. The server is unavailable.");
         } else {
-            handleErrorResponse(json, `Failed to delete "${filenameFromPath(entryToDelete.filename)}". (${status})`);
+            handleErrorResponse(json, `Failed to delete file. (${status})`);
         }
         
         entryToDelete = null;

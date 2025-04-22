@@ -34,7 +34,12 @@ class FileController(
         val user = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
 
-        TODO()
+        fileService.deleteFile(user, path).let {
+            if (it.notFound) return bad("This file was not found.", "")
+            if (it.rejected) return bad(it.error, "")
+            if (it.isNotSuccessful) return internal(it.error, "")
+            return ok("ok")
+        }
     }
 
     @RequestMapping(value = ["/upload", "/upload/{uploadId}"], method = [RequestMethod.OPTIONS, RequestMethod.POST, RequestMethod.HEAD, RequestMethod.PATCH])

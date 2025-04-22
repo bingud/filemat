@@ -42,6 +42,7 @@
     }
 </script>
 
+
 <!-- Breadcrumbs -->
 <div class="w-full flex items-center h-[2rem] overflow-hidden">
     {#if filesState.path === "/"}

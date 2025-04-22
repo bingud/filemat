@@ -47,12 +47,12 @@ class FilesystemService {
         val dataPath = Props.dataFolder
 
         // 1) Deleting the data folder itself?
-        if (file.absolutePath == dataPath) {
+        if (file.absolutePath.startsWith(dataPath)) {
             return if (State.App.allowWriteDataFolder) {
                 if (file.deleteRecursively()) Result.ok()
                 else Result.error("Failed to delete data folder.")
             } else {
-                Result.reject("Cannot delete ${Props.appName} data folder.")
+                Result.reject("Cannot edit ${Props.appName} data folder.")
             }
         }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { beforeNavigate } from "$app/navigation";
     import { getFileData } from "$lib/code/module/files";
-    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
+    import { pageTitle, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onDestroy, untrack } from "svelte";
     import FileViewer from "./content/FileViewer.svelte";
@@ -99,11 +99,13 @@
         newButtonPopoverOpen = false
         
         const folderName = prompt("Enter folder name:");
-        if (!folderName) return; // Cancel if no name provided
+        if (!folderName) return
         
         // Construct the full target path
-        const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
-        const targetPath = `${currentPath}/${folderName}`;
+        const currentPath = filesState.path === '/' ? '' : filesState.path
+        const targetPath = `${currentPath}/${folderName}`
+        console.log(`targetPath`, targetPath)
+        console.log(`currentPath`, currentPath)
         
         // Call API to create folder using safeFetch
         const response = await safeFetch('/api/v1/folder/create', { 
@@ -119,10 +121,13 @@
         const json = response.json();
         
         if (status.ok) {
-            console.log(`Folder created at ${targetPath}`);
-            // Refresh the file list
-            filesState.abort();
-            loadPageData(filesState.path);
+            filesState.data.entries?.push({
+                filename: targetPath,
+                modifiedDate: unixNowMillis(),
+                createdDate: unixNowMillis(),
+                fileType: "FOLDER",
+                size: 0
+            })
         } else if (status.serverDown) {
             handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.");
         } else {

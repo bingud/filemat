@@ -25,7 +25,7 @@ object State {
         val forceDeletableFolders = env("FM_FORCE_DELETABLE_FOLDERS").parseFileList { it.print_forceDeletable() }
 
         // Allow Filemat data folder to be accessed
-        val allowReadDataFolder = env("FM_ALLOW_RED_DATA_FOLDER")?.toBooleanStrictOrNull() ?: false
+        val allowReadDataFolder = env("FM_ALLOW_READ_DATA_FOLDER")?.toBooleanStrictOrNull() ?: false
         val allowWriteDataFolder = env("FM_ALLOW_WRITE_DATA_FOLDER")?.toBooleanStrictOrNull() ?: false
 
         private val followSymLinksEnv = (env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull()).also { println("Follow symbolic links: $it\n") }

@@ -2,7 +2,7 @@ import { page } from "$app/state"
 import type { FileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import type { ulid } from "$lib/code/types"
-import { isBlank, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte"
+import { prependIfMissing, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte"
 import { SingleChildBooleanTree } from "./files"
 
 
@@ -12,14 +12,13 @@ class FilesState {
      */
     path: string = $derived.by(() => {
         let path = page.params.path
-        if (isBlank(path)) return "/"
-        return path
+        return prependIfMissing(path, "/")
     })
 
     /**
      * File path segments of the current path
      */
-    segments = $derived(this.path.split("/"))
+    segments = $derived(this.path.split("/").filter(v => v !== ""))
     
     /**
      * Loading indicators

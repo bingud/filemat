@@ -257,6 +257,9 @@ export function arrayRemove<T>(arr: T[], predicate: (value: T) => boolean) {
     if (index !== -1) arr.splice(index, 1)
 }
 
+export function prependIfMissing(str: string, prefix: string) {
+    return str.startsWith(prefix) ? str : prefix + str;
+}  
 
 /**
  * Iterates through an object
@@ -286,6 +289,10 @@ export function filterObject<K extends string | number | symbol, V>(obj: Record<
  */
 export function unixNow(): number { 
     return Date.now() / 1000
+}
+
+export function unixNowMillis(): number {
+    return Date.now()
 }
 
 /**

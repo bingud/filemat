@@ -447,9 +447,6 @@ class FileService(
         val isForcedDeletable = State.App.forceDeletableFolders.contains(canonicalPath.pathString)
 
         if (isProtected && !isForcedDeletable) return Result.reject("This system folder cannot be deleted.")
-
-        val containsData = Props.dataFolder.startsWith(canonicalPath.pathString)
-        if (containsData && State.App.allowWriteDataFolder == false) return Result.error("Cannot modify ${Props.appName} data folder.")
         return Result.ok()
     }
 
