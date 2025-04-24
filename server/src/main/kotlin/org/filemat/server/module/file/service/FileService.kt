@@ -1,14 +1,10 @@
 package org.filemat.server.module.file.service
 
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
-import me.desair.tus.server.upload.UploadInfo
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.*
-import org.filemat.server.common.util.classes.RequestPathOverrideWrapper
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
@@ -121,110 +117,6 @@ class FileService(
         )
 
         return Result.ok()
-    }
-
-    /**
-     * Uses TUS to handle a file upload request
-     */
-    fun handleTusUpload(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-    ) {
-        val tusService = filesystem.tusFileService
-        if (tusService == null) {
-            response.writer.write("File upload service is not running.")
-            response.status = 500
-            return
-        }
-
-        val user = request.getPrincipal()!!
-
-        // Check file permissions
-        if (request.method == "POST") {
-            val rawMeta: String? = request.getHeader("Upload-Metadata")
-            if (rawMeta == null) {
-                response.writer.write("Invalid upload metadata")
-                response.status = 400
-                return
-            }
-            val meta = parseTusHttpHeader(rawMeta)
-
-            // Authenticate destination path
-            val rawFilename = meta["filename"]?.toFilePath()
-            if (rawFilename == null) {
-                response.writer.write("Invalid filename")
-                response.status = 400
-                return
-            }
-            val rawDestinationPath = rawFilename.path.parent.toString()
-            val canonicalDestinationPath = resolvePath(FilePath.of(rawDestinationPath)).let { (result, hasSymlink) ->
-                if (result.notFound) {
-                    response.writer.write("The target folder does not exist.")
-                    response.status = 400
-                    return
-                } else if (result.isNotSuccessful) {
-                    response.writer.write("Failed to save the uploaded file.")
-                    response.status = 500
-                }
-                result.value
-            }
-
-            val isAllowed = isAllowedToAccessFile(user = user, canonicalPath = canonicalDestinationPath)
-            if (isAllowed.isNotSuccessful) {
-                response.writer.write(isAllowed.errorOrNull ?: "You do not have permission to access this folder.")
-                response.status = 400
-                return
-            }
-        }
-
-        // Wrap request to change the path, so that TUS receives the api prefix
-        val wrappedRequest = RequestPathOverrideWrapper(request, "/api${request.requestURI}")
-        // Make TUS handle uploads
-        tusService.process(wrappedRequest, response)
-
-        // Required to commit response headers/status
-        if (!response.isCommitted) {
-            response.flushBuffer()
-        }
-
-        if (request.method == "PATCH") {
-            val info: UploadInfo? = tusService.getUploadInfo(wrappedRequest.requestURI)
-            if (info != null && !info.isUploadInProgress) {
-                val isUploaded = info.length == info.offset
-
-                // Handle when the file was successfully uploaded
-                if (isUploaded) {
-                    // Move the file from the uploads folder to the target destination
-                    val result = run<Result<Unit>> {
-                        val sourceFolder = "${State.App.uploadFolderPath}/uploads/${info.id}"
-
-                        val dataSource = "$sourceFolder/data".toFilePath()
-                        val rawDataDestination = info.metadata["filename"]?.toFilePath() ?: return@run Result.error("Destination filename is not in upload metadata.")
-                        val dataDestination = resolvePath(rawDataDestination).let { (result, hadSymlink) ->
-                            if (result.isNotSuccessful) return@run result.cast();
-                            result.value
-                        }
-
-                        // Move the file to the target folder
-                        val fileMoved = filesystem.moveFile(source = dataSource, destination = dataDestination, overwriteDestination = false)
-                        if (fileMoved.isNotSuccessful) return@run Result.error("Failed to move file from uploads folder.")
-
-                        // Delete the TUS upload folder
-                        filesystem.deleteFile(sourceFolder.toFilePath(), recursive = true)
-
-                        // Create an entity
-                        entityService.create(
-                            canonicalPath = dataDestination,
-                            ownerId = user.userId,
-                            userAction = UserAction.UPLOAD_FILE,
-                            followSymLinks = State.App.followSymLinks
-                        )
-
-                        Result.ok()
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -385,13 +277,13 @@ class FileService(
         val entries = result.value.filter { meta: FileMetadata ->
             // Check if `it.fileType` is symlink, resolve if it is
             val entryPath = if (meta.fileType.isSymLink()) {
-                val (resolvedResult, hasSymlink) = resolvePath(FilePath.of(meta.filename))
+                val (resolvedResult, hasSymlink) = resolvePath(FilePath.of(meta.path))
                 resolvedResult.let {
                     if (it.isNotSuccessful) return@filter false
                     it.value
                 }
             } else {
-                FilePath.of(meta.filename)
+                FilePath.of(meta.path)
             }
 
             val isPathAllowed = folderVisibilityService.isPathAllowed(entryPath) == null

@@ -1,4 +1,4 @@
-package org.filemat.server.common.util.classes
+package org.filemat.server.common.util.classes.wrappers
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletRequestWrapper

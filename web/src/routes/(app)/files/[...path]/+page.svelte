@@ -1,25 +1,25 @@
 <script lang="ts">
-    import { beforeNavigate } from "$app/navigation";
-    import { getFileData } from "$lib/code/module/files";
-    import { pageTitle, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte";
-    import Loader from "$lib/component/Loader.svelte";
-    import { onDestroy, untrack } from "svelte";
-    import FileViewer from "./content/FileViewer.svelte";
-    import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte";
-    import Breadcrumbs from "./content/Breadcrumbs.svelte";
-    import FileBrowser from "./content/FileBrowser.svelte";
-    import DetailsSidebar from "./content/DetailsSidebar.svelte";
-    import { createFilesState, destroyFilesState, filesState } from "./content/code/filesState.svelte";
-    import { fade, fly } from "svelte/transition";
-    import { linear } from "svelte/easing";
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
-    import { Popover } from "$lib/component/bits-ui-wrapper";
-    import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
-    import FileIcon from "$lib/component/icons/FileIcon.svelte";
-    import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
-    import * as tus from 'tus-js-client';
-    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { beforeNavigate } from "$app/navigation"
+    import { getFileData } from "$lib/code/module/files"
+    import { pageTitle, parseJson, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+    import Loader from "$lib/component/Loader.svelte"
+    import { onDestroy, untrack } from "svelte"
+    import FileViewer from "./content/FileViewer.svelte"
+    import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte"
+    import Breadcrumbs from "./content/Breadcrumbs.svelte"
+    import FileBrowser from "./content/FileBrowser.svelte"
+    import DetailsSidebar from "./content/DetailsSidebar.svelte"
+    import { createFilesState, destroyFilesState, filesState } from "./content/code/filesState.svelte"
+    import { fade, fly } from "svelte/transition"
+    import { linear } from "svelte/easing"
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte"
+    import InfoIcon from "$lib/component/icons/InfoIcon.svelte"
+    import { Popover } from "$lib/component/bits-ui-wrapper"
+    import FolderIcon from "$lib/component/icons/FolderIcon.svelte"
+    import FileIcon from "$lib/component/icons/FileIcon.svelte"
+    import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
+    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"
+    import { uploadWithTus } from "./content/code/files";
     
     createFilesState()
     createBreadcrumbState()
@@ -31,74 +31,19 @@
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
 
-    let newButtonPopoverOpen = $state(false);
+    let newButtonPopoverOpen = $state(false)
     
     // Functions for new item actions
     function handleUpload() {
-        newButtonPopoverOpen = false;
+        newButtonPopoverOpen = false
 
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.style.display = 'none'; // Keep it hidden
-
-        input.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) {
-                return;
-            }
-
-            // Construct the full target path
-            const currentPath = filesState.path === '/' ? '' : filesState.path; // Handle root path
-            const targetFilename = `${currentPath}/${file.name}`;
-
-            console.log(`Attempting to upload ${file.name} to ${targetFilename}`);
-
-            const upload = new tus.Upload(file, {
-                endpoint: "/api/v1/file/upload", // Your TUS endpoint
-                retryDelays: [0, 3000, 5000, 10000, 20000],
-                metadata: {
-                    filename: targetFilename,
-                    // Add any other metadata your server needs
-                    // filetype: file.type 
-                },
-                onError: (error) => {
-                    console.error("Failed because:", error);
-                    // Add user feedback for error
-                    alert(`Upload failed: ${error}`);
-                },
-                onProgress: (bytesUploaded, bytesTotal) => {
-                    const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
-                    console.log(bytesUploaded, bytesTotal, percentage + "%");
-                    // Update UI with progress if needed
-                },
-                onSuccess: () => {
-                    // Cast upload.file to File to access the name property safely
-                    const uploadedFile = upload.file as File;
-                    console.log("Download %s from %s", uploadedFile.name, upload.url);
-                    // Add user feedback for success
-                    alert(`Successfully uploaded ${uploadedFile.name}`);
-                    // Optionally, refresh the file list after upload
-                    // loadPageData(filesState.path); // <-- Be mindful of potential race conditions if uploads are very fast
-                }
-            });
-
-            // Start the upload
-            upload.start();
-
-            // Clean up the input element
-            document.body.removeChild(input);
-        };
-
-        // Append to body, trigger click, and remove
-        document.body.appendChild(input);
-        input.click();
-        // Note: Removal is now handled in the onchange event after selection or cancellation
+        uploadWithTus()
     }
     
     async function handleNewFolder() {
         newButtonPopoverOpen = false
         
-        const folderName = prompt("Enter folder name:");
+        const folderName = prompt("Enter folder name:")
         if (!folderName) return
         
         // Construct the full target path
@@ -113,25 +58,25 @@
             body: formData({ path: targetPath })
         })
         if (response.failed) {
-            handleException("Failed to create folder", "Failed to create folder.", response.exception);
-            return;
+            handleException("Failed to create folder", "Failed to create folder.", response.exception)
+            return
         }
         
-        const status = response.code;
-        const json = response.json();
+        const status = response.code
+        const json = response.json()
         
         if (status.ok) {
             filesState.data.entries?.push({
-                filename: targetPath,
+                path: targetPath,
                 modifiedDate: unixNowMillis(),
                 createdDate: unixNowMillis(),
                 fileType: "FOLDER",
                 size: 0
             })
         } else if (status.serverDown) {
-            handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.");
+            handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.")
         } else {
-            handleErrorResponse(json, "Failed to create folder.");
+            handleErrorResponse(json, "Failed to create folder.")
         }
     }
     
@@ -175,7 +120,7 @@
             
             // If no entry is selected and this is a folder, select the current folder
             if (filesState.selectedEntry.path === null && result.meta.fileType === "FOLDER") {
-                filesState.selectedEntry.path = result.meta.filename
+                filesState.selectedEntry.path = result.meta.path
                 console.log(`selected`, filesState.selectedEntry.path)
             }
         }

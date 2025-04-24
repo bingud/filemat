@@ -3,16 +3,14 @@ package org.filemat.server.common.util
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.*
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
-import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.permission.model.FilePermission
-import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.transaction.TransactionStatus
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
@@ -40,9 +38,27 @@ inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
     }
 }
 
+fun getParentFromPath(path: FilePath): FilePath {
+    return FilePath.ofAlreadyNormalized(path.path.parent)
+}
+
+fun getFilenameFromPath(path: Path): String {
+    return path.fileName.toString()
+}
 
 inline fun <reified T> String.parseJsonOrNull(): T? {
     return Json.decodeFromStringOrNull<T>(this)
+}
+
+fun String.splitByLast(delimiter: String): Pair<String, String?> {
+    val idx = lastIndexOf(delimiter)
+    return if (idx >= 0) {
+        val before = substring(0, idx)
+        val after  = substring(idx + delimiter.length)
+        before to after
+    } else {
+        this to null
+    }
 }
 
 
@@ -112,12 +128,18 @@ fun <K, V> ConcurrentHashMap<K, V>.removeIf(block: (key: K, value: V) -> Boolean
     }
 }
 
+
 fun <K, V> ConcurrentHashMap<K, V>.iterate(block: (key: K, value: V, remove: () -> Unit) -> Unit) {
     val iterator = this.entries.iterator()
     while (iterator.hasNext()) {
         val entry = iterator.next()
         block(entry.key, entry.value, iterator::remove)
     }
+}
+
+fun HttpServletResponse.respond(statusCode: Int, message: String) {
+    this.status = statusCode
+    this.writer.write(message)
 }
 
 

@@ -54,6 +54,9 @@ class EntityService(
                 ?: return Result.notFound(source = "entityService.create-getInode-notfound")
         } else null
 
+        val existingEntity = getByPath(canonicalPath.pathString, userAction)
+        if (existingEntity.notFound != true) return Result.reject("A file with this path has already been indexed.")
+
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
             path = canonicalPath.pathString,

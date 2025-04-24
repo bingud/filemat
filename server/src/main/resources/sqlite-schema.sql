@@ -49,8 +49,8 @@ CREATE TABLE IF NOT EXISTS files (
     follow_symlinks INTEGER,
     FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
-CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);
-CREATE INDEX IF NOT EXISTS idx_files_inode ON files(inode);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_files_path ON files(path);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_files_inode ON files(inode);
 
 CREATE TABLE IF NOT EXISTS auth_token (
     auth_token TEXT PRIMARY KEY,

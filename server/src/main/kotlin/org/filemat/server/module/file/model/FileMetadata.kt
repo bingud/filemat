@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class FileMetadata(
-    val filename: String,
+    val path: String,
     val modifiedDate: Long,
     val createdDate: Long,
     val fileType: FileType,

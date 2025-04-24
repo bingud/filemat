@@ -23,26 +23,95 @@
     let confirmDialog: ConfirmDialog;
 
     onMount(() => {
-        const selectedName = filesState.selectedEntry.selectedPositions.getChild(filesState.path)
-        if (!selectedName) return
+        // Set the selected entry path
+        setSelectedEntryPath()
 
-        const filename = filesState.path === "/" ? `${selectedName}` : `${filesState.path}/${selectedName}`
-
-        if (filesState.data.entries?.some(v => v.filename === filename)) {
-            filesState.selectedEntry.path = filename
-        }
+        // Add keydown listener for Delete key
+        console.log("Adding keydown listener for Delete key")
+        window.addEventListener('keydown', handleKeyDown);
+        
+        return () => {
+            // Clean up listener when component unmounts
+            window.removeEventListener('keydown', handleKeyDown);
+        };
     })
 
+    function setSelectedEntryPath() {
+        const selectedEntryPath = filesState.selectedEntry.selectedPositions.getChild(filesState.path)
+        if (!selectedEntryPath) return
+
+        const filename = filesState.path === "/" ? `${selectedEntryPath}` : `${filesState.path}/${selectedEntryPath}`
+        
+        if (filesState.data.entries?.some(v => v.path === filename)) {
+            filesState.selectedEntry.path = filename
+        }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+        // Check if Delete key was pressed
+        if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            // Check if we have a selected entry
+            if (filesState.selectedEntry.path && filesState.data.entries) {
+                // Find the selected entry in the entries list
+                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntry.path);
+                if (selectedEntry) {
+                    // Delete the selected entry
+                    option_delete(selectedEntry);
+                }
+            }
+        }
+        
+        // Handle Up and Down arrow keys for entry navigation
+        else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && 
+                 !event.ctrlKey && !event.altKey && !event.metaKey && 
+                 filesState.data.sortedEntries?.length) {
+            
+            event.preventDefault();
+            const entries = filesState.data.sortedEntries;
+            const currentPath = filesState.selectedEntry.path;
+            
+            // Find the index of currently selected entry
+            let currentIndex = -1;
+            if (currentPath) {
+                currentIndex = entries.findIndex(e => e.path === currentPath);
+            }
+            
+            let newIndex: number;
+            
+            if (event.key === 'ArrowUp') {
+                if (currentIndex === -1) {
+                    // If no entry is selected, select the bottom entry
+                    newIndex = entries.length - 1;
+                } else {
+                    // Move up one entry, or wrap to bottom
+                    newIndex = (currentIndex - 1 + entries.length) % entries.length;
+                }
+            } else { // ArrowDown
+                if (currentIndex === -1) {
+                    // If no entry is selected, select the top entry
+                    newIndex = 0;
+                } else {
+                    // Move down one entry, or wrap to top
+                    newIndex = (currentIndex + 1) % entries.length;
+                }
+            }
+            
+            // Update selection
+            const newEntry = entries[newIndex];
+            filesState.selectedEntry.selectedPositions.set(newEntry.path, true);
+            filesState.selectedEntry.path = newEntry.path;
+        }
+    }
 
     /**
      * onClick for file entry
      */
     function entryOnClick(entry: FileMetadata) {
-        if (filesState.selectedEntry.path === entry.filename) {
-            openEntry(entry.filename)
+        if (filesState.selectedEntry.path === entry.path) {
+            openEntry(entry.path)
         } else {
-            filesState.selectedEntry.selectedPositions.set(entry.filename, true)
-            filesState.selectedEntry.path = entry.filename
+            filesState.selectedEntry.selectedPositions.set(entry.path, true)
+            filesState.selectedEntry.path = entry.path
         }
     }
 
@@ -67,7 +136,7 @@
     }
 
     function option_details(entry: FileMetadata) {
-        filesState.selectedEntry.path = entry.filename
+        filesState.selectedEntry.path = entry.path
         filesState.ui.detailsOpen = true
         closeEntryPopover()
     }
@@ -78,7 +147,7 @@
         // Show confirmation dialog and handle the result
         confirmDialog.show({
             title: "Delete File",
-            message: `Are you sure you want to delete "${filenameFromPath(entry.filename)}"? This cannot be undone.`,
+            message: `Are you sure you want to delete "${filenameFromPath(entry.path)}"? This cannot be undone.`,
             confirmText: "Delete",
             cancelText: "Cancel"
         }).then((confirmed: boolean) => {
@@ -92,16 +161,16 @@
     
     async function handleDeleteConfirm() {
         if (!entryToDelete) return;
-        const deletedPath = entryToDelete.filename
+        const deletedPath = entryToDelete.path
         
         const response = await safeFetch(`/api/v1/file/delete`, {
             method: "POST",
-            body: formData({ path: entryToDelete.filename }),
+            body: formData({ path: entryToDelete.path }),
             credentials: "same-origin"
         });
         
         if (response.failed) {
-            handleError(response.exception, `Failed to delete "${filenameFromPath(entryToDelete.filename)}".`);
+            handleError(response.exception, `Failed to delete "${filenameFromPath(entryToDelete.path)}".`);
             return;
         }
         
@@ -111,11 +180,11 @@
         if (status.ok) {
             // Remove the deleted entry from the current entries list
             if (filesState.data.entries && entryToDelete) {
-                filesState.data.entries = filesState.data.entries.filter(e => e.filename !== deletedPath);
+                filesState.data.entries = filesState.data.entries.filter(e => e.path !== deletedPath);
             }
             
             // If deleted entry was selected, clear selection
-            if (filesState.selectedEntry.path === entryToDelete.filename) {
+            if (filesState.selectedEntry.path === entryToDelete.path) {
                 filesState.selectedEntry.path = null;
             }
         } else if (status.serverDown) {
@@ -159,7 +228,7 @@
 
         <!-- Each entry is a grid item -->
         {#each filesState.data.sortedEntries as entry}
-            {@const selected = filesState.selectedEntry.path === entry.filename}
+            {@const selected = filesState.selectedEntry.path === entry.path}
 
             <div 
                 on:click={() => entryOnClick(entry)}
@@ -175,7 +244,7 @@
                         {/if}
                     </div>
                     <p class="truncate">
-                        {filenameFromPath(entry.filename)}
+                        {filenameFromPath(entry.path)}
                     </p>
                 </div>
 
@@ -192,7 +261,7 @@
                 <!-- Menu button (stopPropagation) -->
                 <div class="h-full text-center">
                     <button
-                        on:click={(e) => { if (filesState.selectedEntry.path === entry.filename) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
+                        on:click={(e) => { if (filesState.selectedEntry.path === entry.path) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
                         class="h-full aspect-square flex items-center justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
                     >
                         <ThreeDotsIcon />
@@ -224,7 +293,7 @@
                                 <span>Details</span>
                             </button>
                             <hr class="basic-hr my-2">
-                            <p class="px-4 truncate opacity-70">File: {filenameFromPath(menuEntry.filename)}</p>
+                            <p class="px-4 truncate opacity-70">File: {filenameFromPath(menuEntry.path)}</p>
                         </div>
                     </Popover.Content>
                 </Popover.Root>

@@ -84,7 +84,7 @@ class SelectedEntryStateClass {
     path = $state(null) as ulid | null
     meta = $derived.by(() => {
         if (!filesState.data.entries || !this.path) return null
-        return filesState.data.entries.find(v => v.filename === this.path)
+        return filesState.data.entries.find(v => v.path === this.path)
     })
 }
 

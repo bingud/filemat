@@ -10,6 +10,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
 import org.springframework.stereotype.Service
 import java.io.File
+import java.lang.UnsupportedOperationException
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.*
@@ -113,6 +114,12 @@ class FilesystemService {
             Result.ok()
         } catch (e: NoSuchFileException) {
             Result.notFound()
+        } catch (e: FileAlreadyExistsException) {
+            Result.error("The path of the uploaded file already exists.")
+        } catch (e: DirectoryNotEmptyException) {
+            Result.reject("The directory cannot be replaced because it is not empty.")
+        } catch (e: UnsupportedOperationException) {
+            Result.error("This move operation failed because it is unsupported.")
         } catch (e: Exception) {
             Result.error("Failed to move file.")
         }
@@ -159,7 +166,7 @@ class FilesystemService {
         val modificationTime = attributes.lastModifiedTime().toMillis()
 
         return FileMetadata(
-            filename = path.path.absolutePathString(),
+            path = path.path.absolutePathString(),
             modifiedDate = modificationTime,
             createdDate = creationTime,
             fileType = type,

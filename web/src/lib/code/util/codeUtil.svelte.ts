@@ -111,38 +111,40 @@ export function parseJson(j: string): any | null {
 /**
  * Returns a debounced input function
  */
-export function debounceFunction(action: any, delay: any, continuousCallDuration: any) {
-    let timeoutId: any;
-    let continuousCallTimeoutId: any;
-    let lastCallTime: number | null = null;
+export function debounceFunction<Args extends any[]>(
+    action: (...args: Args) => void,
+    delay: number,
+    continuousCallDuration: number
+): (...args: Args) => void {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let continuousCallTimeoutId: ReturnType<typeof setTimeout> | null = null
+    let lastCallTime: number | null = null
 
-    return function() {
-        //@ts-ignore
-        const context: any = this;
-        const args = arguments;
+    return function(this: any, ...args: Args): void {
+        const context = this
+        const currentTime = Date.now()
 
-        const currentTime = new Date().getTime();
-
-        // If it's the first call or more than continuousCallDuration has passed since the last call
+        // start or restart the “continuous” timer if too much time has passed
         if (!lastCallTime || currentTime - lastCallTime > continuousCallDuration) {
-            clearTimeout(continuousCallTimeoutId);
-            lastCallTime = currentTime;
+            if (continuousCallTimeoutId) clearTimeout(continuousCallTimeoutId)
+            lastCallTime = currentTime
 
             continuousCallTimeoutId = setTimeout(() => {
-                action.apply(context, args);
-                lastCallTime = null;  // Reset after action has been called
-            }, continuousCallDuration);
+                action.apply(context, args)
+                lastCallTime = null
+            }, continuousCallDuration)
         }
 
-        clearTimeout(timeoutId);
-
+        // always restart the main debounce timer
+        if (timeoutId) clearTimeout(timeoutId)
         timeoutId = setTimeout(() => {
-            action.apply(context, args);
-            clearTimeout(continuousCallTimeoutId);
-            lastCallTime = null;
-        }, delay);
+            action.apply(context, args)
+            if (continuousCallTimeoutId) clearTimeout(continuousCallTimeoutId)
+            lastCallTime = null
+        }, delay)
     }
 }
+
 
 
 /**

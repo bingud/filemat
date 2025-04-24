@@ -58,4 +58,4 @@ fun <T> T.toResult(): Result<T> {
  * Changes the result type to inferred type so that result can be returned directly
  */
 @Suppress("UNCHECKED_CAST")
-fun <T, P> Result<P>.cast(): Result<T> = if (this.isNotSuccessful) this as Result<T> else throw IllegalStateException("Cannot cast type on a successful result.")
+fun <T, P> Result<P>.cast(): Result<T> = this as Result<T>

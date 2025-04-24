@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleError, handleErrorResponse, handleException, isBlank, safeFetch, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleError, handleErrorResponse, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "./code/filesState.svelte";
     import type { ulid } from "$lib/code/types";
@@ -23,6 +23,7 @@
     let abortController = new AbortController()
     let permissionData: PermissionData | null = $state(null)
     let permissionDataLoading = $state(false)
+    let permissionDataDebounced = $state(false)
     let permissionCreatorOpen = $state(false)
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
@@ -46,25 +47,33 @@
 
     let lastLoaded = ""
     $effect(() => {
-        const selected = filesState.selectedEntry.path
+        const selectedPath = filesState.selectedEntry.path
 
-        if (!selected) return
+        if (!selectedPath) return
         if (!filesState.ui.detailsOpen) return
-        if (lastLoaded === selected) return
+        if (lastLoaded === selectedPath) return
+
         permissionData = null
+        permissionDataDebounced = true
+        
+        loadPermissionDataDebounced(selectedPath)
+    })
+
+    // Debounced function to load permission data
+    const loadPermissionDataDebounced = debounceFunction(async (path: string) => {
+        permissionDataDebounced = false
 
         abortController.abort()
         abortController = new AbortController()
-
+    
         if (hasAnyPermission(["MANAGE_ALL_FILE_PERMISSIONS", "MANAGE_OWN_FILE_PERMISSIONS"])) {
             permissionDataLoading = true
-            loadPermissionData(selected, abortController.signal).then(() => {
-                if (selected !== filesState.selectedEntry.path) return
-                lastLoaded = selected
-                permissionDataLoading = false
-            })
+            await loadPermissionData(path, abortController.signal)
+            if (path !== filesState.selectedEntry.path) return
+            lastLoaded = path
+            permissionDataLoading = false
         }
-    })
+    }, 100, 5000)
 
     onDestroy(() => {
         if (abortController) {
@@ -72,6 +81,11 @@
         }
     })
 
+    /**
+     * Loads the permission data for the given path
+     * @param path - The path to load the permission data for
+     * @param signal - The abort signal
+     */
     async function loadPermissionData(path: string, signal: AbortSignal) {
         const response = await safeFetch(`/api/v1/permission/entity`, { body: formData({ path: path, "include-mini-user-list": true }), signal: signal })
         if (response.failed) {
@@ -83,6 +97,8 @@
         const status = response.code
 
         if (status.ok) {
+            if (path !== filesState.selectedEntry.path) return
+
             const miniUsers = json.miniUserList
             json.miniUserList = {}
             miniUsers.forEach((v: MiniUser) => {
@@ -137,7 +153,7 @@
         <div></div>
     {:else if filesState.selectedEntry.meta || filesState.data.meta}
         {@const file = (filesState.selectedEntry.meta || filesState.data.meta)!}
-        {@const filename = filenameFromPath(file.filename) || "/"}
+        {@const filename = filenameFromPath(file.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <h3 title={filename} class="truncate text-lg">{filename}</h3>
@@ -269,6 +285,8 @@
                     <!-- <div in:fade={{duration:75}} class="center py-2">
                         <Loader></Loader>
                     </div> -->
+                {:else if permissionDataDebounced}
+                    <!-- Waiting for debounce timer -->
                 {:else}
                     <div in:fade={{duration: 75}} class="center">
                         <p class="text-neutral-600 dark:text-neutral-400 py-2">Failed to load permissions.</p>

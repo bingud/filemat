@@ -13,7 +13,7 @@
     import { loadFileContent } from "./code/files";
     import { onMount } from "svelte";
 
-    const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.filename) : null)
+    const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.path) : null)
     const fileType = $derived(extension ? fileCategories[extension] : null)
     let displayedFileCategory = $derived(fileType)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))
@@ -108,7 +108,7 @@
                 {#if isText}
                     <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                 {:else if type === "image"}
-                    <img src={filesState.data.contentUrl} alt={filesState.data.meta.filename} class="max-w-full max-h-full size-auto">
+                    <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
                 {:else if type === "video"}
                     <video controls>
                         <source src={filesState.data.contentUrl}>
@@ -117,7 +117,7 @@
                 {:else if type === "audio"}
                     <audio src={filesState.data.contentUrl} controls></audio>
                 {:else if type === "pdf"}
-                    <iframe src={filesState.data.contentUrl} title={filesState.data.meta.filename} class="w-full h-auto max-h-full"></iframe>
+                    <iframe src={filesState.data.contentUrl} title={filesState.data.meta.path} class="w-full h-auto max-h-full"></iframe>
                 {/if}
             </div>
         {:else}

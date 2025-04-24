@@ -5,10 +5,13 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.encoding.Decoder
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.print
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.TusService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -16,12 +19,14 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
 import java.net.URLConnection
+import java.nio.charset.StandardCharsets
 
 
 @RestController
 @RequestMapping("/v1/file")
 class FileController(
     private val fileService: FileService,
+    private val tusService: TusService,
 ) : AController() {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -48,7 +53,7 @@ class FileController(
         response: HttpServletResponse,
         @PathVariable("uploadId", required = false) uploadId: String?
     ) {
-        fileService.handleTusUpload(
+        tusService.handleTusUpload(
             request = request,
             response = response,
         )
