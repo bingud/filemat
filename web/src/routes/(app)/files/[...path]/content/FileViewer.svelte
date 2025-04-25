@@ -12,9 +12,16 @@
     import { filesState } from "./code/filesState.svelte";
     import { loadFileContent } from "./code/files";
     import { onMount } from "svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import CodeChunk from "$lib/component/CodeChunk.svelte";
 
     const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.path) : null)
-    const fileType = $derived(extension ? fileCategories[extension] : null)
+    const isSymlink = $derived(filesState.data.meta?.fileType.includes("LINK") && !appState.followSymlinks)
+    const fileType = $derived.by(() => {
+        if (isSymlink) return "text"
+        return extension ? fileCategories[extension] : null
+    })
+
     let displayedFileCategory = $derived(fileType)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))
     let isText = $derived(isTextFileCategory(displayedFileCategory))
@@ -34,7 +41,11 @@
         if (!isViewableFile || !displayedFileCategory) return
 
         getBlobContent(filesState.data.content, displayedFileCategory).then((result) => {
+            console.log(`got blob content`)
             filesState.data.decodedContent = result
+            if (isSymlink) {
+                openAsFileType("text")
+            }
         })
     })
 
@@ -105,19 +116,28 @@
             {/if}
             
             <div class="w-full flex-grow flex items-center justify-center">
-                {#if isText}
-                    <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
-                {:else if type === "image"}
-                    <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
-                {:else if type === "video"}
-                    <video controls>
-                        <source src={filesState.data.contentUrl}>
-                        <track kind="captions" srclang="en" label="No captions" />
-                    </video>
-                {:else if type === "audio"}
-                    <audio src={filesState.data.contentUrl} controls></audio>
-                {:else if type === "pdf"}
-                    <iframe src={filesState.data.contentUrl} title={filesState.data.meta.path} class="w-full h-auto max-h-full"></iframe>
+                {#if isSymlink === false}
+                    {#if isText}
+                        <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
+                    {:else if type === "image"}
+                        <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
+                    {:else if type === "video"}
+                        <video controls>
+                            <source src={filesState.data.contentUrl}>
+                            <track kind="captions" srclang="en" label="No captions" />
+                        </video>
+                    {:else if type === "audio"}
+                        <audio src={filesState.data.contentUrl} controls></audio>
+                    {:else if type === "pdf"}
+                        <iframe src={filesState.data.contentUrl} title={filesState.data.meta.path} class="w-full h-auto max-h-full"></iframe>
+                    {/if}
+                {:else}
+                    <div>
+                        <div class="flex flex-col items-center justify-center gap-4">
+                            <p class="text-neutral-700 dark:text-neutral-300">This is a symbolic link.</p>
+                            <p class="text-neutral-500 dark:text-neutral-400">Target path: <CodeChunk>{filesState.data.decodedContent}</CodeChunk></p>
+                        </div>
+                    </div>
                 {/if}
             </div>
         {:else}

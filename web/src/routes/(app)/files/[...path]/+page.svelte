@@ -20,6 +20,7 @@
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
     import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"
     import { uploadWithTus } from "./content/code/files";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -120,12 +121,14 @@
             if (result.meta.fileType === "FOLDER") {
                 filesState.data.entries = result.entries || null
             } else if (result.meta.fileType === "FOLDER_LINK") {
-                result.entries?.forEach((entry) => {
-                    const filename = filenameFromPath(entry.path)
-                    const linkPath = `${addSuffix(filePath, "/")}${filename}`
-                    entry.path = linkPath
-                })
-                filesState.data.entries = result.entries || null
+                if (appState.followSymlinks) {
+                    result.entries?.forEach((entry) => {
+                        const filename = filenameFromPath(entry.path)
+                        const linkPath = `${addSuffix(filePath, "/")}${filename}`
+                        entry.path = linkPath
+                    })
+                    filesState.data.entries = result.entries || null
+                }
             }
             
             // If no entry is selected and this is a folder, select the current folder
@@ -210,9 +213,9 @@
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full">
                 {#if !filesState.metaLoading && filesState.data.meta}
-                    {#if (filesState.data.meta.fileType === "FOLDER" || filesState.data.meta.fileType === "FOLDER_LINK") && filesState.data.sortedEntries}
+                    {#if filesState.data.sortedEntries && (filesState.data.meta.fileType === "FOLDER" || (filesState.data.meta.fileType === "FOLDER_LINK" && appState.followSymlinks))}
                         <FileBrowser />
-                    {:else if (filesState.data.meta.fileType === "FILE" || filesState.data.meta.fileType === "FILE_LINK")}
+                    {:else if filesState.data.meta.fileType === "FILE" || filesState.data.meta.fileType === "FILE_LINK" || (filesState.data.meta.fileType === "FOLDER_LINK" && !appState.followSymlinks)}
                         <div class="center">
                             <FileViewer />
                         </div>                    
