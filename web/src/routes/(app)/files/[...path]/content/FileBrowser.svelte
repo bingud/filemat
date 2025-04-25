@@ -36,6 +36,19 @@
         };
     })
 
+    // Function to scroll selected entry into view
+    function scrollSelectedEntryIntoView() {
+        setTimeout(() => {
+            if (filesState.selectedEntry.path) {
+                const selector = `[data-entry-path="${filesState.selectedEntry.path.replace(/"/g, '\\"')}"]`;
+                const element = document.querySelector(selector);
+                if (element) {
+                    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            }
+        }, 10)
+    }
+
     function setSelectedEntryPath() {
         const selectedEntryPath = filesState.selectedEntry.selectedPositions.getChild(filesState.path)
         if (!selectedEntryPath) return
@@ -44,6 +57,8 @@
         
         if (filesState.data.entries?.some(v => v.path === filename)) {
             filesState.selectedEntry.path = filename
+            // Scroll to the selected entry after a small delay to ensure DOM is updated
+            scrollSelectedEntryIntoView()
         }
     }
 
@@ -100,6 +115,9 @@
             const newEntry = entries[newIndex];
             filesState.selectedEntry.selectedPositions.set(newEntry.path, true);
             filesState.selectedEntry.path = newEntry.path;
+            
+            // Scroll selected entry into view
+            scrollSelectedEntryIntoView()
         }
     }
 
@@ -112,6 +130,8 @@
         } else {
             filesState.selectedEntry.selectedPositions.set(entry.path, true)
             filesState.selectedEntry.path = entry.path
+            // Scroll selected entry into view
+            scrollSelectedEntryIntoView()
         }
     }
 
@@ -232,6 +252,7 @@
 
             <div 
                 on:click={() => entryOnClick(entry)}
+                data-entry-path={entry.path}
                 class="file-grid h-[2.5rem] gap-x-2 items-center px-1 py-1 cursor-pointer {selected ? 'bg-blue-200 dark:bg-sky-950 select-none' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
             >
                 <!-- Filename + Icon -->
