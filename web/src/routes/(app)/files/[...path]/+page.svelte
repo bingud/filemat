@@ -1,7 +1,7 @@
 <script lang="ts">
     import { beforeNavigate } from "$app/navigation"
     import { getFileData } from "$lib/code/module/files"
-    import { pageTitle, parseJson, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, filenameFromPath, forEachObject, pageTitle, parseJson, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
@@ -116,7 +116,17 @@
         
         if (result) {
             filesState.data.meta = result.meta
-            filesState.data.entries = result.entries || null
+
+            if (result.meta.fileType === "FOLDER") {
+                filesState.data.entries = result.entries || null
+            } else if (result.meta.fileType === "FOLDER_LINK") {
+                result.entries?.forEach((entry) => {
+                    const filename = filenameFromPath(entry.path)
+                    const linkPath = `${addSuffix(filePath, "/")}${filename}`
+                    entry.path = linkPath
+                })
+                filesState.data.entries = result.entries || null
+            }
             
             // If no entry is selected and this is a folder, select the current folder
             if (filesState.selectedEntry.path === null && result.meta.fileType === "FOLDER") {
@@ -200,9 +210,9 @@
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full">
                 {#if !filesState.metaLoading && filesState.data.meta}
-                    {#if filesState.data.meta.fileType === "FOLDER" && filesState.data.sortedEntries}
+                    {#if (filesState.data.meta.fileType === "FOLDER" || filesState.data.meta.fileType === "FOLDER_LINK") && filesState.data.sortedEntries}
                         <FileBrowser />
-                    {:else if filesState.data.meta.fileType.startsWith("FILE")}
+                    {:else if (filesState.data.meta.fileType === "FILE" || filesState.data.meta.fileType === "FILE_LINK")}
                         <div class="center">
                             <FileViewer />
                         </div>                    

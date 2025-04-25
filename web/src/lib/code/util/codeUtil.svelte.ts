@@ -108,6 +108,11 @@ export function parseJson(j: string): any | null {
     }
 }
 
+// add suffix if missing
+export function addSuffix(str: string, suffix: string): string {
+    return str.endsWith(suffix) ? str : str + suffix
+}
+
 /**
  * Returns a debounced input function
  */

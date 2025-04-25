@@ -9,7 +9,7 @@
 
 
 html {
-    @apply fill-neutral-950 dark:fill-neutral-50;
+    @apply fill-neutral-950 dark:fill-neutral-50 stroke-neutral-950 dark:stroke-neutral-50;
 }
 
 :root {

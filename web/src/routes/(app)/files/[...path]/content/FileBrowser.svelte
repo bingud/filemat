@@ -12,6 +12,8 @@
     import { filesState } from "./code/filesState.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
 	import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
+    import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
+    import FileArrow from "$lib/component/icons/FileArrow.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -272,11 +274,15 @@
             >
                 <!-- Filename + Icon -->
                 <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
-                    <div class="h-6 aspect-square fill-neutral-500 flex-shrink-0 flex items-center justify-center">
-                        {#if entry.fileType.startsWith("FILE")}
+                    <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center">
+                        {#if entry.fileType === "FILE"}
                             <FileIcon />
-                        {:else if entry.fileType.startsWith("FOLDER")}
+                        {:else if entry.fileType === "FILE_LINK"}
+                            <FileArrow />
+                        {:else if entry.fileType === "FOLDER"}
                             <FolderIcon />
+                        {:else if entry.fileType === "FOLDER_LINK"}
+                            <FolderArrow />
                         {/if}
                     </div>
                     <p class="truncate">
