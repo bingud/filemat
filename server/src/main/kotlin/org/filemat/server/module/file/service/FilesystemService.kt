@@ -146,19 +146,16 @@ class FilesystemService {
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {
-        val attributes = readAttributes(path.path, State.App.followSymLinks)
+        val attributes = readAttributes(path.path, followSymbolicLinks = false)
             ?: return null
 
         val type = when {
             attributes.isRegularFile -> FileType.FILE
             attributes.isDirectory -> FileType.FOLDER
             attributes.isSymbolicLink -> {
-                if (State.App.followSymLinks) {
-                    val target = Files.readSymbolicLink(path.path)
-                    if (target.isDirectory()) FileType.FOLDER_LINK else FileType.FILE_LINK
-                } else {
-                    FileType.FILE
-                }
+                val target = Files.readSymbolicLink(path.path)
+                val resolved = path.path.parent.resolve(target).normalize()
+                if (Files.isDirectory(resolved)) FileType.FOLDER_LINK else FileType.FILE_LINK
             }
             else -> FileType.OTHER
         }

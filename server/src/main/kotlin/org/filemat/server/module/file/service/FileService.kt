@@ -191,7 +191,7 @@ class FileService(
             }
 
             return Result.ok(metadata to entries)
-        } else if (type == FileType.FILE || type == FileType.FILE_LINK && State.App.followSymLinks) {
+        } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
             return Result.ok(metadata to null)
         } else {
             return Result.error("Requested path is not a file or folder.")

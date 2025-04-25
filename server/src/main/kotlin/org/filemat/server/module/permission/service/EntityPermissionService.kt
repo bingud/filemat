@@ -134,7 +134,7 @@ class EntityPermissionService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val existingEntity = entityService.getByPath(path = rawPath.pathString, userAction = action).let {
+        val existingEntity = entityService.getByPath(path = canonicalPath.pathString, userAction = action).let {
             if (it.hasError) return it.cast()
             it.valueOrNull
         }
@@ -145,14 +145,14 @@ class EntityPermissionService(
 
         // Check existing permission
         val existingPermission = if (mode == PermissionType.USER) {
-            pathTree.getDirectPermissionForUser(rawPath.pathString, targetId)
+            pathTree.getDirectPermissionForUser(canonicalPath.pathString, targetId)
         } else {
-            pathTree.getDirectPermissionForRole(rawPath.pathString, targetId)
+            pathTree.getDirectPermissionForRole(canonicalPath.pathString, targetId)
         }
         if (existingPermission != null) return Result.reject("This ${mode.name.lowercase()} already has a permission.")
 
         val entity = existingEntity
-            ?: entityService.create(canonicalPath = rawPath, user.userId, action, State.App.followSymLinks).let {
+            ?: entityService.create(canonicalPath = canonicalPath, user.userId, action, State.App.followSymLinks).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
@@ -172,7 +172,7 @@ class EntityPermissionService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        pathTree.addPermission(rawPath.pathString, permission)
+        pathTree.addPermission(canonicalPath.pathString, permission)
 
         return permission.toResult()
     }
