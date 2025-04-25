@@ -74,10 +74,25 @@
                     option_delete(selectedEntry);
                 }
             }
+        } 
+
+        if (event.key === "Enter") {
+            if (filesState.selectedEntry.meta) {
+                entryOnClick(filesState.selectedEntry.meta)
+            }
+        }
+
+        // Navigate to the parent folder
+        if (event.key === "Backspace") {
+            const currentPath = filesState.path
+            if (currentPath === "/") return
+
+            const parentPath = currentPath.slice(0, currentPath.lastIndexOf("/"))
+            goto(`/files${parentPath}`)
         }
         
         // Handle Up and Down arrow keys for entry navigation
-        else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && 
+        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && 
                  !event.ctrlKey && !event.altKey && !event.metaKey && 
                  filesState.data.sortedEntries?.length) {
             
