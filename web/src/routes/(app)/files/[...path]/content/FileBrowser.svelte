@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata } from "$lib/code/auth/types";
-    import { filenameFromPath, formatBytes, formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -14,6 +14,7 @@
 	import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
+    import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -321,6 +322,13 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
+                            <a download href={addSuffix(filesState.data.contentUrl, "/") + `${filenameFromPath(menuEntry.path)}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                <div class="size-5 flex-shrink-0">
+                                    <DownloadIcon />
+                                </div>
+                                <span>Download</span>
+                            </a>
+
                             <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                 <div class="size-5 flex-shrink-0">
                                     <TrashIcon />

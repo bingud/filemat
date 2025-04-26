@@ -9,9 +9,11 @@ import kotlinx.serialization.encoding.Decoder
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.print
+import org.filemat.server.common.util.tika
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.TusService
+import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -85,29 +87,31 @@ class FileController(
         // Mark the stream at the beginning
         inputStream.mark(512)
 
-        // Guess the MIME type using the initial bytes
-        val mimeType = URLConnection.guessContentTypeFromStream(inputStream)
+        // Guess the MIME type using Apache Tika
+        val mimeType = tika.detect(inputStream)
             ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
 
         // Reset to the beginning after reading
         inputStream.reset()
 
-        // Create the response body for streaming
         val responseBody = StreamingResponseBody { outputStream ->
             inputStream.use { stream ->
-                val buffer = ByteArray(8192) // 8 KB buffer for efficiency
+                val buffer = ByteArray(8192)
                 var bytesRead: Int
                 while (stream.read(buffer).also { bytesRead = it } != -1) {
                     outputStream.write(buffer, 0, bytesRead)
                     outputStream.flush()
                 }
             }
-
         }
+
+        val cd: ContentDisposition = ContentDisposition.inline()
+            .filename(filename, StandardCharsets.UTF_8)
+            .build()
 
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(mimeType))
-            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"$filename\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
             .body(responseBody)
     }
 }

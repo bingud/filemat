@@ -1,11 +1,14 @@
 package org.filemat.server.common.util
 
+import org.apache.tika.Tika
 import org.filemat.server.module.file.model.FileType
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
+
+val tika = Tika()
 
 object FileUtils {
 

@@ -129,7 +129,7 @@
                     {:else if type === "audio"}
                         <audio src={filesState.data.contentUrl} controls></audio>
                     {:else if type === "pdf"}
-                        <iframe src={filesState.data.contentUrl} title={filesState.data.meta.path} class="w-full h-auto max-h-full"></iframe>
+                        <iframe src={filesState.data.contentUrl} title={filesState.data.meta.path} class="w-full h-full"></iframe>
                     {/if}
                 {:else}
                     <div>
@@ -144,7 +144,7 @@
             <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
                 <p class="">This file type doesn't have a preview.</p>
                 <div class="flex items-center gap-4">
-                    <a href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
+                    <a download href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
                     {@render openAsButton()}
                 </div>
             </div>
