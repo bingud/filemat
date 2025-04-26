@@ -1,7 +1,7 @@
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { arrayRemove, forEachReversed, removeString } from "$lib/code/util/codeUtil.svelte"
 import { calculateTextWidth, remToPx } from "$lib/code/util/uiUtil"
-import { filesState } from "./filesState.svelte"
+import { filesState } from "../../../../../../lib/code/stateObjects/filesState.svelte"
 
 export type Segment = { name: string, path: string, width: number }
 

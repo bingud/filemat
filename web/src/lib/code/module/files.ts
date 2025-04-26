@@ -1,6 +1,8 @@
+import * as tus from "tus-js-client";
+import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { formData, handleError, handleErrorResponse, handleException, parseJson, safeFetch } from "../util/codeUtil.svelte";
+import { formData, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
 
 
 export type FileData = { meta: FileMetadata, entries: FileMetadata[] | null }
@@ -85,4 +87,109 @@ export async function getBlobContent(blob: Blob, fileCategory: FileCategory): Pr
         default:
             return null;
     }
+}
+
+
+/**
+ * Initiate a file upload with TUS.
+ */
+export function uploadWithTus() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.style.display = 'none' // Keep it hidden
+
+    input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (!file) {
+            return
+        }
+
+        // Construct the full target path
+        const currentPath = filesState.path === '/' ? '' : filesState.path
+        const targetPath = `${currentPath}/${file.name}`
+
+        console.log(`Attempting to upload ${file.name} to ${targetPath}`)
+
+        // Get the actual uploaded filename from the server
+        let actualFilename: string | null = null
+
+        const upload = new tus.Upload(file, {
+            endpoint: "/api/v1/file/upload", // Your TUS endpoint
+            retryDelays: [0, 3000, 5000, 10000, 20000],
+            metadata: {
+                filename: targetPath,
+                // Add any other metadata your server needs
+                // filetype: file.type 
+            },
+            onAfterResponse: (response) => {
+                // Get the actual uploaded filename from the server
+                // If the file already exists, the server will add a number to the end of the filename
+                const res = response.getUnderlyingObject() as XMLHttpRequest | null
+                const actualFilenameHeader = res?.getResponseHeader("actual-uploaded-filename")
+                if (actualFilenameHeader) {
+                    actualFilename = actualFilenameHeader
+                }
+            },
+            onError: (error) => {
+                const res = (error as tus.DetailedError).originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
+                const text = res?.responseText
+                const json = parseJson(text || "")
+                const message = json.message || text || error.message || "Failed to upload file."
+
+                const isCustomError = json.error === "custom"
+                handleException(`Failed to upload file with TUS. Is custom error: ${isCustomError}`, message, error)
+            },
+            onProgress: (bytesUploaded, bytesTotal) => {
+                const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2)
+                console.log(bytesUploaded, bytesTotal, percentage + "%")
+                // Update UI with progress if needed
+            },
+            onSuccess: () => {
+                const uploadedFile = upload.file as File
+
+                const uploadFolder = targetPath.substring(0, targetPath.lastIndexOf('/')) || "/"
+                const actualUploadedPath = actualFilename ? (`${uploadFolder === "/" ? "/" : `${uploadFolder}/`}${actualFilename}`) : null
+
+                // Add the uploaded file to entries if it belongs in the current folder
+                if (filesState.path === uploadFolder) {
+                    filesState.data.entries?.push({
+                        path: actualUploadedPath || targetPath,
+                        modifiedDate: unixNowMillis(),
+                        createdDate: unixNowMillis(),
+                        fileType: "FILE",
+                        size: uploadedFile.size
+                    })
+                }
+            },
+            onShouldRetry: (err, retryAttempt, options) => {
+                // Try to extract JSON from the failed response
+                const xhr = err.originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
+                if (!xhr) return false
+
+                const text = xhr.responseText
+                const json = parseJson(text || "")
+
+                // If it's our custom error, abort retries
+                if (json?.error === "custom") {
+                    return false
+                }
+
+                // Otherwise retry if we still have attempts left
+                return retryAttempt < (options.retryDelays?.length || 0)
+            },
+        })
+
+        if (!filesState.uploads.addUpload(targetPath)) return
+
+        // Start the upload
+        upload.start()
+
+        // Clean up the input element
+        document.body.removeChild(input)
+    }
+
+    // Append to body, trigger click, and remove
+    document.body.appendChild(input)
+    input.click()
+    // Note: Removal is now handled in the onchange event after selection or cancellation
 }

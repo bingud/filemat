@@ -1,7 +1,7 @@
 <script lang="ts">
     import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleError, handleErrorResponse, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
-    import { filesState } from "./code/filesState.svelte";
+    import { filesState } from "../../../../../lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types";
     import type { EntityPermission, FilePermission, MiniUser, PermissionType, Role } from "$lib/code/auth/types";
     import { hasAnyPermission } from "$lib/code/module/permissions";

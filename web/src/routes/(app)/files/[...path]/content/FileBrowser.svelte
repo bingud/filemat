@@ -9,7 +9,7 @@
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import { onMount } from "svelte";
-    import { filesState } from "./code/filesState.svelte";
+    import { filesState } from "../../../../../lib/code/stateObjects/filesState.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
 	import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";

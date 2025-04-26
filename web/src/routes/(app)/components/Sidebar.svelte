@@ -4,7 +4,7 @@
     import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
-    import { filesState } from "../files/[...path]/content/code/filesState.svelte";
+    import { filesState } from "../../../lib/code/stateObjects/filesState.svelte";
 
     let currentButton = $derived.by(() => {
         const path = page.url.pathname

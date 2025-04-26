@@ -9,7 +9,7 @@
     import Breadcrumbs from "./content/Breadcrumbs.svelte"
     import FileBrowser from "./content/FileBrowser.svelte"
     import DetailsSidebar from "./content/DetailsSidebar.svelte"
-    import { createFilesState, destroyFilesState, filesState } from "./content/code/filesState.svelte"
+    import { createFilesState, destroyFilesState, filesState } from "../../../../lib/code/stateObjects/filesState.svelte"
     import { fade, fly } from "svelte/transition"
     import { linear } from "svelte/easing"
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
@@ -19,7 +19,8 @@
     import FileIcon from "$lib/component/icons/FileIcon.svelte"
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
     import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"
-    import { uploadWithTus } from "./content/code/files";
+    
+    import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     
     createFilesState()
