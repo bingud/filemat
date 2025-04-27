@@ -3,6 +3,7 @@ import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType } from "../auth/types";
 import type { FileCategory } from "../data/files";
 import { formData, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
+import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 
 export type FileData = { meta: FileMetadata, entries: FileMetadata[] | null }
@@ -129,7 +130,7 @@ export function uploadWithTus() {
                 if (actualFilenameHeader) {
                     actualFilename = actualFilenameHeader
 
-                    const state = filesState.uploads.list[targetPath]
+                    const state = uploadState.all[targetPath]
                     if (state) {
                         state.actualFilename = actualFilenameHeader
                     }
@@ -144,7 +145,7 @@ export function uploadWithTus() {
                 const isCustomError = json.error === "custom"
                 handleException(`Failed to upload file with TUS. Is custom error: ${isCustomError}`, message, error)
 
-                const state = filesState.uploads.list[targetPath]
+                const state = uploadState.all[targetPath]
                 if (state) {
                     state.status = "failed"
                 }
@@ -153,7 +154,7 @@ export function uploadWithTus() {
                 const percentage = Number(((bytesUploaded / bytesTotal) * 100).toFixed(2))
                 console.log(bytesUploaded, bytesTotal, percentage + "%")
                 
-                const state = filesState.uploads.list[targetPath]
+                const state = uploadState.all[targetPath]
                 if (state) {
                     state.status = "uploading"
                     state.percentage = percentage
@@ -176,7 +177,7 @@ export function uploadWithTus() {
                     })
                 }
 
-                const state = filesState.uploads.list[targetPath]
+                const state = uploadState.all[targetPath]
                 if (state) {
                     state.status = "success"
                 }
@@ -199,7 +200,7 @@ export function uploadWithTus() {
             },
         })
 
-        if (!filesState.uploads.addUpload(targetPath)) return
+        if (!uploadState.addUpload(targetPath)) return
 
         // Start the upload
         upload.start()

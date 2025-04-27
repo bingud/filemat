@@ -3,7 +3,7 @@
     import { getFileData } from "$lib/code/module/files"
     import { addSuffix, filenameFromPath, forEachObject, pageTitle, parseJson, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
-    import { onDestroy, untrack } from "svelte"
+    import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte"
     import Breadcrumbs from "./content/elements/Breadcrumbs.svelte"
@@ -23,7 +23,8 @@
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import UploadPanel from "./content/elements/UploadPanel.svelte";
-    
+    import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
+
     createFilesState()
     createBreadcrumbState()
 

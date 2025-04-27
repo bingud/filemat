@@ -16,6 +16,7 @@
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "./elements/UploadPanel.svelte";
+    import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -356,7 +357,7 @@
     </div>
 {/if}
 
-{#if filesState.uploads.count > 0 && filesState.uploads.panelOpen || true || true || true}
+{#if uploadState.count > 0 && uploadState.panelOpen || true || true || true}
     <div class="fixed z-10 h-full w-full top-0 left-0 pb-4 pr-[calc(1rem+var(--spacing-details-sidebar))] pointer-events-none  flex items-end justify-end">
         <div class="w-[36rem] h-fit max-h-full max-w-full pointer-events-auto">
             <UploadPanel></UploadPanel>
