@@ -32,6 +32,8 @@ html {
 
     --color-neutral-850: #202020;
     --color-neutral-250: #dddddd;
+
+    --spacing-details-sidebar: 20rem;
 }
 
 
@@ -71,7 +73,7 @@ html {
 }
 
 button {
-    cursor: pointer;
+    @apply cursor-pointer disabled:cursor-auto;
 }
 
 h1 {

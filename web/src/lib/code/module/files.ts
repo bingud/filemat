@@ -128,6 +128,11 @@ export function uploadWithTus() {
                 const actualFilenameHeader = res?.getResponseHeader("actual-uploaded-filename")
                 if (actualFilenameHeader) {
                     actualFilename = actualFilenameHeader
+
+                    const state = filesState.uploads.list[targetPath]
+                    if (state) {
+                        state.actualFilename = actualFilenameHeader
+                    }
                 }
             },
             onError: (error) => {
@@ -138,11 +143,21 @@ export function uploadWithTus() {
 
                 const isCustomError = json.error === "custom"
                 handleException(`Failed to upload file with TUS. Is custom error: ${isCustomError}`, message, error)
+
+                const state = filesState.uploads.list[targetPath]
+                if (state) {
+                    state.status = "failed"
+                }
             },
             onProgress: (bytesUploaded, bytesTotal) => {
-                const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2)
+                const percentage = Number(((bytesUploaded / bytesTotal) * 100).toFixed(2))
                 console.log(bytesUploaded, bytesTotal, percentage + "%")
-                // Update UI with progress if needed
+                
+                const state = filesState.uploads.list[targetPath]
+                if (state) {
+                    state.status = "uploading"
+                    state.percentage = percentage
+                }
             },
             onSuccess: () => {
                 const uploadedFile = upload.file as File
@@ -159,6 +174,11 @@ export function uploadWithTus() {
                         fileType: "FILE",
                         size: uploadedFile.size
                     })
+                }
+
+                const state = filesState.uploads.list[targetPath]
+                if (state) {
+                    state.status = "success"
                 }
             },
             onShouldRetry: (err, retryAttempt, options) => {

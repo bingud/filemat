@@ -15,6 +15,7 @@
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
+    import UploadPanel from "./elements/UploadPanel.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -30,12 +31,11 @@
         setSelectedEntryPath()
 
         // Add keydown listener for Delete key
-        console.log("Adding keydown listener for Delete key")
-        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', handleKeyDown)
         
         return () => {
             // Clean up listener when component unmounts
-            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keydown', handleKeyDown)
         };
     })
 
@@ -356,6 +356,13 @@
     </div>
 {/if}
 
+{#if filesState.uploads.count > 0 && filesState.uploads.panelOpen || true || true || true}
+    <div class="fixed z-10 h-full w-full top-0 left-0 pb-4 pr-[calc(1rem+var(--spacing-details-sidebar))] pointer-events-none  flex items-end justify-end">
+        <div class="w-[36rem] h-fit max-h-full max-w-full pointer-events-auto">
+            <UploadPanel></UploadPanel>
+        </div>
+    </div>
+{/if}
 
 <!-- Confirmation Dialog -->
 <ConfirmDialog bind:this={confirmDialog} />

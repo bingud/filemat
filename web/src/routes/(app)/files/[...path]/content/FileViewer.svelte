@@ -41,7 +41,6 @@
         if (!isViewableFile || !displayedFileCategory) return
 
         getBlobContent(filesState.data.content, displayedFileCategory).then((result) => {
-            console.log(`got blob content`)
             filesState.data.decodedContent = result
             if (isSymlink) {
                 openAsFileType("text")
@@ -135,7 +134,7 @@
                     <div>
                         <div class="flex flex-col items-center justify-center gap-4">
                             <p class="text-neutral-700 dark:text-neutral-300">This is a symbolic link.</p>
-                            <p class="text-neutral-500 dark:text-neutral-400">Target path: <CodeChunk>{filesState.data.decodedContent}</CodeChunk></p>
+                            <p class="text-neutral-500 dark:text-neutral-400 max-w-full break-all text-center">Target path:<br><CodeChunk>{filesState.data.decodedContent}</CodeChunk></p>
                         </div>
                     </div>
                 {/if}

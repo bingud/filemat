@@ -4,10 +4,12 @@
     import { loadMiniUsers } from "$lib/code/module/users";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
+    import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types";
     import { forEachObject, formData, handleError, handleErrorResponse, handleException, keysOf, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
+    import UploadPanel from "./elements/UploadPanel.svelte";
 
     let {
         excludedRoles, 
@@ -153,7 +155,6 @@
 
     <button disabled={!canCreatePermission || createPermissionLoading} on:click={createPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
 </div>
-
 
 <style>
     @import "/src/app.css" reference;

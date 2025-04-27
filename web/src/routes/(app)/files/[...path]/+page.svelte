@@ -6,7 +6,7 @@
     import { onDestroy, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte"
-    import Breadcrumbs from "./content/Breadcrumbs.svelte"
+    import Breadcrumbs from "./content/elements/Breadcrumbs.svelte"
     import FileBrowser from "./content/FileBrowser.svelte"
     import DetailsSidebar from "./content/DetailsSidebar.svelte"
     import { createFilesState, destroyFilesState, filesState } from "../../../../lib/code/stateObjects/filesState.svelte"
@@ -22,6 +22,7 @@
     
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import UploadPanel from "./content/elements/UploadPanel.svelte";
     
     createFilesState()
     createBreadcrumbState()
@@ -238,7 +239,7 @@
             <!-- File info sidebar -->
             {#if filesState.ui.detailsOpen}
                 <div on:click={filesState.unselect} class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex justify-end pointer-events-none md:contents min-h-0">
-                    <div transition:fly={{ duration: 150, x: 400, opacity: 1 }} class="flex flex-col h-full max-w-full w-[20rem] shrink-0 pointer-events-auto min-h-0">
+                    <div transition:fly={{ duration: 150, x: 400, opacity: 1 }} class="flex flex-col h-full max-w-full w-details-sidebar shrink-0 pointer-events-auto min-h-0">
                         <DetailsSidebar />
                     </div>
                 </div>
