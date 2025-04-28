@@ -73,7 +73,7 @@ class TusService(
                 user = user
             ).let {
                 if (it.isNotSuccessful) return
-                val actualFilename = it.value
+                val actualFilename = it.valueOrNull
                 if (actualFilename != null) {
                     wrappedResponse.setHeader("actual-uploaded-filename", actualFilename)
                 }

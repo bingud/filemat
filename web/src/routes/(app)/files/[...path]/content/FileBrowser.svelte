@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata } from "$lib/code/auth/types";
-    import { filenameFromPath, formatBytes, formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix } from "$lib/code/util/codeUtil.svelte";
+    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -186,7 +186,7 @@
         // Show confirmation dialog and handle the result
         confirmDialog.show({
             title: "Delete File",
-            message: `Are you sure you want to delete "${filenameFromPath(entry.path)}"? This cannot be undone.`,
+            message: `Are you sure you want to delete "${entry.filename!}"? This cannot be undone.`,
             confirmText: "Delete",
             cancelText: "Cancel"
         }).then((confirmed: boolean) => {
@@ -209,7 +209,7 @@
         });
         
         if (response.failed) {
-            handleError(response.exception, `Failed to delete "${filenameFromPath(entryToDelete.path)}".`);
+            handleError(response.exception, `Failed to delete "${entryToDelete.filename!}".`);
             return;
         }
         
@@ -288,7 +288,7 @@
                         {/if}
                     </div>
                     <p class="truncate">
-                        {filenameFromPath(entry.path)}
+                        {entry.filename!}
                     </p>
                 </div>
 
@@ -323,7 +323,7 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
-                            <a download href={addSuffix(filesState.data.contentUrl, "/") + `${filenameFromPath(menuEntry.path)}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                            <a download href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                 <div class="size-5 flex-shrink-0">
                                     <DownloadIcon />
                                 </div>
@@ -344,7 +344,7 @@
                                 <span>Details</span>
                             </button>
                             <hr class="basic-hr my-2">
-                            <p class="px-4 truncate opacity-70">File: {filenameFromPath(menuEntry.path)}</p>
+                            <p class="px-4 truncate opacity-70">File: {menuEntry.filename!}</p>
                         </div>
                     </Popover.Content>
                 </Popover.Root>
@@ -357,7 +357,7 @@
     </div>
 {/if}
 
-{#if uploadState.count > 0 && uploadState.panelOpen || true || true || true}
+{#if uploadState.count > 0 && uploadState.panelOpen}
     <div class="fixed z-10 h-full w-full top-0 left-0 pb-4 pr-[calc(1rem+var(--spacing-details-sidebar))] pointer-events-none  flex items-end justify-end">
         <div class="w-[36rem] h-fit max-h-full max-w-full pointer-events-auto">
             <UploadPanel></UploadPanel>

@@ -392,3 +392,34 @@ export function mapToObject<K extends string | number | symbol, V, T>(arr: T[], 
     })
     return obj
 }
+
+export function getUniqueFilename(
+    filename: string,
+    existing: string[]
+): string {
+    const dotIndex = filename.lastIndexOf('.')
+    const base = dotIndex !== -1
+        ? filename.slice(0, dotIndex)
+        : filename
+    const ext = dotIndex !== -1
+        ? filename.slice(dotIndex)
+        : ''
+    // escape for regex
+    const esc = (s: string) =>
+        s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(
+        `^${esc(base)}(?: \\((\\d+)\\))?${esc(ext)}$`
+    )
+    let max = -1
+    for (const existingName of existing) {
+        const m = existingName.match(re)
+        if (m) {
+            const n = m[1] ? parseInt(m[1], 10) : 0
+            if (n > max) max = n
+        }
+    }
+    // if no match at all, return original; otherwise bump
+    return max < 0
+        ? filename
+        : `${base} (${max + 1})${ext}`
+}

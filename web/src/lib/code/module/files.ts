@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { formData, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
+import { filenameFromPath, formData, getUniqueFilename, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 
@@ -15,7 +15,7 @@ export async function getFileData(path: string, signal: AbortSignal): Promise<Fi
         return null
     }
     const status = response.code
-    const json = response.json()
+    const json = response.json() as FileData
 
     if (status.serverDown) {
         handleError(`Server ${status} while getting folder entries`, `Failed to open folder. Server is unavailable.`)
@@ -23,6 +23,12 @@ export async function getFileData(path: string, signal: AbortSignal): Promise<Fi
     } else if (status.failed) {
         handleErrorResponse(json, `Failed to open folder.`)
         return null
+    }
+
+    if (json.entries) {
+        json.entries.forEach((v) => {
+            v.filename = filenameFromPath(v.path)
+        })
     }
 
     return json
@@ -105,8 +111,14 @@ export function uploadWithTus() {
             return
         }
 
+        uploadState.panelOpen = true
+
         // Construct the full target path
         const currentPath = filesState.path === '/' ? '' : filesState.path
+        const inputFilename = file.name
+
+        const entries = filesState.data.entries!.map(v => v.filename!)
+        const targetFilename = getUniqueFilename(inputFilename, entries)
         const targetPath = `${currentPath}/${file.name}`
 
         console.log(`Attempting to upload ${file.name} to ${targetPath}`)
@@ -132,11 +144,20 @@ export function uploadWithTus() {
 
                     const state = uploadState.all[targetPath]
                     if (state) {
-                        state.actualFilename = actualFilenameHeader
+                        state.actualPath = actualFilenameHeader
                     }
                 }
             },
             onError: (error) => {
+                const isAborted = error.message.includes("aborted")
+                if (isAborted) {
+                    const state = uploadState.get(targetPath)
+                    if (state) {
+                        state.status = "canceled"
+                    }
+                    return
+                }
+
                 const res = (error as tus.DetailedError).originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
                 const text = res?.responseText
                 const json = parseJson(text || "")
@@ -157,7 +178,10 @@ export function uploadWithTus() {
                 const state = uploadState.all[targetPath]
                 if (state) {
                     state.status = "uploading"
+
                     state.percentage = percentage
+                    state.bytesTotal = bytesTotal
+                    state.bytesUploaded = bytesUploaded
                 }
             },
             onSuccess: () => {
@@ -170,6 +194,7 @@ export function uploadWithTus() {
                 if (filesState.path === uploadFolder) {
                     filesState.data.entries?.push({
                         path: actualUploadedPath || targetPath,
+                        filename: actualFilename || targetFilename,
                         modifiedDate: unixNowMillis(),
                         createdDate: unixNowMillis(),
                         fileType: "FILE",
@@ -200,7 +225,7 @@ export function uploadWithTus() {
             },
         })
 
-        if (!uploadState.addUpload(targetPath)) return
+        if (!uploadState.addUpload(targetPath, upload)) return
 
         // Start the upload
         upload.start()
@@ -212,5 +237,4 @@ export function uploadWithTus() {
     // Append to body, trigger click, and remove
     document.body.appendChild(input)
     input.click()
-    // Note: Removal is now handled in the onchange event after selection or cancellation
 }

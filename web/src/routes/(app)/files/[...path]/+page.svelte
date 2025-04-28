@@ -1,7 +1,7 @@
 <script lang="ts">
     import { beforeNavigate } from "$app/navigation"
     import { getFileData } from "$lib/code/module/files"
-    import { addSuffix, filenameFromPath, forEachObject, pageTitle, parseJson, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, pageTitle, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
@@ -18,11 +18,9 @@
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte"
     import FileIcon from "$lib/component/icons/FileIcon.svelte"
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
-    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"
-    
+    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"    
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
-    import UploadPanel from "./content/elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
 
     createFilesState()
@@ -72,6 +70,7 @@
         if (status.ok) {
             filesState.data.entries?.push({
                 path: targetPath,
+                filename: folderName,
                 modifiedDate: unixNowMillis(),
                 createdDate: unixNowMillis(),
                 fileType: "FOLDER",
@@ -126,8 +125,7 @@
             } else if (result.meta.fileType === "FOLDER_LINK") {
                 if (appState.followSymlinks) {
                     result.entries?.forEach((entry) => {
-                        const filename = filenameFromPath(entry.path)
-                        const linkPath = `${addSuffix(filePath, "/")}${filename}`
+                        const linkPath = `${addSuffix(filePath, "/")}${entry.filename!}`
                         entry.path = linkPath
                     })
                     filesState.data.entries = result.entries || null
