@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { beforeNavigate } from "$app/navigation"
+    import { beforeNavigate, goto } from "$app/navigation"
     import { getFileData } from "$lib/code/module/files"
     import { addSuffix, pageTitle, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
@@ -25,6 +25,14 @@
 
     createFilesState()
     createBreadcrumbState()
+    
+    onMount(() => {
+        window.addEventListener('keydown', handleKeyDown)
+        
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown)
+        };
+    })
 
     onDestroy(() => {
         destroyFilesState()
@@ -32,13 +40,22 @@
     })
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
-
     let newButtonPopoverOpen = $state(false)
     
+    function handleKeyDown(event: KeyboardEvent) {
+        // Navigate to the parent folder
+        if (event.key === "Backspace") {
+            const currentPath = filesState.path
+            if (currentPath === "/") return
+
+            const parentPath = currentPath.slice(0, currentPath.lastIndexOf("/"))
+            goto(`/files${parentPath}`)
+        }
+    }
+
     // Functions for new item actions
     function handleUpload() {
         newButtonPopoverOpen = false
-
         uploadWithTus()
     }
     

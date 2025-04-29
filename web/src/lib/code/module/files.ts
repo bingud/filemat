@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { filenameFromPath, formData, getUniqueFilename, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
+import { filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 
@@ -119,7 +119,7 @@ export function uploadWithTus() {
 
         const entries = filesState.data.entries!.map(v => v.filename!)
         const targetFilename = getUniqueFilename(inputFilename, entries)
-        const targetPath = `${currentPath}/${file.name}`
+        const targetPath = `${currentPath}/${targetFilename}`
 
         console.log(`Attempting to upload ${file.name} to ${targetPath}`)
 
@@ -128,12 +128,17 @@ export function uploadWithTus() {
 
         const upload = new tus.Upload(file, {
             endpoint: "/api/v1/file/upload", // Your TUS endpoint
-            retryDelays: [0, 3000, 5000, 10000, 20000],
+            // retryDelays: ((attempt: any) => {
+            //     const delays = [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000]
+            //     return attempt < delays.length ? delays[attempt] : 20000
+            // }) as any as number[],
+            retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
             metadata: {
                 filename: targetPath,
                 // Add any other metadata your server needs
                 // filetype: file.type 
             },
+            chunkSize: 5 * 1024 * 1024,
             onAfterResponse: (response) => {
                 // Get the actual uploaded filename from the server
                 // If the file already exists, the server will add a number to the end of the filename
@@ -149,7 +154,7 @@ export function uploadWithTus() {
                 }
             },
             onError: (error) => {
-                const isAborted = error.message.includes("aborted")
+                const isAborted = error?.message?.includes("aborted")
                 if (isAborted) {
                     const state = uploadState.get(targetPath)
                     if (state) {
@@ -161,9 +166,9 @@ export function uploadWithTus() {
                 const res = (error as tus.DetailedError).originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
                 const text = res?.responseText
                 const json = parseJson(text || "")
-                const message = json.message || text || error.message || "Failed to upload file."
+                const message = json?.message || text || "Failed to upload file."
 
-                const isCustomError = json.error === "custom"
+                const isCustomError = json?.error === "custom"
                 handleException(`Failed to upload file with TUS. Is custom error: ${isCustomError}`, message, error)
 
                 const state = uploadState.all[targetPath]
@@ -173,7 +178,6 @@ export function uploadWithTus() {
             },
             onProgress: (bytesUploaded, bytesTotal) => {
                 const percentage = Number(((bytesUploaded / bytesTotal) * 100).toFixed(2))
-                console.log(bytesUploaded, bytesTotal, percentage + "%")
                 
                 const state = uploadState.all[targetPath]
                 if (state) {
@@ -209,15 +213,15 @@ export function uploadWithTus() {
             },
             onShouldRetry: (err, retryAttempt, options) => {
                 // Try to extract JSON from the failed response
-                const xhr = err.originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
-                if (!xhr) return false
+                const originalResponse = err.originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
+                if (originalResponse) {
+                    const text = originalResponse.responseText
+                    const json = parseJson(text || "")
 
-                const text = xhr.responseText
-                const json = parseJson(text || "")
-
-                // If it's our custom error, abort retries
-                if (json?.error === "custom") {
-                    return false
+                    // If it's our custom error, abort retries
+                    if (json?.error === "custom") {
+                        return false
+                    }
                 }
 
                 // Otherwise retry if we still have attempts left

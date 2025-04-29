@@ -423,3 +423,8 @@ export function getUniqueFilename(
         ? filename
         : `${base} (${max + 1})${ext}`
 }
+
+
+export function getFileId(file: File): string {
+    return `${file.name}-${file.size}-${file.lastModified}`
+}

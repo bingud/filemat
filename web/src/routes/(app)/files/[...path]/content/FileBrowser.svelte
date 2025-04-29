@@ -31,13 +31,12 @@
         // Set the selected entry path
         setSelectedEntryPath()
 
-        // Add keydown listener for Delete key
         window.addEventListener('keydown', handleKeyDown)
         
         return () => {
             // Clean up listener when component unmounts
             window.removeEventListener('keydown', handleKeyDown)
-        };
+        }
     })
 
     // Function to scroll selected entry into view
@@ -84,15 +83,6 @@
             if (filesState.selectedEntry.meta) {
                 entryOnClick(filesState.selectedEntry.meta)
             }
-        }
-
-        // Navigate to the parent folder
-        if (event.key === "Backspace") {
-            const currentPath = filesState.path
-            if (currentPath === "/") return
-
-            const parentPath = currentPath.slice(0, currentPath.lastIndexOf("/"))
-            goto(`/files${parentPath}`)
         }
         
         // Handle Up and Down arrow keys for entry navigation
@@ -272,7 +262,7 @@
             <div 
                 on:click={() => entryOnClick(entry)}
                 data-entry-path={entry.path}
-                class="file-grid h-[2.5rem] gap-x-2 items-center px-1 py-1 cursor-pointer {selected ? 'bg-blue-200 dark:bg-sky-950 select-none' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
+                class="file-grid h-[2.5rem] gap-x-2 items-center px-1 py-1 cursor-pointer select-none {selected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
             >
                 <!-- Filename + Icon -->
                 <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">

@@ -10,6 +10,7 @@
     import { uiState } from '$lib/code/stateObjects/uiState.svelte';
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import { page } from '$app/state';
+    import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
 
 	let { children } = $props();
 
@@ -22,6 +23,13 @@
     onMount(() => {        
         loadDarkModeState()
         updateScreenSize()
+
+        window.addEventListener('beforeunload', (e) => {
+            if (uploadState.counts.uploading > 0) {
+                e.preventDefault()
+                e.returnValue = ""
+            }
+        })
     })
 
     const updateScreenSizeDebounced = debounceFunction(updateScreenSize, 50, 1000)
