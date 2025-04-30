@@ -7,6 +7,7 @@ import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.*
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.getEffectiveFilePermissions
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.*
@@ -170,12 +171,12 @@ class FileService(
      *
      * if file is a folder, also returns entries
      */
-    fun getFileOrFolderEntries(user: Principal, rawPath: FilePath): Result<Pair<FileMetadata, List<FileMetadata>?>> {
+    fun getFileOrFolderEntries(user: Principal, rawPath: FilePath): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
         val (pathResult, pathHasSymlink) = resolvePath(rawPath)
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
-        val metadata = getMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath).let {
+        val metadata: FullFileMetadata = getFullMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -208,6 +209,34 @@ class FileService(
 
         return filesystem.getMetadata(rawPath)?.toResult()
             ?: Result.notFound()
+    }
+
+    /**
+     * Returns file metadata along with applied file permissions. Authenticates user
+     */
+    fun getFullMetadata(user: Principal, rawPath: FilePath, canonicalPath: FilePath): Result<FullFileMetadata> {
+        isAllowedToAccessFile(user, canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val meta = filesystem.getMetadata(rawPath)
+            ?: return Result.notFound()
+
+        val permissions = getActualFilePermissions(user, canonicalPath)
+
+        val fullMeta = FullFileMetadata.from(meta, permissions)
+        return fullMeta.toResult()
+    }
+
+    /**
+     * Returns the total list of file permissions currently available for a user on a file
+     */
+    fun getActualFilePermissions(user: Principal, canonicalPath: FilePath): Set<FilePermission> {
+        val globalPermissions = user.getEffectiveFilePermissions()
+        val permissions = entityPermissionService.getUserPermission(canonicalPath = canonicalPath, userId = user.userId, roles = user.roles)
+            ?.permissions ?: emptyList()
+
+        return globalPermissions + permissions
     }
 
     /**
@@ -284,7 +313,7 @@ class FileService(
      *
      * Verifies user permissions.
      */
-    fun getFolderEntries(user: Principal, canonicalPath: FilePath): Result<List<FileMetadata>> {
+    fun getFolderEntries(user: Principal, canonicalPath: FilePath): Result<List<FullFileMetadata>> {
         val hasAdminAccess = hasAdminAccess(user)
         val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
@@ -295,12 +324,12 @@ class FileService(
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
-        val entries = result.value.filter { meta: FileMetadata ->
+        val entries = result.value.mapNotNull { meta: FileMetadata ->
             // Check if `it.fileType` is symlink, resolve if it is
             val entryPath = if (meta.fileType.isSymLink()) {
                 val (resolvedResult, hasSymlink) = resolvePath(FilePath.of(meta.path))
                 resolvedResult.let {
-                    if (it.isNotSuccessful) return@filter false
+                    if (it.isNotSuccessful) return@mapNotNull null
                     it.value
                 }
             } else {
@@ -308,20 +337,22 @@ class FileService(
             }
 
             val isPathAllowed = folderVisibilityService.isPathAllowed(entryPath) == null
-            if (!isPathAllowed) return@filter false
+            if (!isPathAllowed) return@mapNotNull null
+
+            val permission = entityPermissionService.getUserPermission(
+                canonicalPath = entryPath,
+                userId = user.userId,
+                roles = user.roles
+            )
 
             // Check permissions for entry
             if (!hasAdminAccess) {
-                val permission = entityPermissionService.getUserPermission(
-                    canonicalPath = entryPath,
-                    userId = user.userId,
-                    roles = user.roles
-                )
                 val hasPermission = permission != null && permission.permissions.contains(FilePermission.READ)
-                if (!hasPermission) return@filter false
+                if (!hasPermission) return@mapNotNull null
             }
 
-            true
+            val fullMeta = FullFileMetadata.from(meta, permission?.permissions ?: emptyList())
+            return@mapNotNull fullMeta
         }
 
         return entries.toResult()

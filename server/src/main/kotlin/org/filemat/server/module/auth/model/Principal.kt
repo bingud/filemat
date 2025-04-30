@@ -4,6 +4,7 @@ import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.Serializable
 import org.filemat.server.common.State
 import org.filemat.server.config.UlidSerializer
+import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.model.Role
 
@@ -32,6 +33,18 @@ data class Principal(
                 permissions.contains(searched)
             } else {
                 permissions.any { perm -> perm == searched || perm == SystemPermission.SUPER_ADMIN }
+            }
+        }
+
+        /**
+         * Returns list of global file permissions granted by system permissions
+         */
+        fun Principal.getEffectiveFilePermissions(): Set<FilePermission> {
+            val perms = this.getPermissions()
+            return when {
+                SystemPermission.SUPER_ADMIN in perms          -> FilePermission.entries.toSet()
+                SystemPermission.ACCESS_ALL_FILES in perms     -> setOf(FilePermission.READ)
+                else                                           -> emptySet()
             }
         }
 

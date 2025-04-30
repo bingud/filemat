@@ -10,6 +10,7 @@ import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.json
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.FileService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -90,7 +91,7 @@ class FolderController(private val fileService: FileService) : AController() {
         if (result.isNotSuccessful) return bad(result.error, "")
 
         val pair = result.value
-        val entries: List<FileMetadata>? = pair.second
+        val entries: List<FullFileMetadata>? = pair.second
         val serialized = json {
             put("meta", pair.first)
             if (entries != null) {
