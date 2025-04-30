@@ -9,6 +9,10 @@ export type FileMetadata = {
     size: number
 }
 
+export type FullFileMetadata = FileMetadata & {
+    permissions: FilePermission[]
+}
+
 export type FileType =
     | "FILE" 
     | "FOLDER" 

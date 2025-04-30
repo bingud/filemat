@@ -339,19 +339,16 @@ class FileService(
             val isPathAllowed = folderVisibilityService.isPathAllowed(entryPath) == null
             if (!isPathAllowed) return@mapNotNull null
 
-            val permission = entityPermissionService.getUserPermission(
+            val permissions = getActualFilePermissions(
                 canonicalPath = entryPath,
-                userId = user.userId,
-                roles = user.roles
+                user = user,
             )
 
             // Check permissions for entry
-            if (!hasAdminAccess) {
-                val hasPermission = permission != null && permission.permissions.contains(FilePermission.READ)
-                if (!hasPermission) return@mapNotNull null
-            }
+            val hasPermission = permissions.contains(FilePermission.READ)
+            if (!hasPermission) return@mapNotNull null
 
-            val fullMeta = FullFileMetadata.from(meta, permission?.permissions ?: emptyList())
+            val fullMeta = FullFileMetadata.from(meta, permissions)
             return@mapNotNull fullMeta
         }
 
@@ -414,6 +411,8 @@ class FileService(
             }
 
             return files.toResult()
+        } catch (e: AccessDeniedException) {
+            return Result.error("Access to folder was denied.")
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,

@@ -1,12 +1,12 @@
 import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
-import type { FileMetadata, FileType } from "../auth/types";
+import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
 import { filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 
-export type FileData = { meta: FileMetadata, entries: FileMetadata[] | null }
+export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
 
 export async function getFileData(path: string, signal: AbortSignal): Promise<FileData | null> {
     const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path }), signal: signal })

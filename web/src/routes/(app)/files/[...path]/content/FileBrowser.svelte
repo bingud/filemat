@@ -1,7 +1,7 @@
 <script lang="ts">
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
-    import type { FileMetadata } from "$lib/code/auth/types";
+    import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
@@ -20,7 +20,7 @@
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
-    let menuEntry: FileMetadata | null = $state(null)
+    let menuEntry: FullFileMetadata | null = $state(null)
     let entryMenuPopoverOpen = $state(dev)
     
     // Delete confirmation
@@ -147,7 +147,7 @@
     /**
      * onClick for entry menu
      */
-    function entryMenuOnClick(button: HTMLButtonElement, entry: FileMetadata) {
+    function entryMenuOnClick(button: HTMLButtonElement, entry: FullFileMetadata) {
         entryMenuButton = button
         menuEntry = entry
         entryMenuPopoverOpen = true
@@ -320,12 +320,14 @@
                                 <span>Download</span>
                             </a>
 
-                            <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                <div class="size-5 flex-shrink-0">
-                                    <TrashIcon />
-                                </div>
-                                <span>Delete</span>
-                            </button>
+                            {#if menuEntry.permissions.includes("DELETE")}
+                                <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                    <div class="size-5 flex-shrink-0">
+                                        <TrashIcon />
+                                    </div>
+                                    <span>Delete</span>
+                                </button>
+                            {/if}
 
                             <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                 <div class="size-5 flex-shrink-0">
