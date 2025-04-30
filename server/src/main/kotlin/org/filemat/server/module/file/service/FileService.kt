@@ -233,6 +233,27 @@ class FileService(
     }
 
     /**
+     * Fully verifies if a user is allowed to write to a folder.
+     */
+    fun isAllowedToEditFolder(user: Principal, canonicalPath: FilePath): Result<Unit> {
+        val isAdmin = hasAdminAccess(user)
+
+        if (isAdmin == false) {
+            // Check access permissions
+            isAllowedToAccessFile(user, canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+            // Check delete permissions
+            hasFilePermission(canonicalPath, user, false, FilePermission.WRITE).let {
+                if (it == false) return Result.reject("You do not have permission to edit this folder.")
+            }
+        }
+
+        return Result.ok()
+    }
+
+    /**
      * Fully verifies if a user is allowed to read and delete a file.
      */
     fun isAllowedToDeleteFile(user: Principal, canonicalPath: FilePath): Result<Unit> {

@@ -126,7 +126,7 @@ class TusService(
         }
 
         // Authenticate destination path
-        val isAllowed = fileService.isAllowedToAccessFile(user = user, canonicalPath = destinationParentPath)
+        val isAllowed = fileService.isAllowedToEditFolder(user = user, canonicalPath = destinationParentPath)
         if (isAllowed.isNotSuccessful) {
             response.respond(400, isAllowed.errorOrNull ?: "You do not have permission to access this folder.")
             return false
