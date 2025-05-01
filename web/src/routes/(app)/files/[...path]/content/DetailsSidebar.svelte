@@ -47,7 +47,7 @@
 
     let lastLoaded = ""
     $effect(() => {
-        const selectedPath = filesState.selectedEntry.path
+        const selectedPath = filesState.selectedEntries.first
 
         if (!selectedPath) return
         if (!filesState.ui.detailsOpen) return
@@ -69,7 +69,7 @@
         if (hasAnyPermission(["MANAGE_ALL_FILE_PERMISSIONS", "MANAGE_OWN_FILE_PERMISSIONS"])) {
             permissionDataLoading = true
             await loadPermissionData(path, abortController.signal)
-            if (path !== filesState.selectedEntry.path) return
+            if (path !== filesState.selectedEntries.first) return
             lastLoaded = path
             permissionDataLoading = false
         }
@@ -97,7 +97,7 @@
         const status = response.code
 
         if (status.ok) {
-            if (path !== filesState.selectedEntry.path) return
+            if (path !== filesState.selectedEntries.first) return
 
             const miniUsers = json.miniUserList
             json.miniUserList = {}
@@ -151,8 +151,8 @@
 <div class="h-full w-full flex flex-col gap-6 py-6 bg-neutral-200 dark:bg-neutral-850 min-h-0">
     {#if filesState.metaLoading}
         <div></div>
-    {:else if filesState.selectedEntry.meta || filesState.data.meta}
-        {@const file = (filesState.selectedEntry.meta || filesState.data.meta)!}
+    {:else if filesState.selectedEntries.meta || filesState.data.meta}
+        {@const file = (filesState.selectedEntries.meta || filesState.data.meta)!}
         {@const filename = filenameFromPath(file.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
@@ -208,8 +208,8 @@
                                         </div>
                                     </Dialog.Close>
                                 </div>
-                                {#if filesState.selectedEntry.path}
-                                    <FilePermissionCreator path={filesState.selectedEntry.path} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
+                                {#if filesState.selectedEntries.first}
+                                    <FilePermissionCreator path={filesState.selectedEntries.first} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
                                 {/if}
                             </div>
                         </Dialog.Content>

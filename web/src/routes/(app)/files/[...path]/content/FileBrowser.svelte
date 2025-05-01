@@ -42,8 +42,8 @@
     // Function to scroll selected entry into view
     function scrollSelectedEntryIntoView() {
         setTimeout(() => {
-            if (filesState.selectedEntry.path) {
-                const selector = `[data-entry-path="${filesState.selectedEntry.path.replace(/"/g, '\\"')}"]`;
+            if (filesState.selectedEntries.first) {
+                const selector = `[data-entry-path="${filesState.selectedEntries.first.replace(/"/g, '\\"')}"]`;
                 const element = document.querySelector(selector);
                 if (element) {
                     element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -53,13 +53,13 @@
     }
 
     function setSelectedEntryPath() {
-        const selectedEntryPath = filesState.selectedEntry.selectedPositions.getChild(filesState.path)
+        const selectedEntryPath = filesState.selectedEntries.selectedPositions.getChild(filesState.path)
         if (!selectedEntryPath) return
 
         const filename = filesState.path === "/" ? `${selectedEntryPath}` : `${filesState.path}/${selectedEntryPath}`
         
         if (filesState.data.entries?.some(v => v.path === filename)) {
-            filesState.selectedEntry.path = filename
+            filesState.selectedEntries.first = filename
             // Scroll to the selected entry after a small delay to ensure DOM is updated
             scrollSelectedEntryIntoView()
         }
@@ -69,9 +69,9 @@
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // Check if we have a selected entry
-            if (filesState.selectedEntry.path && filesState.data.entries) {
+            if (filesState.selectedEntries.first && filesState.data.entries) {
                 // Find the selected entry in the entries list
-                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntry.path);
+                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.first);
                 if (selectedEntry) {
                     // Delete the selected entry
                     option_delete(selectedEntry);
@@ -80,8 +80,8 @@
         } 
 
         if (event.key === "Enter") {
-            if (filesState.selectedEntry.meta) {
-                entryOnClick(filesState.selectedEntry.meta)
+            if (filesState.selectedEntries.meta) {
+                entryOnClick(filesState.selectedEntries.meta)
             }
         }
         
@@ -92,7 +92,7 @@
             
             event.preventDefault();
             const entries = filesState.data.sortedEntries;
-            const currentPath = filesState.selectedEntry.path;
+            const currentPath = filesState.selectedEntries.first;
             
             // Find the index of currently selected entry
             let currentIndex = -1;
@@ -122,8 +122,8 @@
             
             // Update selection
             const newEntry = entries[newIndex];
-            filesState.selectedEntry.selectedPositions.set(newEntry.path, true);
-            filesState.selectedEntry.path = newEntry.path;
+            filesState.selectedEntries.selectedPositions.set(newEntry.path, true);
+            filesState.selectedEntries.first = newEntry.path;
             
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
@@ -134,11 +134,11 @@
      * onClick for file entry
      */
     function entryOnClick(entry: FileMetadata) {
-        if (filesState.selectedEntry.path === entry.path) {
+        if (filesState.selectedEntries.first === entry.path) {
             openEntry(entry.path)
         } else {
-            filesState.selectedEntry.selectedPositions.set(entry.path, true)
-            filesState.selectedEntry.path = entry.path
+            filesState.selectedEntries.selectedPositions.set(entry.path, true)
+            filesState.selectedEntries.list.push(entry.path)
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
         }
@@ -165,7 +165,7 @@
     }
 
     function option_details(entry: FileMetadata) {
-        filesState.selectedEntry.path = entry.path
+        filesState.selectedEntries.list.push(entry.path)
         filesState.ui.detailsOpen = true
         closeEntryPopover()
     }
@@ -213,9 +213,7 @@
             }
             
             // If deleted entry was selected, clear selection
-            if (filesState.selectedEntry.path === entryToDelete.path) {
-                filesState.selectedEntry.path = null;
-            }
+            filesState.selectedEntries.removePath(entryToDelete.path);
         } else if (status.serverDown) {
             handleError(`Server ${status} when deleting file.`, "Failed to delete file. The server is unavailable.");
         } else {
@@ -257,7 +255,7 @@
 
         <!-- Each entry is a grid item -->
         {#each filesState.data.sortedEntries as entry}
-            {@const selected = filesState.selectedEntry.path === entry.path}
+            {@const selected = filesState.selectedEntries.list.includes(entry.path)}
 
             <div 
                 on:click={() => entryOnClick(entry)}
@@ -266,6 +264,9 @@
             >
                 <!-- Filename + Icon -->
                 <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
+                    <div>
+                        <input  type="checkbox">
+                    </div>
                     <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center">
                         {#if entry.fileType === "FILE"}
                             <FileIcon />
@@ -295,7 +296,7 @@
                 <!-- Menu button (stopPropagation) -->
                 <div class="h-full text-center">
                     <button
-                        on:click={(e) => { if (filesState.selectedEntry.path === entry.path) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
+                        on:click={(e) => { if (filesState.selectedEntries.list.includes(entry.path)) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
                         class="h-full aspect-square flex items-center justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
                     >
                         <ThreeDotsIcon />

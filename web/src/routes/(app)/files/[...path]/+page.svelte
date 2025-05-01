@@ -1,7 +1,7 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
     import { getFileData } from "$lib/code/module/files"
-    import { addSuffix, pageTitle, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
@@ -22,6 +22,7 @@
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
+    import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
 
     createFilesState()
     createBreadcrumbState()
@@ -91,7 +92,8 @@
                 modifiedDate: unixNowMillis(),
                 createdDate: unixNowMillis(),
                 fileType: "FOLDER",
-                size: 0
+                size: 0,
+                permissions: keysOf(filePermissionMeta),
             })
         } else if (status.serverDown) {
             handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.")
@@ -150,9 +152,9 @@
             }
             
             // If no entry is selected and this is a folder, select the current folder
-            if (filesState.selectedEntry.path === null && result.meta.fileType === "FOLDER") {
-                filesState.selectedEntry.path = result.meta.path
-                console.log(`selected`, filesState.selectedEntry.path)
+            if (filesState.selectedEntries.first === null && result.meta.fileType === "FOLDER") {
+                filesState.selectedEntries.first = result.meta.path
+                console.log(`selected`, filesState.selectedEntries.first)
             }
         }
         filesState.metaLoading = false
