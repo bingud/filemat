@@ -42,8 +42,8 @@
     // Function to scroll selected entry into view
     function scrollSelectedEntryIntoView() {
         setTimeout(() => {
-            if (filesState.selectedEntries.first) {
-                const selector = `[data-entry-path="${filesState.selectedEntries.first.replace(/"/g, '\\"')}"]`;
+            if (filesState.selectedEntries.single) {
+                const selector = `[data-entry-path="${filesState.selectedEntries.single.replace(/"/g, '\\"')}"]`;
                 const element = document.querySelector(selector);
                 if (element) {
                     element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -59,7 +59,7 @@
         const filename = filesState.path === "/" ? `${selectedEntryPath}` : `${filesState.path}/${selectedEntryPath}`
         
         if (filesState.data.entries?.some(v => v.path === filename)) {
-            filesState.selectedEntries.first = filename
+            filesState.selectedEntries.list = [filename]
             // Scroll to the selected entry after a small delay to ensure DOM is updated
             scrollSelectedEntryIntoView()
         }
@@ -69,9 +69,9 @@
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // Check if we have a selected entry
-            if (filesState.selectedEntries.first && filesState.data.entries) {
+            if (filesState.selectedEntries.single && filesState.data.entries) {
                 // Find the selected entry in the entries list
-                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.first);
+                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.single);
                 if (selectedEntry) {
                     // Delete the selected entry
                     option_delete(selectedEntry);
@@ -80,8 +80,8 @@
         } 
 
         if (event.key === "Enter") {
-            if (filesState.selectedEntries.meta) {
-                entryOnClick(filesState.selectedEntries.meta)
+            if (filesState.selectedEntries.singleMeta) {
+                entryOnClick(filesState.selectedEntries.singleMeta)
             }
         }
         
@@ -92,7 +92,7 @@
             
             event.preventDefault();
             const entries = filesState.data.sortedEntries;
-            const currentPath = filesState.selectedEntries.first;
+            const currentPath = filesState.selectedEntries.single;
             
             // Find the index of currently selected entry
             let currentIndex = -1;
@@ -123,7 +123,7 @@
             // Update selection
             const newEntry = entries[newIndex];
             filesState.selectedEntries.selectedPositions.set(newEntry.path, true);
-            filesState.selectedEntries.first = newEntry.path;
+            filesState.selectedEntries.single = newEntry.path;
             
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
@@ -134,11 +134,10 @@
      * onClick for file entry
      */
     function entryOnClick(entry: FileMetadata) {
-        if (filesState.selectedEntries.first === entry.path) {
+        if (filesState.selectedEntries.single === entry.path) {
             openEntry(entry.path)
         } else {
-            filesState.selectedEntries.selectedPositions.set(entry.path, true)
-            filesState.selectedEntries.list.push(entry.path)
+            filesState.selectedEntries.setSelected(entry.path)
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
         }

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
     import { getFileData } from "$lib/code/module/files"
-    import { addSuffix, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, count, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
@@ -21,15 +21,14 @@
     import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"    
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
-    import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
-    import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
+    import { filePermissionMeta } from "$lib/code/data/permissions";
 
     createFilesState()
     createBreadcrumbState()
     
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
-        
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
         };
@@ -106,6 +105,8 @@
         newButtonPopoverOpen = false
     }
 
+
+    // Load page data when path changes
     $effect(() => {
         if (filesState.path) {
             untrack(() => {
@@ -122,6 +123,23 @@
                     recoverScrollPosition()
                 })
             })
+        }
+    })
+
+    // Unselect entry when path changes
+    $effect(() => {
+        if (filesState.path) {
+            const selected = filesState.selectedEntries.single
+            const selectedSegments = selected ? count(selected, "/") : 0
+
+            const current = filesState.path
+            const currentSegments = count(current, "/")
+
+            console.log(selectedSegments, currentSegments)
+
+            if (!selected || (currentSegments +  (current === "/" ? 0 : 1)) < selectedSegments || currentSegments > selectedSegments) {
+                filesState.selectedEntries.setSelected(filesState.path)
+            }
         }
     })
 
@@ -152,9 +170,8 @@
             }
             
             // If no entry is selected and this is a folder, select the current folder
-            if (filesState.selectedEntries.first === null && result.meta.fileType === "FOLDER") {
-                filesState.selectedEntries.first = result.meta.path
-                console.log(`selected`, filesState.selectedEntries.first)
+            if (filesState.selectedEntries.single === null && result.meta.fileType === "FOLDER") {
+                filesState.selectedEntries.list = [result.meta.path]
             }
         }
         filesState.metaLoading = false

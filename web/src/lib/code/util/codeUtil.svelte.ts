@@ -428,3 +428,7 @@ export function getUniqueFilename(
 export function getFileId(file: File): string {
     return `${file.name}-${file.size}-${file.lastModified}`
 }
+
+export function count(text: string, subString: string): number {
+    return text.split(subString).length - 1
+}
