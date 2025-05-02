@@ -135,9 +135,7 @@
             const current = filesState.path
             const currentSegments = count(current, "/")
 
-            console.log(selectedSegments, currentSegments)
-
-            if (!selected || (currentSegments +  (current === "/" ? 0 : 1)) < selectedSegments || currentSegments > selectedSegments) {
+            if (!selected && !filesState.selectedEntries.hasMultiple || (currentSegments +  (current === "/" ? 0 : 1)) < selectedSegments || (selected && (currentSegments > selectedSegments))) {
                 filesState.selectedEntries.setSelected(filesState.path)
             }
         }

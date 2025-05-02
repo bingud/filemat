@@ -151,6 +151,10 @@
 <div class="h-full w-full flex flex-col gap-6 py-6 bg-neutral-200 dark:bg-neutral-850 min-h-0">
     {#if filesState.metaLoading}
         <div></div>
+    {:else if filesState.selectedEntries.hasMultiple}
+    <div class="w-full flex flex-col px-6 shrink-0 flex-none">
+        <h3 class="truncate text-lg">Multiple files selected</h3>
+    </div>
     {:else if filesState.selectedEntries.singleMeta}
         {@const file = filesState.selectedEntries.singleMeta}
         {@const filename = filenameFromPath(file.path) || "/"}

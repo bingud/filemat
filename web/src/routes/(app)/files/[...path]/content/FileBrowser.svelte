@@ -212,7 +212,7 @@
             }
             
             // If deleted entry was selected, clear selection
-            filesState.selectedEntries.removePath(entryToDelete.path);
+            filesState.selectedEntries.unselect(entryToDelete.path);
         } else if (status.serverDown) {
             handleError(`Server ${status} when deleting file.`, "Failed to delete file. The server is unavailable.");
         } else {
@@ -225,6 +225,15 @@
     function closeEntryPopover() {
         entryMenuButton = null
         menuEntry = null
+    }
+
+    function onClickSelectCheckbox(path: string) {
+        const isSelected = filesState.selectedEntries.list.includes(path)
+        if (isSelected) {
+            filesState.selectedEntries.unselect(path)
+        } else {
+            filesState.selectedEntries.addSelected(path)
+        }
     }
 </script>
 
@@ -259,41 +268,46 @@
             <div 
                 on:click={() => entryOnClick(entry)}
                 data-entry-path={entry.path}
-                class="file-grid h-[2.5rem] gap-x-2 items-center px-1 py-1 cursor-pointer select-none {selected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
+                class="file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group {selected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
             >
                 <!-- Filename + Icon -->
-                <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
-                    <div>
-                        <input  type="checkbox">
+                <div class="h-full flex items-center overflow-hidden">
+                    {#key selected}
+                        <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pl-2 pr-1">
+                            <input checked={selected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
+                        </div>
+                    {/key}
+
+                    <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
+                        <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem]">
+                            {#if entry.fileType === "FILE"}
+                                <FileIcon />
+                            {:else if entry.fileType === "FILE_LINK"}
+                                <FileArrow />
+                            {:else if entry.fileType === "FOLDER"}
+                                <FolderIcon />
+                            {:else if entry.fileType === "FOLDER_LINK"}
+                                <FolderArrow />
+                            {/if}
+                        </div>
+                        <p class="truncate py-1">
+                            {entry.filename!}
+                        </p>
                     </div>
-                    <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center">
-                        {#if entry.fileType === "FILE"}
-                            <FileIcon />
-                        {:else if entry.fileType === "FILE_LINK"}
-                            <FileArrow />
-                        {:else if entry.fileType === "FOLDER"}
-                            <FolderIcon />
-                        {:else if entry.fileType === "FOLDER_LINK"}
-                            <FolderArrow />
-                        {/if}
-                    </div>
-                    <p class="truncate">
-                        {entry.filename!}
-                    </p>
                 </div>
 
                 <!-- Last Modified -->
-                <div class="h-full text-right whitespace-nowrap max-sm:hidden flex items-center justify-end opacity-70">
+                <div class="h-full text-right whitespace-nowrap max-sm:hidden flex items-center justify-end opacity-70 py-1">
                     {formatUnixMillis(entry.modifiedDate)}
                 </div>
 
                 <!-- Size -->
-                <div class="h-full text-right whitespace-nowrap max-md:hidden flex items-center justify-end">
+                <div class="h-full text-right whitespace-nowrap max-md:hidden flex items-center justify-end py-1">
                     {formatBytesRounded(entry.size)}
                 </div>
 
                 <!-- Menu button (stopPropagation) -->
-                <div class="h-full text-center">
+                <div class="h-full text-center py-1 pr-1">
                     <button
                         on:click={(e) => { if (filesState.selectedEntries.list.includes(entry.path)) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
                         class="h-full aspect-square flex items-center justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
