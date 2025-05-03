@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
     import { getFileData } from "$lib/code/module/files"
     import { addSuffix, count, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
@@ -15,13 +16,14 @@
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte"
     import { Popover } from "$lib/component/bits-ui-wrapper"
-    import FolderIcon from "$lib/component/icons/FolderIcon.svelte"
     import FileIcon from "$lib/component/icons/FileIcon.svelte"
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
     import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"    
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filePermissionMeta } from "$lib/code/data/permissions";
+    import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
+    import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -201,47 +203,59 @@
     <div class="w-full flex h-full min-h-0">
         <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} md:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
             <!-- Header -->
-            <div class="w-full h-[5rem] md:h-[3rem] shrink-0 flex flex-col-reverse md:flex-row px-2 items-center justify-between">
-                <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full md:w-[85%] h-1/2 md:h-full flex items-center">
+            <div class="w-full shrink-0 flex flex-col px-2 items-center justify-between overflow-hidden rounded-lg py-2 bg-neutral-200 dark:bg-neutral-900 mt-2 gap-2">
+                <!-- Top row -->
+                <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full flex items-center">
                     <Breadcrumbs></Breadcrumbs>                    
                 </div>
 
-                <div class="w-full md:w-[15%] h-1/2 md:h-full flex items-center justify-end">
-                    <Popover.Root bind:open={newButtonPopoverOpen}>
-                        <Popover.Trigger class="h-full flex items-center justify-center py-2" hidden={filesState.data.meta?.fileType.startsWith("FILE")}>
-                            <div class="h-full flex items-center justify-center bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-md px-2">
-                                <span class="">New</span>
-                            </div>
-                        </Popover.Trigger>
-                        <Popover.Content align="end" class="relative z-50">
-                            <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
-                                <button on:click={handleUpload} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <PlusIcon />
-                                    </div>
-                                    <span>Upload</span>
-                                </button>
-                                <button on:click={handleNewFolder} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <FolderIcon />
-                                    </div>
-                                    <span>Folder</span>
-                                </button>
-                                <button on:click={handleNewFile} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <FileIcon />
-                                    </div>
-                                    <span>File</span>
-                                </button>
-                            </div>
-                        </Popover.Content>
-                    </Popover.Root>
+                <!-- Lower row -->
+                <div class="w-full h-[2.5rem] flex items-center justify-between">
+                    <!-- Left buttons -->
+                    <div class="h-full flex items-center gap-2 py-[0.2rem]">
+                        <button on:click={handleNewFolder} title="Create a new folder inside this folder." class="action-button"><NewFolderIcon /></button>
+                        <button on:click={handleNewFile} title="Create a new blank file inside this folder." class="action-button"><NewFileIcon /></button>
+                    </div>
 
-                    <button on:click={() => { filesState.ui.toggleSidebar() }} class="h-full aspect-square p-2 md:p-3 group flex items-center justify-center">
-                        <div class="size-full rounded-full hover:bg-neutral-300 dark:hover:bg-neutral-700">
+                    <!-- Right buttons -->
+                    <div class="h-full flex items-center gap-2">
+                        <Popover.Root bind:open={newButtonPopoverOpen}>
+                            <Popover.Trigger title="Create or upload a file or folder." class="h-full flex items-center justify-center" hidden={filesState.data.meta?.fileType.startsWith("FILE")}>
+                                <div class="h-full flex items-center justify-center gap-2 bg-neutral-300 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-md px-4">
+                                    <div class="h-[1.2rem]">
+                                        <PlusIcon></PlusIcon>
+                                    </div>
+                                    <p>New</p>
+                                </div>
+                            </Popover.Trigger>
+                            <Popover.Content align="end" class="relative z-50">
+                                <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
+                                    <button on:click={handleUpload} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                        <div class="size-5 flex-shrink-0">
+                                            <PlusIcon />
+                                        </div>
+                                        <span>Upload</span>
+                                    </button>
+                                    <button on:click={handleNewFolder} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                        <div class="size-5 flex-shrink-0">
+                                            <FolderIcon />
+                                        </div>
+                                        <span>Folder</span>
+                                    </button>
+                                    <button on:click={handleNewFile} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                        <div class="size-5 flex-shrink-0">
+                                            <FileIcon />
+                                        </div>
+                                        <span>File</span>
+                                    </button>
+                                </div>
+                            </Popover.Content>
+                        </Popover.Root>
+
+                        <button title="Toggle the file details sidebar." on:click={() => { filesState.ui.toggleSidebar() }} class="action-button">
                             <InfoIcon />
-                        </div>
-                    </button>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -285,3 +299,13 @@
         </div>
     </div>
 </div>
+
+
+<style>
+    @import "/src/app.css" reference;
+
+
+    .action-button {
+        @apply h-full aspect-square flex items-center justify-center rounded-lg dark:bg-neutral-800 dark:hover:bg-neutral-700 p-2;
+    }
+</style>
