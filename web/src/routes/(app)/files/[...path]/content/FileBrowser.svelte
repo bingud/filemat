@@ -17,6 +17,7 @@
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "./elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
+    import { deleteFile } from "$lib/code/module/files";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -24,7 +25,6 @@
     let entryMenuPopoverOpen = $state(dev)
     
     // Delete confirmation
-    let entryToDelete: FileMetadata | null = $state(null)
     let confirmDialog: ConfirmDialog;
 
     onMount(() => {
@@ -170,8 +170,6 @@
     }
 
     function option_delete(entry: FileMetadata) {
-        entryToDelete = entry
-        
         // Show confirmation dialog and handle the result
         confirmDialog.show({
             title: "Delete File",
@@ -180,46 +178,11 @@
             cancelText: "Cancel"
         }).then((confirmed: boolean) => {
             if (confirmed) {
-                handleDeleteConfirm();
+                deleteFile([entry])
             }
         });
         
         closeEntryPopover()
-    }
-    
-    async function handleDeleteConfirm() {
-        if (!entryToDelete) return;
-        const deletedPath = entryToDelete.path
-        
-        const response = await safeFetch(`/api/v1/file/delete`, {
-            method: "POST",
-            body: formData({ path: entryToDelete.path }),
-            credentials: "same-origin"
-        });
-        
-        if (response.failed) {
-            handleError(response.exception, `Failed to delete "${entryToDelete.filename!}".`);
-            return;
-        }
-        
-        const status = response.code;
-        const json = response.json();
-        
-        if (status.ok) {
-            // Remove the deleted entry from the current entries list
-            if (filesState.data.entries && entryToDelete) {
-                filesState.data.entries = filesState.data.entries.filter(e => e.path !== deletedPath);
-            }
-            
-            // If deleted entry was selected, clear selection
-            filesState.selectedEntries.unselect(entryToDelete.path);
-        } else if (status.serverDown) {
-            handleError(`Server ${status} when deleting file.`, "Failed to delete file. The server is unavailable.");
-        } else {
-            handleErrorResponse(json, `Failed to delete file. (${status})`);
-        }
-        
-        entryToDelete = null;
     }
 
     function closeEntryPopover() {

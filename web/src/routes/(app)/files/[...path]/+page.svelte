@@ -24,6 +24,7 @@
     import { filePermissionMeta } from "$lib/code/data/permissions";
     import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
+    import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -191,6 +192,13 @@
         filesState.scroll.container.scrollTo({top: pos})
     }
 
+    function option_deleteSelectedFiles() {
+        const selected = filesState.selectedEntries.list
+        if (!selected.length) return
+        
+        
+    }
+
 </script>
 
 
@@ -213,8 +221,12 @@
                 <div class="w-full h-[2.5rem] flex items-center justify-between">
                     <!-- Left buttons -->
                     <div class="h-full flex items-center gap-2 py-[0.2rem]">
-                        <button on:click={handleNewFolder} title="Create a new folder inside this folder." class="action-button"><NewFolderIcon /></button>
-                        <button on:click={handleNewFile} title="Create a new blank file inside this folder." class="action-button"><NewFileIcon /></button>
+                        {#if filesState.selectedEntries.hasSelected === false}
+                            <button on:click={handleNewFolder} title="Create a new folder inside this folder." class="action-button"><NewFolderIcon /></button>
+                            <button on:click={handleNewFile} title="Create a new blank file inside this folder." class="action-button"><NewFileIcon /></button>
+                        {:else}
+                            <button on:click={option_deleteSelectedFiles} title="Delete the selected files." class="action-button"><TrashIcon /></button>
+                        {/if}
                     </div>
 
                     <!-- Right buttons -->
