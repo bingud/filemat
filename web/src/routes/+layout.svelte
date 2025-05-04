@@ -11,6 +11,8 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import { page } from '$app/state';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
+    import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
+    import { confirmDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
 
 	let { children } = $props();
 
@@ -81,6 +83,9 @@
 <div id="root-page" class="w-full min-h-0 h-full flex flex-col">
     {@render children()}
 </div>
+
+<!-- Confirmation Dialog -->
+<ConfirmDialog bind:this={confirmDialogState.element} />
 
 
 {#if dev}

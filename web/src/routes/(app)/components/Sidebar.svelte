@@ -1,10 +1,10 @@
 <script lang="ts">
+	import { filesState } from '$lib/code/stateObjects/filesState.svelte';
     import { page } from "$app/state";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
-    import { filesState } from "../../../lib/code/stateObjects/filesState.svelte";
 
     let currentButton = $derived.by(() => {
         const path = page.url.pathname
@@ -33,6 +33,7 @@
                 <a href="/files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
                 <a href="/files" on:click={hide} class="sidebar-button">Home Folder</a>
             </div>
+
 
             <!-- Bottom -->
             <div class="flex flex-col px-2 py-4 gap-1">

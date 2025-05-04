@@ -75,6 +75,19 @@ class FileService(
         return Result.ok()
     }
 
+    /**
+     * Deletes a list of file paths.
+     * Returns the number of successfully deleted files.
+     */
+    fun deleteFiles(user: Principal, rawPathList: List<FilePath>): Int {
+        var deleted = 0
+        var failed = 0
+        rawPathList.forEach { path ->
+            val result = deleteFile(user, path)
+            if (result.isNotSuccessful) failed++ else deleted++
+        }
+        return deleted
+    }
 
     fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {
         val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)

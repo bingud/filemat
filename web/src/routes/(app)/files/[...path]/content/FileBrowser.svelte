@@ -17,16 +17,14 @@
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "./elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
-    import { deleteFile } from "$lib/code/module/files";
+    import { deleteFiles } from "$lib/code/module/files";
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
     let menuEntry: FullFileMetadata | null = $state(null)
     let entryMenuPopoverOpen = $state(dev)
     
-    // Delete confirmation
-    let confirmDialog: ConfirmDialog;
-
     onMount(() => {
         // Set the selected entry path
         setSelectedEntryPath()
@@ -171,16 +169,16 @@
 
     function option_delete(entry: FileMetadata) {
         // Show confirmation dialog and handle the result
-        confirmDialog.show({
+        confirmDialogState.show({
             title: "Delete File",
             message: `Are you sure you want to delete "${entry.filename!}"? This cannot be undone.`,
             confirmText: "Delete",
             cancelText: "Cancel"
-        }).then((confirmed: boolean) => {
+        })?.then((confirmed: boolean) => {
             if (confirmed) {
-                deleteFile([entry])
+                deleteFiles([entry])
             }
-        });
+        })
         
         closeEntryPopover()
     }
@@ -333,6 +331,3 @@
         </div>
     </div>
 {/if}
-
-<!-- Confirmation Dialog -->
-<ConfirmDialog bind:this={confirmDialog} />

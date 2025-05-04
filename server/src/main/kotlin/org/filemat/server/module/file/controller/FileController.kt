@@ -5,10 +5,9 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.serialization.encoding.Decoder
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.print
+import org.filemat.server.common.util.parseJsonOrNull
 import org.filemat.server.common.util.tika
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
@@ -20,7 +19,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
-import java.net.URLConnection
 import java.nio.charset.StandardCharsets
 
 
@@ -33,19 +31,18 @@ class FileController(
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    @PostMapping("/delete")
+    @PostMapping("/delete-list")
     fun deleteFileMapping(
         request: HttpServletRequest,
-        @RequestParam("path") rawPath: String
+        @RequestParam("pathList") rawList: String
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
-        val path = FilePath.of(rawPath)
+        val stringList = rawList.parseJsonOrNull<List<String>>()
+            ?: return bad("List of file paths is invalid.", "validation")
+        val pathList = stringList.map { FilePath.of(it) }
 
-        fileService.deleteFile(user, path).let {
-            if (it.notFound) return bad("This file was not found.", "")
-            if (it.rejected) return bad(it.error, "")
-            if (it.isNotSuccessful) return internal(it.error, "")
-            return ok("ok")
+        fileService.deleteFiles(user, pathList).let {
+            return ok("$it")
         }
     }
 

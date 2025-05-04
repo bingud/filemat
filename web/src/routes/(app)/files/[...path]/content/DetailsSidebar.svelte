@@ -13,6 +13,7 @@
     import FilePermissionEditor from "./FilePermissionEditor.svelte";
     import type { EntityPermissionMeta } from "./code/types";
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
+    import { dev } from "$app/environment";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -184,6 +185,7 @@
 
         <hr class="basic-hr flex-none">
 
+        <!-- Permissions -->
         <div class="w-full flex flex-col gap-6 flex-auto min-h-0 max-h-fit">
             <div class="flex w-full justify-between items-center px-6 h-[2.5rem] flex-none">
                 <h4 class="">Permissions</h4>

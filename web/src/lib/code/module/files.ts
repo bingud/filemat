@@ -245,12 +245,12 @@ export function uploadWithTus() {
 }
 
 
-export async function deleteFile(entries: FileMetadata[]) {
+export async function deleteFiles(entries: FileMetadata[]) {
     if (!entries.length) return
     const paths = entries.map(v => v.path)
     const serialized = JSON.stringify(paths)
     
-    const response = await safeFetch(`/api/v1/file/delete`, {
+    const response = await safeFetch(`/api/v1/file/delete-list`, {
         method: "POST",
         body: formData({ pathList: serialized }),
         credentials: "same-origin"
@@ -262,7 +262,8 @@ export async function deleteFile(entries: FileMetadata[]) {
     }
     
     const status = response.code;
-    const json = response.json();
+    const text = response.content
+    const json = response.json()
     
     if (status.ok) {
         // Remove the deleted entry from the current entries list
@@ -272,6 +273,14 @@ export async function deleteFile(entries: FileMetadata[]) {
         
         // If deleted entry was selected, clear selection
         filesState.selectedEntries.unselectAll(paths)
+
+        const deletedEntries = parseInt(text)
+        if (deletedEntries != null) {
+            if (entries.length !== deletedEntries) {
+                const failedEntries = entries.length - deletedEntries
+                handleError(`Server did not delete all requested files. Deleted ${deletedEntries} of ${entries.length}.`, `Failed to delete ${failedEntries} file${failedEntries === 1 ? '' : 's'}.`)
+            }
+        }
     } else if (status.serverDown) {
         handleError(`Server ${status} when deleting file.`, "Failed to delete file. The server is unavailable.");
     } else {

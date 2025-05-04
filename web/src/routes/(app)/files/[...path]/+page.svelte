@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { getFileData } from "$lib/code/module/files"
+    import { deleteFiles, getFileData } from "$lib/code/module/files"
     import { addSuffix, count, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
@@ -25,6 +25,7 @@
     import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
     import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
+    import { confirmDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -131,18 +132,14 @@
 
     // Unselect entry when path changes
     $effect(() => {
-        if (filesState.path) {
-            const selected = filesState.selectedEntries.single
-            const selectedSegments = selected ? count(selected, "/") : 0
-
-            const current = filesState.path
-            const currentSegments = count(current, "/")
-
-            if (!selected && !filesState.selectedEntries.hasMultiple || (currentSegments +  (current === "/" ? 0 : 1)) < selectedSegments || (selected && (currentSegments > selectedSegments))) {
-                filesState.selectedEntries.setSelected(filesState.path)
-            }
+        const selected  = filesState.selectedEntries.single
+        const current  = filesState.path || "/"
+        // if there’s a selection but it isn’t under the current directory, reset it
+        if (selected && !selected.startsWith(current + (current === "/" ? "" : "/"))) {
+            filesState.selectedEntries.reset()
         }
     })
+
 
     beforeNavigate(() => {
         saveScrollPosition()
@@ -196,7 +193,18 @@
         const selected = filesState.selectedEntries.list
         if (!selected.length) return
         
-        
+        confirmDialogState.show({
+            title: "Delete File",
+            message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected files? This cannot be undone.`,
+            confirmText: "Delete",
+            cancelText: "Cancel"
+        })?.then((confirmed: boolean) => {
+            if (!confirmed) return
+            if (!filesState.selectedEntries.meta) return
+
+            const list = valuesOf(filesState.selectedEntries.meta).filter(v => !!v)
+            deleteFiles(list)
+        })
     }
 
 </script>
