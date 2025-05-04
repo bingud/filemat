@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { deleteFiles, getFileData } from "$lib/code/module/files"
+    import { deleteFiles, downloadFilesAsZip, getFileData } from "$lib/code/module/files"
     import { addSuffix, count, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
@@ -26,6 +26,7 @@
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
     import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
     import { confirmDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -132,8 +133,8 @@
 
     // Unselect entry when path changes
     $effect(() => {
-        const selected  = filesState.selectedEntries.single
-        const current  = filesState.path || "/"
+        const selected = filesState.selectedEntries.single
+        const current = filesState.path || "/"
         // if there’s a selection but it isn’t under the current directory, reset it
         if (selected && !selected.startsWith(current + (current === "/" ? "" : "/"))) {
             filesState.selectedEntries.reset()
@@ -207,6 +208,12 @@
         })
     }
 
+    function option_downloadSelectedFiles() {
+        const selected = filesState.selectedEntries.list
+        if (!selected || !selected.length) return
+        downloadFilesAsZip(selected)
+    }
+
 </script>
 
 
@@ -233,6 +240,7 @@
                             <button on:click={handleNewFolder} title="Create a new folder inside this folder." class="action-button"><NewFolderIcon /></button>
                             <button on:click={handleNewFile} title="Create a new blank file inside this folder." class="action-button"><NewFileIcon /></button>
                         {:else}
+                            <button on:click={option_downloadSelectedFiles} title="Download the selected files." class="action-button"><DownloadIcon /></button>
                             <button on:click={option_deleteSelectedFiles} title="Delete the selected files." class="action-button"><TrashIcon /></button>
                         {/if}
                     </div>

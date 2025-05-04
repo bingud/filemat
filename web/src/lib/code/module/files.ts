@@ -287,3 +287,76 @@ export async function deleteFiles(entries: FileMetadata[]) {
         handleErrorResponse(json, `Failed to delete file. (${status})`);
     }
 }
+
+
+export async function downloadFilesAsZip(paths: string[]) {
+    const serializedList = JSON.stringify(paths)
+    await downloadFiles(`/api/v1/file/zip-multiple-content`, formData({ pathList: serializedList }))
+}
+
+
+/**
+ * POSTs `form` to `url` and triggers a native download of the response.
+ *
+ * @param url       endpoint that returns `Content-Disposition: attachment`
+ * @param form      FormData to send in the POST body
+ */
+async function downloadFiles(url: string, form: FormData) {
+    // 1. Fire the request
+    const response = await safeFetch(url, {
+        method: 'POST',
+        body: form,
+        credentials: 'same-origin',
+    }, true)
+
+    // 2. Handle fetch-level failures
+    if (response.failed) {
+        handleError(
+            response.exception,
+            `Failed to download from ${url}`
+        )
+        return
+    }
+
+    const status = response.code
+
+    // 3. Success → stream blob and save
+    if (status.ok) {
+        // extract raw fetch Response to get blob() and headers
+        const blob = await response.blob()
+
+        // attempt to parse filename from Content-Disposition
+        const cd = response.headers.get('Content-Disposition') || ''
+        let filename = 'download'
+        const m = /filename\*?=(?:UTF-8'')?["']?([^;"']+)/i.exec(cd)
+        if (m?.[1]) {
+            filename = decodeURIComponent(m[1])
+        }
+
+        // create object URL + anchor click
+        const urlObj = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.style.display = 'none'
+        a.href = urlObj
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(urlObj)
+
+    // 4. Server-down
+    } else if (status.serverDown) {
+        handleError(
+            `Server returned ${status} when downloading.`,
+            `Download failed. The server is unavailable.`
+        )
+
+    // 5. Other error codes
+    } else {
+        const json = await response.json()
+        handleErrorResponse(
+            json,
+            `Failed to download file. (${status})`
+        )
+    }
+}

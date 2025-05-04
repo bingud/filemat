@@ -6,9 +6,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.formatUnixToFilename
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.parseJsonOrNull
 import org.filemat.server.common.util.tika
+import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.TusService
@@ -20,6 +22,11 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.time.Instant
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 
 @RestController
@@ -59,13 +66,16 @@ class FileController(
     }
 
     @GetMapping("/content")
-    fun getListFolderItemsMapping(
+    fun getFileContentStreamMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
-    ) = listFolderItemsMapping(request = request, rawPath = rawPath)
+    ) = streamFileContentMapping(request = request, rawPath = rawPath)
 
+    /**
+     * Returns stream of content of a file
+     */
     @PostMapping("/content")
-    fun listFolderItemsMapping(
+    fun streamFileContentMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String
     ): ResponseEntity<StreamingResponseBody> {
@@ -109,6 +119,65 @@ class FileController(
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(mimeType))
             .header(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+            .body(responseBody)
+    }
+
+    /**
+     * Returns a stream of ZIP file of multiple selected files
+     */
+    @PostMapping("/zip-multiple-content")
+    fun streamMultipleContentZipMapping(
+        request: HttpServletRequest,
+        @RequestParam("pathList") rawPathList: String
+    ): ResponseEntity<StreamingResponseBody> {
+        val principal = request.getPrincipal()!!
+        val pathStrings = rawPathList.parseJsonOrNull<List<String>>()
+            ?: return streamBad("List of file paths is invalid.", "validation")
+        val paths = pathStrings.map { FilePath.of(it) }
+
+        val responseBody = StreamingResponseBody { out ->
+            ZipOutputStream(out).use { zip ->
+
+                fun addToZip(fp: FilePath, base: Path) {
+                    // try to stream as file
+                    fileService.getFileContent(principal, fp).let { res ->
+                        if (res.isSuccessful) {
+                            zip.putNextEntry(ZipEntry(base.toString()))
+                            BufferedInputStream(res.value).use { it.copyTo(zip) }
+                            zip.closeEntry()
+                            return
+                        }
+                    }
+                    // not a file → treat as directory
+                    val dir = fp.path
+                    if (Files.isDirectory(dir)) {
+                        Files.walk(dir).use { walk ->
+                            walk.filter { Files.isRegularFile(it) }
+                                .forEach { file ->
+                                    // compute ZIP entry name relative to fp.path
+                                    val entryName = base.resolve(dir.relativize(file)).toString()
+                                    zip.putNextEntry(ZipEntry(entryName))
+                                    fileService.getFileContent(principal, FilePath.of(file.toString())).value.use {
+                                        BufferedInputStream(it).copyTo(zip)
+                                    }
+                                    zip.closeEntry()
+                                }
+                        }
+                    }
+                }
+
+                // seed each selected path at its own top-level name
+                paths.forEach { fp ->
+                    val rootName = fp.path.fileName
+                    addToZip(fp, rootName)
+                }
+            }
+        }
+
+        val filename = "${Props.appName.lowercase()}-download-${formatUnixToFilename(Instant.now())}.zip"
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$filename\"")
             .body(responseBody)
     }
 }

@@ -162,7 +162,7 @@
     }
 
     function option_details(entry: FileMetadata) {
-        filesState.selectedEntries.list.push(entry.path)
+        filesState.selectedEntries.setSelected(entry.path)
         filesState.ui.detailsOpen = true
         closeEntryPopover()
     }

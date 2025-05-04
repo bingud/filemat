@@ -17,6 +17,8 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureNanoTime
@@ -142,6 +144,10 @@ fun HttpServletResponse.respond(statusCode: Int, message: String) {
     this.writer.write(message)
 }
 
+private val unixFilenameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss").withZone(ZoneId.systemDefault())
+fun formatUnixToFilename(instant: Instant): String {
+    return unixFilenameFormatter.format(instant)
+}
 
 /**
  * Fully normalizes a path, makes it absolute
