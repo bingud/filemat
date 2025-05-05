@@ -196,7 +196,7 @@
         
         confirmDialogState.show({
             title: "Delete File",
-            message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected files? This cannot be undone.`,
+            message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected file${filesState.selectedEntries.count > 1 ? 's':''}? This cannot be undone.`,
             confirmText: "Delete",
             cancelText: "Cancel"
         })?.then((confirmed: boolean) => {

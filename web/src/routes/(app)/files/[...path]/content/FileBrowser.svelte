@@ -19,6 +19,8 @@
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { deleteFiles } from "$lib/code/module/files";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
+    import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
+    import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -183,6 +185,10 @@
         closeEntryPopover()
     }
 
+    function option_move(entry: FileMetadata) {
+
+    }
+
     function closeEntryPopover() {
         entryMenuButton = null
         menuEntry = null
@@ -288,12 +294,28 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
+                            <a href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                <div class="size-5 flex-shrink-0">
+                                    <NewTabIcon />
+                                </div>
+                                <span>Open in new tab</span>
+                            </a>
+
                             <a download href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                 <div class="size-5 flex-shrink-0">
                                     <DownloadIcon />
                                 </div>
                                 <span>Download</span>
                             </a>
+
+                            {#if menuEntry.permissions.includes("WRITE")}
+                                <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                    <div class="size-5 flex-shrink-0">
+                                        <MoveIcon />
+                                    </div>
+                                    <span>Move</span>
+                                </button>
+                            {/if}
 
                             {#if menuEntry.permissions.includes("DELETE")}
                                 <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
