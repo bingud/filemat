@@ -1,6 +1,6 @@
 import type { SystemPermission } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
-import type { ulid } from "../types"
+import type { ulid } from "../types/types"
 import { arrayRemove, formData, handleError, handleErrorResponse, handleException, removeString, safeFetch } from "../util/codeUtil.svelte"
 
 

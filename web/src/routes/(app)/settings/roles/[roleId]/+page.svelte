@@ -11,7 +11,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import type { ulid } from "$lib/code/types";
+    import type { ulid } from "$lib/code/types/types";
     import { formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, toStatus, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import Loader from "$lib/component/Loader.svelte";
@@ -260,6 +260,7 @@
                             <span title={meta.description} class="px-2 py-1 bg-neutral-300 dark:bg-neutral-800 ring ring-neutral-400 dark:ring-neutral-700 rounded w-fit">
                                 {meta.name}
                             </span>
+                            
                         {:else}
                             <button on:click={() => { removePermission(meta.id) }} title={`Remove permission: ${meta.name}`} class="px-2 py-1 bg-neutral-300 dark:bg-neutral-800 ring ring-neutral-700 rounded w-fit hover:ring-2 hover:ring-red-400">
                                 {meta.name}

@@ -18,9 +18,10 @@
     import UploadPanel from "./elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { deleteFiles } from "$lib/code/module/files";
-    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
+    import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
+    import FolderTreeSelector from "./elements/FolderTreeSelector.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -186,7 +187,9 @@
     }
 
     function option_move(entry: FileMetadata) {
-
+        folderSelectorState.show!({
+            title: "Choose the target folder."
+        })
     }
 
     function closeEntryPopover() {
@@ -353,3 +356,5 @@
         </div>
     </div>
 {/if}
+
+<FolderTreeSelector></FolderTreeSelector>

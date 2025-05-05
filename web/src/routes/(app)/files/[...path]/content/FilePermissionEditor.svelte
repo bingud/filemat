@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { FilePermission } from "$lib/code/auth/types";
     import { filePermissionMeta } from "$lib/code/data/permissions";
-    import type { ulid } from "$lib/code/types";
+    import type { ulid } from "$lib/code/types/types";
     import { filterObject, formData, handleError, handleErrorResponse, handleException, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import type { EntityPermissionMeta } from "./code/types";
 

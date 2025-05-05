@@ -1,6 +1,6 @@
 import type { Principal, Role } from "../auth/types"
 import { getAuthPermissionLevel, rolesToPermissions } from "../module/permissions"
-import type { ulid } from "../types"
+import type { ulid } from "../types/types"
 import { getRole } from "../util/stateUtils"
 import { appState } from "./appState.svelte"
 

@@ -1,6 +1,6 @@
 import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
-import type { ErrorResponse } from "../types"
+import type { ErrorResponse } from "../types/types"
 
 
 /**

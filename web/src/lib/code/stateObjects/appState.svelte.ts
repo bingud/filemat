@@ -1,5 +1,5 @@
 import type { Principal, Role } from "../auth/types"
-import type { ulid } from "../types"
+import type { ulid } from "../types/types"
 
 class AppState {
     /**

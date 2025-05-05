@@ -2,7 +2,7 @@ import { auth } from "$lib/code/stateObjects/authState.svelte"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { handleError, handleErrorResponse, handleException, isServerDown, parseJson } from "../util/codeUtil.svelte"
 import type { HttpStatus, Principal, Role } from "../auth/types"
-import type { ErrorResponse, ulid } from "../types"
+import type { ErrorResponse, ulid } from "../types/types"
 
 
 type state = {

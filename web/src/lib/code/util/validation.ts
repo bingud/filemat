@@ -1,4 +1,4 @@
-import type { ulid } from "../types"
+import type { ulid } from "../types/types"
 import { isBlank } from "./codeUtil.svelte"
 
 

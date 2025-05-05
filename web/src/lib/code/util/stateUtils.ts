@@ -1,7 +1,7 @@
 import type { Role } from "../auth/types";
 import { appState } from "../stateObjects/appState.svelte";
 import { auth } from "../stateObjects/authState.svelte";
-import type { ulid } from "../types";
+import type { ulid } from "../types/types";
 
 
 export function getRole(id: ulid): Role | null {

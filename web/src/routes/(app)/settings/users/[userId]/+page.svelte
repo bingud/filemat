@@ -8,7 +8,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import type { ulid } from "$lib/code/types";
+    import type { ulid } from "$lib/code/types/types";
     import { delay, forEachObject, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
@@ -206,7 +206,7 @@
             {/if}
 
             {#if appState.roleList && !addRolesDisabled && addRolesButton}
-                <Popover button={addRolesButton} marginRem={1} fadeDuration={40}>
+                <Popover onClose={() => {}} button={addRolesButton} marginRem={1} fadeDuration={40}>
                     <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
                         <div class="flex flex-col gap-2 p-2">
                             {#each sortArrayByNumberDesc(appState.roleList, v => getMaxPermissionLevel(v.permissions)) as role}

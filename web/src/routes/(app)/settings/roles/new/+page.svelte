@@ -5,7 +5,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-    import type { ulid } from "$lib/code/types";
+    import type { ulid } from "$lib/code/types/types";
     import { formData, handleError, handleErrorResponse, handleException, isBlank, pageTitle, removeString, safeFetch, sortArrayByNumberDesc, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte"

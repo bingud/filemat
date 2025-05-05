@@ -5,7 +5,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import type { ulid } from "$lib/code/types";
+    import type { ulid } from "$lib/code/types/types";
     import { forEachObject, formData, handleError, handleErrorResponse, handleException, keysOf, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";

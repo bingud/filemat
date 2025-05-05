@@ -1,5 +1,5 @@
 import type { PublicUser } from "../auth/types";
-import type { ulid } from "../types";
+import type { ulid } from "../types/types";
 import { safeFetch, handleError, handleErrorResponse, formData, handleException, isServerDown } from "../util/codeUtil.svelte";
 
 

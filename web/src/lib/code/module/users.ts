@@ -1,5 +1,5 @@
 import type { MiniUser } from "../auth/types"
-import type { ulid } from "../types"
+import type { ulid } from "../types/types"
 import { safeFetch, formData, handleException, handleError, handleErrorResponse } from "../util/codeUtil.svelte"
 
 

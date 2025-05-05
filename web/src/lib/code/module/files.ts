@@ -8,7 +8,7 @@ import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
 
-export async function getFileData(path: string, signal: AbortSignal): Promise<FileData | null> {
+export async function getFileData(path: string, signal: AbortSignal | undefined, foldersOnly: boolean = false): Promise<FileData | null> {
     const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path }), signal: signal })
     if (response.failed) {
         handleException(`Failed to fetch folder entries`, `Failed to open folder.`, response.exception)
