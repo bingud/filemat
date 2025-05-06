@@ -75,16 +75,19 @@ class FolderController(private val fileService: FileService) : AController() {
     }
 
     @PostMapping("/file-or-folder-entries")
-    fun filerOrFolderEntriesMapping(
+    fun fileOrFolderEntriesMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
+        @RequestParam("foldersOnly") rawFoldersOnly: String,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
+        val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false
 
         val result = fileService.getFileOrFolderEntries(
             user = principal,
-            rawPath = path
+            rawPath = path,
+            foldersOnly = foldersOnly
         )
         if (result.hasError) return internal(result.error, "")
         if (result.notFound) return bad("This path does not exist.", "")

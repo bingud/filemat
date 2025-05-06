@@ -38,6 +38,15 @@ class FileController(
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    @PostMapping("/move")
+    fun moveFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+        @RequestParam("newPath") rawNewPath: String,
+    ): ResponseEntity<String> {
+        TODO()
+    }
+
     @PostMapping("/delete-list")
     fun deleteFileMapping(
         request: HttpServletRequest,

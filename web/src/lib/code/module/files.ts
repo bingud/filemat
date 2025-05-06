@@ -2,14 +2,14 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, parentFromPath, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
 
 export async function getFileData(path: string, signal: AbortSignal | undefined, foldersOnly: boolean = false): Promise<FileData | null> {
-    const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path }), signal: signal })
+    const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path, foldersOnly: foldersOnly }), signal: signal })
     if (response.failed) {
         handleException(`Failed to fetch folder entries`, `Failed to open folder.`, response.exception)
         return null
@@ -357,6 +357,41 @@ async function downloadFiles(url: string, form: FormData) {
         handleErrorResponse(
             json,
             `Failed to download file. (${status})`
+        )
+    }
+}
+
+
+export async function moveFile(path: string, newPath: string) {
+    const response = await safeFetch(`/api/v1/file/move`, { 
+        body: formData({path: path, newPath: newPath})
+    })
+    const status = response.code
+    const json = response.json()
+
+    if (status.ok) {
+        if (isChildOf(path, filesState.path)) {
+            const entry = filesState.data.entries?.find(v => v.path === path)
+            if (entry) {
+                // Check if file was moved in the same folder
+                if (parentFromPath(path) === parentFromPath(newPath)) {
+                    entry.filename = filenameFromPath(path)
+                    entry.path = path
+                } else {
+                    arrayRemove(filesState.data.entries!, (v) => v.path === path)
+                    filesState.data.entries
+                }
+            }
+        }
+    } else if (status.serverDown) {
+        handleError(
+            `Server returned ${status} when moving file.`,
+            `File move failed. The server is unavailable.`
+        )
+    } else {
+        handleErrorResponse(
+            json,
+            `Failed to move file. (${status})`
         )
     }
 }

@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix } from "$lib/code/util/codeUtil.svelte";
+    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix, filenameFromPath, parentFromPath, appendFilename } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -17,7 +17,7 @@
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "./elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
-    import { deleteFiles } from "$lib/code/module/files";
+    import { deleteFiles, moveFile } from "$lib/code/module/files";
     import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
@@ -186,10 +186,15 @@
         closeEntryPopover()
     }
 
-    function option_move(entry: FileMetadata) {
-        folderSelectorState.show!({
-            title: "Choose the target folder."
+    async function option_move(entry: FileMetadata) {
+        const selection = await folderSelectorState.show!({
+            title: "Choose the target folder.",
+            initialSelection: parentFromPath(entry.path)
         })
+        if (!selection) return
+
+        const newPath = appendFilename(selection, entry.filename!)
+        await moveFile(entry.path, newPath)
     }
 
     function closeEntryPopover() {

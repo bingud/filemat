@@ -98,6 +98,23 @@ export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boo
 }
 
 /**
+ * Appends a filename to a directory path
+ */
+export function appendFilename(path: string, filename: string): string {
+    // ensure directory path ends with a single slash
+    const normalizedPath = path.endsWith('/')
+        ? path
+        : path + '/'
+
+    // strip leading slash from filename if present
+    const normalizedFilename = filename.startsWith('/')
+        ? filename.substring(1)
+        : filename
+
+    return normalizedPath + normalizedFilename
+}
+
+/**
  * Returns parsed JSON or null.
  */
 export function parseJson(j: string): any | null {
@@ -346,6 +363,34 @@ export function includesAny<T>(list: T[], items: T[]): boolean {
  */
 export function filenameFromPath(path: string): string {
     return path.substring(path.lastIndexOf("/") + 1);
+}
+
+/**
+ * Checks if a file path is a descendant of a given parent directory
+ */
+export function isChildOf(path: string, parent: string): boolean {
+    // ensure parent ends with slash
+    const normalizedParent = parent.endsWith('/')
+        ? parent
+        : parent + '/'
+    // must start with parent path and not be exactly equal
+    return path !== parent
+        && path.startsWith(normalizedParent)
+}
+
+
+/**
+ * Returns the parent directory from a file or folder path
+ */
+export function parentFromPath(path: string): string {
+    // strip trailing slash if any
+    const normalized = path.endsWith('/') 
+        ? path.slice(0, -1) 
+        : path
+    const idx = normalized.lastIndexOf('/')
+    return idx !== -1
+        ? normalized.substring(0, idx)
+        : ''
 }
 
 /**

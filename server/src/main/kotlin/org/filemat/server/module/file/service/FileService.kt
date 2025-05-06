@@ -184,7 +184,7 @@ class FileService(
      *
      * if file is a folder, also returns entries
      */
-    fun getFileOrFolderEntries(user: Principal, rawPath: FilePath): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
+    fun getFileOrFolderEntries(user: Principal, rawPath: FilePath, foldersOnly: Boolean = false): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
         val (pathResult, pathHasSymlink) = resolvePath(rawPath)
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
@@ -199,6 +199,7 @@ class FileService(
             val entries = getFolderEntries(
                 user = user,
                 canonicalPath = canonicalPath,
+                foldersOnly = foldersOnly
             ).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
@@ -326,18 +327,21 @@ class FileService(
      *
      * Verifies user permissions.
      */
-    fun getFolderEntries(user: Principal, canonicalPath: FilePath): Result<List<FullFileMetadata>> {
+    fun getFolderEntries(user: Principal, canonicalPath: FilePath, foldersOnly: Boolean = false): Result<List<FullFileMetadata>> {
         val hasAdminAccess = hasAdminAccess(user)
         val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         // Get folder entries
-        val result = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER)
-        if (result.isNotSuccessful) return result.cast()
+        val rawAllEntries = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        val rawEntries = if (!foldersOnly) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && State.App.followSymLinks) }
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
-        val entries = result.value.mapNotNull { meta: FileMetadata ->
+        val entries = rawEntries.mapNotNull { meta: FileMetadata ->
             // Check if `it.fileType` is symlink, resolve if it is
             val entryPath = if (meta.fileType.isSymLink()) {
                 val (resolvedResult, hasSymlink) = resolvePath(FilePath.of(meta.path))
