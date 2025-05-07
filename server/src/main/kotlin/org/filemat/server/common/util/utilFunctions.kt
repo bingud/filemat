@@ -149,6 +149,10 @@ fun formatUnixToFilename(instant: Instant): String {
     return unixFilenameFormatter.format(instant)
 }
 
+fun printlns(vararg texts: Any?): Unit {
+    println(texts.joinToString("\n"))
+}
+
 /**
  * Fully normalizes a path, makes it absolute
  */
@@ -228,7 +232,7 @@ fun pathContainsSymlink(input: Path): Boolean {
 
 fun String.toFilePath() = FilePath.of(this)
 
-fun <T> T.print() = this.also { println(this) }
+fun <T> T?.print() = this.also { println(this) }
 
 
 class JsonBuilder {

@@ -22,5 +22,6 @@ export const filePermissionMeta: Record<FilePermission, PermissionMeta<FilePermi
     "WRITE": { id: "WRITE", name: "Write", description: "Save or edit a file", type: PermissionType.file, level: 0},
     "SHARE": { id: "SHARE", name: "Share", description: "Publicly share a file", type: PermissionType.file, level: 0},
     "RENAME": { id: "RENAME", name: "Rename", description: "Rename a file", type: PermissionType.file, level: 0},
+    "MOVE": { id: "MOVE", name: "Move", description: "Move a file", type: PermissionType.file, level: 0},
 }
 export const filePermissionCount = Object.keys(filePermissionMeta).length

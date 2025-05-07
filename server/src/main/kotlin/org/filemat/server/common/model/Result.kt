@@ -1,12 +1,14 @@
 package org.filemat.server.common.model
 
+import org.springframework.http.ResponseEntity
+
 
 data class Result<T>(
     private val inputValue: T? = null,
     private val inputError: String? = null,
     private val inputNotFound: Boolean = false,
     private val rejectInput: String? = null,
-    val source: String? = null,
+    var source: String? = null,
 ) {
 
     companion object {
@@ -59,3 +61,6 @@ fun <T> T.toResult(): Result<T> {
  */
 @Suppress("UNCHECKED_CAST")
 fun <T, P> Result<P>.cast(): Result<T> = this as Result<T>
+
+@Suppress("UNCHECKED_CAST")
+fun <T, P> Result<P>.cast(source: String?): Result<T> = (this as Result<T>).also { this.source = source }

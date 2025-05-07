@@ -52,7 +52,8 @@ export type FilePermission =
   | "DELETE"
   | "WRITE"
   | "SHARE"
-  | "RENAME";
+  | "RENAME"
+  | "MOVE";
 
 export type AnyPermission = SystemPermission | FilePermission;
 

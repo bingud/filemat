@@ -50,7 +50,8 @@ enum class FilePermission(override val index: Int) : Permission {
     DELETE(1),
     WRITE(2),
     SHARE(3),
-    RENAME(4);
+    RENAME(4),
+    MOVE(5);
 
     companion object {
         fun fromInt(int: Int) = Permission.fromInt(int, entries)

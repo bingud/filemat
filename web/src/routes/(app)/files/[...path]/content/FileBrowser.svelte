@@ -316,7 +316,7 @@
                                 <span>Download</span>
                             </a>
 
-                            {#if menuEntry.permissions.includes("WRITE")}
+                            {#if menuEntry.permissions.includes("MOVE")}
                                 <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                     <div class="size-5 flex-shrink-0">
                                         <MoveIcon />

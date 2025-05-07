@@ -5,11 +5,8 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.formatUnixToFilename
-import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.parseJsonOrNull
-import org.filemat.server.common.util.tika
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
@@ -44,7 +41,17 @@ class FileController(
         @RequestParam("path") rawPath: String,
         @RequestParam("newPath") rawNewPath: String,
     ): ResponseEntity<String> {
-        TODO()
+        val user = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+        val newPath = FilePath.of(rawNewPath)
+
+        fileService.moveFile(user = user, rawPath = path, rawNewPath = newPath).let {
+            it.source.print()
+            if (it.notFound) return bad("This file was not found.", "")
+            if (it.rejected) return bad(it.error, "")
+            if (it.hasError) return internal(it.error, "")
+            return ok("")
+        }
     }
 
     @PostMapping("/delete-list")

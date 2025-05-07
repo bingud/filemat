@@ -38,6 +38,58 @@ class FileService(
     private val filesystem: FilesystemService,
 ) {
 
+    fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit> {
+        // Resolve the target path
+        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
+        if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
+        val canonicalPath = canonicalResult.value
+
+        if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
+
+        // Check if user is permitted to move the file
+        isAllowedToMoveFile(user = user, canonicalPath = canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Get the target parent folder
+        val rawNewPathParent = FilePath.ofAlreadyNormalized(rawNewPath.path.parent)
+
+        // Resolve the target path
+        val (newPathParentResult, newPathHasSymlink) = resolvePath(rawNewPathParent)
+        if (newPathParentResult.isNotSuccessful) return newPathParentResult.cast()
+        val newPathParent = newPathParentResult.value
+
+        if (newPathParent.pathString === "/") return Result.reject("Cannot change file path to root.")
+
+        // Get the target path
+        val newPath = FilePath.ofAlreadyNormalized(newPathParent.path.resolve(rawNewPath.path.fileName))
+
+        // Check target parent folder `WRITE` permission
+        isAllowedToEditFolder(user = user, canonicalPath = newPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Move the file in filesystem
+        filesystem.moveFile(source = canonicalPath, destination = newPath, overwriteDestination = false).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val entity = entityService.getByPath(path = canonicalPath.pathString, userAction = UserAction.MOVE_FILE).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+
+        // Change the entity path
+        entityService.updatePath(entityId = entity.entityId, newPath = newPath.pathString, existingEntity = entity, userAction = UserAction.MOVE_FILE).let {
+            if (it.isNotSuccessful) {
+                // Revert file move
+                filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
+            }
+        }
+
+        return Result.ok()
+    }
+
     fun deleteFile(user: Principal, rawPath: FilePath): Result<Unit> {
         // Resolve the target path
         val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
@@ -317,6 +369,26 @@ class FileService(
         // Check is path is blocked from being deleted
         isPathDeletable(canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
+        }
+
+        return Result.ok()
+    }
+
+    /**
+     * Fully verifies if a user is allowed to read and delete a file.
+     */
+    fun isAllowedToMoveFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
+        val isAdmin = hasAdminAccess(user)
+        if (isAdmin) return Result.ok()
+
+        // Check access permissions
+        isAllowedToAccessFile(user, canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Check delete permissions
+        hasFilePermission(canonicalPath, user, false, FilePermission.MOVE).let {
+            if (it == false) return Result.reject("You do not have permission to move this file.")
         }
 
         return Result.ok()

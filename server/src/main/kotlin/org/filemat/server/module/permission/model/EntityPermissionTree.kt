@@ -2,6 +2,7 @@ package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.print
+import org.filemat.server.common.util.printlns
 import java.util.concurrent.ConcurrentHashMap
 
 
@@ -144,9 +145,11 @@ class EntityPermissionTree {
      * Update permission for a specific entity ID on a specific path
      */
     fun updatePermissionPath(oldPath: String, newPath: String?, entityId: Ulid, permissionType: PermissionType?) {
+        TODO(" Make this actually move all permissions to new path. ")
+
         // Move user permission
         if (permissionType == PermissionType.USER || permissionType == null) {
-            val oldPermission = getClosestPermissionForUser(oldPath, entityId)
+            val oldPermission = getDirectPermissionForUser(oldPath, entityId)
             removePermissionByEntityId(oldPath, entityId, PermissionType.USER)
             if (!newPath.isNullOrBlank() && oldPermission != null) {
                 addPermission(newPath, oldPermission)
@@ -154,7 +157,7 @@ class EntityPermissionTree {
         }
 
         if (permissionType == PermissionType.ROLE || permissionType == null) {
-            val oldPermission = getClosestPermissionForRole(oldPath, entityId)
+            val oldPermission = getDirectPermissionForRole(oldPath, entityId)
             removePermissionByEntityId(oldPath, entityId, PermissionType.ROLE)
             if (!newPath.isNullOrBlank() && oldPermission != null) {
                 addPermission(newPath, oldPermission)
@@ -177,8 +180,7 @@ class EntityPermissionTree {
 
     fun getDirectPermissionForUser(path: String, userId: Ulid): EntityPermission? {
         val node = findNode(path, onlyClosest = false) ?: return null
-        println(node.segment)
-        println(node.userPermissions[userId])
+        printlns("get direct for user", path, userId, node.userPermissions, node.userPermissions.contains(userId))
         return node.userPermissions[userId]
     }
     fun getDirectPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
