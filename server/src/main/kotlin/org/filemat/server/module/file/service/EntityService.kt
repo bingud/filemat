@@ -134,7 +134,11 @@ class EntityService(
 
         // Update path of permissions that are tied to this entity ID
         if (entity.path != null) {
-            entityPermissionService.memory_updateEntityPath(entity.path, newPath, entity.entityId)
+            if (newPath != null) {
+                entityPermissionService.memory_updateEntityPath(entity.path, newPath, entity.entityId)
+            } else {
+                entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
+            }
         }
         return Result.ok(Unit)
     }

@@ -46,7 +46,6 @@ class FileController(
         val newPath = FilePath.of(rawNewPath)
 
         fileService.moveFile(user = user, rawPath = path, rawNewPath = newPath).let {
-            it.source.print()
             if (it.notFound) return bad("This file was not found.", "")
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")

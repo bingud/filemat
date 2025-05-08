@@ -1,7 +1,6 @@
 package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.common.util.print
 import org.filemat.server.common.util.printlns
 import java.util.concurrent.ConcurrentHashMap
 
@@ -31,10 +30,7 @@ class EntityPermissionTree {
 
     private val root = Node(segment = "", parent = null)
 
-    /**
-     * Add a permission for a path
-     */
-    fun addPermission(path: String, permission: EntityPermission) {
+    private fun getOrCreateTreePath(path: String): Node {
         val trim = path.trim('/')
         val segments = trim.split('/')
         var current = root
@@ -43,20 +39,29 @@ class EntityPermissionTree {
             // Descend or create nodes, attaching each child’s parent
             for (segment in segments) {
                 current = current.children.getOrPut(segment) {
-                    Node(segment = segment, parent = current)
+                    return@getOrPut Node(segment = segment, parent = current)
                 }
             }
         }
+
+        return current
+    }
+
+    /**
+     * Add a permission for a path
+     */
+    fun addPermission(path: String, permission: EntityPermission) {
+        val node = getOrCreateTreePath(path)
 
         // Store the permission based on its type
         when (permission.permissionType) {
             PermissionType.USER -> {
                 check(permission.userId != null) { "User permission must have a non-null userId." }
-                current.userPermissions[permission.userId] = permission
+                node.userPermissions[permission.userId] = permission
             }
             PermissionType.ROLE -> {
                 check(permission.roleId != null) { "Role permission must have a non-null roleId." }
-                current.rolePermissions[permission.roleId] = permission
+                node.rolePermissions[permission.roleId] = permission
             }
         }
     }
@@ -112,14 +117,14 @@ class EntityPermissionTree {
     /**
      * Returns the node for the input path.
      */
-    private fun findNode(path: String, onlyClosest: Boolean = false): Node? {
+    private fun findNode(path: String, getClosestNode: Boolean = false): Node? {
         if (path == "/") return root
         val segments = path.trim('/').split('/')
         var current = root
 
         for (segment in segments) {
             val child = current.children[segment]
-                ?: return if (onlyClosest) current else null
+                ?: return if (getClosestNode) current else null
             current = child
         }
 
@@ -144,29 +149,23 @@ class EntityPermissionTree {
     /**
      * Update permission for a specific entity ID on a specific path
      */
-    fun updatePermissionPath(oldPath: String, newPath: String?, entityId: Ulid, permissionType: PermissionType?) {
-        TODO(" Make this actually move all permissions to new path. ")
+    fun updateEntityPath(oldPath: String, newPath: String, entityId: Ulid): Boolean {
+        val oldNode = findNode(oldPath, getClosestNode = false) ?: return false
+        val userPermissions = oldNode.userPermissions.filter { it.value.entityId == entityId }
+        val rolePermissions = oldNode.rolePermissions.filter { it.value.entityId == entityId }
 
-        // Move user permission
-        if (permissionType == PermissionType.USER || permissionType == null) {
-            val oldPermission = getDirectPermissionForUser(oldPath, entityId)
-            removePermissionByEntityId(oldPath, entityId, PermissionType.USER)
-            if (!newPath.isNullOrBlank() && oldPermission != null) {
-                addPermission(newPath, oldPermission)
-            }
-        }
+        val existingNewNode = findNode(newPath, getClosestNode = false)
+        if (existingNewNode != null) return false
 
-        if (permissionType == PermissionType.ROLE || permissionType == null) {
-            val oldPermission = getDirectPermissionForRole(oldPath, entityId)
-            removePermissionByEntityId(oldPath, entityId, PermissionType.ROLE)
-            if (!newPath.isNullOrBlank() && oldPermission != null) {
-                addPermission(newPath, oldPermission)
-            }
-        }
+        val newNode = getOrCreateTreePath(newPath)
+        newNode.userPermissions.putAll(userPermissions)
+        newNode.rolePermissions.putAll(rolePermissions)
+
+        return true
     }
 
     fun getAllPermissionsForPath(path: String): List<EntityPermission> {
-        val node = findNode(path, onlyClosest = false) ?: return emptyList()
+        val node = findNode(path, getClosestNode = false) ?: return emptyList()
         return collectAllPermissions(node)
     }
 
@@ -179,12 +178,11 @@ class EntityPermissionTree {
     }
 
     fun getDirectPermissionForUser(path: String, userId: Ulid): EntityPermission? {
-        val node = findNode(path, onlyClosest = false) ?: return null
-        printlns("get direct for user", path, userId, node.userPermissions, node.userPermissions.contains(userId))
+        val node = findNode(path, getClosestNode = false) ?: return null
         return node.userPermissions[userId]
     }
     fun getDirectPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
-        val node = findNode(path, onlyClosest = false) ?: return null
+        val node = findNode(path, getClosestNode = false) ?: return null
         return node.rolePermissions[roleId]
     }
 
