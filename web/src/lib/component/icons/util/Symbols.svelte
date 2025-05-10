@@ -95,5 +95,21 @@
         <symbol id="symbol-move" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-full aspect-square" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2v20"/><path d="m15 19-3 3-3-3"/><path d="m19 9 3 3-3 3"/><path d="M2 12h20"/><path d="m5 9-3 3 3 3"/><path d="m9 5 3-3 3 3"/>
         </symbol>
+
+        <!-- User Icon -->
+        <symbol id="symbol-user" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-full aspect-square">
+            <circle cx="12" cy="8" r="5"/>
+            <path d="M20 21a8 8 0 0 0-16 0"/>
+        </symbol>
+
+        <!-- User shield / role icon -->
+        <symbol id="symbol-user-shield" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0,0,256,256" class="size-full aspect-square">
+            <g fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal">
+                <g transform="scale(10.66667,10.66667)">
+                    <path d="M19.812,4.284l-7,-3.111c-0.517,-0.23 -1.107,-0.23 -1.624,0l-7,3.111c-0.723,0.32 -1.188,1.036 -1.188,1.828v4.888c0,7.83 6.439,11.486 9,12c2.561,-0.514 9,-4.17 9,-12v-4.888c0,-0.791 -0.465,-1.508 -1.188,-1.828zM12,6c1.654,0 3,1.346 3,3c0,1.654 -1.346,3 -3,3c-1.654,0 -3,-1.346 -3,-3c0,-1.654 1.346,-3 3,-3zM17.392,16.611c-1.596,2.499 -3.999,3.896 -5.392,4.326c-1.392,-0.429 -3.796,-1.826 -5.391,-4.325c-0.315,-0.493 -0.172,-1.171 0.35,-1.435c1.591,-0.807 3.769,-1.177 5.041,-1.177c1.272,0 3.449,0.37 5.041,1.176c0.522,0.264 0.665,0.942 0.351,1.435z">
+                    </path>
+                </g>
+            </g>
+        </symbol>
     </svg>
 </div>

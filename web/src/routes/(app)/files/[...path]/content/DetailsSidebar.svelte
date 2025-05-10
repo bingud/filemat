@@ -14,6 +14,8 @@
     import type { EntityPermissionMeta } from "./code/types";
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
     import { dev } from "$app/environment";
+    import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
+    import UserIcon from "$lib/component/icons/UserIcon.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -240,8 +242,15 @@
 
                         {#snippet permissionCard(meta: EntityPermissionMeta)}
                             <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-2 rounded-md bg-neutral-200 dark:bg-neutral-800 hover:ring-2 ring-blue-500 w-full px-3 py-2 shadow-sm transition-colors duration-150">
-                                <div class="flex justify-between items-center">
-                                    <p class="">{meta.permission.permissionType}: {meta.username ?? meta.role!.name}</p>
+                                <div class="flex items-center gap-1">
+                                    <div class="aspect-square h-[1.2rem]">
+                                        {#if meta.permission.permissionType === "ROLE"}
+                                            <RoleIcon></RoleIcon>
+                                        {:else}
+                                            <UserIcon></UserIcon>
+                                        {/if}
+                                    </div>
+                                    <p>{meta.username ?? meta.role!.name}</p>
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
                                     {#if meta.permission.permissions.length === filePermissionCount}

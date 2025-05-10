@@ -3,6 +3,8 @@
     import { filePermissionMeta } from "$lib/code/data/permissions";
     import type { ulid } from "$lib/code/types/types";
     import { filterObject, formData, handleError, handleErrorResponse, handleException, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
+    import UserIcon from "$lib/component/icons/UserIcon.svelte";
     import type { EntityPermissionMeta } from "./code/types";
 
 
@@ -83,7 +85,13 @@
 
 <div class="size-full max-h-[80svh] flex flex-col gap-4">
     <div class="p-4 rounded-lg w-full bg-neutral-200 dark:bg-neutral-800 flex items-center gap-3">
-        <p class="capitalize">{perm.permissionType.toLowerCase()}:</p>
+        <div class="aspect-square h-[1.2rem]">
+            {#if perm.permissionType === "ROLE"}
+                <RoleIcon></RoleIcon>
+            {:else}
+                <UserIcon></UserIcon>
+            {/if}
+        </div>
         <p>{username ?? role!.name}</p>
     </div>
 
