@@ -11,9 +11,14 @@
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import { filesState } from "../../../../../lib/code/stateObjects/filesState.svelte";
     import { loadFileContent } from "./code/files";
-    import { onMount } from "svelte";
+    import { onMount, untrack } from "svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
+    import videojs from 'video.js'
+    import 'video.js/dist/video-js.css'
+    import type Player from "video.js/dist/types/player";
+    import { lookup as getMimetypeFromFilename } from 'mime-types'
+
 
     const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.path) : null)
     const isSymlink = $derived(filesState.data.meta?.fileType.includes("LINK") && !appState.followSymlinks)
@@ -29,9 +34,18 @@
     let textEditorContainer: HTMLElement | undefined = $state()
     let textEditor: EditorView | undefined
 
+    let videoElement: HTMLVideoElement | undefined = $state(undefined)
+    let player: Player | undefined = $state(undefined)
+
     onMount(() => {
         if (isViewableFile && displayedFileCategory) {
             openAsFileType(displayedFileCategory)
+        }
+
+        return () => {
+            if (player) {
+                player.dispose()
+            }
         }
     })
 
@@ -56,6 +70,21 @@
         
         if (isText) {
             createTextEditor()
+        }
+    })
+
+    // Create the video player
+    $effect(() => {
+        if (videoElement && !player) {
+            player = videojs(videoElement, {
+                controls: true,
+                // preload: 'auto',
+                fluid: true,
+                sources: [{
+                    src: filesState.data.contentUrl,
+                    type: getMimetypeFromFilename(filesState.data.meta!.filename!) || "video/mp4"
+                }]
+            })
         }
     })
 
@@ -121,10 +150,14 @@
                     {:else if type === "image"}
                         <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
                     {:else if type === "video"}
-                        <video controls>
-                            <source src={filesState.data.contentUrl}>
+                        <video bind:this={videoElement} class="video-js w-full h-auto max-h-full block">
                             <track kind="captions" srclang="en" label="No captions" />
                         </video>
+                    
+                        <!-- <video class="w-full h-auto max-h-full block" controls preload="auto">
+                            <source src={filesState.data.contentUrl}>
+                            <track kind="captions" srclang="en" label="No captions" />
+                        </video> -->
                     {:else if type === "audio"}
                         <audio src={filesState.data.contentUrl} controls></audio>
                     {:else if type === "pdf"}

@@ -3,6 +3,7 @@ package org.filemat.server.module.file.service
 import me.desair.tus.server.TusFileUploadService
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FileMetadata
@@ -25,6 +26,16 @@ class FilesystemService {
 
     final var tusFileService: TusFileUploadService? = null
         private set
+
+    fun getSize(canonicalPath: FilePath): Result<Long> {
+        try {
+            return canonicalPath.path.fileSize().toResult()
+        }catch (e: NoSuchFileException) {
+            return Result.notFound()
+        } catch (e: Exception) {
+            return Result.error("Failed to get file size.")
+        }
+    }
 
     fun initializeTusService() {
         tusFileService = TusFileUploadService()

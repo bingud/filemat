@@ -18,7 +18,7 @@ abstract class AController {
     fun streamUnauthenticated(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 401)
     fun streamInternal(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 500)
 
-    private fun streamResponse(body: String, status: Int): ResponseEntity<StreamingResponseBody> {
+    fun streamResponse(body: String, status: Int): ResponseEntity<StreamingResponseBody> {
         val streamBody = StreamingResponseBody { outputStream: OutputStream ->
             outputStream.write(body.toByteArray())
         }

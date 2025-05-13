@@ -12,6 +12,7 @@ import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -207,6 +208,16 @@ fun resolvePath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
     }
 }
 
+fun safeStreamSkip(stream: InputStream, skip: Long): Boolean {
+    var toSkip = skip
+    while (toSkip > 0) {
+        val skipped = stream.skip(toSkip)
+        if (skipped <= 0) return false
+        toSkip -= skipped
+    }
+    return true
+}
+
 
 /**
  * Returns whether any part of input path is a symlink
@@ -254,6 +265,76 @@ class JsonBuilder {
 
 fun json(block: JsonBuilder.() -> Unit): String {
     return JsonBuilder().apply { block() }.toString()
+}
+
+/**
+ * Parses a simple HTTP Range header for bytes.
+ * Returns a LongRange or null if the header is invalid.
+ *
+ * Supports:
+ *  - "bytes=start-end"
+ *  - "bytes=start-"
+ *  - "bytes=-suffixLength"
+ */
+fun parseRangeHeaderToLongRange(
+    rangeHeader: String,
+    length: Long
+): LongRange? {
+    // empty resources can’t be ranged
+    if (length <= 0) return null
+
+    if (!rangeHeader.startsWith("bytes=")) return null
+
+    // strip prefix and split into exactly two parts
+    val rangeValue = rangeHeader.removePrefix("bytes=").trim()
+    val parts = rangeValue.split("-", limit = 2)
+    if (parts.size != 2) return null
+
+    val startPart = parts[0].trim()
+    val endPart = parts[1].trim()
+
+    // Parse start, if any
+    val start: Long? = when {
+        startPart.isEmpty() -> null
+        else -> {
+            val s = startPart.toLongOrNull() ?: return null
+            when {
+                s < 0 -> 0
+                s > length - 1 -> return null    // start beyond end is unsatisfiable
+                else -> s
+            }
+        }
+    }
+
+    // Parse end, if any
+    val end: Long? = when {
+        endPart.isEmpty() -> null
+        else -> {
+            val e = endPart.toLongOrNull() ?: return null
+            if (e < 0) return null              // negative end is invalid
+            if (e > length - 1) length - 1 else e
+        }
+    }
+
+    return when {
+        // bytes=start-end
+        start != null && end != null -> {
+            if (end < start) return null
+            start..end
+        }
+        // bytes=start-
+        start != null && end == null -> {
+            start..(length - 1)
+        }
+        // bytes=-suffixLength
+        start == null && end != null -> {
+            if (end == 0L) return null
+            val suffixLen = end
+            val actualStart = if (suffixLen >= length) 0 else length - suffixLen
+            actualStart..(length - 1)
+        }
+        else -> null
+    }
 }
 
 

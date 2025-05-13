@@ -10,11 +10,9 @@ import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.TusService
-import org.springframework.http.ContentDisposition
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
+import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
@@ -31,6 +29,7 @@ import java.util.zip.ZipOutputStream
 class FileController(
     private val fileService: FileService,
     private val tusService: TusService,
+    private val filesystemService: FilesystemService,
 ) : AController() {
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -88,16 +87,40 @@ class FileController(
 
     /**
      * Returns stream of content of a file
+     *
+     * Optionally returns a byte range
      */
     @PostMapping("/content")
     fun streamFileContentMapping(
         request: HttpServletRequest,
-        @RequestParam("path") rawPath: String
+        @RequestParam("path") rawPath: String,
     ): ResponseEntity<StreamingResponseBody> {
         val principal = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
+        val rawRangeHeader: String? = request.getHeader("Range")
 
-        val inputStream = fileService.getFileContent(principal, path).let {
+        // Resolve file path
+        val (pathResult, pathContainsSymlink) = resolvePath(path)
+        val canonicalPath = pathResult.let {
+            if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.isNotSuccessful) {
+                return streamInternal(it.error, "")
+            }
+            it.value
+        }
+        val fileSize = filesystemService.getSize(canonicalPath).let {
+            if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.isNotSuccessful) return streamInternal(it.error, "")
+            it.value
+        }
+
+        val range = if (rawRangeHeader != null) {
+            parseRangeHeaderToLongRange(rawRangeHeader, length = fileSize)
+                ?: return streamResponse("Invalid byte range.", HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value())
+        } else null
+
+        // Get the file content
+        val inputStream = fileService.getFileContent(principal, path, existingCanonicalPath = canonicalPath, range = range).let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
@@ -106,16 +129,21 @@ class FileController(
 
         val filename = path.pathString.substringAfterLast("/")
 
-        // Mark the stream at the beginning
-        inputStream.mark(512)
+        // Get mimetype from either byte stream or filename extension
+        val mimeType = if (range == null) {
+            // Mark the stream at the beginning
+            inputStream.mark(4096)
 
-        // Guess the MIME type using Apache Tika
-        val mimeType = tika.detect(inputStream)
-            ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
+            // Guess the MIME type using Apache Tika
+            val type = tika.detect(inputStream)
+                ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
 
-        // Reset to the beginning after reading
-        inputStream.reset()
+            // Reset to the beginning after reading
+            inputStream.reset()
+            type
+        } else tika.detect(path.pathString)
 
+        // Add byte stream to response
         val responseBody = StreamingResponseBody { outputStream ->
             inputStream.use { stream ->
                 val buffer = ByteArray(8192)
@@ -127,13 +155,28 @@ class FileController(
             }
         }
 
+        // Set response display type to inline (can be displayed in browser)
         val cd: ContentDisposition = ContentDisposition.inline()
             .filename(filename, StandardCharsets.UTF_8)
             .build()
 
-        return ResponseEntity.ok()
+        // Construct response headers
+        val headers = HttpHeaders().apply {
+            set(HttpHeaders.ACCEPT_RANGES, "bytes")
+            set(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+
+            if (range != null) {
+                set(HttpHeaders.CONTENT_RANGE, "bytes ${range.first}-${range.last}/${fileSize}")
+                set(HttpHeaders.CONTENT_LENGTH, ((range.last - range.first) + 1).toString())
+            } else {
+                set(HttpHeaders.CONTENT_LENGTH, fileSize.toString())
+            }
+        }
+
+        val response = if (range == null) ResponseEntity.ok() else ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+        return response
+            .headers(headers)
             .contentType(MediaType.parseMediaType(mimeType))
-            .header(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
             .body(responseBody)
     }
 

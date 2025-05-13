@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service
 
+import org.apache.commons.io.input.BoundedInputStream
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -187,9 +188,20 @@ class FileService(
 
     /**
      * Returns an input stream for the content of a file
+     *
+     * Optionally returns a byte range
      */
-    fun getFileContent(user: Principal, rawPath: FilePath): Result<InputStream> {
-        val (pathResult, pathContainsSymlink) = resolvePath(rawPath)
+    fun getFileContent(user: Principal, rawPath: FilePath, existingCanonicalPath: FilePath? = null, existingPathContainsSymlink: Boolean? = false, range: LongRange? = null,): Result<InputStream> {
+        val (canonicalPath, pathContainsSymlink) = if (existingCanonicalPath != null && existingPathContainsSymlink != null) {
+            existingCanonicalPath to existingPathContainsSymlink
+        } else {
+            resolvePath(rawPath).let { (path, containsSymlink) ->
+                if (path.isNotSuccessful) {
+                    return path.cast()
+                }
+                path.value to containsSymlink
+            }
+        }
 
         // Return content of symlink file itself
         // if following symlinks is disabled
@@ -210,13 +222,6 @@ class FileService(
             }
         }
 
-        val canonicalPath = pathResult.let {
-            if (it.isNotSuccessful) {
-                return it.cast()
-            }
-            it.value
-        }
-
         isAllowedToAccessFile(user, canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
@@ -224,7 +229,18 @@ class FileService(
         if (!Files.isRegularFile(canonicalPath.path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
 
         return try {
-            Result.ok(Files.newInputStream(canonicalPath.path))
+            val fileInputStream = Files.newInputStream(canonicalPath.path)
+            if (range == null) return fileInputStream.toResult()
+
+            safeStreamSkip(fileInputStream, range.first)
+                .let { if (!it) return Result.error("Failed to get the requested range from a stream.") }
+
+            val bounded = BoundedInputStream.builder()
+                .setInputStream(fileInputStream)
+                .setMaxCount((range.last - range.first) + 1)
+                .get()
+
+            return bounded.toResult()
         } catch (e: Exception) {
             Result.error("Failed to stream file.")
         }
