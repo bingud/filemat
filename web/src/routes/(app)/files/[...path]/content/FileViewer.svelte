@@ -15,7 +15,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
     import videojs from 'video.js'
-    import 'video.js/dist/video-js.css'
+    import 'video.js/dist/video-js.min.css'
     import type Player from "video.js/dist/types/player";
     import { lookup as getMimetypeFromFilename } from 'mime-types'
 
@@ -78,8 +78,8 @@
         if (videoElement && !player) {
             player = videojs(videoElement, {
                 controls: true,
-                // preload: 'auto',
-                fluid: true,
+                fluid: false,
+                fill: true,
                 sources: [{
                     src: filesState.data.contentUrl,
                     type: getMimetypeFromFilename(filesState.data.meta!.filename!) || "video/mp4"
@@ -123,6 +123,10 @@
         filesState.contentLoading = false
     }
 
+    function useSize(e: HTMLElement, name: string) {
+        console.log(name, e.offsetHeight)
+        console.log(player)
+    }
 </script>
 
 
@@ -143,21 +147,18 @@
                 </div>
             {/if}
             
-            <div class="w-full flex-grow flex items-center justify-center">
+            <div use:useSize={"parent flex-grow"} class="w-full flex-grow min-h-0 flex items-center justify-center">
                 {#if isSymlink === false}
                     {#if isText}
-                        <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
+                        <div class="w-full h-full custom-scrol  lbar" bind:this={textEditorContainer}></div>
                     {:else if type === "image"}
                         <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
                     {:else if type === "video"}
-                        <video bind:this={videoElement} class="video-js w-full h-auto max-h-full block">
-                            <track kind="captions" srclang="en" label="No captions" />
-                        </video>
-                    
-                        <!-- <video class="w-full h-auto max-h-full block" controls preload="auto">
-                            <source src={filesState.data.contentUrl}>
-                            <track kind="captions" srclang="en" label="No captions" />
-                        </video> -->
+                        <div class="size-full overflow-hidden">
+                            <video use:useSize={"video"} bind:this={videoElement} class="video-js h-full w-full">
+                                <track kind="captions" srclang="en" label="No captions" />
+                            </video>
+                        </div>
                     {:else if type === "audio"}
                         <audio src={filesState.data.contentUrl} controls></audio>
                     {:else if type === "pdf"}
