@@ -122,11 +122,6 @@
         await loadFileContent(filesState.path)
         filesState.contentLoading = false
     }
-
-    function useSize(e: HTMLElement, name: string) {
-        console.log(name, e.offsetHeight)
-        console.log(player)
-    }
 </script>
 
 
@@ -147,7 +142,7 @@
                 </div>
             {/if}
             
-            <div use:useSize={"parent flex-grow"} class="w-full flex-grow min-h-0 flex items-center justify-center">
+            <div class="w-full flex-grow min-h-0 flex items-center justify-center">
                 {#if isSymlink === false}
                     {#if isText}
                         <div class="w-full h-full custom-scrol  lbar" bind:this={textEditorContainer}></div>
@@ -155,7 +150,7 @@
                         <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
                     {:else if type === "video"}
                         <div class="size-full overflow-hidden">
-                            <video use:useSize={"video"} bind:this={videoElement} class="video-js h-full w-full">
+                            <video bind:this={videoElement} class="video-js h-full w-full">
                                 <track kind="captions" srclang="en" label="No captions" />
                             </video>
                         </div>

@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, parentFromPath, parseJson, safeFetch, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, parentFromPath, parseJson, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 
 
@@ -100,60 +100,75 @@ export async function getBlobContent(blob: Blob, fileCategory: FileCategory): Pr
 /**
  * Initiate a file upload with TUS.
  */
-export function uploadWithTus() {
+export function uploadWithTus(isMultiple: boolean = true) {
     const input = document.createElement('input')
     input.type = 'file'
-    input.style.display = 'none' // Keep it hidden
+    input.style.display = 'none'
+    input.multiple = isMultiple
 
     input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (!file) {
+        const files = (e.target as HTMLInputElement).files
+        if (!files || files.length === 0) {
             return
         }
 
-        uploadState.panelOpen = true
+        for (const file of files) {
+            startTusUpload(file)
+        }
 
-        // Construct the full target path
-        const currentPath = filesState.path === '/' ? '' : filesState.path
-        const inputFilename = file.name
+        // Clean up the input element
+        input.value = ''
+        document.body.removeChild(input)
+    }
 
-        const entries = filesState.data.entries!.map(v => v.filename!)
-        const targetFilename = getUniqueFilename(inputFilename, entries)
-        const targetPath = `${currentPath}/${targetFilename}`
+    // Append to body, trigger click, and remove
+    document.body.appendChild(input)
+    input.click()
+}
 
-        console.log(`Attempting to upload ${file.name} to ${targetPath}`)
+/**
+ * Initiate a TUS file upload
+ */
+function startTusUpload(file: File) {
+    uploadState.panelOpen = true
 
-        // Get the actual uploaded filename from the server
-        let actualFilename: string | null = null
+    // Construct the full target path
+    const currentPath = filesState.path === '/' ? '' : filesState.path
+    const inputFilename = file.name
 
-        const upload = new tus.Upload(file, {
-            endpoint: "/api/v1/file/upload", // Your TUS endpoint
-            // retryDelays: ((attempt: any) => {
-            //     const delays = [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000]
-            //     return attempt < delays.length ? delays[attempt] : 20000
-            // }) as any as number[],
-            retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
-            metadata: {
-                filename: targetPath,
-                // Add any other metadata your server needs
-                // filetype: file.type 
-            },
-            chunkSize: 5 * 1024 * 1024,
-            onAfterResponse: (response) => {
-                // Get the actual uploaded filename from the server
-                // If the file already exists, the server will add a number to the end of the filename
-                const res = response.getUnderlyingObject() as XMLHttpRequest | null
-                const actualFilenameHeader = res?.getResponseHeader("actual-uploaded-filename")
-                if (actualFilenameHeader) {
-                    actualFilename = actualFilenameHeader
+    const entries = filesState.data.entries!.map(v => v.filename!)
+    const targetFilename = getUniqueFilename(inputFilename, entries)
+    const targetPath = `${currentPath}/${targetFilename}`
 
-                    const state = uploadState.all[targetPath]
-                    if (state) {
-                        state.actualPath = actualFilenameHeader
-                    }
+    console.log(`Attempting to upload ${file.name} to ${targetPath}`)
+
+    // Get the actual uploaded filename from the server
+    let actualFilename: string | null = null
+
+    const upload = new tus.Upload(file, {
+        endpoint: "/api/v1/file/upload",
+        retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
+        metadata: {
+            filename: targetPath,
+        },
+        chunkSize: 5 * 1024 * 1024,
+        onAfterResponse: (response) => {
+            // Get the actual uploaded filename from the server
+            // If the file already exists, the server will add a number to the end of the filename
+            const res = response.getUnderlyingObject() as XMLHttpRequest | null
+            const actualFilenameHeader = res?.getResponseHeader("actual-uploaded-filename")
+            if (actualFilenameHeader) {
+                actualFilename = actualFilenameHeader
+
+                const state = uploadState.all[targetPath]
+                if (state) {
+                    state.actualPath = actualFilenameHeader
                 }
-            },
-            onError: (error) => {
+            }
+        },
+        onError: (error) => {
+            try {
+                console.log(`error bberror`)
                 const isAborted = error?.message?.includes("aborted")
                 if (isAborted) {
                     const state = uploadState.get(targetPath)
@@ -175,20 +190,23 @@ export function uploadWithTus() {
                 if (state) {
                     state.status = "failed"
                 }
-            },
-            onProgress: (bytesUploaded, bytesTotal) => {
-                const percentage = Number(((bytesUploaded / bytesTotal) * 100).toFixed(2))
-                
-                const state = uploadState.all[targetPath]
-                if (state) {
-                    state.status = "uploading"
+            } finally { startUploadFromQueue() }
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+            const percentage = Number(((bytesUploaded / bytesTotal) * 100).toFixed(2))
+            
+            const state = uploadState.all[targetPath]
+            if (state) {
+                state.status = "uploading"
 
-                    state.percentage = percentage
-                    state.bytesTotal = bytesTotal
-                    state.bytesUploaded = bytesUploaded
-                }
-            },
-            onSuccess: () => {
+                state.percentage = percentage
+                state.bytesTotal = bytesTotal
+                state.bytesUploaded = bytesUploaded
+            }
+        },
+        onSuccess: () => {
+            try {
+                console.log(`on cukes`)
                 const uploadedFile = upload.file as File
 
                 const uploadFolder = targetPath.substring(0, targetPath.lastIndexOf('/')) || "/"
@@ -211,37 +229,56 @@ export function uploadWithTus() {
                 if (state) {
                     state.status = "success"
                 }
-            },
-            onShouldRetry: (err, retryAttempt, options) => {
-                // Try to extract JSON from the failed response
-                const originalResponse = err.originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
-                if (originalResponse) {
-                    const text = originalResponse.responseText
-                    const json = parseJson(text || "")
+            } finally { startUploadFromQueue() }
+        },
+        onShouldRetry: (err, retryAttempt, options) => {
+            // Try to extract JSON from the failed response
+            const originalResponse = err.originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
+            if (originalResponse) {
+                const text = originalResponse.responseText
+                const json = parseJson(text || "")
 
-                    // If it's our custom error, abort retries
-                    if (json?.error === "custom") {
-                        return false
-                    }
+                // If it's our custom error, abort retries
+                if (json?.error === "custom") {
+                    return false
                 }
+            }
 
-                // Otherwise retry if we still have attempts left
-                return retryAttempt < (options.retryDelays?.length || 0)
-            },
-        })
+            // Otherwise retry if we still have attempts left
+            return retryAttempt < (options.retryDelays?.length || 0)
+        },
+    });
 
-        if (!uploadState.addUpload(targetPath, upload)) return
-
-        // Start the upload
-        upload.start()
-
-        // Clean up the input element
-        document.body.removeChild(input)
+    (upload as any).onAbort = () => {
+        console.log(`on abort`)
+        startUploadFromQueue()
     }
 
-    // Append to body, trigger click, and remove
-    document.body.appendChild(input)
-    input.click()
+    // Get count of currently uploading files
+    const currentlyUploadedFiles = uploadState.list.filter(v => v.status === "uploading")
+    const currentlyUploadedCount = currentlyUploadedFiles.length
+
+    // Check whether to queue or start upload
+    if (currentlyUploadedCount < 1) {
+        if (!uploadState.addUpload(targetPath, upload, "uploading")) return
+        // Start the upload
+        upload.start()
+    } else {
+        if (!uploadState.addUpload(targetPath, upload, "queued")) return
+    }
+}
+
+function startUploadFromQueue() {
+    const uploads = sortArrayAlphabetically(
+        uploadState.list.filter(v => v.status === "queued"), 
+        (v) => v.path
+    )
+    
+    if (!uploads.length) return
+
+    const first = uploads[0]
+    first.upload.start()
+    first.status = "uploading"
 }
 
 
