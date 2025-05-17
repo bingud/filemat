@@ -73,3 +73,35 @@ export const fileCategories: Record<string, FileCategory> = {
     // PDF Files
     "pdf": "pdf",
 }
+
+
+const IMAGE_EXTENSIONS = [
+    'png',
+    // JPEG
+    'jpg', 'jpeg', 'jpe', 'jfif',
+    // TIFF
+    'tif', 'tiff',
+    // BMP
+    'bmp', 'dib',
+    // WebP
+    'webp',
+    // PSD
+    'psd',
+    // ICNS
+    'icns',
+    // PNM (includes PBM, PGM, PPM, PFM)
+    'pnm', 'pbm', 'pgm', 'ppm', 'pfm',
+    // PCX
+    'pcx',
+    // TGA
+    'tga', 'icb', 'vda', 'vst',
+    // HDR (Radiance)
+    'hdr', 'rgbe', 'pic'
+]
+
+export function isSupportedImageFile(filename: string): boolean {
+    const match = filename.match(/\.([a-z0-9]+)$/i)
+    if (!match) return false
+    const ext = match[1].toLowerCase()
+    return IMAGE_EXTENSIONS.includes(ext)
+}

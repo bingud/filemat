@@ -22,6 +22,7 @@
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import FolderTreeSelector from "./elements/FolderTreeSelector.svelte";
+    import { isSupportedImageFile } from "$lib/code/data/files";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -255,14 +256,18 @@
 
                     <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
                         <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem]">
-                            {#if entry.fileType === "FILE"}
-                                <FileIcon />
-                            {:else if entry.fileType === "FILE_LINK"}
-                                <FileArrow />
-                            {:else if entry.fileType === "FOLDER"}
-                                <FolderIcon />
-                            {:else if entry.fileType === "FOLDER_LINK"}
-                                <FolderArrow />
+                            {#if !isSupportedImageFile(entry.filename!)}
+                                {#if entry.fileType === "FILE"}
+                                    <FileIcon />
+                                {:else if entry.fileType === "FILE_LINK"}
+                                    <FileArrow />
+                                {:else if entry.fileType === "FOLDER"}
+                                    <FolderIcon />
+                                {:else if entry.fileType === "FOLDER_LINK"}
+                                    <FolderArrow />
+                                {/if}
+                            {:else}
+                                <img src="/api/v1/file/image-thumbnail?size=48&path={entry.path}" class="size-full w-auto">
                             {/if}
                         </div>
                         <p class="truncate py-1">
