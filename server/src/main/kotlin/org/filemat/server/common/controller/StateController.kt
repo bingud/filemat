@@ -54,7 +54,7 @@ class StateController : AController() {
             putResponseField("app", getApp) {
                 JsonBuilder().apply {
                     put("isSetup", State.App.isSetup)
-                    put("followSymlinks", State.App.followSymLinks)
+                    put("followSymlinks", State.App.followSymlinks)
                 }.build()
             }
 

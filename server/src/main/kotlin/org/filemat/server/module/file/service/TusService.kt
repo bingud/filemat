@@ -241,7 +241,7 @@ class TusService(
             canonicalPath = destinationParent,
             ownerId = user.userId,
             userAction = UserAction.UPLOAD_FILE,
-            followSymLinks = State.App.followSymLinks
+            followSymLinks = State.App.followSymlinks
         )
 
         return Result.ok(actualFilename)

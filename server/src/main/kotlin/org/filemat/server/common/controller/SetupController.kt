@@ -212,7 +212,7 @@ class SetupController(
 
         appService.deleteSetupCode()
         State.App.isSetup = true
-        State.App.followSymLinks = followSymlinks
+        State.App.followSymlinks = followSymlinks
 
         filesystemService.initializeTusService()
 

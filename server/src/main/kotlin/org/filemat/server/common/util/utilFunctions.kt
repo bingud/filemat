@@ -193,7 +193,7 @@ fun parseTusHttpHeader(header: String): Map<String, String> {
  */
 fun resolvePath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
     return try {
-        val (canonicalPath, containsSymlink) = if (State.App.followSymLinks) {
+        val (canonicalPath, containsSymlink) = if (State.App.followSymlinks) {
             filePath.path.toRealPath() to false
         } else {
             val containsSymlink = pathContainsSymlink(filePath.path)

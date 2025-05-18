@@ -263,7 +263,7 @@ class FileService(
         }
         val type = metadata.fileType
 
-        if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymLinks)) {
+        if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
             val entries = getFolderEntries(
                 user = user,
                 canonicalPath = canonicalPath,
@@ -425,7 +425,7 @@ class FileService(
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
-        val rawEntries = if (!foldersOnly) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && State.App.followSymLinks) }
+        val rawEntries = if (!foldersOnly) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && State.App.followSymlinks) }
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
@@ -502,7 +502,7 @@ class FileService(
     private fun internalGetFolderEntries(canonicalPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
         try {
             // Check if the resolved path is a folder
-            if (!Files.isDirectory(canonicalPath.path, *if (State.App.followSymLinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
+            if (!Files.isDirectory(canonicalPath.path, *if (State.App.followSymlinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
                 return Result.notFound()
             }
 

@@ -28,7 +28,7 @@ class SettingService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        State.App.followSymLinks = newState
+        State.App.followSymlinks = newState
 
         logService.info(
             type = LogType.AUDIT,

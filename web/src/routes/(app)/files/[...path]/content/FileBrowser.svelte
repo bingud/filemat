@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix, filenameFromPath, parentFromPath, appendFilename } from "$lib/code/util/codeUtil.svelte";
+    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix, filenameFromPath, parentFromPath, appendFilename, getFileExtension } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -22,7 +22,7 @@
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import FolderTreeSelector from "./elements/FolderTreeSelector.svelte";
-    import { isSupportedImageFile } from "$lib/code/data/files";
+    import { fileCategories, isSupportedImageFile } from "$lib/code/data/files";
 
     // Entry menu popup
     let entryMenuButton: HTMLButtonElement | null = $state(null)
@@ -256,19 +256,25 @@
 
                     <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
                         <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem]">
-                            {#if !isSupportedImageFile(entry.filename!)}
-                                {#if entry.fileType === "FILE"}
-                                    <FileIcon />
-                                {:else if entry.fileType === "FILE_LINK"}
-                                    <FileArrow />
-                                {:else if entry.fileType === "FOLDER"}
-                                    <FolderIcon />
-                                {:else if entry.fileType === "FOLDER_LINK"}
-                                    <FolderArrow />
+                            {#key entry.filename}
+                                {@const format = fileCategories[getFileExtension(entry.filename!)]}
+
+                                {#if format === "image"}
+                                    <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=48&path={entry.path}" class="size-full w-auto">
+                                {:else if format === "video"}
+                                    <img loading="lazy" alt="" src="/api/v1/file/video-preview?size=48&path={entry.path}" class="size-full w-auto">
+                                {:else}
+                                    {#if entry.fileType === "FILE"}
+                                        <FileIcon />
+                                    {:else if entry.fileType === "FILE_LINK"}
+                                        <FileArrow />
+                                    {:else if entry.fileType === "FOLDER"}
+                                        <FolderIcon />
+                                    {:else if entry.fileType === "FOLDER_LINK"}
+                                        <FolderArrow />
+                                    {/if}
                                 {/if}
-                            {:else}
-                                <img src="/api/v1/file/image-thumbnail?size=48&path={entry.path}" class="size-full w-auto">
-                            {/if}
+                            {/key}
                         </div>
                         <p class="truncate py-1">
                             {entry.filename!}

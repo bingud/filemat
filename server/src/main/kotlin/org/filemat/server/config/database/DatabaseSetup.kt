@@ -3,7 +3,6 @@ package org.filemat.server.config.database
 import org.filemat.server.common.State
 import org.filemat.server.common.util.addPrefixIfNotPresent
 import org.filemat.server.config.Props
-import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.service.AppService
 import org.filemat.server.module.setting.service.SettingService
@@ -72,7 +71,7 @@ class DatabaseSetup(
         // Follow symlinks setting
         settingService.getSetting(Props.Settings.followSymlinks).let { result ->
             result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->
-                State.App.followSymLinks = bool ?: false
+                State.App.followSymlinks = bool ?: false
             }
         }
 

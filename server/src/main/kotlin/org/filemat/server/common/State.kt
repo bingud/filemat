@@ -29,7 +29,7 @@ object State {
         val allowWriteDataFolder = env("FM_ALLOW_WRITE_DATA_FOLDER")?.toBooleanStrictOrNull() ?: false
 
         private val followSymLinksEnv = (env("FM_FOLLOW_SYMBOLIC_LINKS")?.toBooleanStrictOrNull()).also { println("Follow symbolic links: $it\n") }
-        var followSymLinks: Boolean = followSymLinksEnv ?: false
+        var followSymlinks: Boolean = followSymLinksEnv ?: false
             set(new) {
                 // Environment variable overrides setting
                 if (followSymLinksEnv != null) return

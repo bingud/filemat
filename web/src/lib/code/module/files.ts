@@ -206,7 +206,6 @@ function startTusUpload(file: File) {
         },
         onSuccess: () => {
             try {
-                console.log(`on cukes`)
                 const uploadedFile = upload.file as File
 
                 const uploadFolder = targetPath.substring(0, targetPath.lastIndexOf('/')) || "/"
