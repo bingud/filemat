@@ -80,10 +80,27 @@
                 controls: true,
                 fluid: false,
                 fill: true,
+                persistVolume: true,
                 sources: [{
                     src: filesState.data.contentUrl,
                     type: getMimetypeFromFilename(filesState.data.meta!.filename!) || "video/mp4"
                 }]
+            })
+
+            // Set saved volume
+            player.ready(() => {
+                if (!player) return
+                const savedVolume = localStorage.getItem("videojs-volume")
+                if (savedVolume != null) {
+                    const int = parseFloat(savedVolume)
+                    player.volume(int)
+                }
+            })
+
+            // Save volume when changed
+            player.on('volumechange', () => {
+                if (!player) return
+                localStorage.setItem("videojs-volume", player!.volume()!.toString())
             })
         }
     })
