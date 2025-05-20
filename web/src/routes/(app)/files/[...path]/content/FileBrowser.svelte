@@ -25,9 +25,12 @@
     import { fileCategories, isSupportedImageFile } from "$lib/code/data/files";
 
     // Entry menu popup
-    let entryMenuButton: HTMLButtonElement | null = $state(null)
+    let entryMenuButton: HTMLElement | null = $state(null)
     let menuEntry: FullFileMetadata | null = $state(null)
     let entryMenuPopoverOpen = $state(dev)
+
+    let entryMenuYPos: number | null = $state(null)
+    let entryMenuXPos: number | null = $state(null)
     
     onMount(() => {
         // Set the selected entry path
@@ -162,6 +165,8 @@
         if (!open) {
             entryMenuButton = null
             menuEntry = null
+            entryMenuXPos = null
+            entryMenuYPos = null
         }
     }
 
@@ -211,6 +216,21 @@
             filesState.selectedEntries.addSelected(path)
         }
     }
+
+    function entryOnContextMenu(e: MouseEvent, entry: FullFileMetadata) {
+        e.preventDefault()
+
+        entryMenuPopoverOpen = false
+        entryMenuXPos = null
+        entryMenuYPos = null
+
+        setTimeout(() => {
+            entryMenuXPos = e.clientX
+            entryMenuYPos = e.clientY
+            entryMenuPopoverOpen = true
+            menuEntry = entry
+        })
+    }
 </script>
 
 <style>
@@ -243,6 +263,7 @@
 
             <div 
                 on:click={() => entryOnClick(entry)}
+                on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
                 data-entry-path={entry.path}
                 class="file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group {selected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
             >
@@ -306,7 +327,7 @@
     </div>
 
 
-
+    <!-- Entry context menu popover -->
     {#if entryMenuButton && menuEntry}
         {#key entryMenuButton || menuEntry}
             <div class="z-50 relative">
@@ -358,6 +379,11 @@
                 </Popover.Root>
             </div>
         {/key}
+    {/if}
+
+    <!-- Entry context menu floating element -->
+    {#if menuEntry && entryMenuXPos != null && entryMenuYPos != null}
+        <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px; left: {entryMenuXPos}px"></div>
     {/if}
 {:else}
     <div class="center">
