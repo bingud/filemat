@@ -22,7 +22,8 @@
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import FolderTreeSelector from "./elements/FolderTreeSelector.svelte";
-    import { fileCategories, isSupportedImageFile } from "$lib/code/data/files";
+    import { fileCategories } from "$lib/code/data/files";
+    import { appState } from '$lib/code/stateObjects/appState.svelte';
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -86,7 +87,7 @@
 
         if (event.key === "Enter") {
             if (filesState.selectedEntries.singleMeta) {
-                entryOnClick(filesState.selectedEntries.singleMeta)
+                entryOnClick(event, filesState.selectedEntries.singleMeta)
             }
         }
         
@@ -138,13 +139,14 @@
     /**
      * onClick for file entry
      */
-    function entryOnClick(entry: FileMetadata) {
-        if (filesState.selectedEntries.single === entry.path) {
-            openEntry(entry.path)
-        } else {
+    function entryOnClick(e: UIEvent, entry: FileMetadata) {
+        if (filesState.selectedEntries.single !== entry.path) {
+            e.preventDefault()
             filesState.selectedEntries.setSelected(entry.path)
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
+        } else {
+            openEntry(entry.path)
         }
     }
 
@@ -259,19 +261,25 @@
 
         <!-- Each entry is a grid item -->
         {#each filesState.data.sortedEntries as entry}
-            {@const selected = filesState.selectedEntries.list.includes(entry.path)}
+            {@const isSelected = filesState.selectedEntries.list.includes(entry.path)}
 
-            <div 
-                on:click={() => entryOnClick(entry)}
+            <a
+                on:click|preventDefault={(e) => entryOnClick(e, entry)}
                 on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
-                data-entry-path={entry.path}
-                class="file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group {selected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
+                data-entry-path={entry.path} rel="noopener noreferrer"
+                class="file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group {isSelected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
+                href={
+                    (entry.fileType === "FILE" || 
+                    (entry.fileType === "FILE_LINK" && appState.followSymlinks))
+                        ? addSuffix(filesState.data.contentUrl, "/") + `${entry.filename!}`
+                        : `/files${entry.path}`
+                }
             >
                 <!-- Filename + Icon -->
                 <div class="h-full flex items-center overflow-hidden">
-                    {#key selected}
+                    {#key isSelected}
                         <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pl-2 pr-1">
-                            <input checked={selected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
+                            <input checked={isSelected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
                         </div>
                     {/key}
 
@@ -313,16 +321,16 @@
                     {formatBytesRounded(entry.size)}
                 </div>
 
-                <!-- Menu button (stopPropagation) -->
+                <!-- Menu button -->
                 <div class="h-full text-center py-1 pr-1">
                     <button
-                        on:click={(e) => { if (filesState.selectedEntries.list.includes(entry.path)) { e.stopPropagation() }; entryMenuOnClick(e.currentTarget, entry) }}
+                        on:click|stopPropagation|preventDefault={(e) => { entryMenuOnClick(e.currentTarget, entry) }}
                         class="h-full aspect-square flex items-center justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
                     >
                         <ThreeDotsIcon />
                     </button>
                 </div>
-            </div>
+            </a>
         {/each}
     </div>
 
@@ -334,7 +342,15 @@
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
-                            <a href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                            <a 
+                                href={
+                                    (menuEntry.fileType === "FILE" || 
+                                    (menuEntry.fileType === "FILE_LINK" && appState.followSymlinks))
+                                        ? addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`
+                                        : `/files${menuEntry.path}`
+                                }
+                                target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
+                            >
                                 <div class="size-5 flex-shrink-0">
                                     <NewTabIcon />
                                 </div>
