@@ -307,6 +307,19 @@ export function filterObject<K extends string | number | symbol, V>(obj: Record<
     return newObj
 }
 
+export function letterS(count: number): "s" | "" {
+    if (count === 1) return ""
+    return "s"
+}
+
+/**
+ * Resolve a path from a parent and filename
+ */
+export function resolvePath(inputFolder: string, inputFilename: string): string {
+    const folder = inputFolder.replace(/\/+$/, '')
+    const file = inputFilename.replace(/^\/+/, '')
+    return `${folder}/${file}`
+}
 
 /**
  * Returns current unix timestamp

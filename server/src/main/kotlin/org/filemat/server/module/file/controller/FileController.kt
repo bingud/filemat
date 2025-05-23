@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.Json
+import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
@@ -22,6 +24,7 @@ import java.nio.file.Path
 import java.time.Instant
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlin.io.path.pathString
 
 
 @RestController
@@ -45,10 +48,33 @@ class FileController(
         val newPath = FilePath.of(rawNewPath)
 
         fileService.moveFile(user = user, rawPath = path, rawNewPath = newPath).let {
+            println(it.source)
             if (it.notFound) return bad("This file was not found.", "")
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
-            return ok("")
+            return ok("ok")
+        }
+    }
+
+    @PostMapping("/move-multiple")
+    fun moveMultipleFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("newParent") rawNewParent: String,
+        @RequestParam("paths") rawPathList: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val paths = Json.decodeFromStringOrNull<List<String>>(rawPathList)?.map { FilePath.of(it) }
+            ?: return bad("Invalid list of file paths to move.", "validation")
+        val newParentPath = FilePath.of(rawNewParent)
+
+        fileService.moveMultipleFiles(user = user, paths, newParentPath).let { it: Result<List<FilePath>> ->
+            if (it.notFound) return bad("This file was not found.", "")
+            if (it.rejected) return bad(it.error, "")
+            if (it.hasError) return internal(it.error, "")
+
+            val movedFiles = it.value
+            val serialized = Json.encodeToString(movedFiles.map { it.originalInputPath.pathString })
+            return ok(serialized)
         }
     }
 

@@ -38,6 +38,28 @@ class FileService(
     private val logService: LogService,
     private val filesystem: FilesystemService,
 ) {
+    fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>> {
+        val (canonicalResult, parentPathHasSymlink) = resolvePath(rawNewParentPath)
+        if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
+        val newParentPath = canonicalResult.value
+
+        val movedFiles: MutableList<FilePath> = mutableListOf()
+        rawPaths.forEach {
+            val (currentPathResult, pathHasSymlink) = resolvePath(it)
+            if (currentPathResult.isNotSuccessful) return@forEach
+            val currentPath = canonicalResult.value
+
+            val newPath = FilePath.ofAlreadyNormalized(newParentPath.path.resolve(it.path.fileName))
+            if (newPath === newParentPath) return@forEach
+
+            val op = moveFile(user, it, newPath)
+            if (op.isSuccessful) {
+                movedFiles.add(it)
+            }
+        }
+
+        return Result.ok(movedFiles)
+    }
 
     fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit> {
         // Resolve the target path
@@ -75,16 +97,18 @@ class FileService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val entity = entityService.getByPath(path = canonicalPath.pathString, userAction = UserAction.MOVE_FILE).let {
+        // Update the entity
+        entityService.getByPath(path = canonicalPath.pathString, userAction = UserAction.MOVE_FILE).let {
+            if (it.notFound) return@let
             if (it.isNotSuccessful) return it.cast()
-            it.value
-        }
+            val entity = it.value
 
-        // Change the entity path
-        entityService.updatePath(entityId = entity.entityId, newPath = newPath.pathString, existingEntity = entity, userAction = UserAction.MOVE_FILE).let {
-            if (it.isNotSuccessful) {
-                // Revert file move
-                filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
+            // Change the entity path
+            entityService.updatePath(entityId = entity.entityId, newPath = newPath.pathString, existingEntity = entity, userAction = UserAction.MOVE_FILE).let {
+                if (it.isNotSuccessful) {
+                    // Revert file move
+                    filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
+                }
             }
         }
 

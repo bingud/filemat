@@ -2,8 +2,9 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, parentFromPath, parseJson, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
+import { toast } from "@jill64/svelte-toast";
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
@@ -406,17 +407,43 @@ export async function moveFile(path: string, newPath: string) {
     const json = response.json()
 
     if (status.ok) {
-        if (isChildOf(path, filesState.path)) {
-            const entry = filesState.data.entries?.find(v => v.path === path)
-            if (entry) {
-                // Check if file was moved in the same folder
-                if (parentFromPath(path) === parentFromPath(newPath)) {
-                    entry.filename = filenameFromPath(path)
-                    entry.path = path
-                } else {
-                    arrayRemove(filesState.data.entries!, (v) => v.path === path)
-                    filesState.data.entries
-                }
+        updateFileListAfterFileMove(path, newPath)
+    } else if (status.serverDown) {
+        handleError(
+            `Server returned ${status} when moving file.`,
+            `File move failed. The server is unavailable.`
+        )
+    } else {
+        handleErrorResponse(
+            json,
+            `Failed to move file. (${status})`
+        )
+    }
+}
+
+export async function moveMultipleFiles(newParentPath: string, paths: string[]) {
+    const response = await safeFetch(`/api/v1/file/move-multiple`, { 
+        body: formData({newParent: newParentPath, paths: JSON.stringify(paths)})
+    })
+    const status = response.code
+    const json = response.json()
+
+    if (status.ok) {
+        const movedFiles = json as string[]
+        const failedCount = paths.length - movedFiles.length
+
+        movedFiles.forEach(oldPath => {
+            const newPath = resolvePath(newParentPath, filenameFromPath(oldPath))
+            console.log(`old `, oldPath, "new", newPath);
+            
+            updateFileListAfterFileMove(oldPath, newPath)
+        })
+
+        if (failedCount > 0) {
+            if (failedCount === paths.length) {
+                toast.error(`Failed to move file${letterS(paths.length)}.`)
+            } else {
+                toast.error(`Failed to move ${failedCount} file${letterS(failedCount)}`)
             }
         }
     } else if (status.serverDown) {
@@ -429,5 +456,21 @@ export async function moveFile(path: string, newPath: string) {
             json,
             `Failed to move file. (${status})`
         )
+    }
+}
+
+function updateFileListAfterFileMove(oldPath: string, newPath: string) {
+    if (isChildOf(oldPath, filesState.path)) {
+        const entry = filesState.data.entries?.find(v => v.path === oldPath)
+        if (entry) {
+            // Check if file was moved in the same folder
+            if (parentFromPath(oldPath) === parentFromPath(newPath)) {
+                entry.filename = filenameFromPath(oldPath)
+                entry.path = oldPath
+            } else {
+                arrayRemove(filesState.data.entries!, (v) => v.path === oldPath)
+                filesState.data.entries
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix, filenameFromPath, parentFromPath, appendFilename, getFileExtension } from "$lib/code/util/codeUtil.svelte";
+    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix, filenameFromPath, parentFromPath, appendFilename, getFileExtension, resolvePath } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -17,7 +17,7 @@
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "./elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
-    import { deleteFiles, moveFile } from "$lib/code/module/files";
+    import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files";
     import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
@@ -33,6 +33,7 @@
     let entryMenuYPos: number | null = $state(null)
     let entryMenuXPos: number | null = $state(null)
     
+
     onMount(() => {
         // Set the selected entry path
         setSelectedEntryPath()
@@ -195,14 +196,21 @@
     }
 
     async function option_move(entry: FileMetadata) {
-        const selection = await folderSelectorState.show!({
+        const newParentPath = await folderSelectorState.show!({
             title: "Choose the target folder.",
             initialSelection: parentFromPath(entry.path)
         })
-        if (!selection) return
+        if (!newParentPath) return
 
-        const newPath = appendFilename(selection, entry.filename!)
-        await moveFile(entry.path, newPath)
+        // Move all selected entries if a selected entry was moved
+        const selected = filesState.selectedEntries.list
+        if (selected.length > 1 && selected.includes(entry.path)) {
+            moveMultipleFiles(newParentPath, selected)
+        } else {
+            const newPath = appendFilename(newParentPath, entry.filename!)
+            moveFile(entry.path, newPath)
+        }
+        closeEntryPopover()
     }
 
     function closeEntryPopover() {
@@ -233,15 +241,74 @@
             menuEntry = entry
         })
     }
+
+    /**
+     * # Drag and dropping
+    */
+    let draggedPaths: string[] | null = null
+    let dragImageElement = $state() as HTMLParagraphElement
+    let dragging = $state(false)
+
+    function event_dragOver(e: DragEvent, entry: FullFileMetadata) {
+        const element = e.currentTarget as HTMLElement
+
+        const isFolder = entry.fileType === "FOLDER" || entry.fileType === "FOLDER_LINK" && appState.followSymlinks
+        const isDropArea = draggedPaths && !draggedPaths.includes(entry.path)
+
+        if (isFolder && isDropArea) {
+            e.preventDefault()        
+            element.classList.add("dragover")
+        } else {
+            
+        }
+    }
+
+    function event_dragLeave(e: DragEvent, entry: FullFileMetadata) {
+        const element = e.currentTarget as HTMLElement
+        element.classList.remove("dragover")
+    }
+
+    function event_drop(e: DragEvent, entry: FullFileMetadata) {
+        if (entry.fileType === "FOLDER_LINK" && !appState.followSymlinks || entry.fileType !== "FOLDER") return
+        if (!entry.permissions.includes("WRITE")) return
+        if (draggedPaths == null || draggedPaths.length < 1) return
+
+        if (draggedPaths.length > 1) {
+            moveMultipleFiles(entry.path, draggedPaths)
+        } else {
+            const movedPath = draggedPaths[0]
+            const newPath = resolvePath(entry.path, filenameFromPath(movedPath))
+            moveFile(movedPath, newPath)
+        }
+    }
+
+    function event_dragStart(e: DragEvent, entry: FullFileMetadata) {
+        dragging = true
+        const isEntrySelected = filesState.selectedEntries.list.includes(entry.path)
+        if (!isEntrySelected) {
+            draggedPaths = [entry.path]
+        } else {
+            draggedPaths = filesState.selectedEntries.list
+        }
+        
+        if (e.dataTransfer && dragImageElement) {
+            dragImageElement.style.display = "block"
+            dragImageElement.textContent = `Move ${draggedPaths.length} file${draggedPaths.length > 1 ? 's':''}`
+            e.dataTransfer!.setDragImage(dragImageElement, 0, 0)
+
+            setTimeout(() => {
+                dragImageElement.style.display = "none"
+            })
+        }
+    }
+
+    function event_dragEnd(e: DragEvent, entry: FullFileMetadata) {
+        draggedPaths = null
+        dragging = false
+    }
+
 </script>
 
-<style>
-    @import "/src/app.css" reference;
-    
-    .file-grid {
-        @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
-    }
-</style>
 
 {#if filesState.data.sortedEntries}
     <div on:click|stopPropagation class="w-full h-fit overflow-x-hidden">
@@ -260,20 +327,29 @@
         </div>
 
         <!-- Each entry is a grid item -->
-        {#each filesState.data.sortedEntries as entry}
+        {#each filesState.data.sortedEntries as entry (entry.path)}
             {@const isSelected = filesState.selectedEntries.list.includes(entry.path)}
 
             <a
                 on:click|preventDefault={(e) => entryOnClick(e, entry)}
                 on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
+                draggable={entry.permissions.includes("MOVE")}
                 data-entry-path={entry.path} rel="noopener noreferrer"
-                class="file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group {isSelected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}"
+                class="
+                    file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group 
+                    {isSelected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}
+                "
                 href={
                     (entry.fileType === "FILE" || 
                     (entry.fileType === "FILE_LINK" && appState.followSymlinks))
                         ? addSuffix(filesState.data.contentUrl, "/") + `${entry.filename!}`
                         : `/files${entry.path}`
                 }
+                on:dragstart={(e) => { event_dragStart(e, entry) }}
+                on:dragover={(e) => { event_dragOver(e, entry) }}
+                on:dragleave={(e) => { event_dragLeave(e, entry) }}
+                on:drop={(e) => { event_drop(e, entry) }}
+                on:dragend={(e) => { event_dragEnd(e, entry) }}
             >
                 <!-- Filename + Icon -->
                 <div class="h-full flex items-center overflow-hidden">
@@ -416,3 +492,18 @@
 {/if}
 
 <FolderTreeSelector></FolderTreeSelector>
+
+<p bind:this={dragImageElement} class="fixed top-[100vh] right-[100vw] py-4 px-6 rounded-lg whitespace-nowrap bg-neutral-300 dark:bg-neutral-800" style="display: none;">-</p>
+
+
+<style>
+    @import "/src/app.css" reference;
+    
+    .file-grid {
+        @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
+    }
+
+    :global(.dragover) {
+        @apply dark:bg-neutral-700;
+    }
+</style>
