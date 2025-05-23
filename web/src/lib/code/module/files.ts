@@ -127,10 +127,11 @@ export function uploadWithTus(isMultiple: boolean = true) {
     input.click()
 }
 
+
 /**
  * Initiate a TUS file upload
  */
-function startTusUpload(file: File) {
+export function startTusUpload(file: File) {
     uploadState.panelOpen = true
 
     // Construct the full target path

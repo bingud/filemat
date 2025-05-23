@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles } from "$lib/code/module/files"
+    import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles, startTusUpload } from "$lib/code/module/files"
     import { addSuffix, count, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
@@ -28,6 +28,7 @@
     import { confirmDialogState, folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
     import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
+    import FileDropzone from './content/elements/FileDropzone.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -233,6 +234,16 @@
         }
     }
 
+
+    function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
+        console.log(`file droippe`, e.detail.files)
+        const files = Array.from(e.detail.files)
+        
+        files.forEach(file => {
+            startTusUpload(file)
+        })
+    }
+
 </script>
 
 
@@ -347,6 +358,8 @@
         </div>
     </div>
 </div>
+
+<FileDropzone on:filesDropped={event_filesDropped}></FileDropzone>
 
 
 <style>
