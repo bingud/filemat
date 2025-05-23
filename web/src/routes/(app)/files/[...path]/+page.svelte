@@ -1,8 +1,8 @@
 <script lang="ts">
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { deleteFiles, downloadFilesAsZip, getFileData } from "$lib/code/module/files"
-    import { addSuffix, count, keysOf, pageTitle, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles } from "$lib/code/module/files"
+    import { addSuffix, count, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"
@@ -25,8 +25,9 @@
     import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
     import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
-    import { confirmDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import { confirmDialogState, folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
+    import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -214,6 +215,24 @@
         downloadFilesAsZip(selected)
     }
 
+    async function option_moveSelectedFiles() {
+        if (!filesState.selectedEntries.hasSelected || !filesState.data.meta) return
+
+        const newParentPath = await folderSelectorState.show!({
+            title: "Choose the target folder.",
+            initialSelection: filesState.path
+        })
+        if (!newParentPath) return
+
+        if (filesState.selectedEntries.hasMultiple) {
+            moveMultipleFiles(newParentPath, filesState.selectedEntries.list)
+        } else {
+            const selected = filesState.selectedEntries.single!
+            const filename = filenameFromPath(selected)
+            moveFile(selected, resolvePath(newParentPath, filename))
+        }
+    }
+
 </script>
 
 
@@ -242,6 +261,7 @@
                         {:else}
                             <button on:click={option_downloadSelectedFiles} title="Download the selected files." class="action-button"><DownloadIcon /></button>
                             <button on:click={option_deleteSelectedFiles} title="Delete the selected files." class="action-button"><TrashIcon /></button>
+                            <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}." class="action-button"><MoveIcon /></button>
                         {/if}
                     </div>
 
