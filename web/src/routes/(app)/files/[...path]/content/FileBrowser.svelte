@@ -18,12 +18,13 @@
     import UploadPanel from "./elements/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files";
-    import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
+    import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import FolderTreeSelector from "./elements/FolderTreeSelector.svelte";
     import { fileCategories } from "$lib/code/data/files";
     import { appState } from '$lib/code/stateObjects/appState.svelte';
+    import EditIcon from "$lib/component/icons/EditIcon.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -211,6 +212,16 @@
             moveFile(entry.path, newPath)
         }
         closeEntryPopover()
+    }
+
+    async function option_rename(entry: FileMetadata) {
+        const newFilename = await inputDialogState.show({title: "Rename file", message: "Enter the new filename:", confirmText: "Rename", cancelText: "Cancel"})
+        if (!newFilename) return
+        if (newFilename === entry.filename) return
+
+        const parent = parentFromPath(entry.path)
+        const newPath = resolvePath(parent, newFilename)
+        await moveFile(entry.path, newPath)
     }
 
     function closeEntryPopover() {
@@ -441,6 +452,13 @@
                             </a>
 
                             {#if menuEntry.permissions.includes("MOVE")}
+                                <button on:click={() => { option_rename(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                    <div class="size-5 flex-shrink-0">
+                                        <EditIcon />
+                                    </div>
+                                    <span>Rename</span>
+                                </button>
+
                                 <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                     <div class="size-5 flex-shrink-0">
                                         <MoveIcon />

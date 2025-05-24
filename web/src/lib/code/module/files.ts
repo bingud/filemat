@@ -461,13 +461,14 @@ export async function moveMultipleFiles(newParentPath: string, paths: string[]) 
 }
 
 function updateFileListAfterFileMove(oldPath: string, newPath: string) {
+    console.log(`moving`, oldPath, newPath)
     if (isChildOf(oldPath, filesState.path)) {
         const entry = filesState.data.entries?.find(v => v.path === oldPath)
         if (entry) {
             // Check if file was moved in the same folder
             if (parentFromPath(oldPath) === parentFromPath(newPath)) {
-                entry.filename = filenameFromPath(oldPath)
-                entry.path = oldPath
+                entry.filename = filenameFromPath(newPath)
+                entry.path = newPath
             } else {
                 arrayRemove(filesState.data.entries!, (v) => v.path === oldPath)
                 filesState.data.entries

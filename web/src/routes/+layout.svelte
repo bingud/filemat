@@ -12,7 +12,8 @@
     import { page } from '$app/state';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
     import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
-    import { confirmDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import { confirmDialogState, inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import InputDialog from '$lib/component/InputDialog.svelte';
 
 	let { children } = $props();
 
@@ -86,6 +87,7 @@
 
 <!-- Confirmation Dialog -->
 <ConfirmDialog bind:this={confirmDialogState.element} />
+<InputDialog bind:this={inputDialogState.element}></InputDialog>
 
 
 {#if dev}
