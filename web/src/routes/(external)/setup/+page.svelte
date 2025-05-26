@@ -218,7 +218,7 @@
     {#if alreadySetup === false}
         {#if page.state.popupPhase == null}
             {#if phase === 1}
-                <div class="flex flex-col items-center gap-6">
+                <div class="flex flex-col items-center gap-6 pt-12">
                     <h1 class="">Welcome to Filemat</h1>
                 </div>
                 
