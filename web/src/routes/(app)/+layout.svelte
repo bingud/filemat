@@ -6,13 +6,14 @@
     import Navbar from './components/Navbar.svelte';
     import Sidebar from './components/Sidebar.svelte';
     import { fetchState } from '$lib/code/state/stateFetcher';
+    import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
 
     onMount(() => {
         (async () => {
-            const stateResult = await fetchState({ principal: true, roles: true, app: true, systemRoleIds: true })
+            const stateResult = await fetchState({ principal: true, roles: true, app: true, systemRoleIds: true, followSymlinks: true })
             if (!stateResult) {
                 mounted = false
                 return
@@ -29,11 +30,20 @@
 
             mounted = true
         })()
+
+        window.addEventListener("beforeunload", beforeUnload)
     })
 
     onDestroy(() => {
         auth.reset()
     })
+
+    function beforeUnload(e: BeforeUnloadEvent) {
+        if (uploadState.counts.uploading > 0 || uploadState.counts.queued > 0) {
+            e.preventDefault()
+            e.returnValue = ""
+        }
+    }
 </script>
 
 

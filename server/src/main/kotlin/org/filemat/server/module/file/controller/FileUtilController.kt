@@ -164,7 +164,6 @@ class FileUtilController(
 
                 try {
                     // Grab first frame
-                    println("grab")
                     val frame = grabber.grabImage()
 
                     if (frame == null) {
@@ -173,7 +172,6 @@ class FileUtilController(
                     }
 
                     // Convert frame to BufferedImage
-                    println("converter")
                     val converter = Java2DFrameConverter()
                     val originalImage = converter.convert(frame)
 
