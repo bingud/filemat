@@ -157,9 +157,7 @@ class FileUtilController(
                 }
 
                 // Create a FFmpegFrameGrabber directly with the file
-                println("makaa")
                 val grabber = FFmpegFrameGrabber(videoFile)
-                println("dtart")
                 grabber.start()
 
                 try {
