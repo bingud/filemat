@@ -131,7 +131,7 @@
             // Update selection
             const newEntry = entries[newIndex];
             filesState.selectedEntries.selectedPositions.set(newEntry.path, true);
-            filesState.selectedEntries.single = newEntry.path;
+            filesState.selectedEntries.list = [newEntry.path];
             
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
@@ -266,11 +266,10 @@
         const isFolder = entry.fileType === "FOLDER" || entry.fileType === "FOLDER_LINK" && appState.followSymlinks
         const isDropArea = draggedPaths && !draggedPaths.includes(entry.path)
 
+
         if (isFolder && isDropArea) {
             e.preventDefault()        
             element.classList.add("dragover")
-        } else {
-            
         }
     }
 
