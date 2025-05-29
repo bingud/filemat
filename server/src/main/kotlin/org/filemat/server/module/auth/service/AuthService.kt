@@ -3,17 +3,14 @@ package org.filemat.server.module.auth.service
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.coroutines.*
 import org.filemat.server.common.model.Result
-import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.iterate
 import org.filemat.server.common.util.unixNow
-import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.isExpired
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
@@ -34,15 +31,18 @@ class AuthService(
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // User auth tokens
-    // Cleared every 60 seconds - Lazy cleared when accessed.
+    // Cleared every 120 seconds - Lazy cleared when accessed.
     private val tokenToUserIdMap = ConcurrentHashMap<String, AuthToken>()
-    // User principals
-    private val principalMap = ConcurrentHashMap<Ulid, Principal>()
+
+    // Cached for 6 hours, cleared every 240 seconds.
+    // UserID => Principal and CachedDate
+    private val principalMap = ConcurrentHashMap<Ulid, Pair<Principal, Long>>()
 
 
     @EventListener(ApplicationReadyEvent::class)
     private fun initialize() {
         expireMemoryAuthTokens()
+        expireMemoryPrincipals()
     }
 
     private fun expireMemoryAuthTokens() {
@@ -72,23 +72,59 @@ class AuthService(
                     }
                 }
 
-                delay(60000)
+                delay(120_000)
             }
         }
     }
 
+    private fun expireMemoryPrincipals() = scope.launch {
+        scope.launch {
+            var loggedFailure = false
+
+            while(true) {
+                runCatching {
+                    val now = unixNow()
+
+                    principalMap.iterate { userId: Ulid, (principal: Principal, cachedAt: Long), remove ->
+                        // 6 hours cache
+                        if ((now - cachedAt) > 21600) {
+                            remove()
+                        }
+                    }
+
+                    loggedFailure = false
+                }.onFailure {
+                    if (!loggedFailure) {
+                        logService.error(
+                            type = LogType.SYSTEM,
+                            action = UserAction.NONE,
+                            description = "Failed to remove expired user authentication cache from memory.",
+                            message = it.stackTraceToString()
+                        )
+                        loggedFailure = true
+                    }
+                }
+
+                delay(240_000)
+            }
+        }
+    }
+
+
     fun removeRoleFromAllPrincipals(roleId: Ulid) {
-        principalMap.forEach { userId, principal ->
+        principalMap.forEach { userId, (principal, cachedDate) ->
             principal.roles.remove(roleId)
         }
     }
+
+    // -----
 
     /**
      * Update a users principal in memory
      */
     fun updatePrincipal(userId: Ulid, block: (existing: Principal) -> Principal) {
-        principalMap.computeIfPresent(userId) { _: Ulid, existing: Principal ->
-            return@computeIfPresent block(existing)
+        principalMap.computeIfPresent(userId) { _: Ulid, (existing: Principal, cachedDate: Long) ->
+            return@computeIfPresent block(existing) to cachedDate
         }
     }
 
@@ -138,21 +174,21 @@ class AuthService(
         if (userR.notFound) return Result.notFound()
         val user = userR.value
 
-        val principal = getPrincipalFromDatabaseByUser(user, cacheInMemory)
+        val principal = createPrincipalFromUser(user, cacheInMemory)
         return principal
     }
 
     /**
      * Get user principal from database using user object
      */
-    private fun getPrincipalFromDatabaseByUser(user: User, cacheInMemory: Boolean): Result<Principal> {
+    private fun createPrincipalFromUser(user: User, cacheInMemory: Boolean): Result<Principal> {
         val rolesR = userRoleService.getRolesByUserId(user.userId)
         if (rolesR.isNotSuccessful) return Result.error(rolesR.error)
         val roles = rolesR.value
 
 
         val principal = let {
-            principalMap[user.userId]
+            principalMap[user.userId]?.first
         } ?: let {
             val principal = Principal(
                 userId = user.userId,
@@ -163,7 +199,7 @@ class AuthService(
                 roles = roles.map { it.roleId }.toMutableList()
             )
 
-            if (cacheInMemory) principalMap[user.userId] = principal
+            if (cacheInMemory) principalMap[user.userId] = (principal to unixNow())
             principal
         }
 
@@ -182,6 +218,6 @@ class AuthService(
         return getPrincipalFromMemoryByUserId(authToken.userId)
     }
 
-    private fun getPrincipalFromMemoryByUserId(userId: Ulid): Principal? = principalMap[userId]
+    private fun getPrincipalFromMemoryByUserId(userId: Ulid): Principal? = principalMap[userId]?.first
 
 }

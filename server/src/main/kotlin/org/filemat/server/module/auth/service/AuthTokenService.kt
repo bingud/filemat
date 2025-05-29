@@ -69,20 +69,6 @@ class AuthTokenService(private val logService: LogService, private val authToken
         }
     }
 
-    fun getUserByToken(token: String): Result<User> {
-        try {
-            return authTokenRepository.getUserByToken(token, unixNow())?.toResult() ?: Result.notFound()
-        } catch (e: Exception) {
-            logService.error(
-                type = LogType.SYSTEM,
-                action = UserAction.AUTH,
-                description = "Failed to get user by token from database.",
-                message = e.stackTraceToString(),
-            )
-            return Result.error("Failed to load user using auth token.")
-        }
-    }
-
     fun createToken(userId: Ulid, userAgent: String?, userAction: UserAction?): Result<AuthToken> {
         val token = AuthToken(
             authToken = StringUtils.randomString(128),
