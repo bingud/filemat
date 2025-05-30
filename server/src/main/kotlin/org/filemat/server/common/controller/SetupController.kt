@@ -72,6 +72,12 @@ class SetupController(
         val isAppSetup = settingService.getSetting(Props.Settings.isAppSetup)
         if (isAppSetup.valueOrNull?.value == "true") return bad("Application is already set up.", "already-setup")
 
+        // Rate limit
+        val ip = request.realIp()
+        RateLimiter.consume(RateLimitId.VERIFY_SETUP_CODE, ip).let { result ->
+            if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
+        }
+
         val code = settingService.getSetting(Props.Settings.appSetupCode)
         if (code.hasError) return internal(code.error, "code-failure")
         if (code.isNotSuccessful) return bad(code.error, "code-failure")
@@ -96,8 +102,10 @@ class SetupController(
         @RequestParam("setup-code") setupCode: String,
         @RequestParam("upload-folder-path") rawUploadFolderPath: String,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
+        val ip = request.realIp()
         if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
+        // Validate inputs
         (
             Validator.email(email)
             ?: Validator.password(plainPassword)
@@ -113,6 +121,11 @@ class SetupController(
             ?: return@run bad("Configuration for folder visibility is invalid.", "validation")
         val followSymlinks = rawFollowSymlinks.toBooleanStrictOrNull()
             ?: return@run bad("Option for following symbolic links must be true or false.", "validation")
+
+        // Rate limit
+        RateLimiter.consume(RateLimitId.SETUP, ip).let {
+            if (!it.isAllowed) return@run rateLimited(it.millisUntilRefill)
+        }
 
         // Check for folder visibility duplicates
         folderVisibilities.let {

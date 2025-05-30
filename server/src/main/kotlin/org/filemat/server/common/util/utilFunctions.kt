@@ -150,8 +150,36 @@ fun formatUnixToFilename(instant: Instant): String {
     return unixFilenameFormatter.format(instant)
 }
 
+fun formatMillisecondsToReadableTime(ms: Long): String {
+    // Use when for fast branching, no allocations
+    return when {
+        ms >= 86_400_000L -> {
+            val days = ms / 86_400_000L
+            "$days day" + if (days == 1L) "" else "s"
+        }
+        ms >= 3_600_000L -> {
+            val hours = ms / 3_600_000L
+            "$hours hour" + if (hours == 1L) "" else "s"
+        }
+        ms >= 60_000L -> {
+            val minutes = ms / 60_000L
+            "$minutes minute" + if (minutes == 1L) "" else "s"
+        }
+        ms >= 1_000L -> {
+            val seconds = ms / 1_000L
+            "$seconds second" + if (seconds == 1L) "" else "s"
+        }
+        else -> "$ms millisecond" + if (ms == 1L) "" else "s"
+    }
+}
+
 fun printlns(vararg texts: Any?): Unit {
     println(texts.joinToString("\n"))
+}
+
+fun formatMillisToSeconds(millis: Long): String {
+    val seconds = millis / 1000.0
+    return String.format("%.2f", seconds)
 }
 
 /**
