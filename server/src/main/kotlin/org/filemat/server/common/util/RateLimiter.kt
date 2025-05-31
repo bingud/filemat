@@ -23,11 +23,15 @@ data class RateLimitResult(
     val isAllowed: Boolean,
     val millisUntilRefill: Long,
 )
+data class TimedBucket(
+    val bucket: Bucket,
+    var lastRequestDate: Long,
+)
 
 
 object RateLimiter {
     //                                      Endpoint ID                    UserID  Bucket
-    private val buckets = ConcurrentHashMap<RateLimitId, ConcurrentHashMap<String, Bucket>>()
+    private val buckets = ConcurrentHashMap<RateLimitId, ConcurrentHashMap<String, TimedBucket>>()
     private val configs = HashMap<RateLimitId, RateLimitConfig>()
 
     init {
@@ -52,7 +56,13 @@ object RateLimiter {
      * Try to consume a token by UserID or IP address.
      */
     fun consume(endpointId: RateLimitId, identifier: String): RateLimitResult {
-        val bucket = buckets[endpointId]!!.computeIfAbsent(identifier) { createBucket(endpointId) }
+        val now = unixNow()
+        val timedBucket = buckets[endpointId]!!.computeIfAbsent(identifier) {
+            TimedBucket(bucket = createBucket(endpointId), lastRequestDate = now)
+        }
+        val bucket = timedBucket.bucket
+        timedBucket.lastRequestDate = now
+
         val result = bucket.tryConsumeAndReturnRemaining(1)
         val millisUntilRefill = result.nanosToWaitForRefill / 1_000_000
         return RateLimitResult(result.isConsumed, millisUntilRefill)
