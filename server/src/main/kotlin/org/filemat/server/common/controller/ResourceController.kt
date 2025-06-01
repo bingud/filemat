@@ -1,6 +1,8 @@
 package org.filemat.server.common.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.util.RateLimitId
+import org.filemat.server.common.util.RateLimiter
 import org.springframework.core.io.Resource
 import org.springframework.core.io.ResourceLoader
 import org.springframework.http.MediaType
