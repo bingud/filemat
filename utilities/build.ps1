@@ -1,0 +1,166 @@
+# build.ps1 - Deployment building script
+param(
+    [string]$ImageVersion,
+    [switch]$NoPush
+)
+
+# Set error action preference to stop on errors
+$ErrorActionPreference = "Stop"
+
+# Get script directory and set base path
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$BasePath = Split-Path -Parent $ScriptDir
+
+# Define paths relative to base directory
+$FrontendFolder = Join-Path $BasePath "web"
+$BackendFolder = Join-Path $BasePath "server"
+$FrontendBuildFolder = Join-Path $FrontendFolder "build"
+$BackendStaticFolder = Join-Path $BackendFolder "src\main\resources\static"
+$DockerfilePath = Join-Path $BackendFolder "Dockerfile"
+$BackendJarFile = Join-Path $BackendFolder "build\libs\server-app.jar"
+
+# Docker configuration
+$DockerRepo = "bingud/filemat"
+
+Write-Host "=== Deployment Build Script ===" -ForegroundColor Green
+Write-Host "Base Path: $BasePath" -ForegroundColor Gray
+
+# Get image version from user if not provided
+if (-not $ImageVersion) {
+    $ImageVersion = Read-Host "Enter image version"
+    if (-not $ImageVersion) {
+        Write-Host "Error: Image version is required" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "Building version: $ImageVersion" -ForegroundColor Yellow
+
+try {
+    # Step 1: Build frontend
+    Write-Host "`n1. Building frontend..." -ForegroundColor Cyan
+    Set-Location $FrontendFolder
+    
+    if (-not (Test-Path "package.json")) {
+        throw "package.json not found in frontend folder"
+    }
+    
+    npm install
+
+    # Clear the build folder before frontend build
+    if (Test-Path $FrontendBuildFolder) {
+        Remove-Item $FrontendBuildFolder -Recurse -Force
+    }
+    
+    npm run build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Frontend build failed"
+    }
+    
+    Write-Host "(Success) Frontend build completed" -ForegroundColor Green # Changed ✓ to (Success)
+
+    # Step 2: Copy frontend files to backend static folder
+    Write-Host "`n2. Copying frontend files to backend..." -ForegroundColor Cyan
+    
+    # Create static folder if it doesn't exist
+    if (-not (Test-Path $BackendStaticFolder)) {
+        New-Item -ItemType Directory -Path $BackendStaticFolder -Force | Out-Null
+    }
+    
+    # Clear existing static files
+    if (Test-Path $BackendStaticFolder) {
+        Get-ChildItem $BackendStaticFolder -Recurse | Remove-Item -Force -Recurse
+    }
+    
+    # Copy build contents to static folder
+    if (Test-Path $FrontendBuildFolder) {
+        Copy-Item -Path "$FrontendBuildFolder\*" -Destination $BackendStaticFolder -Recurse -Force
+        Write-Host "(Success) Frontend files copied to backend static folder" -ForegroundColor Green # Changed ✓ to (Success)
+    } else {
+        throw "Frontend build folder not found: $FrontendBuildFolder"
+    }
+
+    # Step 3: Build backend
+    Write-Host "`n3. Building backend..." -ForegroundColor Cyan
+    Set-Location $BackendFolder
+    
+    if (-not (Test-Path "gradlew.bat") -and -not (Test-Path "gradlew")) {
+        throw "Gradle wrapper not found in backend folder"
+    }
+    
+    # Use appropriate gradlew command for Windows
+    $GradlewCommand = if (Test-Path "gradlew.bat") { ".\gradlew.bat" } else { ".\gradlew" }
+    
+    & $GradlewCommand build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Backend build failed"
+    }
+    
+    # Verify jar file was created
+    if (-not (Test-Path $BackendJarFile)) {
+        throw "Backend jar file not found: $BackendJarFile"
+    }
+    
+    Write-Host "(Success) Backend build completed" -ForegroundColor Green # Changed ✓ to (Success)
+
+    # Step 4: Build Docker container
+    Write-Host "`n4. Building Docker container..." -ForegroundColor Cyan
+    
+    if (-not (Test-Path $DockerfilePath)) {
+        throw "Dockerfile not found: $DockerfilePath"
+    }
+    
+    $ImageTag = "${DockerRepo}:${ImageVersion}"
+    $LatestTag = "${DockerRepo}:latest"
+    
+    # Build Docker image
+    docker build -t $ImageTag -t $LatestTag -f $DockerfilePath .
+    if ($LASTEXITCODE -ne 0) {
+        throw "Docker build failed"
+    }
+    
+    Write-Host "(Success) Docker image built: $ImageTag" -ForegroundColor Green # Changed ✓ to (Success)
+
+    # Step 5: Push to Docker Hub (optional)
+    if (-not $NoPush) {
+        Write-Host "`n5. Docker Hub push..." -ForegroundColor Cyan
+        
+        $PushChoice = Read-Host "Do you want to push to Docker Hub? (y/N)"
+        if ($PushChoice -match "^[Yy]") {
+            Write-Host "Pushing to Docker Hub..." -ForegroundColor Yellow
+            
+            # Push versioned tag
+            docker push $ImageTag
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to push versioned image"
+            }
+            
+            # Push latest tag
+            docker push $LatestTag
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to push latest image"
+            }
+            
+            Write-Host "(Success) Images pushed to Docker Hub successfully" -ForegroundColor Green # Changed ✓ to (Success)
+        } else {
+            Write-Host "Skipping Docker Hub push" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "`n5. Skipping Docker Hub push (NoPush flag specified)" -ForegroundColor Yellow
+    }
+
+    Write-Host "`n=== Build completed successfully! ===" -ForegroundColor Green
+    Write-Host "Image: $ImageTag" -ForegroundColor White
+
+} catch {
+    Write-Host "`nError: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+} finally {
+    # Return to base directory
+    Set-Location $BasePath
+}
+
+# Usage examples
+Write-Host "`nUsage examples:" -ForegroundColor Gray
+Write-Host "  .\utilities\build.ps1 -ImageVersion '1.0.0'" -ForegroundColor Gray
+Write-Host "  .\utilities\build.ps1 -ImageVersion '1.0.0' -NoPush" -ForegroundColor Gray
