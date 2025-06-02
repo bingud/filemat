@@ -5,9 +5,13 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletRequestWrapper
 import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.State
+import org.filemat.server.common.controller.ResourceController
 import org.filemat.server.common.util.measureMillis
 import org.filemat.server.common.util.print
+import org.filemat.server.common.util.respond
 import org.springframework.core.annotation.Order
+import org.springframework.core.io.Resource
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
@@ -16,7 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter
  */
 @Order(1)
 @Component
-class UtilityFilter : OncePerRequestFilter() {
+class UtilityFilter(
+    private val resourceController: ResourceController,
+) : OncePerRequestFilter() {
+
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         // Check if application has finished starting
         if (!State.App.isInitialized) return
@@ -24,7 +31,14 @@ class UtilityFilter : OncePerRequestFilter() {
 
         if (false == request.requestURI.startsWith("/api")) {
             request.setAttribute("path", request.servletPath)
-            request.getRequestDispatcher("/resource").forward(request, response)
+
+            val result: ResponseEntity<Resource> = resourceController.serveStaticFiles(request)
+            response.status = result.statusCode.value()
+            result.headers.forEach { (name, values) ->
+                values.forEach { value -> response.addHeader(name, value) }
+            }
+            result.body?.inputStream?.copyTo(response.outputStream)
+
             return
         }
 

@@ -24,7 +24,7 @@ class ResourceController(
      * Serves static files (HTML, CSS, JS, images, etc.) from the
      * classpath:static/ directory.
      */
-    @GetMapping("/resource") // Matches /resource/*, /resource/*/*, etc.
+    @GetMapping("/resource")
     fun serveStaticFiles(request: HttpServletRequest): ResponseEntity<Resource> {
         val inputPath = request.getAttribute("path") as String
 
