@@ -26,6 +26,7 @@ import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 import kotlin.math.min
+import org.bytedeco.ffmpeg.global.avutil.*
 
 
 @RestController
@@ -33,6 +34,10 @@ import kotlin.math.min
 class FileUtilController(
     private val fileService: FileService,
 ) : AController() {
+
+    init {
+        av_log_set_level(AV_LOG_QUIET)
+    }
 
     @GetMapping("/image-thumbnail")
     fun imageThumbnailMapping(
@@ -141,6 +146,11 @@ class FileUtilController(
         // Check if symlinks are allowed
         if (!State.App.followSymlinks && pathContainsSymlink) {
             return streamBad("This file is not a video.", "")
+        }
+
+        fileService.isAllowedToAccessFile(user = principal, canonicalPath = canonicalPath).let {
+            if (it.hasError) return streamInternal(it.error, "")
+            if (it.isNotSuccessful) return streamBad(it.errorOrNull ?: "Cannot access this file.", "")
         }
 
         val filename = path.pathString.substringAfterLast("/") + "_preview.jpg"
