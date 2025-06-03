@@ -166,7 +166,7 @@ class FileUtilController(
                     return@StreamingResponseBody
                 }
 
-                // Create a FFmpegFrameGrabber directly with the file
+                // Create an FfmpegFrameGrabber directly with the file
                 val grabber = FFmpegFrameGrabber(videoFile)
                 grabber.start()
 

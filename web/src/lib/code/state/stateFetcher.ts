@@ -1,8 +1,9 @@
 import { auth } from "$lib/code/stateObjects/authState.svelte"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
-import { handleError, handleErrorResponse, handleException, isServerDown, parseJson } from "../util/codeUtil.svelte"
+import { delay, handleError, handleErrorResponse, handleException, isServerDown, parseJson, unixNow } from "../util/codeUtil.svelte"
 import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
+import { clientState } from "../stateObjects/clientState"
 
 
 type state = {
@@ -10,31 +11,45 @@ type state = {
     roles: { value: Role[], status: HttpStatus }, 
     app: { value: { isSetup: boolean, followSymlinks: boolean }, status: HttpStatus },
     systemRoleIds: { value: { user: ulid, admin: ulid }, status: HttpStatus },
+    hashCode: number,
 }
 
 /**
  * Fetches general application state, such as auth, available roles, app state.
  */
-export async function fetchState(options: { principal: boolean, roles: boolean, app: boolean, systemRoleIds: boolean, followSymlinks: boolean }): Promise<boolean> {
+export async function fetchState(
+    options: { principal: boolean, roles: boolean, app: boolean, systemRoleIds: boolean, followSymlinks: boolean } | undefined = undefined,
+    stateHashCode: number | undefined = undefined,
+): Promise<boolean> {
     try {
         const body = new FormData()
-        if (options.principal) body.append("principal", "true")
-        if (options.roles) body.append("roles", "true")
-        if (options.app) body.append("app", "true")
-        if (options.systemRoleIds) body.append("systemRoleIds", "true")
-        if (options.followSymlinks) body.append("followSymlinks", "true")
+        if (!options || options.principal) body.append("principal", "true")
+        if (!options || options.roles) body.append("roles", "true")
+        if (!options || options.app) body.append("app", "true")
+        if (!options || options.systemRoleIds) body.append("systemRoleIds", "true")
+        if (!options || options.followSymlinks) body.append("followSymlinks", "true")
+        if (stateHashCode) body.append("rawStateHashCode", stateHashCode.toString())
 
         const response = await fetch(`/api/v1/state/select`, {
             method: "POST", credentials: "same-origin", body: body
         })
         const status = response.status
         const text = await response.text()
+        if (text === "up-to-date") return true
+
         const json = parseJson(text)
 
         if (status === 200) {
             const data = json as state
 
-            if (options.principal) {
+            if (!options) {
+                const newHashCode = data.hashCode
+                if (newHashCode) {
+                    appState.stateHashCode = newHashCode
+                }
+            }
+
+            if (!options || options.principal) {
                 const status = data.principal.status
                 
                 if (status === 200) {
@@ -49,7 +64,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                     return false
                 }
             }
-            if (options.roles) {
+            if (!options || options.roles) {
                 const status = data.roles.status
 
                 if (status === 200) {
@@ -62,7 +77,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                     return false
                 }
             }
-            if (options.app) {
+            if (!options || options.app) {
                 const status = data.app.status
 
                 if (status === 200) {
@@ -74,7 +89,7 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                     return false
                 }
             }
-            if (options.systemRoleIds) {
+            if (!options || options.systemRoleIds) {
                 const status = data.systemRoleIds.status
 
                 if (status === 200) {
@@ -83,6 +98,10 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
                 } else {
                     handleError(`Status ${status} for system role IDs when fetching state.`, `Failed to load system roles (${status})`)
                 }
+            }
+
+            if (!options) {
+                appState.lastFullStateRefresh = unixNow()
             }
 
             console.log(`Loaded state.`)
@@ -98,5 +117,24 @@ export async function fetchState(options: { principal: boolean, roles: boolean, 
     } catch (e) {
         handleException("Exception when fetching state", "An error occurred while loading state.", e)
         return false
+    }
+}
+
+
+let autoSyncRunning = false
+/**
+ * Re-fetches the application state o
+ */
+export async function startStateAutoSync() {
+    if (autoSyncRunning) return
+    autoSyncRunning = true
+    
+    while (true) {
+        try {
+            // Re-fetch state every 20 seconds, unless idle (then 60 seconds)
+            await delay(clientState.isIdle ? 20_000 : 60_000)
+
+            await fetchState(undefined, appState.stateHashCode || undefined)
+        } catch (e) {}
     }
 }

@@ -5,7 +5,7 @@
     import { onDestroy, onMount } from 'svelte';
     import Navbar from './components/Navbar.svelte';
     import Sidebar from './components/Sidebar.svelte';
-    import { fetchState } from '$lib/code/state/stateFetcher';
+    import { fetchState, startStateAutoSync } from '$lib/code/state/stateFetcher';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
 
     let { children } = $props()
@@ -13,7 +13,7 @@
 
     onMount(() => {
         (async () => {
-            const stateResult = await fetchState({ principal: true, roles: true, app: true, systemRoleIds: true, followSymlinks: true })
+            const stateResult = await fetchState(undefined)
             if (!stateResult) {
                 mounted = false
                 return
@@ -29,6 +29,7 @@
             }
 
             mounted = true
+            startStateAutoSync()
         })()
 
         window.addEventListener("beforeunload", beforeUnload)

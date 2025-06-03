@@ -31,6 +31,7 @@ class StateController : AController() {
     @PostMapping("/select")
     fun optionalStateMapping(
         request: HttpServletRequest,
+        @RequestParam("rawStateHashCode", required = false) rawStateHashCode: String?,
         @RequestParam("principal", required = false) rawPrincipal: String?,
         @RequestParam("roles", required = false) rawRoles: String?,
         @RequestParam("systemRoleIds", required = false) rawSysRoleIds: String?,
@@ -66,6 +67,14 @@ class StateController : AController() {
             }
         }
 
+        val stateHashCode = builder.hashCode()
+
+        if (rawStateHashCode != null) {
+            val clientHashCode = rawStateHashCode.toIntOrNull()
+            if (stateHashCode == clientHashCode) return ok("up-to-date")
+        }
+
+        builder.put("hashCode", stateHashCode)
         val serialized = builder.toString()
         return ok(serialized)
     }

@@ -22,6 +22,16 @@ class AppState {
     isInitialPageOpen = $state(true)
 
     /**
+     * The last time the application state was refreshed
+     */
+    lastFullStateRefresh: number | null = $state(null)
+
+    /**
+     * The hash code for the entire application state (only applies to everything combined)
+     */
+    stateHashCode: number | null = $state(null)
+
+    /**
      * List of all roles in the system
      */
     roleList: Role[] | null = $state(null)
