@@ -3,7 +3,7 @@ import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { delay, handleError, handleErrorResponse, handleException, isServerDown, parseJson, unixNow } from "../util/codeUtil.svelte"
 import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
-import { clientState } from "../stateObjects/clientState.svelte"
+import { clientState } from "../stateObjects/clientState"
 
 
 type state = {

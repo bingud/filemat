@@ -1,7 +1,7 @@
 import type { Role } from "../auth/types";
 import { appState } from "../stateObjects/appState.svelte";
 import { auth } from "../stateObjects/authState.svelte";
-import { clientState } from "../stateObjects/clientState.svelte";
+import { clientState } from "../stateObjects/clientState";
 import type { ulid } from "../types/types";
 
 
