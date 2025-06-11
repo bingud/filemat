@@ -27,6 +27,11 @@ $ImageTag = "" # Initialize variable
 Write-Host "=== Deployment Build Script ===" -ForegroundColor Green
 Write-Host "Base Path: $BasePath" -ForegroundColor Gray
 
+if (-not (Get-Process -Name 'docker' -ErrorAction SilentlyContinue)) {
+    Write-Warning 'Docker is not running.'
+    Start-Sleep -Seconds 1
+}
+
 # Get image version from user if not provided
 if (-not $ImageVersion) {
     $ImageVersion = Read-Host "Enter image version"
@@ -142,6 +147,7 @@ try {
 
 } catch {
     Write-Host "`nError: $($_.Exception.Message)" -ForegroundColor Red
+    Read-Host 'Press any key to exit'
     exit 1
 } finally {
     # Return to base directory
