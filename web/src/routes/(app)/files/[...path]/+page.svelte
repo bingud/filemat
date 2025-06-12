@@ -2,7 +2,7 @@
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
     import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles, startTusUpload } from "$lib/code/module/files"
-    import { addSuffix, count, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from "./content/FileViewer.svelte"

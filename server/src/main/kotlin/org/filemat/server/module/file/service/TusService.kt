@@ -16,6 +16,7 @@ import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.util.Base64
 import kotlin.io.path.exists
 
 
@@ -75,7 +76,8 @@ class TusService(
                 if (it.isNotSuccessful) return
                 val actualFilename = it.valueOrNull
                 if (actualFilename != null) {
-                    wrappedResponse.setHeader("actual-uploaded-filename", actualFilename)
+                    val actualFilenameEncoded = encodeToBase64(actualFilename)
+                    wrappedResponse.setHeader("actual-uploaded-filename", actualFilenameEncoded)
                 }
             }
         }

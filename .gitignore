@@ -85,7 +85,4 @@ pnpm-lock.yaml
 docker-compose.override.yml
 .dockerignore
 
-# Lerna
-lerna-debug.log
-
 dump.js

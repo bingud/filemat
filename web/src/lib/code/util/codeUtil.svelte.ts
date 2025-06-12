@@ -482,11 +482,8 @@ export function getUniqueFilename(
         : `${base} (${max + 1})${ext}`
 }
 
-
-export function getFileId(file: File): string {
-    return `${file.name}-${file.size}-${file.lastModified}`
-}
-
-export function count(text: string, subString: string): number {
-    return text.split(subString).length - 1
+export function decodeBase64(input: string) {
+    return decodeURIComponent(
+        escape(window.atob(input))
+    )
 }

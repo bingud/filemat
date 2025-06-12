@@ -211,6 +211,10 @@ fun parseTusHttpHeader(header: String): Map<String, String> {
     }.toMap()
 }
 
+fun encodeToBase64(input: String): String {
+    return Base64.getEncoder()
+        .encodeToString(input.toByteArray(Charsets.UTF_8))
+}
 
 /**
  * Returns:

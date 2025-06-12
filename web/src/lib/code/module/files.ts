@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, filenameFromPath, formData, getFileId, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 
@@ -160,7 +160,7 @@ export function startTusUpload(file: File) {
             const res = response.getUnderlyingObject() as XMLHttpRequest | null
             const actualFilenameHeader = res?.getResponseHeader("actual-uploaded-filename")
             if (actualFilenameHeader) {
-                actualFilename = actualFilenameHeader
+                actualFilename = decodeBase64(actualFilenameHeader)
 
                 const state = uploadState.all[targetPath]
                 if (state) {
