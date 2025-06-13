@@ -56,7 +56,6 @@ build/
 release.properties
 
 # Kotlin
-*.kts
 *.kt~
 .kotlin/
 
