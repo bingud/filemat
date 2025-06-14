@@ -48,7 +48,6 @@ dependencies {
 	testImplementation("org.junit.jupiter:junit-jupiter:5.12.0")
 	testImplementation("io.mockk:mockk:1.13.17")
 
-//	implementation("org.bytedeco:javacv-platform:1.5.11")
 	implementation("org.bytedeco:javacv:1.5.11")
 	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:linux-x86_64")
 	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:linux-arm64")
