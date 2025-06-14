@@ -1,7 +1,97 @@
-# Filemat.org
+## Contents
 
-### Filesystem Web UI
+[What is Filemat?](<#what-is-filemat> "What is Filemat?")  
+[Features](<#features> "Features")  
+[Requirements](<#requirements> "Requirements")  
+[Installation](<#installation> "Installation")  
+[How Filemat runs](<#how-filemat-runs> "How Filemat runs")  
 
-- Users, roles, granular permissions.
-- Per-user, per-role, per-file, per-folder permissions.
-- Does not affect your filesystem.
+
+
+
+## What is Filemat?
+
+Filemat is a web-based file manager.  
+It's self hosted, and it allows you to access files on your local machine through a web UI.  
+  
+
+
+
+
+## Features
+
+- User accounts and roles
+- Granular permissions
+    - File and administration permissions for users and roles
+
+
+
+
+
+## Requirements
+
+- Linux
+- Java 21
+
+
+
+
+## Installation
+
+You can run the JAR file directly, or use the Docker image ([https://hub.docker.com/r/bingud/filemat](<https://hub.docker.com/r/bingud/filemat> "https://hub.docker.com/r/bingud/filemat")).  
+Filemat is currently not available on APT.  
+
+
+### \- Running the Docker image
+
+Make sure you have Docker installed. ([https://docs.docker.com/get-started/get-docker/](<https://docs.docker.com/get-started/get-docker/>))  
+  
+If using a Docker UI, run the container image called `bingud/filemat`, or use the commands below.  
+Make sure to use a volume so that Filemat data persists outside of the container.  
+The container is listening on port `8080`.  
+  
+Run the container using the `docker run` command:  
+`docker run --name filemat -p 443:8080 -v /srv/filemat-data:/var/lib/filemat bingud/filemat`  
+  
+You can change the display name, network port, docker volume location and add environment variables this way:  
+`docker run --name myName -p 5555:8080 -v /myHostFolder:/var/lib/filemat -e "MY_VARIABLE=myValue" bingud/filemat`  
+
+
+### \- Running normally
+
+Make sure your machine has Linux and Java 21 installed.  
+Download the JAR file from the releases section.  
+  
+Use this command to run the file with Java (change the filename according to the JAR file you downloaded):  
+`sudo java -jar filemat.jar`  
+
+
+
+
+## Configuration
+
+### \- Environment variables
+
+| Name                                                                 | Description                                                          | Default value                                                        | Example value                                                        |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| FM\_HIDDEN\_FOLDER\_PATHS                                            | List of folder paths to fully exclude and block. Split by colon (:)  |                                                                      | /root:/home/folder                                                   |
+| FM\_HIDE\_SENSITIVE\_FOLDERS                                         | Whether to hide sensitive linux folders (like root, .ssh)            | true                                                                 | true                                                                 |
+| FM\_NON\_SENSITIVE\_FOLDERS                                          | List of folders to exlude from sensitive folder list                 |                                                                      | /root:/etc/ssh                                                       |
+| FM\_FOLLOW\_SYMBOLIC\_LINKS                                          | Follows filesystem symbolic links - instead of showing them as files | true                                                                 | false                                                                |
+| FM\_FORCE\_DELETABLE\_FOLDERS                                        | List of protected system folders to be made deletable                |                                                                      | /root:/etc                                                           |
+| FM\_ALLOW\_READ\_DATA\_FOLDER                                        | Allow the application data folder to be accessed                     | false                                                                | true                                                                 |
+| FM\_ALLOW\_WRITE\_DATA\_FOLDER                                       | Allow the application data folder to be modified                     | false                                                                | true                                                                 |
+| FM\_PRINT\_LOGS                                                      | Whether to print logs to console                                     | true                                                                 | false                                                                |
+| FM\_DEV\_MODE                                                        | Whether Filemat is in dev mode                                       | false                                                                | true                                                                 |
+
+
+
+
+## How filemat runs
+
+- Filemat uses a single database file, so it's easy to move around and configure.
+- It can run as root and allow you to configure file permissions yourself, without tampering with low-level filesystem permissions.
+
+  
+
+
