@@ -4,9 +4,8 @@
 [Features](<#features> "Features")  
 [Requirements](<#requirements> "Requirements")  
 [Installation](<#installation> "Installation")  
+[Configuration](<#configuration> "Configuration")  
 [How Filemat runs](<#how-filemat-runs> "How Filemat runs")  
-
-
 
 
 ## What is Filemat?
@@ -14,8 +13,6 @@
 Filemat is a web-based file manager.  
 It's self hosted, and it allows you to access files on your local machine through a web UI.  
   
-
-
 
 
 ## Features
@@ -26,13 +23,10 @@ It's self hosted, and it allows you to access files on your local machine throug
 
 
 
-
-
 ## Requirements
 
 - Linux
 - Java 21
-
 
 
 
@@ -66,8 +60,6 @@ Use this command to run the file with Java (change the filename according to the
 `sudo java -jar filemat.jar`  
 
 
-
-
 ## Configuration
 
 ### \- Environment variables
@@ -86,10 +78,9 @@ Use this command to run the file with Java (change the filename according to the
 
 
 
-
 ## How filemat runs
 
-- Filemat uses a single database file, so it's easy to move around and configure.
+- Filemat uses a single database file to function, so it's easy to move around and configure.
 - It can run as root and allow you to configure file permissions yourself, without tampering with low-level filesystem permissions.
 
   
