@@ -64,12 +64,14 @@ Use this command to run the file with Java (change the filename according to the
 
 ### \- Environment variables
 
+Input multiple values by putting a colon in between (`/one:/two`)
+
 | Name                                                                 | Description                                                          | Default value                                                        | Example value                                                        |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| FM\_HIDDEN\_FOLDER\_PATHS                                            | List of folder paths to fully exclude and block. Split by colon (:)  |                                                                      | /root:/home/folder                                                   |
-| FM\_HIDE\_SENSITIVE\_FOLDERS                                         | Whether to hide sensitive linux folders (like root, .ssh)            | true                                                                 | true                                                                 |
+| FM\_HIDDEN\_FOLDER\_PATHS                                            | List of folder paths to fully exclude and block.                     |                                                                      | /root:/home/folder                                                   |
+| FM\_HIDE\_SENSITIVE\_FOLDERS                                         | Whether to hide sensitive linux folders (like root, .ssh)            | true                                                                 | false                                                                |
 | FM\_NON\_SENSITIVE\_FOLDERS                                          | List of folders to exlude from sensitive folder list                 |                                                                      | /root:/etc/ssh                                                       |
-| FM\_FOLLOW\_SYMBOLIC\_LINKS                                          | Follows filesystem symbolic links - instead of showing them as files | true                                                                 | false                                                                |
+| FM\_FOLLOW\_SYMBOLIC\_LINKS                                          | Whether to follow symbolic links, or show them as normal files       | false                                                                | true                                                                 |
 | FM\_FORCE\_DELETABLE\_FOLDERS                                        | List of protected system folders to be made deletable                |                                                                      | /root:/etc                                                           |
 | FM\_ALLOW\_READ\_DATA\_FOLDER                                        | Allow the application data folder to be accessed                     | false                                                                | true                                                                 |
 | FM\_ALLOW\_WRITE\_DATA\_FOLDER                                       | Allow the application data folder to be modified                     | false                                                                | true                                                                 |
@@ -82,7 +84,3 @@ Use this command to run the file with Java (change the filename according to the
 
 - Filemat uses a single database file to function, so it's easy to move around and configure.
 - It can run as root and allow you to configure file permissions yourself, without tampering with low-level filesystem permissions.
-
-  
-
-
