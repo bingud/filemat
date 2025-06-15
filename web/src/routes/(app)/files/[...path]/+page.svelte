@@ -29,6 +29,7 @@
     import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
     import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
     import FileDropzone from './content/component/element/FileDropzone.svelte';
+    import { clientState } from '$lib/code/stateObjects/clientState.svelte';
 
     createFilesState()
     createBreadcrumbState()
@@ -112,23 +113,36 @@
         newButtonPopoverOpen = false
     }
 
-
     // Load page data when path changes
     explicitEffect(() => {
-        if (filesState.path) {
+        const path = filesState.path
+
+        if (path) {
             filesState.abort()
             filesState.clearState()
 
             filesState.data.content = null
 
-            if (filesState.path === "/") {
+            if (path === "/") {
                 filesState.scroll.pathPositions = {}
             }
 
-            loadPageData(filesState.path).then(() => {
+            loadPageData(path).then(() => {
                 recoverScrollPosition()
             })
         }
+
+        const interval = setInterval(() => {
+            const meta = filesState.data.meta
+            if (meta && (meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks))) {
+                if (filesState.path === path) {
+                    loadPageData(path)
+                }
+            }
+        }, clientState.isIdle ? 120_000 : 60_000)
+
+
+        return () => { clearInterval(interval) }
     }, () => [ filesState.path ])
 
     // Unselect entry when path changes

@@ -495,6 +495,6 @@ export function decodeBase64(input: string) {
 export function explicitEffect(fn: () => any, depsFn: () => any[]) {
     $effect(() => {
         depsFn()
-        untrack(fn)
+        return untrack(fn)
     })
 }
