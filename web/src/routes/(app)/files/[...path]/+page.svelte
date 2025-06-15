@@ -5,11 +5,11 @@
     import { addSuffix, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
-    import FileViewer from "./content/components/FileViewer.svelte"
+    import FileViewer from './content/component/FileViewer.svelte';
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./content/code/breadcrumbState.svelte"
-    import Breadcrumbs from "./content/elements/Breadcrumbs.svelte"
-    import FileBrowser from "./content/fileBrowser/FileBrowser.svelte"
-    import DetailsSidebar from "./content/elements/DetailsSidebar.svelte"
+    import Breadcrumbs from './content/component/element/Breadcrumbs.svelte';
+    import FileBrowser from './content/component/FileBrowser/FileBrowser.svelte';
+    import DetailsSidebar from './content/component/element/DetailsSidebar.svelte';
     import { createFilesState, destroyFilesState, filesState } from "../../../../lib/code/stateObjects/filesState.svelte"
     import { fade, fly } from "svelte/transition"
     import { linear } from "svelte/easing"
@@ -28,7 +28,7 @@
     import { confirmDialogState, folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
     import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
-    import FileDropzone from './content/elements/FileDropzone.svelte';
+    import FileDropzone from './content/component/element/FileDropzone.svelte';
 
     createFilesState()
     createBreadcrumbState()

@@ -267,7 +267,6 @@
         const isFolder = entry.fileType === "FOLDER" || entry.fileType === "FOLDER_LINK" && appState.followSymlinks
         const isDropArea = draggedPaths && !draggedPaths.includes(entry.path)
 
-
         if (isFolder && isDropArea) {
             e.preventDefault()        
             element.classList.add("dragover")
@@ -283,6 +282,8 @@
         if (entry.fileType === "FOLDER_LINK" && !appState.followSymlinks || entry.fileType !== "FOLDER") return
         if (!entry.permissions.includes("WRITE")) return
         if (draggedPaths == null || draggedPaths.length < 1) return
+
+        if (draggedPaths.includes(entry.path)) return
 
         if (draggedPaths.length > 1) {
             moveMultipleFiles(entry.path, draggedPaths)
@@ -450,7 +451,7 @@
 <style>
     @import "/src/app.css" reference;
     
-    .file-grid {
+    :global(.file-grid) {
         @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
     }
 
