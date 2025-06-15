@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fileCategories, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
-    import { getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
+    import { explicitEffect, getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
     import {basicSetup} from "codemirror"
     import {EditorView} from "@codemirror/view"
     import { barf, ayuLight } from 'thememirror';
@@ -63,15 +63,11 @@
     })
 
     // Re-create text editor
-    $effect(() => {
-        uiState.isDark
-        filesState.data.decodedContent
-        textEditorContainer
-        
+    explicitEffect(() => {
         if (isText) {
             createTextEditor()
         }
-    })
+    }, () => [ uiState.isDark, filesState.data.decodedContent, textEditorContainer, isText ])
 
     // Create the video player
     $effect(() => {

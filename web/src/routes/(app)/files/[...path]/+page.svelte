@@ -2,7 +2,7 @@
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
     import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles, startTusUpload } from "$lib/code/module/files"
-    import { addSuffix, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, explicitEffect, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from './content/component/FileViewer.svelte';
@@ -114,34 +114,32 @@
 
 
     // Load page data when path changes
-    $effect(() => {
+    explicitEffect(() => {
         if (filesState.path) {
-            untrack(() => {
-                filesState.abort()
-                filesState.clearState()
+            filesState.abort()
+            filesState.clearState()
 
-                filesState.data.content = null
+            filesState.data.content = null
 
-                if (filesState.path === "/") {
-                    filesState.scroll.pathPositions = {}
-                }
+            if (filesState.path === "/") {
+                filesState.scroll.pathPositions = {}
+            }
 
-                loadPageData(filesState.path).then(() => {
-                    recoverScrollPosition()
-                })
+            loadPageData(filesState.path).then(() => {
+                recoverScrollPosition()
             })
         }
-    })
+    }, () => [ filesState.path ])
 
     // Unselect entry when path changes
-    $effect(() => {
+    explicitEffect(() => {
         const selected = filesState.selectedEntries.single
         const current = filesState.path || "/"
         // if there’s a selection but it isn’t under the current directory, reset it
         if (selected && !selected.startsWith(current + (current === "/" ? "" : "/"))) {
             filesState.selectedEntries.reset()
         }
-    })
+    }, () => [ filesState.selectedEntries.single, filesState.path ])
 
 
     beforeNavigate(() => {

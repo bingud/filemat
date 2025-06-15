@@ -1,20 +1,17 @@
 <script lang="ts">
-    import { dev } from "$app/environment";
     import { page } from "$app/state";
     import { addRoleToUser } from "$lib/code/admin/roles";
     import type { FullPublicUser } from "$lib/code/auth/types";
-    
     import { getMaxPermissionLevel, rolesToPermissions } from "$lib/code/module/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types/types";
-    import { delay, forEachObject, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { delay, explicitEffect, forEachObject, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import Popover from "$lib/component/Popover.svelte";
-    import { get } from "svelte/store";
     import { fade } from "svelte/transition";
 
     const title = "Manage user"
@@ -32,7 +29,7 @@
         return includesList(user.roles, appState.roleList.map(v=>v.roleId))
     })
 
-    $effect(() => {
+    explicitEffect(() => {
         uiState.settings.title = title
 
         const userId = page.params.userId
@@ -46,7 +43,7 @@
         loading = true
         loadUser(userId).then(() => { loading = false })
         mounted = true
-    })
+    }, () => [ page.params.userId ])
 
     /**
      * Load user data

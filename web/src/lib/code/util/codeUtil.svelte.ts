@@ -1,6 +1,7 @@
 import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
 import type { ErrorResponse } from "../types/types"
+import { untrack } from "svelte"
 
 
 /**
@@ -486,4 +487,14 @@ export function decodeBase64(input: string) {
     return decodeURIComponent(
         escape(window.atob(input))
     )
+}
+
+/**
+ * Creates an $effect where dependencies are specified manually.
+ */
+export function explicitEffect(fn: () => any, depsFn: () => any[]) {
+    $effect(() => {
+        depsFn()
+        untrack(fn)
+    })
 }

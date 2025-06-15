@@ -1,6 +1,7 @@
 <script lang="ts">
     import { getFileData } from '$lib/code/module/files';
     import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import { explicitEffect } from '$lib/code/util/codeUtil.svelte';
     import { Dialog } from '$lib/component/bits-ui-wrapper'
     import ChevronDownIcon from '$lib/component/icons/ChevronDownIcon.svelte';
     import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte';
@@ -53,10 +54,11 @@
             open = false
         }
     }
-    
-    // Handle dialog closure
-    $effect(() => {
-        if (!open) {
+
+    explicitEffect(() => {
+        if (open === true) {
+            initializeTree()
+        } else {
             if (resolvePromise) {
                 resolvePromise(null)
                 resolvePromise = null
@@ -66,17 +68,7 @@
             initialSelection = null
             hasScrolledToInitial = false
         }
-    })
-
-    // Load initial folder data
-    $effect(() => {
-        if (open === true) {
-
-            untrack(() => {
-                initializeTree()
-            })
-        }
-    })
+    }, () => [ open ])
 
     async function initializeTree() {
         folderTree = {

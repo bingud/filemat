@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { debounceFunction } from "$lib/code/util/codeUtil.svelte";
+    import { debounceFunction, explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { onMount, type Snippet } from "svelte";
     import { fade } from "svelte/transition";
 
@@ -47,7 +47,9 @@
         } 
     })
 
-    $effect(() => { calcCoords(); button })
+    explicitEffect(() => {
+        calcCoords()
+    }, () => [ button ])
 
     /**
      * Function to calculate the location of the button
