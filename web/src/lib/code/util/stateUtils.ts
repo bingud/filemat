@@ -1,8 +1,8 @@
 import type { Role } from "../auth/types";
 import { appState } from "../stateObjects/appState.svelte";
-import { auth } from "../stateObjects/authState.svelte";
 import { clientState } from "../stateObjects/clientState.svelte";
 import type { ulid } from "../types/types";
+import { debounceFunction } from "./codeUtil.svelte";
 
 
 export function getRole(id: ulid): Role | null {
@@ -18,83 +18,82 @@ export function mapRoles(roleIds: ulid[]): Role[] | null {
     return list as Role[]
 }
 
-/**
- * Detects when the browser is idle
- */
-export function onBrowserIdleChange(
-    callbacks: { onIdle: () => void; onActive: () => void; idleTimeout?: number },
-): () => void {
-    const { onIdle, onActive, idleTimeout = 2000 } = callbacks;
-    let idleCallbackId: number | null = null;
 
-    if (
-        typeof window === 'undefined' ||
-        typeof document === 'undefined' ||
-        typeof requestIdleCallback === 'undefined'
-    ) {
-        console.warn(
-            'onBrowserIdleChange: Required browser APIs (window, document, requestIdleCallback) not available. Idle detection will not work.',
-        );
-        return () => {};
+/**
+ * Detects when the user is idle
+ */
+export function onUserIdleChange(
+    callbacks: {
+        onIdle: () => void
+        onActive: () => void
+        throttleInterval?: number
+    },
+): () => void {
+    const {
+        onIdle,
+        onActive,
+        throttleInterval = 200,
+    } = callbacks
+
+    if (typeof window === "undefined" || typeof document === "undefined") {
+        return () => {}
     }
 
-    // Use clientState.isIdle as the source of truth
-    const handleActivity = () => {
+    let timeoutId: number | null = null
+
+    const getIdleTimeout = () => {
+        return document.hidden ? 10000 : 20000 // 10s unfocused, 20s focused
+    }
+
+    const goToIdle = () => {
+        clientState.isIdle = true
+        onIdle()
+    }
+
+    const resetTimer = () => {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId)
+        }
+
         if (clientState.isIdle) {
-            clientState.isIdle = false;
-            onActive();
+            clientState.isIdle = false
+            onActive()
         }
 
-        if (idleCallbackId !== null) {
-            cancelIdleCallback(idleCallbackId);
-        }
+        timeoutId = window.setTimeout(goToIdle, getIdleTimeout())
+    }
 
-        idleCallbackId = requestIdleCallback(
-            () => {
-                if (!clientState.isIdle) {
-                    clientState.isIdle = true;
-                    onIdle();
-                }
-                idleCallbackId = null;
-            },
-            { timeout: idleTimeout },
-        );
-    };
-
-    const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-            handleActivity();
-        }
-    };
+    // Use the provided debounce function to simulate throttling
+    const activityHandler = debounceFunction(
+        resetTimer,
+        throttleInterval, // delay
+        throttleInterval, // continuousCallDuration
+    )
 
     const activityEvents = [
-        'mousemove',
-        'mousedown',
-        'keydown',
-        'touchstart',
-        'scroll',
-        'wheel',
-    ];
+        "mousemove",
+        "mousedown",
+        "keydown",
+        "touchstart",
+        "scroll",
+        "wheel",
+        "visibilitychange",
+    ]
 
     activityEvents.forEach((event) => {
-        window.addEventListener(event, handleActivity, { passive: true });
-    });
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener(event, activityHandler, { passive: true })
+    })
 
-    // Initial state: assume active
-    clientState.isIdle = false;
-    handleActivity();
+    resetTimer() // Initial call
 
     const stop = () => {
-        if (idleCallbackId !== null) {
-            cancelIdleCallback(idleCallbackId);
-            idleCallbackId = null;
+        if (timeoutId !== null) {
+            window.clearTimeout(timeoutId)
         }
         activityEvents.forEach((event) => {
-            window.removeEventListener(event, handleActivity);
-        });
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+            window.removeEventListener(event, activityHandler)
+        })
+    }
 
-    return stop;
+    return stop
 }

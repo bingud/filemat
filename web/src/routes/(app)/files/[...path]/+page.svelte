@@ -2,7 +2,7 @@
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
     import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles, startTusUpload } from "$lib/code/module/files"
-    import { addSuffix, explicitEffect, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, dynamicInterval, explicitEffect, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from './content/component/FileViewer.svelte';
@@ -132,18 +132,19 @@
             })
         }
 
-        const interval = setInterval(() => {
+        const interval = dynamicInterval(() => {
             const meta = filesState.data.meta
             if (meta && (meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks))) {
                 if (filesState.path === path) {
                     loadPageData(path)
                 }
             }
-        }, clientState.isIdle ? 120_000 : 60_000)
+        }, () => clientState.isIdle ? 120_000 : 60_000)
 
 
-        return () => { clearInterval(interval) }
+        return () => { interval.cancel() }
     }, () => [ filesState.path ])
+
 
     // Unselect entry when path changes
     explicitEffect(() => {

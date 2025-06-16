@@ -14,7 +14,8 @@
     import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
     import { confirmDialogState, inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import InputDialog from '$lib/component/InputDialog.svelte';
-    import { onBrowserIdleChange } from '$lib/code/util/stateUtils';
+    import { onUserIdleChange } from '$lib/code/util/stateUtils';
+    import { clientState } from '$lib/code/stateObjects/clientState.svelte';
 
 	let { children } = $props();
 
@@ -35,7 +36,7 @@
             }
         })
 
-        onBrowserIdleChange({
+        onUserIdleChange({
             onIdle: () => {},
             onActive: () => {},
         })

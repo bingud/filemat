@@ -498,3 +498,27 @@ export function explicitEffect(fn: () => any, depsFn: () => any[]) {
         return untrack(fn)
     })
 }
+
+/**
+ * Creates an interval with a dynamic delay
+ */
+export function dynamicInterval(
+    callback: () => void,
+    getDelay: () => number
+): { cancel: () => void } {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+    const step = () => {
+        callback()
+        const delay = getDelay()
+        timeoutId = setTimeout(step, delay)
+    }
+
+    timeoutId = setTimeout(step, getDelay())
+
+    return {
+        cancel: () => {
+            if (timeoutId !== undefined) clearTimeout(timeoutId)
+        }
+    }
+}
