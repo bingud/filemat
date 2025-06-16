@@ -37,6 +37,22 @@ class FileController(
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    @PostMapping("/last-modified-date")
+    fun getFileLastModifiedDateMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+
+        fileService.getMetadata(principal, path).let {
+            if (it.notFound) return bad("File not found.", "not-found")
+            if (it.hasError) return internal(it.error, "")
+            if (it.isNotSuccessful) return bad(it.error, "")
+            return ok(it.value.modifiedDate.toString())
+        }
+    }
+
     @PostMapping("/move")
     fun moveFileMapping(
         request: HttpServletRequest,

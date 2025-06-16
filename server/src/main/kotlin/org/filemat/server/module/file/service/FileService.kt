@@ -38,6 +38,7 @@ class FileService(
     private val logService: LogService,
     private val filesystem: FilesystemService,
 ) {
+
     fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>> {
         val (canonicalResult, parentPathHasSymlink) = resolvePath(rawNewParentPath)
         if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
@@ -303,6 +304,14 @@ class FileService(
         } else {
             return Result.error("Requested path is not a file or folder.")
         }
+    }
+
+    fun getMetadata(user: Principal, rawPath: FilePath): Result<FileMetadata> {
+        val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+        if (pathResult.isNotSuccessful) return pathResult.cast()
+        val canonicalPath = pathResult.value
+
+        return getMetadata(user, rawPath, canonicalPath)
     }
 
     /**

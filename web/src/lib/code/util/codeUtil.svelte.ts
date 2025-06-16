@@ -2,6 +2,8 @@ import { toast } from "@jill64/svelte-toast"
 import type { Response } from "node-fetch"
 import type { ErrorResponse } from "../types/types"
 import { untrack } from "svelte"
+import type { FileType } from "../auth/types"
+import { appState } from "../stateObjects/appState.svelte"
 
 
 /**
@@ -10,6 +12,10 @@ import { untrack } from "svelte"
 export function isServerDown(httpStatus: number): boolean {
     if (httpStatus > 500 && httpStatus < 530) return true
     return false
+}
+
+export function isFolder(type: FileType): boolean {
+    return type === "FOLDER" || (type === "FOLDER_LINK" && appState.followSymlinks === true)
 }
 
 /**
@@ -501,24 +507,32 @@ export function explicitEffect(fn: () => any, depsFn: () => any[]) {
 
 /**
  * Creates an interval with a dynamic delay
+ * 
+ * @returns cancel and reset methods
  */
 export function dynamicInterval(
-    callback: () => void,
+    callback: (delay: number) => void,
     getDelay: () => number
-): { cancel: () => void } {
+): { cancel: () => void, reset: () => void } {
     let timeoutId: ReturnType<typeof setTimeout> | undefined
 
-    const step = () => {
-        callback()
-        const delay = getDelay()
-        timeoutId = setTimeout(step, delay)
+    const run = (delay: number) => {
+        callback(delay)
+        set()
     }
 
-    timeoutId = setTimeout(step, getDelay())
+    function set() {
+        const delay = getDelay()
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => { run(delay) }, delay)
+    }
+
+    set()
 
     return {
         cancel: () => {
             if (timeoutId !== undefined) clearTimeout(timeoutId)
-        }
+        },
+        reset: set
     }
 }

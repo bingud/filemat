@@ -476,3 +476,27 @@ function updateFileListAfterFileMove(oldPath: string, newPath: string) {
         }
     }
 }
+
+export async function getFileLastModifiedDate(path: string): Promise<number | null> {
+    const response = await safeFetch(`/api/v1/file/last-modified-date`, { 
+        body: formData({ path: path })
+    })
+    const status = response.code
+    const content = response.content
+
+    if (status.ok) {
+        const int = parseInt(content)
+        return int
+    } else if (status.serverDown) {
+        handleError(
+            `Server returned ${status} when checking file modification time.`,
+            `Failed to check file modification time. The server is unavailable.`
+        )
+    } else {
+        handleErrorResponse(
+            response.json(),
+            `Failed to check file modification time. (${status})`
+        )
+    }
+    return null
+}

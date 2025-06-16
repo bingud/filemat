@@ -1,8 +1,8 @@
 <script lang="ts">
 	import FolderIcon from './../../../../lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { deleteFiles, downloadFilesAsZip, getFileData, moveFile, moveMultipleFiles, startTusUpload } from "$lib/code/module/files"
-    import { addSuffix, dynamicInterval, explicitEffect, filenameFromPath, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { deleteFiles, downloadFilesAsZip, getFileData, getFileLastModifiedDate, moveFile, moveMultipleFiles, startTusUpload } from "$lib/code/module/files"
+    import { addSuffix, dynamicInterval, explicitEffect, filenameFromPath, isFolder, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNow, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount, untrack } from "svelte"
     import FileViewer from './content/component/FileViewer.svelte';
@@ -113,10 +113,14 @@
         newButtonPopoverOpen = false
     }
 
+    let lastDataLoadDate: number = unixNow()
+    const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
+    let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
+
     // Load page data when path changes
     explicitEffect(() => {
         const path = filesState.path
-
+        
         if (path) {
             filesState.abort()
             filesState.clearState()
@@ -132,19 +136,31 @@
             })
         }
 
-        const interval = dynamicInterval(() => {
+        pollingInterval = dynamicInterval(() => {
             const meta = filesState.data.meta
             if (meta && (meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks))) {
                 if (filesState.path === path) {
-                    loadPageData(path)
+                    reloadPageData()
                 }
             }
-        }, () => clientState.isIdle ? 120_000 : 60_000)
+        }, () => ((clientState.isIdle ? pageDataPollingConfig.idleDelay : pageDataPollingConfig.delay) * 1000))
 
-
-        return () => { interval.cancel() }
+        return () => { pollingInterval!.cancel() }
     }, () => [ filesState.path ])
 
+    // Run when user stops being idle
+    explicitEffect(() => {
+        if (clientState.isIdle === false) {
+            const now = unixNow()
+            const elapsed = now - (lastDataLoadDate ?? 0)
+
+            // Fetch page data if last fetch was too long ago
+            if (elapsed > pageDataPollingConfig.delay) {
+                pollingInterval?.reset()
+                reloadPageData()
+            }
+        }
+    }, () => [ clientState.isIdle ])
 
     // Unselect entry when path changes
     explicitEffect(() => {
@@ -161,9 +177,28 @@
         saveScrollPosition()
     })
 
-    async function loadPageData(filePath: string) {
+    /**
+     * Reload the current folder data.
+     * If modification date of folder has changed, fetch new data
+     */
+    async function reloadPageData() {
+        if (!filesState.path) return
+        const meta = filesState.data.meta
+        if (!meta || !isFolder(meta.fileType)) return
+
+        const modifiedDate = meta.modifiedDate
+        const actualModifiedDate = await getFileLastModifiedDate(filesState.path)
+
+        // Folder modification date has not changed
+        // Local folder is up to date
+        if (modifiedDate === actualModifiedDate) return
+
+        await loadPageData(filesState.path, { silent: true })
+    }
+
+    async function loadPageData(filePath: string, options: {silent?: boolean} = {}) {
         filesState.lastFilePathLoaded = filePath
-        filesState.metaLoading = true
+        if (!options.silent) filesState.metaLoading = true
 
         const result = await getFileData(filePath, filesState.abortController?.signal)
         if (filesState.lastFilePathLoaded !== filePath) return
