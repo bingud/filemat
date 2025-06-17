@@ -45,7 +45,6 @@ class AdminSettingsController(
 
         settingService.set_followSymLinks(user, newState).let {
             if (it.hasError) return internal(it.error, "")
-            if (it.notFound) return bad("Setting not found.", "")
             if (it.isNotSuccessful) return bad(it.error, "")
             return ok("ok")
         }

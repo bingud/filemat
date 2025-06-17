@@ -40,7 +40,7 @@ class AdminUserRoleController(
             ?: return bad("Invalid role ID list.", "validation")
 
         val r = adminUserRoleService.removeRoles(principal, userId, roleIdList)
-        if (r.rejected || r.notFound) return bad(r.error, "")
+        if (r.notFound) return notFound()
         if (r.isNotSuccessful) return bad(r.error, "")
 
         val removedRoles = r.value
@@ -63,7 +63,7 @@ class AdminUserRoleController(
             ?: return bad("Invalid role ID.", "validation")
 
         val r = adminUserRoleService.assignRole(principal = principal, targetId = userId, roleId = roleId)
-        if (r.rejected || r.notFound) return bad(r.error, "")
+        if (r.rejected || r.notFound) return notFound()
         if (r.isNotSuccessful) return internal(r.error, "")
 
         return ok()

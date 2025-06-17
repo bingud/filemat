@@ -44,6 +44,8 @@
             } else if (status.serverDown) {
                 handleError(`Server ${status} when updating file permission`, `Failed to update permission. Server is unavailable.`)
                 return
+            } else if (status.notFound) {
+                handleError(`File not found when updating permission`, `This file was not found.`)
             } else {
                 handleErrorResponse(json, `Failed to update permission.`)
                 return
@@ -70,10 +72,10 @@
                 onPermissionUpdated(perm.permissionId, null, true)
             } else if (status.serverDown) {
                 handleError(`Server ${status} when deleting file permission`, `Failed to delete permission. Server is unavailable.`)
-                return
+            } else if (status.notFound) {
+                handleError(`File not found when deleting permission`, `This file was not found.`)
             } else {
                 handleErrorResponse(json, `Failed to delete permission.`)
-                return
             }
         } finally {
             deleting = false

@@ -224,7 +224,12 @@ export function formData(obj: { [key: string]: any }): FormData {
 }
 
 
-type httpStatus = ({ ok: true, serverDown: false, failed: false } | { ok: false, serverDown: true, failed: true } | { ok: false, serverDown: false, failed: true }) & { raw: number } 
+type httpStatus = (
+    { ok: true, serverDown: false, failed: false, notFound: false } 
+    | { ok: false, serverDown: true, failed: true, notFound: false } 
+    | { ok: false, serverDown: false, failed: true, notFound: false }
+    | { ok: false, serverDown: false, failed: true, notFound: true }
+) & { raw: number } 
 
 /**
  * Parses HTTP status code
@@ -232,11 +237,14 @@ type httpStatus = ({ ok: true, serverDown: false, failed: false } | { ok: false,
 export function toStatus(s: number): httpStatus {
     let result: httpStatus
     if (s === 200){
-        result = { ok: true, serverDown: false, failed: false, raw: s }
+        result = { ok: true, serverDown: false, failed: false, notFound: false, raw: s }
     } else if (isServerDown(s)) {
-        result = { ok: false, serverDown: true, failed: true, raw: s }
+        result = { ok: false, serverDown: true, failed: true, notFound: false, raw: s }
+    } else if (s === 404) {
+        
+        result = { ok: false, serverDown: false, failed: true, notFound: true, raw: s }
     } else {
-        result = { ok: false, serverDown: false, failed: true, raw: s }
+        result = { ok: false, serverDown: false, failed: true, notFound: false, raw: s }
     }
 
     result.toString = () => { return `${s}` }
@@ -534,5 +542,50 @@ export function dynamicInterval(
             if (timeoutId !== undefined) clearTimeout(timeoutId)
         },
         reset: set
+    }
+}
+
+export type ResultType = 'value' | 'error' | 'notFound'
+export class Result<T> {
+    private constructor(
+        private readonly type: ResultType,
+        private readonly _value?: T,
+        private readonly _error?: string
+    ) {}
+
+    static ok<T>(value: T) {
+        return new Result<T>('value', value)
+    }
+
+    static error<T>(error: string) {
+        return new Result<T>('error', undefined, error)
+    }
+
+    static notFound<T>() {
+        return new Result<T>('notFound')
+    }
+
+    get isOk() {
+        return this.type === 'value'
+    }
+
+    get hasError() {
+        return this.type === 'error'
+    }
+
+    get notFound() {
+        return this.type === 'notFound'
+    }
+
+    get value() {
+        return this._value
+    }
+
+    get error() {
+        return this._error
+    }
+
+    get isUnsuccessful() {
+        return this.type !== "value"
     }
 }

@@ -2,29 +2,35 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleError, handleErrorResponse, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
 
-export async function getFileData(path: string, signal: AbortSignal | undefined, foldersOnly: boolean = false): Promise<FileData | null> {
+export async function getFileData(path: string, signal: AbortSignal | undefined, foldersOnly: boolean = false): Promise<Result<FileData>> {
     const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path, foldersOnly: foldersOnly }), signal: signal })
     if (response.failed) {
-        handleException(`Failed to fetch folder entries`, `Failed to open folder.`, response.exception)
-        return null
+        const error = `Failed to fetch folder entries`
+        handleException(error, `Failed to open folder.`, response.exception)
+        return Result.error(error)
     }
     const status = response.code
-    const json = response.json() as FileData
 
     if (status.serverDown) {
-        handleError(`Server ${status} while getting folder entries`, `Failed to open folder. Server is unavailable.`)
-        return null
+        const error = `Server ${status} while getting folder entries`
+        handleError(error, `Failed to open folder. Server is unavailable.`)
+        return Result.error(error)
+    } else if (status.notFound) {
+        return Result.notFound()
     } else if (status.failed) {
-        handleErrorResponse(json, `Failed to open folder.`)
-        return null
+        const error = response.json()
+        handleErrorResponse(error, `Failed to open folder.`)
+        return Result.error(error.message)
     }
+
+    const json = response.json() as FileData
 
     if (json.entries) {
         json.entries.forEach((v) => {
@@ -32,7 +38,7 @@ export async function getFileData(path: string, signal: AbortSignal | undefined,
         })
     }
 
-    return json
+    return Result.ok(json)
 }
 
 
@@ -51,6 +57,9 @@ export async function streamFileContent(path: string, signal: AbortSignal): Prom
     const status = response.code
     if (status.serverDown) {
         handleError(`Failed to stream file. server ${status}`, `Failed to download file. Server is unavailable.`)
+        return null
+    } else if (status.notFound) {
+        handleError(`file content not found`, `This file was not found.`)
         return null
     } else if (status.failed) {
         const text = await response.text()
@@ -170,7 +179,6 @@ export function startTusUpload(file: File) {
         },
         onError: (error) => {
             try {
-                console.log(`error bberror`)
                 const isAborted = error?.message?.includes("aborted")
                 if (isAborted) {
                     const state = uploadState.get(targetPath)
@@ -251,7 +259,6 @@ export function startTusUpload(file: File) {
     });
 
     (upload as any).onAbort = () => {
-        console.log(`on abort`)
         startUploadFromQueue()
     }
 
@@ -340,14 +347,12 @@ export async function downloadFilesAsZip(paths: string[]) {
  * @param form      FormData to send in the POST body
  */
 async function downloadFiles(url: string, form: FormData) {
-    // 1. Fire the request
     const response = await safeFetch(url, {
         method: 'POST',
         body: form,
         credentials: 'same-origin',
     }, true)
 
-    // 2. Handle fetch-level failures
     if (response.failed) {
         handleError(
             response.exception,
@@ -358,7 +363,7 @@ async function downloadFiles(url: string, form: FormData) {
 
     const status = response.code
 
-    // 3. Success → stream blob and save
+    // stream blob and save
     if (status.ok) {
         // extract raw fetch Response to get blob() and headers
         const blob = await response.blob()
@@ -381,15 +386,11 @@ async function downloadFiles(url: string, form: FormData) {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(urlObj)
-
-    // 4. Server-down
     } else if (status.serverDown) {
         handleError(
             `Server returned ${status} when downloading.`,
             `Download failed. The server is unavailable.`
         )
-
-    // 5. Other error codes
     } else {
         const json = await response.json()
         handleErrorResponse(
@@ -414,6 +415,8 @@ export async function moveFile(path: string, newPath: string) {
             `Server returned ${status} when moving file.`,
             `File move failed. The server is unavailable.`
         )
+    } else if (status.notFound) {
+        handleError(`file not found when moving`, `This file was not found.`)
     } else {
         handleErrorResponse(
             json,
@@ -477,7 +480,7 @@ function updateFileListAfterFileMove(oldPath: string, newPath: string) {
     }
 }
 
-export async function getFileLastModifiedDate(path: string): Promise<number | null> {
+export async function getFileLastModifiedDate(path: string, silent: boolean = true): Promise<number | null> {
     const response = await safeFetch(`/api/v1/file/last-modified-date`, { 
         body: formData({ path: path })
     })
@@ -492,6 +495,10 @@ export async function getFileLastModifiedDate(path: string): Promise<number | nu
             `Server returned ${status} when checking file modification time.`,
             `Failed to check file modification time. The server is unavailable.`
         )
+    } else if (status.notFound) {
+        if (!silent) {
+            handleError(`File not found when getting modification date`, `This file was not found.`)
+        }
     } else {
         handleErrorResponse(
             response.json(),

@@ -1,12 +1,10 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    
     import { loadUserList } from "$lib/code/admin/users";
     import type { PublicUser } from "$lib/code/auth/types";
-    
     import { hasPermissionLevel } from "$lib/code/module/permissions";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, handleError, handleErrorResponse, isServerDown, pageTitle, parseJson, safeFetch, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, pageTitle, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";

@@ -2,14 +2,17 @@ package org.filemat.server.module.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
 import org.springframework.http.ResponseEntity
@@ -70,11 +73,20 @@ class AuthController(
         }
 
         // Check existing user account
-        val userRes = if (username.contains("@")) userService.getUserByEmail(username, UserAction.LOGIN) else userService.getUserByUsername(username, UserAction.LOGIN)
-        if (userRes.notFound) return unauthenticated("Password is incorrect.", "incorrect-password")
-            .also { loginLog(LogLevel.WARN, "Failed login - Invalid account", "Account does not exist.", meta, ip) }
-        if (userRes.hasError) return internal(userRes.error, "")
-        val user = userRes.value
+        val user = let {
+            val res: Result<User> = if (username.contains("@")) {
+                userService.getUserByEmail(username, UserAction.LOGIN)
+            } else {
+                userService.getUserByUsername(username, UserAction.LOGIN)
+            }
+
+            if (res.notFound) {
+                loginLog(LogLevel.WARN, "Failed login - Invalid account", "Account does not exist.", meta, ip)
+                return unauthenticated("Password is incorrect.", "incorrect-password")
+            }
+            if (res.isNotSuccessful) return internal(res.error, "")
+            return@let res.value
+        }
 
         // Verify the login
         if (user.isBanned) return bad("This account is banned.", "banned")
@@ -83,9 +95,10 @@ class AuthController(
             .also { loginLog(LogLevel.WARN, "Failed login - Incorrect password", "", meta, ip) }
 
         // Create auth token
-        val tokenR = authTokenService.createToken(userId = user.userId, userAgent = userAgent, userAction = UserAction.LOGIN)
-        if (tokenR.isNotSuccessful) return internal(tokenR.error, "")
-        val token = tokenR.value
+        val token = authTokenService.createToken(userId = user.userId, userAgent = userAgent, userAction = UserAction.LOGIN).let { result ->
+            if (result.isNotSuccessful) return internal(result.error, "")
+            return@let result.value
+        }
 
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)

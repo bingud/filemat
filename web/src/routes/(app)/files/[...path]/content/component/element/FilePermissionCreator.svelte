@@ -87,10 +87,10 @@
                 onCompleted(newPermission, target)
             } else if (status.serverDown) {
                 handleError(`Server ${status} when creating file permission`, `Failed to create permission. Server is unavailable.`)
-                return
+            } else if (status.notFound) {
+                handleError(`file not found when creating permission`, `This file was not found.`)
             } else {
                 handleErrorResponse(json, `Failed to create permission.`)
-                return
             }
         } finally {
             createPermissionLoading = false

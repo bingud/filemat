@@ -62,6 +62,8 @@
             user = json
         } else if (status.serverDown) {
             handleError(`Failed to fetch user data. server ${status}`, `Failed to load user data. Server is unavailable.`)
+        } else if (status.notFound) {
+            handleError(`user not found`, `This user was not found.`)
         } else {
             handleErrorResponse(json, "Failed to load user data.")
             user = null
@@ -147,6 +149,8 @@
                 toggleRoleSelection()
             } else if (status.serverDown) {
                 handleError(`Server ${status} when removing selected roles`, `Failed to remove selected roles. Server is unavailable.`)
+            } else if (status.notFound) {
+                handleError(`User not found when removing roles`, `This user was not found.`)
             } else {
                 handleErrorResponse(json, `Failed to remove selected roles.`)
             }

@@ -115,6 +115,7 @@ class AdminUserController(
         val userId = parseUlidOrNull(rawUserId) ?: return bad("User ID is in an invalid format.", "validation")
 
         val user = adminUserService.getUser(userId).let {
+            if (it.notFound) return notFound()
             if (it.isNotSuccessful) return internal(it.error, "")
             it.value
         }

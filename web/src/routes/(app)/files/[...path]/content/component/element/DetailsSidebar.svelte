@@ -108,6 +108,8 @@
                 json.miniUserList[v.userId] = v.username
             })
             permissionData = json
+        } else if (status.notFound) {
+            handleError(`file not found when getting permission data`, `This file was not found.`)
         } else if (status.serverDown) {
             handleError(`Server ${status} when fetching file permissions`, `Failed to load file permissions. Server is unavailable.`)
         } else {

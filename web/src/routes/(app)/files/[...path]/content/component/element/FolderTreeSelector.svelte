@@ -100,10 +100,11 @@
         if (!node) return
 
         node.isLoading = true
-
-        const data = await getFileData(parent, undefined, true)
+        const dataResult = await getFileData(parent, undefined, true)
         node.isLoading = false
-        if (!data || !data.entries) return
+        
+        const data = dataResult.value
+        if (dataResult.isUnsuccessful || !data?.entries) return
 
         const nodeChildren: FolderNode[] = data.entries.map((child) => {
             return {

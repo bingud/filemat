@@ -47,6 +47,7 @@ class AdminRoleController(
             ?: return bad("Invalid role ID.", "validation")
 
         roleService.remove(principal, roleId, UserAction.DELETE_ROLE).let {
+            if (it.notFound) return notFound()
             if (it.hasError) return internal(it.error, "")
             if (it.isNotSuccessful) return bad(it.error, "")
         }
@@ -73,6 +74,7 @@ class AdminRoleController(
             newList = newPermissionList,
             userAction = UserAction.UPDATE_ROLE_PERMISSIONS
         ).let {
+            if (it.notFound) return notFound()
             if (it.hasError) return internal(it.error, "")
             if (it.isNotSuccessful) return bad(it.error, "")
         }
@@ -132,7 +134,7 @@ class AdminRoleController(
         val role = State.Auth.roleMap[roleId] ?: return bad("This role does not exist.", "")
 
         val userIds = userRoleService.getRoleUsers(roleId).let {
-            if (it.notFound) return bad("This role does not exist.", "")
+            if (it.notFound) return notFound()
             if (it.isNotSuccessful) return internal(it.error, "")
             it.value
         }

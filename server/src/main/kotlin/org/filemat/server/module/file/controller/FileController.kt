@@ -46,7 +46,7 @@ class FileController(
         val path = FilePath.of(rawPath)
 
         fileService.getMetadata(principal, path).let {
-            if (it.notFound) return bad("File not found.", "not-found")
+            if (it.notFound) return notFound()
             if (it.hasError) return internal(it.error, "")
             if (it.isNotSuccessful) return bad(it.error, "")
             return ok(it.value.modifiedDate.toString())
@@ -64,7 +64,7 @@ class FileController(
         val newPath = FilePath.of(rawNewPath)
 
         fileService.moveFile(user = user, rawPath = path, rawNewPath = newPath).let {
-            if (it.notFound) return bad("This file was not found.", "")
+            if (it.notFound) return notFound()
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
             return ok("ok")
@@ -83,7 +83,7 @@ class FileController(
         val newParentPath = FilePath.of(rawNewParent)
 
         fileService.moveMultipleFiles(user = user, paths, newParentPath).let { it: Result<List<FilePath>> ->
-            if (it.notFound) return bad("This file was not found.", "")
+            if (it.notFound) return notFound()
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
 
@@ -143,7 +143,7 @@ class FileController(
         // Resolve file path
         val (pathResult, pathContainsSymlink) = resolvePath(path)
         val canonicalPath = pathResult.let {
-            if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.notFound) return streamNotFound()
             if (it.isNotSuccessful) {
                 return streamInternal(it.error, "")
             }

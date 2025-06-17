@@ -2,18 +2,12 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { formatBytesRounded, formatUnixMillis, safeFetch, handleError, handleErrorResponse, formData, addSuffix, filenameFromPath, parentFromPath, appendFilename, getFileExtension, resolvePath } from "$lib/code/util/codeUtil.svelte";
+    import { addSuffix, filenameFromPath, parentFromPath, appendFilename, resolvePath } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
-    import FileIcon from "$lib/component/icons/FileIcon.svelte";
-    import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
-    import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import { onMount } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
-	import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
-    import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
-    import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "../element/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
@@ -22,7 +16,6 @@
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import FolderTreeSelector from "../element/FolderTreeSelector.svelte";
-    import { fileCategories } from "$lib/code/data/files";
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import FileEntry from "./element/FileEntry.svelte";

@@ -73,10 +73,10 @@
             handleException(`Failed to fetch role data.`, `Failed to load role.`, response.exception)
             return
         }
-        const httpStatus = response.code
+        const code = response.code
         const json = response.json()
 
-        if (httpStatus.ok) {
+        if (code.ok) {
             if (json.userIds) {
                 const miniUsers = await loadMiniUsers(json.userIds)
                 json.miniUsers = miniUsers
@@ -84,8 +84,12 @@
 
             role = json
             status = "ready"
-        } else if (httpStatus.serverDown) {
-            handleError(`Server ${httpStatus} while fetching role data`, `Server is unavailable.`)
+        } else if (code.serverDown) {
+            handleError(`Server ${code} while fetching role data`, `Server is unavailable.`)
+            role = null
+            status = "failed"
+        } else if (code.notFound) {
+            handleError(`role not found`, `This role was not found.`)
             role = null
             status = "failed"
         } else {

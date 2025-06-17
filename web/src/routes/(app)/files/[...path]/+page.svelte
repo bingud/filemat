@@ -30,6 +30,7 @@
     import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
     import FileDropzone from './content/component/element/FileDropzone.svelte';
     import { clientState } from '$lib/code/stateObjects/clientState.svelte';
+    import { toast } from '@jill64/svelte-toast';
 
     createFilesState()
     createBreadcrumbState()
@@ -104,6 +105,8 @@
             })
         } else if (status.serverDown) {
             handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.")
+        } else if (status.notFound) {
+            handleError(`parent folder not found when creating folder`, `This folder was not found.`)
         } else {
             handleErrorResponse(json, "Failed to create folder.")
         }
@@ -196,31 +199,43 @@
         await loadPageData(filesState.path, { silent: true })
     }
 
-    async function loadPageData(filePath: string, options: {silent?: boolean} = {}) {
+    async function loadPageData(filePath: string, options: { silent?: boolean, isRefresh?: boolean } = {}) {
         filesState.lastFilePathLoaded = filePath
         if (!options.silent) filesState.metaLoading = true
 
         const result = await getFileData(filePath, filesState.abortController?.signal)
+        if (result.notFound) {
+            if (filesState.path === "/") return
+            if (options.isRefresh) {
+                toast.plain("This folder is not available anymore.")
+            } else {
+                toast.error("This folder was not found.")
+            }
+            await goto(`/files/${parentFromPath(filesState.path)}`)
+        }
+        if (result.isUnsuccessful) return
+        const data = result.value
+
         if (filesState.lastFilePathLoaded !== filePath) return
         
-        if (result) {
-            filesState.data.meta = result.meta
+        if (data) {
+            filesState.data.meta = data.meta
 
-            if (result.meta.fileType === "FOLDER") {
-                filesState.data.entries = result.entries || null
-            } else if (result.meta.fileType === "FOLDER_LINK") {
+            if (data.meta.fileType === "FOLDER") {
+                filesState.data.entries = data.entries || null
+            } else if (data.meta.fileType === "FOLDER_LINK") {
                 if (appState.followSymlinks) {
-                    result.entries?.forEach((entry) => {
+                    data.entries?.forEach((entry) => {
                         const linkPath = `${addSuffix(filePath, "/")}${entry.filename!}`
                         entry.path = linkPath
                     })
-                    filesState.data.entries = result.entries || null
+                    filesState.data.entries = data.entries || null
                 }
             }
             
             // If no entry is selected and this is a folder, select the current folder
-            if (filesState.selectedEntries.single === null && result.meta.fileType === "FOLDER") {
-                filesState.selectedEntries.list = [result.meta.path]
+            if (filesState.selectedEntries.single === null && data.meta.fileType === "FOLDER") {
+                filesState.selectedEntries.list = [data.meta.path]
             }
         }
         filesState.metaLoading = false

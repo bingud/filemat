@@ -39,6 +39,9 @@ class FileService(
     private val filesystem: FilesystemService,
 ) {
 
+    /**
+     * @returns Paths of moved files
+     */
     fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>> {
         val (canonicalResult, parentPathHasSymlink) = resolvePath(rawNewParentPath)
         if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
@@ -48,9 +51,9 @@ class FileService(
         rawPaths.forEach {
             val (currentPathResult, pathHasSymlink) = resolvePath(it)
             if (currentPathResult.isNotSuccessful) return@forEach
-            val currentPath = canonicalResult.value
+            val currentPath = currentPathResult.value
 
-            val newPath = FilePath.ofAlreadyNormalized(newParentPath.path.resolve(it.path.fileName))
+            val newPath = FilePath.ofAlreadyNormalized(newParentPath.path.resolve(currentPath.path.fileName))
             if (newPath === newParentPath) return@forEach
 
             val op = moveFile(user, it, newPath)

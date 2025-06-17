@@ -40,7 +40,7 @@ class PermissionController(
             user = user,
             permissionId = permissionId,
         ).let {
-            if (it.notFound) return bad("This file was not found.", "")
+            if (it.notFound) return notFound()
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
             return ok()
@@ -64,7 +64,7 @@ class PermissionController(
             permissionId = permissionId,
             newPermissions = newPermissionList,
         ).let {
-            if (it.notFound) return bad("This file was not found.", "")
+            if (it.notFound) return notFound()
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
             return ok()
@@ -96,7 +96,7 @@ class PermissionController(
             mode = mode,
             permissions = permissionList
         ).let {
-            if (it.notFound) return bad("This file was not found.", "")
+            if (it.notFound) return notFound()
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
             return ok(Json.encodeToString(it.value))
@@ -114,7 +114,7 @@ class PermissionController(
         val includeUsernames = rawIncludeUsernames?.toBooleanStrictOrNull() ?: false
 
         val meta = entityPermissionService.getEntityPermissions(user = user, rawPath = path).let {
-            if (it.notFound) return bad("This file was not found.", "")
+            if (it.notFound) return notFound()
             if (it.rejected) return bad(it.error, "")
             if (it.isNotSuccessful) return internal(it.error, "")
             it.value

@@ -21,6 +21,8 @@ export async function addRoleToUser(userId: ulid, roleId: ulid): Promise<boolean
         return true
     } else if (status.serverDown) {
         handleError(`Server ${status} when assigning role`, `Server is unavilable.`)
+    } else if (status.notFound) {
+        handleError(`user not found when adding role`, `This user was not found.`)
     } else {
         handleErrorResponse(json, `Failed to assign role.`)
     }
@@ -51,6 +53,8 @@ export async function changeRolePermissions(roleId: ulid, newList: SystemPermiss
         return true
     } else if (status.serverDown) {
         handleError(`Server ${status} when changing role permissions`, `Failed to update role permissions. Server is unavailable.`)
+    } else if (status.notFound) {
+        handleError(`Role not found when changing perms`, `This role was not found.`)
     } else { 
         handleErrorResponse(json, `Failed to update role permissions.`)
     }
@@ -75,6 +79,9 @@ export async function deleteRole(roleId: ulid): Promise<boolean> {
             arrayRemove(appState.roleList, (v) => v.roleId === roleId)
         }
 
+        return true
+    } else if (status.notFound) {
+        console.log(`role aleady did not exist.`)
         return true
     } else if (status.serverDown) {
         handleError(`Server ${status} when deleting role`, `Failed to delete role. Server is unavailable.`)

@@ -39,7 +39,7 @@ class FolderController(private val fileService: FileService) : AController() {
         )
 
         if (result.rejected) return bad(result.error, "rejected")
-        if (result.notFound) return bad("Parent folder does not exist.", "parent-folder-not-found")
+        if (result.notFound) return notFound()
         if (result.hasError) return internal(result.error, "")
 
         return ok("ok")
@@ -67,7 +67,7 @@ class FolderController(private val fileService: FileService) : AController() {
 
         if (result.rejected) return bad(result.error, "rejected")
         if (result.hasError) return bad(result.error, "")
-        if (result.notFound) return bad("This folder does not exist.", "folder-not-found")
+        if (result.notFound) return notFound()
         val list = result.value
 
         val serialized = Json.encodeToString(list)
@@ -90,7 +90,7 @@ class FolderController(private val fileService: FileService) : AController() {
             foldersOnly = foldersOnly
         )
         if (result.hasError) return internal(result.error, "")
-        if (result.notFound) return bad("This path does not exist.", "")
+        if (result.notFound) return notFound()
         if (result.isNotSuccessful) return bad(result.error, "")
 
         val pair = result.value
