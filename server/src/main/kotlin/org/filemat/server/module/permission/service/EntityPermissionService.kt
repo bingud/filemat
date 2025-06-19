@@ -287,7 +287,7 @@ class EntityPermissionService(
     /**
      * Update the file path of an entity
      */
-    fun memory_updateEntityPath(oldPath: String, newPath: String, entityId: Ulid) = pathTree.updateEntityPath(oldPath, newPath, entityId)
+    fun memory_movePath(oldPath: String, newPath: String, entityId: Ulid) = pathTree.movePath(oldPath, newPath)
 
     /**
      * Get the closest (inherited) file permission for a user.

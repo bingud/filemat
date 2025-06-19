@@ -7,6 +7,9 @@ import org.filemat.server.module.file.model.FilesystemEntityType
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
+/**
+ * `equals` and `hashCode` is based on `permissionId` field
+ */
 @Serializable
 data class EntityPermission(
     @Serializable(UlidSerializer::class)
@@ -23,6 +26,15 @@ data class EntityPermission(
 ) {
     init {
         if (userId == null && roleId == null || userId != null && roleId != null) throw IllegalStateException("Permission must have either a role or user ID.")
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is EntityPermission) return false
+        return permissionId == other.permissionId
+    }
+
+    override fun hashCode(): Int {
+        return permissionId.hashCode()
     }
 }
 

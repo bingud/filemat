@@ -92,7 +92,7 @@ class EntityService(
 
         val existingEntity = getByPath(canonicalPath.pathString, userAction)
         if (existingEntity.notFound == false) return Result.reject("A file with this path has already been indexed.")
-        if (existingEntity.isNotSuccessful) return Result.error("Failed to check if this file has been indexed yet.")
+        if (existingEntity.notFound != true && existingEntity.isNotSuccessful) return Result.error("Failed to check if this file has been indexed yet.")
 
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
@@ -135,7 +135,7 @@ class EntityService(
         }
     }
 
-    /**
+    /*
     fun updateInode(entityId: Ulid, newInode: Long?, userAction: UserAction): Result<Unit> {
         try {
             entityRepository.updateInode(entityId, newInode)
@@ -180,7 +180,7 @@ class EntityService(
         // Update path of permissions that are tied to this entity ID
         if (entity.path != null) {
             if (newPath != null) {
-                entityPermissionService.memory_updateEntityPath(entity.path, newPath, entity.entityId)
+                entityPermissionService.memory_movePath(entity.path, newPath, entity.entityId)
             } else {
                 entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
             }

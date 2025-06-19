@@ -40,7 +40,7 @@ class FileService(
 ) {
 
     fun getPermittedFileList(user: Principal): Result<List<Any>> {
-        entityPermissionService.
+        entityPermissionService
         TODO()
     }
 

@@ -121,14 +121,16 @@ fun HttpServletRequest.realIp(): String {
 }
 
 
-fun <K, V> ConcurrentHashMap<K, V>.removeIf(block: (key: K, value: V) -> Boolean) {
+fun <K, V> ConcurrentHashMap<K, V>.removeIf(block: (key: K, value: V) -> Boolean): V? {
     val iterator = this.entries.iterator()
     while (iterator.hasNext()) {
         val entry = iterator.next()
         if (block(entry.key, entry.value)) {
             iterator.remove()
+            return entry.value
         }
     }
+    return null
 }
 
 
@@ -214,6 +216,19 @@ fun parseTusHttpHeader(header: String): Map<String, String> {
 fun encodeToBase64(input: String): String {
     return Base64.getEncoder()
         .encodeToString(input.toByteArray(Charsets.UTF_8))
+}
+
+fun <T> concurrentMutableSetOf(): ConcurrentHashMap.KeySetView<T, Boolean> = ConcurrentHashMap.newKeySet()
+
+/**
+ * Returns `Boolean` if the element already existed
+ */
+fun <T> MutableSet<T>.replace(element: T): Boolean {
+    return this.remove(element).also { this.add(element) }
+}
+
+fun <K, V> HashMap<K, V>.removeAll(keys: Collection<K>): Boolean {
+    return this.keys.removeAll(keys)
 }
 
 /**
