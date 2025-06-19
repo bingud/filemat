@@ -31,7 +31,8 @@
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
                 <a href="/files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
-                <a href="/files" on:click={hide} class="sidebar-button">Home Folder</a>
+                <a href="/home" on:click={hide} class="sidebar-button">Home Folder</a>
+                <a href="/accessible-files" on:click={hide} class="sidebar-button">Accessible to me</a>
             </div>
 
 

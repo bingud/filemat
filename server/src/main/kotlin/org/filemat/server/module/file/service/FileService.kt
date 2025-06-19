@@ -39,8 +39,13 @@ class FileService(
     private val filesystem: FilesystemService,
 ) {
 
+    fun getPermittedFileList(user: Principal): Result<List<Any>> {
+        entityPermissionService.
+        TODO()
+    }
+
     /**
-     * @returns Paths of moved files
+     * Moves multiple files, returns inputted paths of successfully moved files
      */
     fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>> {
         val (canonicalResult, parentPathHasSymlink) = resolvePath(rawNewParentPath)
