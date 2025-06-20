@@ -5,6 +5,7 @@ import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.getAll
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
@@ -15,6 +16,7 @@ import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -31,6 +33,7 @@ class EntityService(
     private val logService: LogService,
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
+    private val transactionTemplate: TransactionTemplate,
 ) {
 
     private val entityMap = ConcurrentHashMap<Ulid, FilesystemEntity>()
@@ -60,6 +63,12 @@ class EntityService(
             return pathMap[path]?.let { entityId ->
                 entityMap[entityId]
             }
+        }
+    }
+    fun map_getByPathPrefix(prefix: String): List<FilesystemEntity> {
+        mapLock.read {
+            val ids = pathMap.filterKeys { it.startsWith(prefix) }.values
+            return entityMap.getAll(ids)
         }
     }
 
@@ -135,25 +144,50 @@ class EntityService(
         }
     }
 
-    /*
-    fun updateInode(entityId: Ulid, newInode: Long?, userAction: UserAction): Result<Unit> {
-        try {
-            entityRepository.updateInode(entityId, newInode)
-            entityMap.
-        } catch (e: Exception) {
-            logService.error(
-                type = LogType.SYSTEM,
-                action = userAction,
-                description = "Failed to update file path in database.",
-                message = e.stackTraceToString(),
-                meta = meta("newInode" to "$newInode", "entityId" to "$entityId"),
-            )
-            return Result.error("Failed to update file path in database.")
+    /**
+     * Moves an entity and all children (by path)
+     */
+    fun move(
+        entityId: Ulid,
+        newPath: String?,
+        existingEntity: FilesystemEntity?,
+        userAction: UserAction
+    ): Result<Unit> {
+        val rootEntity = existingEntity ?: run {
+            val r = getById(entityId, userAction)
+            if (r.isNotSuccessful) return Result.error(r.error)
+            r.value
         }
+        val oldBase = rootEntity.path ?: return Result.reject("null path")
+        val children = map_getByPathPrefix(oldBase)
 
-        return Result.ok(Unit)
+        val result: Result<Unit> = transactionTemplate.execute<Result<Unit>> { status ->
+            // move root
+            updatePath(rootEntity.entityId, newPath, rootEntity, userAction).let {
+                if (it.isNotSuccessful) return@execute it
+            }
+
+            // move children
+            children.forEach { child ->
+                val suffix = child.path!!
+                    .removePrefix(oldBase)
+                    .trimStart('/')
+
+                val childNewPath = newPath?.let { "$it/$suffix" }
+
+                updatePath(child.entityId, childNewPath, child, userAction).let {
+                    if (it.isNotSuccessful) {
+                        status.setRollbackOnly()
+                        return@execute it
+                    }
+                }
+            }
+
+            Result.ok()
+        }!!
+
+        return result
     }
-    **/
 
     fun updatePath(entityId: Ulid, newPath: String?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
         val entity = existingEntity ?: let {
@@ -187,36 +221,6 @@ class EntityService(
         }
         return Result.ok(Unit)
     }
-
-    /*
-    fun removeInodeAndPath(entityId: Ulid, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
-        val entity = existingEntity ?: let {
-            val entityR = getById(entityId, userAction)
-            if (entityR.isNotSuccessful) return Result.error(entityR.error)
-            entityR.value
-        }
-
-        try {
-            entityRepository.updateInodeAndPath(entityId, null, null)
-            entityMap.
-        } catch (e: Exception) {
-            logService.error(
-                type = LogType.SYSTEM,
-                action = userAction,
-                description = "Failed to remove file path and inode from database.",
-                message = e.stackTraceToString(),
-                meta = meta("entityId" to "$entityId")
-            )
-            return Result.error("Failed to remove file from database.")
-        }
-
-        entity.path?.let { path ->
-            entityPermissionService.memory_removeEntity(path, entityId)
-        }
-
-        return Result.ok(Unit)
-    }
-    */
 
     fun getByPath(path: String, userAction: UserAction): Result<FilesystemEntity> {
         return try {

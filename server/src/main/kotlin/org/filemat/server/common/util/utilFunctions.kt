@@ -53,6 +53,15 @@ inline fun <reified T> String.parseJsonOrNull(): T? {
     return Json.decodeFromStringOrNull<T>(this)
 }
 
+fun <K, V> Map<K, V>.getAll(keys: Collection<K>): List<V> {
+    val list = mutableListOf<V>()
+    keys.forEach { key ->
+        val value = this[key]
+        if (value != null) list.add(value)
+    }
+    return list
+}
+
 fun String.splitByLast(delimiter: String): Pair<String, String?> {
     val idx = lastIndexOf(delimiter)
     return if (idx >= 0) {

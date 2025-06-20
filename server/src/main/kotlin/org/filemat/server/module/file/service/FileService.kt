@@ -113,7 +113,7 @@ class FileService(
             val entity = it.value
 
             // Change the entity path
-            entityService.updatePath(entityId = entity.entityId, newPath = newPath.pathString, existingEntity = entity, userAction = UserAction.MOVE_FILE).let {
+            entityService.move(entityId = entity.entityId, newPath = newPath.pathString, existingEntity = entity, userAction = UserAction.MOVE_FILE).let {
                 if (it.isNotSuccessful) {
                     // Revert file move
                     filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
@@ -615,7 +615,7 @@ class FileService(
             }
 
             // Path has unexpected Inode, so remove the path from the entity in database.
-            entityService.updatePath(
+            entityService.move(
                 entityId = entity.entityId,
                 newPath = null,
                 existingEntity = entity,
