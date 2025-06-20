@@ -16,6 +16,8 @@ import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -40,8 +42,8 @@ class EntityService(
     private val pathMap = ConcurrentHashMap<String, Ulid>()
     private val mapLock = ReentrantReadWriteLock()
 
-    fun map_put(entity: FilesystemEntity) {
-        mapLock.write {
+    fun map_put(entity: FilesystemEntity, lock: Boolean = true) {
+        val action = {
             check(!pathMap.containsKey(entity.path))
 
             val previousEntity = entityMap.put(entity.entityId, entity)
@@ -53,7 +55,16 @@ class EntityService(
                 pathMap.put(entity.path, entity.entityId)
             }
         }
+
+        if (lock) {
+            mapLock.write {
+                action()
+            }
+        } else {
+            action()
+        }
     }
+
     fun map_remove(entityId: Ulid) {
         mapLock.write {
             val entity = entityMap.remove(entityId) ?: return
@@ -161,37 +172,55 @@ class EntityService(
             r.value
         }
         val oldBase = rootEntity.path ?: return Result.reject("null path")
-        val children = map_getByPathPrefix(oldBase).filter { it.entityId != rootEntity.entityId }
+        val children: List<FilesystemEntity> = map_getByPathPrefix(oldBase).filter { it.entityId != rootEntity.entityId }
 
-        val result: Result<Unit> = transactionTemplate.execute<Result<Unit>> { status ->
-            // move root
-            updatePath(rootEntity.entityId, newPath, rootEntity, userAction).let {
-                if (it.isNotSuccessful) return@execute it
-            }
-
-            // move children
-            children.forEach { child ->
-                val suffix = child.path!!
-                    .removePrefix(oldBase)
-                    .trimStart('/')
-
-                val childNewPath = newPath?.let { "$it/$suffix" }
-
-                updatePath(child.entityId, childNewPath, child, userAction).let {
-                    if (it.isNotSuccessful) {
-                        status.setRollbackOnly()
-                        return@execute it
-                    }
+        val result: Result<Unit> = runCatching {
+            transactionTemplate.execute<Result<Unit>> { status ->
+                // move root
+                updatePath(rootEntity.entityId, newPath, rootEntity, userAction, updateEntityMap = false).let { result ->
+                    if (result.isNotSuccessful) return@execute result
                 }
-            }
 
-            Result.ok()
-        }!!
+                val newRootEntity = rootEntity.copy(path = newPath)
+
+                // move children
+                val newChildrenEntities = children.map { child: FilesystemEntity ->
+                    val suffix = child.path!!
+                        .removePrefix(oldBase)
+                        .trimStart('/')
+
+                    val childNewPath = newPath?.let { "$it/$suffix" }
+
+                    updatePath(child.entityId, childNewPath, child, userAction, updateEntityMap = false).let {
+                        if (it.isNotSuccessful) {
+                            status.setRollbackOnly()
+                            return@execute it
+                        }
+                    }
+
+                    return@map child.copy(path = childNewPath)
+                }
+
+                // after all children moved successfully, change the paths in memory cache
+                TransactionSynchronizationManager
+                    .registerSynchronization(object : TransactionSynchronization {
+                        override fun afterCommit() {
+                            mapLock.write {
+                                map_put(newRootEntity,  lock = false)
+                                newChildrenEntities.forEach {
+                                    map_put(it, lock = false)
+                                }
+                            }
+                        }
+                    })
+                Result.ok()
+            }!!
+        }.getOrElse { Result.error("Failed to move file.") }
 
         return result
     }
 
-    fun updatePath(entityId: Ulid, newPath: String?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
+    fun updatePath(entityId: Ulid, newPath: String?, existingEntity: FilesystemEntity?, userAction: UserAction, updateEntityMap: Boolean = true): Result<Unit> {
         val entity = existingEntity ?: let {
             val entityR = getById(entityId, userAction)
             if (entityR.isNotSuccessful) return Result.error(entityR.error)
@@ -202,7 +231,7 @@ class EntityService(
             entityRepository.updatePath(entityId, newPath)
 
             val newEntity = entity.copy(path = newPath)
-            map_put(newEntity)
+            if (updateEntityMap) map_put(newEntity)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -214,7 +243,7 @@ class EntityService(
         }
 
         // Update path of permissions that are tied to this entity ID
-        if (entity.path != null) {
+        if (updateEntityMap && entity.path != null) {
             if (newPath != null) {
                 entityPermissionService.memory_movePath(entity.path, newPath, entity.entityId)
             } else {
