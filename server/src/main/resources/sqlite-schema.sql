@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS permissions (
     role_id TEXT,
     permissions TEXT NOT NULL,
     created_date INTEGER NOT NULL,
+    FOREIGN KEY (entity_id) REFERENCES files(entity_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
     CHECK (user_id IS NOT NULL OR role_id IS NOT NULL)

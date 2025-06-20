@@ -42,6 +42,8 @@ class EntityService(
 
     fun map_put(entity: FilesystemEntity) {
         mapLock.write {
+            check(!pathMap.containsKey(entity.path))
+
             val previousEntity = entityMap.put(entity.entityId, entity)
             if (previousEntity != null) {
                 previousEntity.path?.let { pathMap.remove(it) }
@@ -74,8 +76,8 @@ class EntityService(
 
     fun delete(entityId: Ulid, userAction: UserAction): Result<Unit> {
         return try {
-            entityRepository.delete(entityId)
             map_remove(entityId)
+            entityRepository.delete(entityId)
             Result.ok()
         } catch (e: Exception) {
             logService.error(
@@ -159,7 +161,7 @@ class EntityService(
             r.value
         }
         val oldBase = rootEntity.path ?: return Result.reject("null path")
-        val children = map_getByPathPrefix(oldBase)
+        val children = map_getByPathPrefix(oldBase).filter { it.entityId != rootEntity.entityId }
 
         val result: Result<Unit> = transactionTemplate.execute<Result<Unit>> { status ->
             // move root
