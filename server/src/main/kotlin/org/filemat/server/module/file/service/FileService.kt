@@ -59,7 +59,7 @@ class FileService(
             val currentPath = currentPathResult.value
 
             val newPath = FilePath.ofAlreadyNormalized(newParentPath.path.resolve(currentPath.path.fileName))
-            if (newPath === newParentPath) return@forEach
+            if (newPath == newParentPath) return@forEach
 
             val op = moveFile(user, it, newPath)
             if (op.isSuccessful) {
@@ -91,13 +91,16 @@ class FileService(
         if (newPathParentResult.isNotSuccessful) return newPathParentResult.cast()
         val newPathParent = newPathParentResult.value
 
-        if (newPathParent.pathString === "/") return Result.reject("Cannot change file path to root.")
+        if (newPathParent.pathString == "/") return Result.reject("Cannot change file path to root.")
 
         // Get the target path
         val newPath = FilePath.ofAlreadyNormalized(newPathParent.path.resolve(rawNewPath.path.fileName))
 
+        // Check if file is being moved into itself
+        if (newPath.path.startsWith(canonicalPath.path))
+
         // Check target parent folder `WRITE` permission
-        isAllowedToEditFolder(user = user, canonicalPath = newPath).let {
+        isAllowedToEditFolder(user = user, canonicalPath = newPathParent).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -107,17 +110,11 @@ class FileService(
         }
 
         // Update the entity
-        entityService.getByPath(path = canonicalPath.pathString, userAction = UserAction.MOVE_FILE).let {
-            if (it.notFound) return@let
-            if (it.isNotSuccessful) return it.cast()
-            val entity = it.value
-
-            // Change the entity path
-            entityService.move(entityId = entity.entityId, newPath = newPath.pathString, existingEntity = entity, userAction = UserAction.MOVE_FILE).let {
-                if (it.isNotSuccessful) {
-                    // Revert file move
-                    filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
-                }
+        entityService.move(path = canonicalPath, newPath = newPath.pathString, userAction = UserAction.MOVE_FILE).let {
+            if (it.isNotSuccessful) {
+                // Revert file move
+                filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
+                return it.cast()
             }
         }
 
@@ -616,9 +613,8 @@ class FileService(
 
             // Path has unexpected Inode, so remove the path from the entity in database.
             entityService.move(
-                entityId = entity.entityId,
+                path = path,
                 newPath = null,
-                existingEntity = entity,
                 userAction = userAction,
             )
 

@@ -16,6 +16,8 @@ import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate
@@ -23,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlin.io.path.pathString
 
 /**
  * Service for file entities in the database
@@ -35,8 +38,11 @@ class EntityService(
     private val logService: LogService,
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
-    private val transactionTemplate: TransactionTemplate,
+    private val platformTransactionManager: PlatformTransactionManager
 ) {
+    private val transactionTemplate = TransactionTemplate(platformTransactionManager).apply {
+        isolationLevel = TransactionDefinition.ISOLATION_REPEATABLE_READ
+    }
 
     private val entityMap = ConcurrentHashMap<Ulid, FilesystemEntity>()
     private val pathMap = ConcurrentHashMap<String, Ulid>()
@@ -161,63 +167,77 @@ class EntityService(
      * Moves an entity and all children (by path)
      */
     fun move(
-        entityId: Ulid,
+        path: FilePath,
         newPath: String?,
-        existingEntity: FilesystemEntity?,
         userAction: UserAction
     ): Result<Unit> {
-        val rootEntity = existingEntity ?: run {
-            val r = getById(entityId, userAction)
-            if (r.isNotSuccessful) return Result.error(r.error)
-            r.value
-        }
-        val oldBase = rootEntity.path ?: return Result.reject("null path")
-        val children: List<FilesystemEntity> = map_getByPathPrefix(oldBase).filter { it.entityId != rootEntity.entityId }
+        val oldBase = path.path
 
-        val result: Result<Unit> = runCatching {
+        // Do all operations in a DB transaction
+        return runCatching {
             transactionTemplate.execute<Result<Unit>> { status ->
-                // move root
-                updatePath(rootEntity.entityId, newPath, rootEntity, userAction, updateEntityMap = false).let { result ->
-                    if (result.isNotSuccessful) return@execute result
+                // Get entities that start with the current path
+                val entities = getAllByPathPrefix(oldBase.pathString, userAction, forUpdate = true).let {
+                    if (it.isNotSuccessful) return@execute it.cast()
+                    it.value
                 }
 
-                val newRootEntity = rootEntity.copy(path = newPath)
-
-                // move children
-                val newChildrenEntities = children.map { child: FilesystemEntity ->
-                    val suffix = child.path!!
-                        .removePrefix(oldBase)
+                // move entities
+                data class NewPair(val entity: FilesystemEntity, val newPath: String?)
+                val newEntities: List<NewPair> = entities.map { entity: FilesystemEntity ->
+                    val suffix = entity.path!!
+                        .removePrefix(oldBase.pathString)
                         .trimStart('/')
 
-                    val childNewPath = newPath?.let { "$it/$suffix" }
+                    val newEntityPath = newPath?.let { "$it/$suffix" }?.removeSuffix("/")
 
-                    updatePath(child.entityId, childNewPath, child, userAction, updateEntityMap = false).let {
+                    updatePath(entity.entityId, newEntityPath, entity, userAction, updateEntityMap = false).let {
                         if (it.isNotSuccessful) {
                             status.setRollbackOnly()
                             return@execute it
                         }
                     }
 
-                    return@map child.copy(path = childNewPath)
+                    return@map NewPair(entity = entity, newPath = newEntityPath)
                 }
 
-                // after all children moved successfully, change the paths in memory cache
+                // after all entities moved successfully, change the paths in memory cache
                 TransactionSynchronizationManager
                     .registerSynchronization(object : TransactionSynchronization {
                         override fun afterCommit() {
                             mapLock.write {
-                                map_put(newRootEntity,  lock = false)
-                                newChildrenEntities.forEach {
-                                    map_put(it, lock = false)
+                                newEntities.forEach { entity: NewPair ->
+                                    val newEntity = entity.entity.copy(path = entity.newPath)
+
+                                    map_put(entity = newEntity, lock = false)
+                                    updatePermissionPath(entity = entity.entity, newPath = entity.newPath)
                                 }
                             }
                         }
                     })
                 Result.ok()
             }!!
-        }.getOrElse { Result.error("Failed to move file.") }
+        }.getOrElse {
+            Result.error("Failed to move file.")
+        }
+    }
 
-        return result
+    fun getAllByPathPrefix(prefix: String, userAction: UserAction, forUpdate: Boolean): Result<List<FilesystemEntity>> {
+        try {
+            if (forUpdate) {
+                return entityRepository.getAllByPathPrefixForUpdate(prefix).toResult()
+            } else {
+                return entityRepository.getAllByPathPrefix(prefix).toResult()
+            }
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to get list of entities by path prefix from database.",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to load files.")
+        }
     }
 
     fun updatePath(entityId: Ulid, newPath: String?, existingEntity: FilesystemEntity?, userAction: UserAction, updateEntityMap: Boolean = true): Result<Unit> {
@@ -243,14 +263,20 @@ class EntityService(
         }
 
         // Update path of permissions that are tied to this entity ID
-        if (updateEntityMap && entity.path != null) {
+        if (updateEntityMap) updatePermissionPath(entity, newPath)
+
+        return Result.ok(Unit)
+    }
+
+    private fun updatePermissionPath(entity: FilesystemEntity, newPath: String?) {
+        println("Updating permission path for ${entity.path} to $newPath")
+        if (entity.path != null) {
             if (newPath != null) {
                 entityPermissionService.memory_movePath(entity.path, newPath, entity.entityId)
             } else {
                 entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
             }
         }
-        return Result.ok(Unit)
     }
 
     fun getByPath(path: String, userAction: UserAction): Result<FilesystemEntity> {

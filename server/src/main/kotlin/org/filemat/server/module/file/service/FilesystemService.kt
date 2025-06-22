@@ -126,9 +126,9 @@ class FilesystemService {
         } catch (e: NoSuchFileException) {
             Result.notFound()
         } catch (e: FileAlreadyExistsException) {
-            Result.error("The path of the uploaded file already exists.")
+            Result.error("This file already exists.")
         } catch (e: DirectoryNotEmptyException) {
-            Result.reject("The directory cannot be replaced because it is not empty.")
+            Result.reject("This directory cannot be replaced because it is not empty.")
         } catch (e: UnsupportedOperationException) {
             Result.error("This move operation failed because it is unsupported.")
         } catch (e: Exception) {
