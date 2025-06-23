@@ -265,7 +265,6 @@ class EntityService(
     }
 
     private fun updatePermissionPath(entity: FilesystemEntity, newPath: String?) {
-        println("Updating permission path for ${entity.path} to $newPath")
         if (entity.path != null) {
             if (newPath != null) {
                 entityPermissionService.memory_movePath(entity.path, newPath, entity.entityId)

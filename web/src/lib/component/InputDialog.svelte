@@ -1,8 +1,8 @@
 <script lang="ts">
+    import { inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import { Dialog } from '$lib/component/bits-ui-wrapper'
 
     // Component state
-    let open = $state(false)
     let dialogTitle = $state('Enter Text')
     let dialogMessage = $state('Please enter your text:')
     let dialogConfirmText = $state('Confirm')
@@ -31,7 +31,7 @@
         // Set default value or clear input
         inputValue = options.defaultValue || ''
         
-        open = true
+        inputDialogState.isOpen = true
         
         return new Promise<string | null>((resolve) => {
             resolvePromise = resolve
@@ -41,22 +41,22 @@
     function handleConfirm() {
         if (resolvePromise) resolvePromise(inputValue.trim())
         resolvePromise = null
-        open = false
+        inputDialogState.isOpen = false
         inputValue = ''
     }
 
     function handleCancel() {
         if (resolvePromise) resolvePromise(null)
         resolvePromise = null
-        open = false
+        inputDialogState.isOpen = false
         inputValue = ''
     }
 
     function handleClose() {
-        if (open) {
+        if (inputDialogState.isOpen) {
             if (resolvePromise) resolvePromise(null)
             resolvePromise = null
-            open = false
+            inputDialogState.isOpen = false
             inputValue = ''
         }
     }
@@ -73,7 +73,7 @@
     
     // Handle dialog closure
     $effect(() => {
-        if (!open && resolvePromise) {
+        if (!inputDialogState.isOpen && resolvePromise) {
             resolvePromise(null)
             resolvePromise = null
             inputValue = ''
@@ -81,7 +81,7 @@
     })
 </script>
 
-<Dialog.Root bind:open onOpenChange={handleClose}>
+<Dialog.Root bind:open={inputDialogState.isOpen} onOpenChange={handleClose}>
     <Dialog.Content class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-[1px] border-neutral-300 bg-neutral-50 p-6 shadow-md duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-sm md:w-full dark:border-neutral-700 dark:bg-neutral-800">
         <Dialog.Title class="text-lg font-semibold text-neutral-800 dark:text-neutral-50">
             {dialogTitle}

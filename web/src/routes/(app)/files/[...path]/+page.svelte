@@ -31,6 +31,7 @@
     import FileDropzone from './content/component/element/FileDropzone.svelte';
     import { clientState } from '$lib/code/stateObjects/clientState.svelte';
     import { toast } from '@jill64/svelte-toast';
+    import { isDialogOpen } from '$lib/code/util/stateUtils';
 
     createFilesState()
     createBreadcrumbState()
@@ -52,6 +53,8 @@
     let newButtonPopoverOpen = $state(false)
     
     function handleKeyDown(event: KeyboardEvent) {
+        if (isDialogOpen()) return
+
         // Navigate to the parent folder
         if (event.key === "Backspace") {
             const currentPath = filesState.path

@@ -1,6 +1,7 @@
 import type { Role } from "../auth/types";
 import { appState } from "../stateObjects/appState.svelte";
 import { clientState } from "../stateObjects/clientState.svelte";
+import { confirmDialogState, folderSelectorState, inputDialogState } from "../stateObjects/subState/utilStates.svelte";
 import type { ulid } from "../types/types";
 import { debounceFunction } from "./codeUtil.svelte";
 
@@ -96,4 +97,15 @@ export function onUserIdleChange(
     }
 
     return stop
+}
+
+
+export function isDialogOpen(): boolean {
+    if (
+        confirmDialogState.isOpen
+        || folderSelectorState.isOpen
+        || inputDialogState.isOpen
+    ) {        
+        return true
+    } else { return false }
 }

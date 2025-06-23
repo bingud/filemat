@@ -17,7 +17,6 @@
     }
 
     // Component state
-    let open = $state(false);
     let dialogTitle = $state('Select a folder')
     let folderTree: FolderNode | null = $state(null)
     let selectedFolderPath: string | null = $state(null)
@@ -36,7 +35,7 @@
         if (options.title) dialogTitle = options.title
         if (options.initialSelection) initialSelection = options.initialSelection
         
-        open = true
+        folderSelectorState.isOpen = true
         
         return new Promise<string | null>((resolve) => {
             resolvePromise = resolve
@@ -48,15 +47,15 @@
     })
 
     function handleClose() {
-        if (open) {
+        if (folderSelectorState.isOpen) {
             if (resolvePromise) resolvePromise(null)
             resolvePromise = null
-            open = false
+            folderSelectorState.isOpen = false
         }
     }
 
     explicitEffect(() => {
-        if (open === true) {
+        if (folderSelectorState.isOpen === true) {
             initializeTree()
         } else {
             if (resolvePromise) {
@@ -153,7 +152,7 @@
             resolvePromise(selectedFolderPath)
             resolvePromise = null
         }
-        open = false
+        folderSelectorState.isOpen = false
     }
 
     /** 
@@ -186,7 +185,7 @@
     }
 </script>
 
-<Dialog.Root bind:open={open} onOpenChange={handleClose}>
+<Dialog.Root bind:open={folderSelectorState.isOpen} onOpenChange={handleClose}>
     <Dialog.Content 
         class="fixed left-[50%] top-[50%] z-50 flex flex-col w-[40rem] max-w-full h-[40rem] max-h-full translate-x-[-50%] translate-y-[-50%] 
             border-[1px] border-neutral-300 dark:border-neutral-700

@@ -19,6 +19,7 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import FileEntry from "./element/FileEntry.svelte";
+    import { isDialogOpen } from "$lib/code/util/stateUtils";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -68,6 +69,8 @@
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+        if (isDialogOpen()) return
+
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // Check if we have a selected entry
