@@ -177,10 +177,10 @@ class EntityService(
         return runCatching {
             transactionTemplate.execute<Result<Unit>> { status ->
                 // Get entities that start with the current path
-                val entities = getAllByPathPrefix(oldBase.pathString, userAction, forUpdate = true).let {
+                val entities = getAllByPathPrefix(oldBase.pathString, userAction).let {
                     if (it.isNotSuccessful) return@execute it.cast()
                     it.value
-                }
+                }.sortedBy { it.path?.length }
 
                 // move entities
                 data class NewPair(val entity: FilesystemEntity, val newPath: String?)
@@ -222,13 +222,9 @@ class EntityService(
         }
     }
 
-    fun getAllByPathPrefix(prefix: String, userAction: UserAction, forUpdate: Boolean): Result<List<FilesystemEntity>> {
+    fun getAllByPathPrefix(prefix: String, userAction: UserAction): Result<List<FilesystemEntity>> {
         try {
-            if (forUpdate) {
-                return entityRepository.getAllByPathPrefixForUpdate(prefix).toResult()
-            } else {
-                return entityRepository.getAllByPathPrefix(prefix).toResult()
-            }
+            return entityRepository.getAllByPathPrefix(prefix).toResult()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
