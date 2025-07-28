@@ -9,8 +9,8 @@
     import Loader from "$lib/component/Loader.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
-    import { filesState } from "../../../../../../lib/code/stateObjects/filesState.svelte";
-    import { loadFileContent } from "../code/files";
+    import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { loadFileContent } from "../../code/files";
     import { onMount, untrack } from "svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import CodeChunk from "$lib/component/CodeChunk.svelte";

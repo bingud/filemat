@@ -37,11 +37,21 @@ class FileService(
     private val entityService: EntityService,
     private val logService: LogService,
     private val filesystem: FilesystemService,
+    private val filesystemService: FilesystemService,
 ) {
 
-    fun getPermittedFileList(user: Principal): Result<List<Any>> {
-        entityPermissionService
-        TODO()
+    fun getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
+        val permissions = entityPermissionService.getPermittedEntities(user)
+        val fullMeta = permissions.mapNotNull { entityPermission ->
+            val entity = entityService.getById(entityPermission.entityId, UserAction.GET_USER).valueOrNull ?: return@mapNotNull null
+            if (entity.path == null) return@mapNotNull null
+
+            val meta =  filesystemService.getMetadata(FilePath.of(entity.path)) ?: return@mapNotNull null
+            val fullMeta = FullFileMetadata.from(meta, entityPermission.permissions)
+            return@mapNotNull fullMeta
+        }
+
+        return fullMeta.toResult()
     }
 
     /**

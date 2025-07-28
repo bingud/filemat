@@ -1,5 +1,6 @@
 <script lang="ts">
     import { inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import { macrotask } from '$lib/code/util/codeUtil.svelte';
     import { Dialog } from '$lib/component/bits-ui-wrapper'
 
     // Component state
@@ -9,6 +10,7 @@
     let dialogCancelText = $state('Cancel')
     let dialogPlaceholder = $state('')
     let inputValue = $state('')
+    let inputElement: HTMLInputElement
     
     // Promise resolver functions
     let resolvePromise: ((value: string | null) => void) | null = $state(null)
@@ -71,8 +73,15 @@
         }
     }
     
-    // Handle dialog closure
+    // Handle dialog opening and closure
     $effect(() => {
+        if (inputDialogState.isOpen && inputElement) {
+            console.log(`fockus`)
+            macrotask(() => {
+                inputElement.focus()
+            })
+        }
+
         if (!inputDialogState.isOpen && resolvePromise) {
             resolvePromise(null)
             resolvePromise = null
@@ -91,6 +100,7 @@
         </Dialog.Description>
         <input
             bind:value={inputValue}
+            bind:this={inputElement}
             placeholder={dialogPlaceholder}
             on:keydown={handleKeydown}
             class="w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-500 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-50 dark:placeholder-neutral-400 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"

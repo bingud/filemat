@@ -12,8 +12,12 @@ class FilesState {
      * The current file path opened
      */
     path: string = $derived.by(() => {
-        let path = page.params.path
-        return prependIfMissing(path, "/")
+        if (page.url.pathname.startsWith("/files")) {
+            let path = page.params.path
+            return prependIfMissing(path, "/")
+        } else {
+            return "/"
+        }
     })
 
     /**

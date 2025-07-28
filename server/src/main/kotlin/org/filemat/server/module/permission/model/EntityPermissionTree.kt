@@ -12,9 +12,40 @@ import kotlin.concurrent.write
 
 
 /**
- * Entity permission tree
+ * #### Entity permission tree
  *
- * Stores file permissions based on paths, for users and roles
+ * EntityPermissionTree data layout:
+ *
+ * Represents a hierarchical file‐path permission structure.
+ *
+ * ┌─────────────────────────────────────────────────────────────────┐
+ * │ root (segment="")                                               │
+ * │  ├─ "folderA" (Node)                                            │
+ * │  │     ├─ "subfolder" (Node)                                    │
+ * │  │     │     ├─ userPermissions: Map<userId, EntityPermission>  │
+ * │  │     │     └─ rolePermissions: Map<roleId, EntityPermission>  │
+ * │  │     └─ children …                                            │
+ * │  └─ "folderB" …                                                 │
+ * └─────────────────────────────────────────────────────────────────┘
+ *
+ * Node:
+ *  • segment         – the single path piece at this level
+ *  • parent          – link to the parent Node (or null for root)
+ *  • children        – ConcurrentHashMap<segment, Node>
+ *  • userPermissions – ConcurrentHashMap<Ulid (userId), EntityPermission>
+ *  • rolePermissions – ConcurrentHashMap<Ulid (roleId), EntityPermission>
+ *
+ * Inverted indexes (for fast removal/lookup by entity):
+ *  • userPermissionsIndex – Map<userId, Set<EntityPermission>>
+ *  • rolePermissionsIndex – Map<roleId, Set<EntityPermission>>
+ *
+ * Concurrency:
+ *  • treeLock             – guards all tree (Node) reads and writes
+ *  • permissionsIndexLock – guards inverted‐index updates
+ *
+ * Traversal & lookup:
+ *  • findNode(path)       – walks down segments from root
+ *  • getClosestPermission – climbs parent links to inherit permissions
  */
 class EntityPermissionTree() {
 
@@ -349,5 +380,61 @@ class EntityPermissionTree() {
                 permissionsIndexLock.writeLock().unlock()
             }
         }
+    }
+
+    /**
+     * Gets all entities that a user has access to.
+     * Returns only top-level entities and child entities where there are gaps in parent permissions.
+     *
+     * For example, if user has access to `/folder`, no access to `/folder/subfolder`,
+     * but access to `/folder/subfolder/file`, returns permissions for both `/folder` and `/folder/subfolder/file`.
+     */
+    fun getAllAccessibleEntitiesForUser(userId: Ulid, roleIds: List<Ulid>): List<EntityPermission> {
+        val result = mutableListOf<EntityPermission>()
+
+        treeLock.read {
+            traverseAndCollectTopLevelAccessible(root, userId, roleIds, result)
+        }
+
+        return result
+    }
+
+    private fun traverseAndCollectTopLevelAccessible(
+        node: Node,
+        userId: Ulid,
+        roleIds: List<Ulid>,
+        result: MutableList<EntityPermission>
+    ) {
+        // Check if user has permission for this node
+        val userPermission = node.userPermissions[userId]
+        val rolePermissions = roleIds.mapNotNull { roleId -> node.rolePermissions[roleId] }
+
+        val hasAccess = userPermission != null || rolePermissions.isNotEmpty()
+
+        if (hasAccess) {
+            // Check if this should be included (is "top-level" in accessible area)
+            if (isTopLevelAccessible(node, userId, roleIds)) {
+                // Add the permissions that grant access
+                userPermission?.let { result.add(it) }
+                result.addAll(rolePermissions)
+            }
+        }
+
+        // Always recurse into children to find deeper accessible entities
+        for (child in node.children.values) {
+            traverseAndCollectTopLevelAccessible(child, userId, roleIds, result)
+        }
+    }
+
+    private fun isTopLevelAccessible(node: Node, userId: Ulid, roleIds: List<Ulid>): Boolean {
+        // Root is always top-level if accessible
+        if (node.parent == null) return true
+
+        // Check immediate parent - if user doesn't have access to it, this node is top-level
+        val parent = node.parent!!
+        val parentHasUserPermission = parent.userPermissions.containsKey(userId)
+        val parentHasRolePermission = roleIds.any { roleId -> parent.rolePermissions.containsKey(roleId) }
+
+        return !parentHasUserPermission && !parentHasRolePermission
     }
 }

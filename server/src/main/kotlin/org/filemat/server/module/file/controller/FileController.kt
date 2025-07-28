@@ -37,14 +37,19 @@ class FileController(
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    @GetMapping("/all-permitted")
+    @PostMapping("/all-permitted")
     fun getAllPermittedFiles(
         request: HttpServletRequest,
     ): ResponseEntity<String> {
-        val principal = request.getPrincipal()
+        val principal = request.getPrincipal()!!
 
-        fileService
-        TODO()
+        val result = fileService.getPermittedFileList(principal).let {
+            if (it.hasError) return bad(it.error, "")
+            it.value
+        }
+        val serialized = Json.encodeToString(result)
+
+        return ok(serialized)
     }
 
     @PostMapping("/last-modified-date")

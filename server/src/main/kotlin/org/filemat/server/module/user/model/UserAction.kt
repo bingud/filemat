@@ -34,4 +34,5 @@ enum class UserAction {
     CREATE_FILE,                            // 24
     DELETE_FILE,                            // 25
     MOVE_FILE,                              // 26
+    GET_PERMITTED_ENTITIES,                 // 27
 }

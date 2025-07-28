@@ -41,6 +41,12 @@ class EntityPermissionService(
      */
     private val pathTree = EntityPermissionTree()
 
+    /**
+     *
+     */
+    fun getPermittedEntities(user: Principal): List<EntityPermission> {
+        return pathTree.getAllAccessibleEntitiesForUser(user.userId, user.roles)
+    }
 
     fun deletePermission(user: Principal, permissionId: Ulid): Result<Unit> {
         val action = UserAction.DELETE_ENTITY_PERMISSION

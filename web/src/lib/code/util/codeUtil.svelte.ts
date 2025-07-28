@@ -589,3 +589,10 @@ export class Result<T> {
         return this.type !== "value"
     }
 }
+
+/**
+ * Runs code in a setimeout
+ */
+export function macrotask(fn: () => any) {
+    setTimeout(fn, 0)
+}

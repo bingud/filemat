@@ -9,8 +9,8 @@ import { toast } from "@jill64/svelte-toast";
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
 
-export async function getFileData(path: string, signal: AbortSignal | undefined, foldersOnly: boolean = false): Promise<Result<FileData>> {
-    const response = await safeFetch(`/api/v1/folder/file-or-folder-entries`, { body: formData({ path: path, foldersOnly: foldersOnly }), signal: signal })
+export async function getFileData(path: string, signal: AbortSignal | undefined, options: { foldersOnly?: boolean }): Promise<Result<FileData>> {
+    const response = await safeFetch("/api/v1/folder/file-or-folder-entries", { body: formData({ path: path, foldersOnly: options.foldersOnly || false }), signal: signal })
     if (response.failed) {
         const error = `Failed to fetch folder entries`
         handleException(error, `Failed to open folder.`, response.exception)
@@ -30,10 +30,49 @@ export async function getFileData(path: string, signal: AbortSignal | undefined,
         return Result.error(error.message)
     }
 
-    const json = response.json() as FileData
+    let json = response.json() as FileData
 
     if (json.entries) {
         json.entries.forEach((v) => {
+            v.filename = filenameFromPath(v.path)
+        })
+    }
+
+    return Result.ok(json)
+}
+
+export async function getFileDataWithDifferentPath(
+    path: string,
+    urlPath: string,
+    signal: AbortSignal | undefined,
+): Promise<Result<FullFileMetadata[]>> {
+    const response = await safeFetch(urlPath, {
+        body: formData({ path: path, foldersOnly: false }),
+        signal: signal
+    })
+    if (response.failed) {
+        const error = `Failed to fetch folder entries`
+        handleException(error, `Failed to open folder.`, response.exception)
+        return Result.error(error)
+    }
+    const status = response.code
+
+    if (status.serverDown) {
+        const error = `Server ${status} while getting folder entries`
+        handleError(error, `Failed to open folder. Server is unavailable.`)
+        return Result.error(error)
+    } else if (status.notFound) {
+        return Result.notFound()
+    } else if (status.failed) {
+        const error = response.json()
+        handleErrorResponse(error, `Failed to open folder.`)
+        return Result.error(error.message)
+    }
+
+    let json = response.json() as FullFileMetadata[]
+
+    if (json) {
+        json.forEach((v) => {
             v.filename = filenameFromPath(v.path)
         })
     }
