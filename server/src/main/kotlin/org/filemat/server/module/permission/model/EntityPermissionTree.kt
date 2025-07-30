@@ -139,12 +139,12 @@ class EntityPermissionTree() {
                 when (permission.permissionType) {
                     PermissionType.USER -> {
                         check(permission.userId != null) { "User permission must have a non-null userId." }
-                        check(!node.userPermissions.containsKey(permission.userId)) { "A permission for this user already exists on this file." }
+//                        check(!node.userPermissions.containsKey(permission.userId)) { "A permission for this user already exists on this file." }
                         node.userPermissions[permission.userId] = permission
                     }
                     PermissionType.ROLE -> {
                         check(permission.roleId != null) { "Role permission must have a non-null roleId." }
-                        check(!node.rolePermissions.containsKey(permission.roleId)) { "A permission for this role already exists on this file." }
+//                        check(!node.rolePermissions.containsKey(permission.roleId)) { "A permission for this role already exists on this file." }
                         node.rolePermissions[permission.roleId] = permission
                     }
                 }

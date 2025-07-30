@@ -25,8 +25,10 @@ dependencies {
 	val coroutinesCore = "1.10.1"
 	///
 
+	implementation("com.atlassian:onetime:2.1.1")
 	implementation("org.apache.tika:tika-core:3.1.0")
 	implementation("me.desair.tus:tus-java-server:1.0.0-3.0")
+	implementation("com.github.ben-manes.caffeine:caffeine:3.2.2")
 
 	implementation("jakarta.mail:jakarta.mail-api:$jakartaMail")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
