@@ -32,6 +32,7 @@ fun List<String>?.toJsonOrNull(): String? {
     return Json.encodeToString(this)
 }
 
+fun List<String>.toJson() = Json.encodeToString(this)
 
 inline fun <reified T> Json.decodeFromStringOrNull(string: String): T? {
     return try {

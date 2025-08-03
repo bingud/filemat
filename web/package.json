@@ -19,6 +19,7 @@
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.16",
 		"@types/mime-types": "^2.1.4",
+		"@types/qrcode": "^1.5.5",
 		"autoprefixer": "^10.4.21",
 		"bits-ui": "^2.4.1",
 		"clsx": "^2.1.1",

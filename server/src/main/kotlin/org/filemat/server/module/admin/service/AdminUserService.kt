@@ -24,7 +24,7 @@ import kotlin.jvm.optionals.getOrNull
 
 @Service
 class AdminUserService(
-    private val userRepository: UserRepository,
+    private val userRepositoryInterface: UserRepository,
     private val logService: LogService,
     private val publicUserRepository: PublicUserRepository,
     private val userRoleService: UserRoleService,
@@ -43,7 +43,7 @@ class AdminUserService(
         val userId = UlidCreator.getUlid()
 
         try {
-            userRepository.createUser(
+            userRepositoryInterface.createUser(
                 userId = userId,
                 email = email,
                 username = username,

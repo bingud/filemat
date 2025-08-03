@@ -36,13 +36,18 @@
             <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
         </symbol>
 
-        <!-- Tall arrow right -->
-        <symbol id="chevron-right" xmlns="http://www.w3.org/2000/svg" class="size-full aspect-square" stroke="none" viewBox="0,0,16,16">
+        <!-- Chevron right -->
+        <svg id="chevron-right" xmlns="http://www.w3.org/2000/svg" class="size-full aspect-square" stroke="none" viewBox="5.49 3 5.01 10.01">
             <g><path fill-rule="evenodd" d="M5.665 3.13a.5.5 0 0 0-.036.705L9.395 8l-3.766 4.165a.5.5 0 1 0 .742.67l3.948-4.367a.697.697 0 0 0 0-.936L6.371 3.165a.5.5 0 0 0-.706-.036Z"></path></g>
-        </symbol>
+        </svg>
 
+        <!-- Chevron left -->
+        <symbol id="chevron-left" xmlns="http://www.w3.org/2000/svg" class="size-full aspect-square" stroke="none" viewBox="5.5 3 5.01 10.01">
+            <g><path fill-rule="evenodd" d="M10.335 3.13a.5.5 0 0 1 .036.705L6.605 8l3.766 4.165a.5.5 0 1 1-.742.67L5.681 8.468a.697.697 0 0 1 0-.936l3.948-4.367a.5.5 0 0 1 .706-.036Z"></path></g>
+        </symbol>
+       
         <!-- Chevron down -->
-        <symbol id="chevron-down" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="size-full aspect-square" viewBox="0,0,256,256">
+        <symbol id="chevron-down" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="size-full aspect-square" viewBox="34.05 76.68 187.93 102.52">
             <g fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal"><g transform="scale(8.53333,8.53333)"><path d="M24.99023,8.98633c-0.26377,0.00624 -0.51439,0.11645 -0.69727,0.30664l-9.29297,9.29297l-9.29297,-9.29297c-0.18827,-0.19353 -0.4468,-0.30272 -0.7168,-0.30273c-0.40692,0.00011 -0.77321,0.24676 -0.92633,0.62377c-0.15312,0.37701 -0.06255,0.80921 0.22907,1.09303l10,10c0.39053,0.39037 1.02353,0.39037 1.41406,0l10,-10c0.29724,-0.28583 0.38857,-0.7248 0.23,-1.10546c-0.15857,-0.38066 -0.53454,-0.62497 -0.94679,-0.61524z"></path></g></g>
         </symbol>
 
@@ -117,7 +122,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
         </symbol>
 
-        Edit icon
+        <!-- Edit icon -->
         <symbol id="symbol-edit" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-full aspect-square">
             <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
         </symbol>

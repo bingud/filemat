@@ -8,6 +8,7 @@ import org.filemat.server.module.auth.service.MfaService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 
@@ -18,16 +19,29 @@ class UserController(
 ) : AController() {
 
     @PostMapping("/mfa/enable/generate-secret")
-    fun generateMfaSecretMapping(
+    fun enableMfa_generateSecretMapping(
         request: HttpServletRequest
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
         if (user.mfaTotpStatus) return bad("2FA is already enabled.", "already-enabled")
 
-        val totp = mfaService.generateTotp(user)
+        val totp = mfaService.enable_generateSecret(user)
         val serialized = Json.encodeToString(totp)
 
         return ok(serialized)
     }
 
+    @PostMapping("/mfa/enable/confirm")
+    fun enableMfa_confirmMapping(
+        request: HttpServletRequest,
+        @RequestParam("totp") totp: String
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+
+        mfaService.enable_confirmSecret(user, totp).let {
+            if (it.hasError) return internal(it.error, "")
+            if (it.rejected) return bad(it.error, "")
+            return ok("ok")
+        }
+    }
 }

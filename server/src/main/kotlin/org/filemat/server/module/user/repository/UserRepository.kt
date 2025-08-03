@@ -1,13 +1,17 @@
 package org.filemat.server.module.user.repository
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.module.user.model.PublicUser
 import org.filemat.server.module.user.model.User
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 
+
+/**
+ * TODO
+ * change deps to user repository class
+ */
 @Repository
 interface UserRepository : CrudRepository<User, Ulid> {
 
@@ -43,4 +47,8 @@ interface UserRepository : CrudRepository<User, Ulid> {
     @Modifying
     @Query("UPDATE users SET last_login_date = :newDate WHERE user_id = :userId")
     fun updateLastLoginDate(userId: Ulid, newDate: Long): Int
+
+    @Modifying
+    @Query("UPDATE users SET mfa_totp_status = :status, mfa_totp_secret = :secret, mfa_totp_codes = :codes WHERE user_id = :userId")
+    fun updateTotpMfa(userId: Ulid, status: Boolean, secret: String?, codes: String?): Int
 }

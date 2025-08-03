@@ -87,8 +87,8 @@
             {#each breadcrumbState.visible as segment, index}
                 <div class="flex items-center h-full ">
                     {#if index !== 0 || !hiddenEmpty}
-                        <div class="h-full py-2 flex items-center justify-center shrink-0">
-                            <ChevronRightIcon />
+                        <div class="h-full flex items-center justify-center shrink-0">
+                            <ChevronRightIcon classes="h-[0.6rem]" />
                         </div>
                     {/if}
                     {@render breadcrumbButton(segment, "rounded hover:bg-neutral-300 dark:hover:bg-neutral-800", (breadcrumbState.visible.length - 1 === index))}

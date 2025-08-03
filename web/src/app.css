@@ -90,6 +90,18 @@ h1 {
     padding: 0px    
 }
 
+@utility max-size-full {
+    @apply max-w-full max-h-full;
+}
+@utility min-size-fit {
+    @apply min-w-fit min-h-fit;
+}
+@utility min-size-0 {
+    @apply min-w-0 min-h-0;
+}
+@utility max-size-sv {
+    @apply max-w-svw max-h-svh;
+}
 
 .center {
     @apply size-full flex flex-col items-center justify-center;

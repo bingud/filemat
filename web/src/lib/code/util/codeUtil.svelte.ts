@@ -85,11 +85,11 @@ type SafeFetchResult = Omit<Response, 'json'> & { failed: boolean, exception: an
  */
 export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boolean = false): Promise<SafeFetchResult> {
     try {
-        let arg = args ? args : {}
+        let arg = args || {}
         if (!arg.credentials) arg.credentials = "same-origin"
         if (!arg.method) arg.method = "POST"
-
-        const response = await fetch(url, args) as any as SafeFetchResult
+        
+        const response = await fetch(url, arg) as any as SafeFetchResult
         response.failed = false
         response.exception = null
         response.code = toStatus(response.status)

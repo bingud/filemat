@@ -67,7 +67,7 @@
             initialSelection = null
             hasScrolledToInitial = false
         }
-    }, () => [ open ])
+    }, () => [ folderSelectorState.isOpen ])
 
     async function initializeTree() {
         folderTree = {
@@ -90,7 +90,6 @@
 
     async function loadPathData(parent: string) {
         const segments = parent.split('/').filter(s => s.length > 0)
-
         let node: FolderNode | null = folderTree!
         for (const segment of segments) {
             if (!node || !node.children) break
@@ -99,7 +98,7 @@
         if (!node) return
 
         node.isLoading = true
-        const dataResult = await getFileData(parent, undefined, true)
+        const dataResult = await getFileData(parent, undefined, {foldersOnly: true})
         node.isLoading = false
         
         const data = dataResult.value
@@ -251,16 +250,18 @@
             style="padding-left: {level}rem"
             on:click={() => selectFolder(node)}
         >
-            <button class="mr-1 text-neutral-500 cursor-pointer aspect-square h-[1.5rem] py-[0.15rem]" on:click|stopPropagation={() => toggleFolder(node)}>
-                {#if node.children !== null}
-                    {#if node.isExpanded}
-                        <ChevronDownIcon />
+            <button class="mr-1 text-neutral-500 cursor-pointer aspect-square h-[1.5rem]" on:click|stopPropagation={() => toggleFolder(node)}>
+                <div class="h-[0.8rem] my-auto">
+                    {#if node.children !== null}
+                        {#if node.isExpanded}
+                            <ChevronDownIcon />
+                        {:else}
+                            <ChevronRightIcon />
+                        {/if}
                     {:else}
                         <ChevronRightIcon />
                     {/if}
-                {:else}
-                    <ChevronRightIcon />
-                {/if}
+                </div>
             </button>
 
             <span class="mr-2">

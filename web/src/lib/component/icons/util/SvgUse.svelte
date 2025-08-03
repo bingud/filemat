@@ -1,10 +1,16 @@
 <script lang="ts">
 
-    export let id: string
+    let {
+        id,
+        classes,
+    }: {
+        id: string,
+        classes?: string,
+    } = $props()
 
 </script>
 
 
-<svg class="h-full aspect-square">
+<svg class="{classes || "h-full"} aspect-square">
     <use href="#{id}" />
 </svg>
