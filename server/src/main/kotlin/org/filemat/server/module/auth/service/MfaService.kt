@@ -60,7 +60,7 @@ class MfaService(
             EmailAddress(user.email),
             Issuer(Props.appName)
         )
-        val codes = List(6) { StringUtils.randomString(8) }
+        val codes = List(6) { StringUtils.randomString(8).uppercase() }
 
         val newTotpSecret = Mfa(
             secret,
@@ -73,10 +73,13 @@ class MfaService(
         return newTotpSecret
     }
 
-    fun enable_confirmSecret(user: Principal, totp: String): Result<Unit> {
+    fun enable_confirmSecret(user: Principal, totp: String, codes: List<String>): Result<Unit> {
         val mfa = newMfaCache.getIfPresent(user.userId) ?: return Result.reject("2FA setup has expired.")
         val actualTotp = generator.generateCurrent(mfa.secretObject)
         if (totp != actualTotp.value) return Result.reject("2FA code is incorrect.")
+
+        // Validate if client has valid backup codes
+        if (!codes.containsAll(mfa.codes)) return Result.reject("Backup codes could not be validated.")
 
         updateUserMfa(user.userId, true, mfa.secret, mfa.codes).let {
             if (it.isNotSuccessful) return it

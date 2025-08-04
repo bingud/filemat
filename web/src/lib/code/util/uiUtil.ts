@@ -66,3 +66,36 @@ export function calculateTextWidth(text: string) {
 export function remToPx(rem: number) {
     return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
+
+// Makes an element disabled for a specified time
+export function disabledFor(
+    node: HTMLElement & { disabled?: boolean },
+    duration: number
+) {
+    node.disabled = true
+
+    const timeout = setTimeout(() => {
+        node.disabled = false
+    }, duration)
+
+    return {
+        destroy() {
+            clearTimeout(timeout)
+            node.disabled = false
+        }
+    }
+}
+
+export function autofocus(
+    node: HTMLElement,
+) {
+    const timeout = setTimeout(() => {
+        node.focus()
+    }, 5)
+
+    return {
+        destroy() {
+            clearTimeout(timeout)
+        }
+    }
+}

@@ -3,6 +3,7 @@ package org.filemat.server.module.user.controller
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.module.auth.service.MfaService
 import org.springframework.http.ResponseEntity
@@ -34,11 +35,13 @@ class UserController(
     @PostMapping("/mfa/enable/confirm")
     fun enableMfa_confirmMapping(
         request: HttpServletRequest,
-        @RequestParam("totp") totp: String
+        @RequestParam("totp") totp: String,
+        @RequestParam("codes") rawCodes: String,
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
 
-        mfaService.enable_confirmSecret(user, totp).let {
+        val codes = Json.decodeFromStringOrNull<List<String>>(rawCodes) ?: return bad("Backup codes could not be validated.", "")
+        mfaService.enable_confirmSecret(user, totp, codes).let {
             if (it.hasError) return internal(it.error, "")
             if (it.rejected) return bad(it.error, "")
             return ok("ok")

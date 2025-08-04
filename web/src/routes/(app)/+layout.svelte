@@ -23,7 +23,7 @@
                 await goto (`/setup`)
                 return
             }
-            if (auth.authenticated !== true) {
+            if (auth.authenticated !== true || !auth.principal) {
                 await goto("/login")
                 return
             }

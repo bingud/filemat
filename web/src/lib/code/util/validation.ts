@@ -6,6 +6,13 @@ import { isBlank } from "./codeUtil.svelte"
  * Contains value validation methods
  */
 export class Validator {
+    public static totp(t: any): string | null {
+        if (t.length !== 6) return "Code must be 6 digits long."
+        const int = parseInt(t)
+        if (Number.isNaN(int)) return "Code can only contain digits."
+        return null
+    }
+
     public static email(email: string): string | null {
         if (!email.includes("@") || !email.includes(".")) return "Email is invalid."
         if (email.length < 5) return "Email is too short."
