@@ -57,7 +57,7 @@ html {
     Text Colors
 */
 .text-main {
-    @apply text-neutral-950 dark:text-neutral-50 text-neutral-300;
+    @apply text-neutral-950 dark:text-neutral-50;
 }
 
 

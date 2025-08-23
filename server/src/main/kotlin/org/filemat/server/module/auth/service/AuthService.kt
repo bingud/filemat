@@ -220,4 +220,12 @@ class AuthService(
 
     private fun getPrincipalFromMemoryByUserId(userId: Ulid): Principal? = principalMap[userId]?.first
 
+    fun logoutUser(token: String): Result<Unit> {
+        authTokenService.deleteToken(token, UserAction.LOGIN).let {
+            if (it.isNotSuccessful) return it
+        }
+
+        tokenToUserIdMap.remove(token)
+        return Result.ok()
+    }
 }

@@ -102,4 +102,18 @@ class AuthTokenService(private val logService: LogService, private val authToken
         }
     }
 
+    fun deleteToken(token: String, userAction: UserAction): Result<Unit> {
+        try {
+            authTokenRepository.deleteToken(token)
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to delete auth token from database",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to delete login from the database.")
+        }
+    }
 }

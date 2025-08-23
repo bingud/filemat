@@ -13,12 +13,18 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 
+/**
+ * Controller for user account actions
+ */
 @RestController
 @RequestMapping("/v1/user")
 class UserController(
     private val mfaService: MfaService,
 ) : AController() {
 
+    /**
+     * Generates TOTP secret, prepares user to enable 2FA
+     */
     @PostMapping("/mfa/enable/generate-secret")
     fun enableMfa_generateSecretMapping(
         request: HttpServletRequest
@@ -32,6 +38,9 @@ class UserController(
         return ok(serialized)
     }
 
+    /**
+     * Enables 2FA on user account
+     */
     @PostMapping("/mfa/enable/confirm")
     fun enableMfa_confirmMapping(
         request: HttpServletRequest,

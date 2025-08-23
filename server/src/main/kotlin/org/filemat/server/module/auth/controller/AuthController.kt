@@ -2,6 +2,7 @@ package org.filemat.server.module.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.apache.coyote.Response
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
@@ -33,6 +34,21 @@ class AuthController(
     private val logService: LogService,
     private val authService: AuthService
 ) : AController() {
+
+    @Unauthenticated
+    @PostMapping("/logout")
+    fun logoutMapping(
+        request: HttpServletRequest,
+    ): ResponseEntity<String> {
+        val token = request.getAuthToken()
+        if (token == null) return ok("ok")
+
+        authService.logoutUser(token).let {
+            if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to logout.", "")
+        }
+
+        return ok("ok")
+    }
 
     @Unauthenticated
     @PostMapping("/login")

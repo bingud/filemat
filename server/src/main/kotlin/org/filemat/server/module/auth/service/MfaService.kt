@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit
 class MfaService(
     private val userService: UserService,
     private val userRepository: UserRepository,
-    private val logService: LogService
+    private val logService: LogService,
+    private val authService: AuthService
 ) {
 
     @Serializable
@@ -42,6 +43,7 @@ class MfaService(
         val codes: List<String>,
     )
 
+    // Cache for TOTP secrets (when user is enabling 2FA)
     val newMfaCache = Caffeine.newBuilder()
         .expireAfterWrite(10, TimeUnit.MINUTES)
         .maximumSize(100)
@@ -51,6 +53,9 @@ class MfaService(
     private val generator = TOTPGenerator()
 
 
+    /**
+     * Prepares a TOTP secret for user to enable 2FA
+     */
     fun enable_generateSecret(user: Principal): Mfa {
         newMfaCache.getIfPresent(user.userId)
             ?.let { return it }
@@ -73,6 +78,9 @@ class MfaService(
         return newTotpSecret
     }
 
+    /**
+     * Enables 2FA on user account
+     */
     fun enable_confirmSecret(user: Principal, totp: String, codes: List<String>): Result<Unit> {
         val mfa = newMfaCache.getIfPresent(user.userId) ?: return Result.reject("2FA setup has expired.")
         val actualTotp = generator.generateCurrent(mfa.secretObject)
@@ -89,11 +97,13 @@ class MfaService(
         return Result.ok()
     }
 
+    /**
+     * Updates 2FA state of a user
+     */
     fun updateUserMfa(userId: Ulid, status: Boolean, secret: String?, codes: List<String>?): Result<Unit> {
         try {
             val serializedCodes = codes?.toJson()
             userRepository.updateTotpMfa(userId, status, secret, serializedCodes)
-            return Result.ok()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -103,6 +113,12 @@ class MfaService(
             )
             return Result.error("Failed to update 2FA.")
         }
+
+        authService.updatePrincipal(userId) { existing ->
+            existing.copy(mfaTotpStatus = status)
+        }
+
+        return Result.ok()
     }
 }
 

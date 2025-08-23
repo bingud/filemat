@@ -2,6 +2,7 @@ package org.filemat.server.common.util
 
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
+import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.*
@@ -438,4 +439,8 @@ fun getActualCallerPackage(): String {
     }
 
     return "Unknown"
+}
+
+fun HttpServletRequest.getAuthToken(): String? {
+    return this.cookies?.find { it.name == "filemat-auth-token" }?.value
 }
