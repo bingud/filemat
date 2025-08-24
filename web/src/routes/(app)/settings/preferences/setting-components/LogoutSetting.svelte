@@ -1,11 +1,23 @@
 <script lang="ts">
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { toast } from "@jill64/svelte-toast";
 
 
     async function logout() {
-        const response = await safeFetch(`/api/auth/logout`)
+        const confirmation = await confirmDialogState.show({ title: `Log out`, message: `Do you want to log out?` })
+        if (!confirmation) return
 
-        
+        const response = await safeFetch(`/api/v1/auth/logout`)
+        const code = response.code
+        if (code.ok) {
+            window.location.href = "/login"
+            localStorage.clear()
+        } else if (code.failed) {
+            const json = response.json()
+            const error = json.message
+            toast.error(error)
+        }
     }
 
 </script>

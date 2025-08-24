@@ -38,4 +38,8 @@ object Props {
         const val uploadFolderPath = "upload_folder_path"
     }
 
+    object Cookies {
+        const val tempLoginToken = "filemat-temp-login-token"
+        const val authToken = "filemat-auth-token"
+    }
 }

@@ -2,18 +2,21 @@ package org.filemat.server.common.util
 
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
+import com.sun.management.OperatingSystemMXBean
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.*
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.config.Props
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
 import java.io.InputStream
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -442,5 +445,5 @@ fun getActualCallerPackage(): String {
 }
 
 fun HttpServletRequest.getAuthToken(): String? {
-    return this.cookies?.find { it.name == "filemat-auth-token" }?.value
+    return this.cookies?.find { it.name == Props.Cookies.authToken }?.value
 }

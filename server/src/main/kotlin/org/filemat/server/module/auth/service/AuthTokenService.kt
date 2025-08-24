@@ -7,6 +7,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.repository.AuthTokenRepository
 import org.filemat.server.module.log.model.LogType
@@ -94,7 +95,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
     }
 
     fun createCookie(token: String, maxAge: Long): Cookie {
-        return Cookie("filemat-auth-token", token).apply {
+        return Cookie(Props.Cookies.authToken, token).apply {
             secure = true
             isHttpOnly = true
             path = "/"

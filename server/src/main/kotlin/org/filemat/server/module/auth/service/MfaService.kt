@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.StringUtils
+import org.filemat.server.common.util.systemRamGb
 import org.filemat.server.common.util.toJson
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
@@ -46,7 +47,7 @@ class MfaService(
     // Cache for TOTP secrets (when user is enabling 2FA)
     val newMfaCache = Caffeine.newBuilder()
         .expireAfterWrite(10, TimeUnit.MINUTES)
-        .maximumSize(100)
+        .maximumSize(100_000)
         .build<Ulid, Mfa>()
 
     private val totpService = DefaultTOTPService()

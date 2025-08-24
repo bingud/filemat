@@ -36,7 +36,8 @@ enum class UserAction(val index: Int) {
     MOVE_FILE(27),
     GET_PERMITTED_ENTITIES(28),
     UPDATE_MFA(29),
-    LOGOUT(30);
+    LOGOUT(30),
+    VERIFY_LOGIN_MFA(31);
 
     companion object {
         init {
