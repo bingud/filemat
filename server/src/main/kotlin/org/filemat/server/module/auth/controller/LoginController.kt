@@ -51,11 +51,17 @@ class LoginController(
         request: HttpServletRequest,
         response: HttpServletResponse,
         @CookieValue(Props.Cookies.tempLoginToken, required = false) loginToken: String?,
-        @RequestHeader("totp") totp: String,
+        @RequestHeader("User-Agent") userAgent: String,
+        @RequestParam("totp") totp: String,
     ): ResponseEntity<String> {
-        if (loginToken == null || loginToken.length != 48) return unauthenticated("The login has expired.", "login-expired")
+        if (loginToken == null || loginToken.length != 128) return unauthenticated("The login has expired.", "login-expired")
         Validator.totp(totp)?.let { return bad(it, "validation") }
 
-        return loginService
+        return loginService.verifyTotpMfa(
+            loginToken = loginToken,
+            totp = totp,
+            userAgent = userAgent,
+            response = response
+        )
     }
 }

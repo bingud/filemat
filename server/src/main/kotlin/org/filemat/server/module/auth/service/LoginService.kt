@@ -1,5 +1,6 @@
 package org.filemat.server.module.auth.service
 
+import com.atlassian.onetime.model.TOTPSecret
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.f4b6a3.ulid.Ulid
 import jakarta.servlet.http.Cookie
@@ -15,6 +16,7 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
+import org.springframework.boot.web.server.Cookie.SameSite
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -29,9 +31,11 @@ class LoginService(
     private val authService: AuthService
 ): AController() {
 
+    private val tempTokenExpirationSeconds = 600
+
     // Cache for temp login tokens
     val loginTokenCache = Caffeine.newBuilder()
-        .expireAfterWrite(10, TimeUnit.MINUTES)
+        .expireAfterWrite(tempTokenExpirationSeconds.toLong(), TimeUnit.SECONDS)
         .maximumSize(100_000)
         .build<String, Ulid>()
 
@@ -98,7 +102,7 @@ class LoginService(
 
         // Check 2FA
         if (user.mfaTotpStatus) {
-            val loginToken = StringUtils.randomString(48)
+            val loginToken = StringUtils.randomString(128)
             loginTokenCache.put(loginToken, user.userId)
 
             val cookie = createLoginTokenCookie(loginToken)
@@ -125,10 +129,48 @@ class LoginService(
     /**
      * Creates a response for login 2FA verification
      */
-    fun verifyTotpMfa(token: String, totp: String): ResponseEntity<String> {
-        val userId = loginTokenCache.getIfPresent(token) ?: return unauthenticated("Login expired.", "login-expired")
-        val user = userService.getUserByUserId(userId, UserAction.VERIFY_LOGIN_MFA)
-        TODO()
+    fun verifyTotpMfa(
+        loginToken: String,
+        totp: String,
+        userAgent: String,
+        response: HttpServletResponse
+    ): ResponseEntity<String> {
+        val userId = loginTokenCache.getIfPresent(loginToken) ?: return unauthenticated("Login expired.", "login-expired")
+
+        // Get user
+        val user = userService.getUserByUserId(userId, UserAction.VERIFY_LOGIN_MFA).let { result ->
+            if (result.hasError) return internal(result.error)
+            if (result.notFound) return bad("Login expired.", "login-expired")
+            result.value
+        }
+
+        // Get MFA credentials
+        if (!user.mfaTotpStatus) return bad("This account does not have 2FA enabled.")
+        val totpSecretString = user.mfaTotpSecret ?: return internal("Failed to verify 2FA.")
+
+        val totpSecret = TOTPSecret.fromBase32EncodedString(totpSecretString)
+        // Allow 1 step before and 1 step after
+        val validTotps = TotpUtil.generator.generate(totpSecret, delaySteps = 1, futureSteps = 1)
+
+        // Verify 2FA code
+        val isValid = validTotps.any { it.value == totp }
+        if (!isValid) {
+            loginLog(LogLevel.WARN, "Failed login - Incorrect 2FA", "", mapOf("target-userId" to user.userId.toString(), "target-username" to user.username), "unknown")
+            return bad("2FA code is incorrect.", "invalid-totp")
+        }
+
+        // Create auth token
+        val token = authTokenService.createToken(userId = user.userId, userAgent = userAgent, userAction = UserAction.LOGIN).let { result ->
+            if (result.isNotSuccessful) return internal(result.error, "")
+            return@let result.value
+        }
+
+        val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
+        response.addCookie(cookie)
+
+        loginTokenCache.invalidate(loginToken)
+
+        return ok("ok")
     }
 
     private fun createLoginTokenCookie(token: String): Cookie {
@@ -136,7 +178,8 @@ class LoginService(
             secure = true
             isHttpOnly = true
             path = "/"
-            this.maxAge = maxAge
+            maxAge = tempTokenExpirationSeconds
+            setAttribute("SameSite", "Lax")
         }
     }
 

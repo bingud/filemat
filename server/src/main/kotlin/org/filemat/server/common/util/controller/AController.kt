@@ -12,9 +12,11 @@ abstract class AController {
     fun <T> ok(body: T): ResponseEntity<T> = ResponseEntity.ok(body)
 
     fun bad(body: String, error: String): ResponseEntity<String> = ResponseEntity.badRequest().body(ErrorResponse(body, error).serialize())
+    fun bad(body: String): ResponseEntity<String> = ResponseEntity.badRequest().body(ErrorResponse(body, "").serialize())
     fun notFound(): ResponseEntity<String> = ResponseEntity.notFound().build()
     fun unauthenticated(body: String, error: String): ResponseEntity<String> = ResponseEntity.status(401).body(ErrorResponse(body, error).serialize())
     fun internal(body: String, error: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, error).serialize())
+    fun internal(body: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, "").serialize())
 
     fun rateLimited(millisUntilRefill: Long): ResponseEntity<String> =
         ResponseEntity.status(429).body(ErrorResponse("Too many requests. Try again in ${formatMillisecondsToReadableTime(millisUntilRefill)}", "ratelimit").serialize())

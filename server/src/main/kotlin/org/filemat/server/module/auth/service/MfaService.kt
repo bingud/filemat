@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.StringUtils
-import org.filemat.server.common.util.systemRamGb
+import org.filemat.server.common.util.TotpUtil
 import org.filemat.server.common.util.toJson
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
@@ -50,9 +50,6 @@ class MfaService(
         .maximumSize(100_000)
         .build<Ulid, Mfa>()
 
-    private val totpService = DefaultTOTPService()
-    private val generator = TOTPGenerator()
-
 
     /**
      * Prepares a TOTP secret for user to enable 2FA
@@ -62,7 +59,7 @@ class MfaService(
             ?.let { return it }
 
         val secret: TOTPSecret = RandomSecretProvider.generateSecret()
-        val url: URI = totpService.generateTOTPUrl(secret,
+        val url: URI = TotpUtil.totpService.generateTOTPUrl(secret,
             EmailAddress(user.email),
             Issuer(Props.appName)
         )
@@ -84,7 +81,7 @@ class MfaService(
      */
     fun enable_confirmSecret(user: Principal, totp: String, codes: List<String>): Result<Unit> {
         val mfa = newMfaCache.getIfPresent(user.userId) ?: return Result.reject("2FA setup has expired.")
-        val actualTotp = generator.generateCurrent(mfa.secretObject)
+        val actualTotp = TotpUtil.generator.generateCurrent(mfa.secretObject)
         if (totp != actualTotp.value) return Result.reject("2FA code is incorrect.")
 
         // Validate if client has valid backup codes

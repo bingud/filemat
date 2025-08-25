@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto, invalidate } from "$app/navigation";
-    import { handleError, handleErrorResponse, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { formData, handleError, handleErrorResponse, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { toast } from "@jill64/svelte-toast";
 
@@ -38,11 +38,11 @@
             const status = response.code
 
             if (status.ok) {
-                const loginStatus = response.content as "ok" | "mfaTotp"
+                const loginStatus = response.content as "ok" | "mfa-totp"
 
                 if (loginStatus === "ok") {
                     await goto("/")
-                } else if (loginStatus === "mfaTotp") {
+                } else if (loginStatus === "mfa-totp") {
                     phase = "totp"
                 }
             } else if (status.serverDown) {
@@ -64,7 +64,23 @@
             const totpValidation = Validator.totp(totpInput)
             if (totpValidation) return toast.error(totpValidation)
 
-            const response = await safeFetch(`/api/v1/auth/login/verify-totp-mfa`)
+            const response = await safeFetch(`/api/v1/auth/login/verify-totp-mfa`, {
+                body: formData({ "totp": totpInput })
+            })
+            if (response.failed) {
+                console.log(response.exception)
+                toast.error("Failed to verify 2FA. (Local error)")
+                return
+            }
+            const status = response.code
+
+            if (status.ok) {
+                await goto(`/`)
+            } else if (status.failed) {
+                const json = response.json()
+                const error = json.message
+                toast.error(error || `Failed to verify 2FA.`)
+            }
         } finally {
             running = false
         }
@@ -88,7 +104,7 @@
     {:else if phase === "totp"}
         <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_totp} title="Login to Filemat">
             <label for="password-input">2FA code</label>
-            <input type="password" bind:value={totpInput} minlength="6" maxlength="6" required title="Enter 2FA code" id="totp-input" class="" placeholder="000 000">
+            <input type="text" bind:value={totpInput} minlength="6" maxlength="6" required title="Enter 2FA code" id="totp-input" class="" placeholder="000 000">
 
             <button type="submit" class="tw-form-button">{running ? "..." : "Login"}</button>
         </form>

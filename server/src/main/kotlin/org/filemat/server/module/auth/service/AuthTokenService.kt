@@ -100,6 +100,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
             isHttpOnly = true
             path = "/"
             this.maxAge = maxAge.toInt()
+            setAttribute("SameSite", "Lax")
         }
     }
 
