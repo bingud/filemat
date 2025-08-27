@@ -22,6 +22,20 @@ class UserController(
     private val mfaService: MfaService,
 ) : AController() {
 
+    @PostMapping("/mfa/disable/confirm")
+    fun disableMfaMapping(
+        request: HttpServletRequest,
+        @RequestParam("totp") totp: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+
+        mfaService.disable(principal = user, totp = totp).let {
+            if (it.hasError) return internal(it.error)
+            if (it.rejected) return bad(it.error)
+            return ok("ok")
+        }
+    }
+
     /**
      * Generates TOTP secret, prepares user to enable 2FA
      */

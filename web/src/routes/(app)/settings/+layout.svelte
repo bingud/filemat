@@ -2,7 +2,7 @@
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import MenuIcon from "$lib/component/icons/MenuIcon.svelte";
     import { onMount } from "svelte";
-    import SettingsSidebar from "./components/SettingsSidebar.svelte";
+    import SettingsSidebar from "./_components/SettingsSidebar.svelte";
     import { page } from "$app/state";
     import { settingSections } from "./settings";
     import { auth } from "$lib/code/stateObjects/authState.svelte";

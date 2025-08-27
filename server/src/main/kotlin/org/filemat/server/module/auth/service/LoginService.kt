@@ -138,7 +138,7 @@ class LoginService(
         val userId = loginTokenCache.getIfPresent(loginToken) ?: return unauthenticated("Login expired.", "login-expired")
 
         // Get user
-        val user = userService.getUserByUserId(userId, UserAction.VERIFY_LOGIN_MFA).let { result ->
+        val user = userService.getUserByUserId(userId, UserAction.VERIFY_LOGIN_TOTP_MFA).let { result ->
             if (result.hasError) return internal(result.error)
             if (result.notFound) return bad("Login expired.", "login-expired")
             result.value
@@ -149,11 +149,9 @@ class LoginService(
         val totpSecretString = user.mfaTotpSecret ?: return internal("Failed to verify 2FA.")
 
         val totpSecret = TOTPSecret.fromBase32EncodedString(totpSecretString)
-        // Allow 1 step before and 1 step after
-        val validTotps = TotpUtil.generator.generate(totpSecret, delaySteps = 1, futureSteps = 1)
 
         // Verify 2FA code
-        val isValid = validTotps.any { it.value == totp }
+        val isValid = TotpUtil.verify(totpSecret, totp)
         if (!isValid) {
             loginLog(LogLevel.WARN, "Failed login - Incorrect 2FA", "", mapOf("target-userId" to user.userId.toString(), "target-username" to user.username), "unknown")
             return bad("2FA code is incorrect.", "invalid-totp")

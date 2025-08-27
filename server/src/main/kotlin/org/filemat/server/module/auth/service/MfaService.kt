@@ -1,16 +1,15 @@
 package org.filemat.server.module.auth.service
 
-import com.atlassian.onetime.core.TOTPGenerator
 import com.atlassian.onetime.model.EmailAddress
 import com.atlassian.onetime.model.Issuer
 import com.atlassian.onetime.model.TOTPSecret
-import com.atlassian.onetime.service.DefaultTOTPService
 import com.atlassian.onetime.service.RandomSecretProvider
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.TotpUtil
 import org.filemat.server.common.util.toJson
@@ -87,25 +86,70 @@ class MfaService(
         // Validate if client has valid backup codes
         if (!codes.containsAll(mfa.codes)) return Result.reject("Backup codes could not be validated.")
 
-        updateUserMfa(user.userId, true, mfa.secret, mfa.codes).let {
+        updateUserMfa(user.userId, true, mfa.secret, mfa.codes, UserAction.ENABLE_TOTP_MFA).let {
             if (it.isNotSuccessful) return it
         }
 
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.ENABLE_TOTP_MFA,
+            description = "User enabled TOTP 2FA",
+            message = "",
+            initiatorId = user.userId,
+            initiatorIp = null,
+            targetId = null,
+            meta = null
+        )
+
         newMfaCache.invalidate(user.userId)
+        return Result.ok()
+    }
+
+    fun disable(principal: Principal, totp: String): Result<Unit> {
+        val user = userService.getUserByUserId(principal.userId, UserAction.DISABLE_TOTP_MFA).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        if (!user.mfaTotpStatus) return Result.ok()
+
+        val secretString = user.mfaTotpSecret!!
+        val secret = TOTPSecret.fromBase32EncodedString(secretString)
+        val isValid = TotpUtil.verify(secret, totp)
+        if (!isValid) return Result.reject("2FA code is incorrect.")
+
+        updateUserMfa(
+            userId = principal.userId,
+            status = false,
+            secret = null,
+            codes = null,
+            userAction = UserAction.DISABLE_TOTP_MFA
+        )
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.DISABLE_TOTP_MFA,
+            description = "User disabled TOTP 2FA",
+            message = "",
+            initiatorId = principal.userId,
+            initiatorIp = null,
+            targetId = null,
+            meta = null
+        )
+
         return Result.ok()
     }
 
     /**
      * Updates 2FA state of a user
      */
-    fun updateUserMfa(userId: Ulid, status: Boolean, secret: String?, codes: List<String>?): Result<Unit> {
+    fun updateUserMfa(userId: Ulid, status: Boolean, secret: String?, codes: List<String>?, userAction: UserAction): Result<Unit> {
         try {
             val serializedCodes = codes?.toJson()
             userRepository.updateTotpMfa(userId, status, secret, serializedCodes)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
-                action = UserAction.UPDATE_MFA,
+                action = userAction,
                 description = "Failed to update totp MFA in the database",
                 message = e.stackTraceToString()
             )

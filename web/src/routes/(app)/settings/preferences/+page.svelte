@@ -11,8 +11,8 @@
     import { toast } from "@jill64/svelte-toast";
     import { autofocus, disabledFor } from "$lib/code/util/uiUtil";
     import Loader from "$lib/component/Loader.svelte";
-    import MfaSetting from "./setting-components/MfaSetting.svelte";
-    import LogoutSetting from "./setting-components/LogoutSetting.svelte";
+    import MfaSetting from "./_setting-components/MfaSetting.svelte";
+    import LogoutSetting from "./_setting-components/LogoutSetting.svelte";
 
     const title = "Preferences"
     let newTotp: { secret: string, url: string, codes: string[] } | null = $state(null)

@@ -37,7 +37,9 @@ enum class UserAction(val index: Int) {
     GET_PERMITTED_ENTITIES(28),
     UPDATE_MFA(29),
     LOGOUT(30),
-    VERIFY_LOGIN_MFA(31);
+    VERIFY_LOGIN_TOTP_MFA(31),
+    ENABLE_TOTP_MFA(32),
+    DISABLE_TOTP_MFA(33);
 
     companion object {
         init {
