@@ -18,7 +18,6 @@
     const adminSections = $derived(settingSections.allAdmin().filter(v => 
         settingSections.hasPermission(v.name)
     ))
-    
 </script>
 
 

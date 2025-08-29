@@ -35,7 +35,7 @@
     <SettingsSidebar classes="border-l border-neutral-300 dark:border-neutral-800"></SettingsSidebar>
 
     <div class="flex flex-col w-full md:w-without-sidebar-desktop h-full overflow-y-auto custom-scrollbar">
-        <div class="flex items-center md:p-6 h-fit">
+            <div class="w-full flex items-center h-fit bg-layout md:p-6">
             <button on:click={() => { uiState.settings.menuOpen = true }} aria-label="Open settings navigation menu" class="p-4 size-[3.5rem] md:hidden">
                 <MenuIcon />
             </button>

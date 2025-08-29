@@ -3,6 +3,7 @@
 @import "$lib/css/forms.css";
 @import "$lib/css/loader.css";
 @import "$lib/css/buttons.css";
+@import "$lib/css/theme.css";
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 @plugin 'tailwind-scrollbar';

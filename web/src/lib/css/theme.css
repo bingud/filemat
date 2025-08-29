@@ -1,0 +1,9 @@
+
+
+@utility f-rounded {
+    @apply rounded-lg;
+}
+
+@utility f-bg-grey-light {
+    @apply dark:bg-neutral-850;
+}
