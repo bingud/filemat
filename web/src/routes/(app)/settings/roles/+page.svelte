@@ -24,17 +24,13 @@
 
         if (!appState.isInitialPageOpen) {
             loading = true
-            fetchState({ roles: true, systemRoleIds: false, principal: false, app: false })
+            fetchState({ roles: true, systemRoleIds: false, principal: false, app: false, followSymlinks: false })
                 .then(() => { loading = false })
         }
     })
 
 </script>
 
-
-<svelte:head>
-    <title>{pageTitle(title)}</title>
-</svelte:head>
 
 
 <div class="page flex-col gap-4">

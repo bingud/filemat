@@ -32,7 +32,7 @@ import java.util.concurrent.locks.ReentrantLock
  */
 @Service
 class FileService(
-    private val folderVisibilityService: FolderVisibilityService,
+    private val fileVisibilityService: FileVisibilityService,
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val entityService: EntityService,
     private val logService: LogService,
@@ -489,7 +489,7 @@ class FileService(
                 FilePath.of(meta.path)
             }
 
-            val isPathAllowed = folderVisibilityService.isPathAllowed(entryPath) == null
+            val isPathAllowed = fileVisibilityService.isPathAllowed(entryPath) == null
             if (!isPathAllowed) return@mapNotNull null
 
             val permissions = getActualFilePermissions(
@@ -530,7 +530,7 @@ class FileService(
      * Returns null if path is allowed. Otherwise returns string error.
      */
     fun isPathAllowed(canonicalPath: FilePath): Result<Unit> {
-        val result = folderVisibilityService.isPathAllowed(canonicalPath = canonicalPath)
+        val result = fileVisibilityService.isPathAllowed(canonicalPath = canonicalPath)
         return if (result == null) Result.ok() else Result.reject(result, source = "isPathAllowed")
     }
 

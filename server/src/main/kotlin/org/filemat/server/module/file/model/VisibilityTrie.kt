@@ -3,7 +3,13 @@ package org.filemat.server.module.file.model
 class VisibilityTrie {
     private val root = TrieNode()
 
-    data class Visibility(val isExposed: Boolean, val isExplicit: Boolean)
+    data class Visibility(
+        val isExposed: Boolean,
+        /**
+         * Whether the file visibility was set explicitly (or otherwise inherited)
+         */
+        val isExplicit: Boolean
+    )
 
     fun insert(path: String, isExposed: Boolean) {
         var node = root
@@ -15,6 +21,11 @@ class VisibilityTrie {
         node.hasRule = true
     }
 
+    /**
+     * Resolve the visibility for a given path.
+     * - If no explicit rule exists on the path, the closest ancestor’s rule is inherited.
+     * - `isExplicit = true` if the rule is defined exactly at this path (otherwise the visibility is inherited)
+     */
     fun getVisibility(path: String): Visibility {
         var node = root
         // If the root itself has a rule, pick it up immediately.
@@ -42,6 +53,27 @@ class VisibilityTrie {
             isExposed = lastKnownVisibility ?: false,
             isExplicit = (lastKnownVisibilityIndex == parts.lastIndex)
         )
+    }
+
+    /**
+     * Returns a map of all path visibilities
+     *
+     * Path + isExposed
+     */
+    fun getAllVisibilities(): Map<String, Boolean> {
+        val result = mutableMapOf<String, Boolean>()
+
+        fun dfs(node: TrieNode, path: List<String>) {
+            if (node.hasRule) {
+                result.put(path.joinToString("/"), node.isExposed)
+            }
+            for ((part, child) in node.children) {
+                dfs(child, path + part)
+            }
+        }
+
+        dfs(root, emptyList())
+        return result
     }
 
     private class TrieNode {

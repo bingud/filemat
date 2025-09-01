@@ -5,7 +5,7 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
-interface IFolderVisibility {
+interface IFileVisibility {
     val path: String
     val isExposed: Boolean
 }
@@ -16,7 +16,7 @@ interface IFolderVisibility {
  * @param isExposed
  */
 @Table("folder_visibility")
-data class FolderVisibility(
+data class FileVisibility(
     @Id
     @Column("path")
     override val path: String,
@@ -24,7 +24,7 @@ data class FolderVisibility(
     override val isExposed: Boolean,
     @Column("created_date")
     val createdDate: Long,
-) : IFolderVisibility
+) : IFileVisibility
 
 @Table("folder_visibility")
 @Serializable
@@ -34,4 +34,4 @@ data class PlainFolderVisibility(
     override val path: String,
     @Column("is_exposed")
     override val isExposed: Boolean,
-): IFolderVisibility
+): IFileVisibility

@@ -37,11 +37,21 @@ export function handleException(message: string, userMessage: string | null, exc
 /**
  * Logs any error
  */
-export function handleError(message: string, userMessage: string | null) {
+export function handleError(message: string, userMessage: string | null, isServerDown: boolean | null = null) {
+    if (isServerDown === true) return handleServerDownError(message, userMessage)
+        
     console.log(`${message}\n(${userMessage ?? "No user message"})`)
 
     if (userMessage) {
         toast.error(userMessage)
+    }
+}
+
+export function handleServerDownError(message: string, userMessage: String | null) {
+    console.log(`${message}\n${userMessage ?? "No uesr message"}\nServer is unavailable`)
+
+    if (userMessage) {
+        toast.error(`${userMessage} Server is unavailable.`)
     }
 }
 

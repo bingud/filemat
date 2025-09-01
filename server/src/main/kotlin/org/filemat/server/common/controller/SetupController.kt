@@ -16,7 +16,7 @@ import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.PlainFolderVisibility
 import org.filemat.server.module.file.service.FilesystemService
-import org.filemat.server.module.file.service.FolderVisibilityService
+import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -52,7 +52,7 @@ class SetupController(
     private val appService: AppService,
     private val settingService: SettingService,
     private val authTokenService: AuthTokenService,
-    private val folderVisibilityService: FolderVisibilityService,
+    private val fileVisibilityService: FileVisibilityService,
     private val filesystemService: FilesystemService,
 ) : AController() {
 
@@ -202,7 +202,7 @@ class SetupController(
             }
 
             // Save exposed folders
-            val visibilityResult = folderVisibilityService.insertPaths(folderVisibilities, UserAction.APP_SETUP)
+            val visibilityResult = fileVisibilityService.insertPaths(folderVisibilities, UserAction.APP_SETUP)
             if (visibilityResult.isNotSuccessful) {
                 status.setRollbackOnly()
                 return@runTransaction Result.error("Failed to save folder visibility configuration to database.")

@@ -5,9 +5,9 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.model.IFolderVisibility
+import org.filemat.server.module.file.model.IFileVisibility
 import org.filemat.server.module.file.model.VisibilityTrie
-import org.filemat.server.module.file.repository.FolderVisibilityRepository
+import org.filemat.server.module.file.repository.FileVisibilityRepository
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -15,23 +15,25 @@ import org.springframework.stereotype.Service
 import kotlin.system.exitProcess
 
 @Service
-class FolderVisibilityService(
-    private val folderVisibilityRepository: FolderVisibilityRepository,
+class FileVisibilityService(
+    private val fileVisibilityRepository: FileVisibilityRepository,
     private val logService: LogService,
 ) {
     private val visibilityTrie = VisibilityTrie()
-    private val hiddenFolderTrie = VisibilityTrie()
+    private val hiddenFileTrie = VisibilityTrie()
+
+    fun getAllFileVisibilities() = visibilityTrie.getAllVisibilities()
 
     /**
      * Initialize folder visibility service
      */
     fun initialize() {
-        println("Loading folder visibility configurations...\n")
+        println("Loading file visibility configurations...\n")
 
-        val visibilityData = runCatching { folderVisibilityRepository.getAll() }
+        val visibilityData = runCatching { fileVisibilityRepository.getAll() }
             .onFailure {
                 it.printStackTrace()
-                println("FAILED TO LOAD FOLDER VISIBILITY DATA FROM DATABASE.")
+                println("FAILED TO LOAD FILE VISIBILITY DATA FROM DATABASE.")
                 exitProcess(1)
             }.getOrNull() ?: emptyList()
 
@@ -40,13 +42,13 @@ class FolderVisibilityService(
         if (visibilityData.isNotEmpty()) {
             val exposedPaths = visibilityData.filter { it.isExposed }.map { it.path }
             val hiddenPaths = visibilityData.filterNot { it.isExposed }.map { it.path }
-            println("Folder visibility configurations loaded:\n### EXPOSED FOLDERS:\n${exposedPaths.joinToString("\t")}\n\n### HIDDEN FOLDERS:\n${hiddenPaths.joinToString("\t")}")
+            println("File visibility configurations loaded:\n### EXPOSED FILES:\n${exposedPaths.joinToString("\t")}\n\n### HIDDEN FILES:\n${hiddenPaths.joinToString("\t")}")
         } else {
-            println("No folders have been exposed or hidden.")
+            println("No files have been exposed or hidden.")
         }
 
         // Insert true because VisibilityTrie returns false by default
-        State.App.hiddenFolders.forEach { hiddenFolderTrie.insert(it, true) }
+        State.App.hiddenFolders.forEach { hiddenFileTrie.insert(it, true) }
     }
 
     /**
@@ -57,7 +59,7 @@ class FolderVisibilityService(
             return "This file is blocked because it is marked as sensitive."
         }
 
-        val isForceHidden = hiddenFolderTrie.getVisibility(canonicalPath.pathString)
+        val isForceHidden = hiddenFileTrie.getVisibility(canonicalPath.pathString)
         // isExposed is set to true because all folders in this list are forcefully hidden
         if (isForceHidden.isExposed == true) return "This file is blocked."
 
@@ -68,11 +70,11 @@ class FolderVisibilityService(
     /**
      * Create new folder visibility configurations
      */
-    fun insertPaths(paths: List<IFolderVisibility>, userAction: UserAction): Result<Unit> {
+    fun insertPaths(paths: List<IFileVisibility>, userAction: UserAction): Result<Unit> {
         try {
             val now = unixNow()
             paths.forEach {
-                folderVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)
+                fileVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)
                 visibilityTrie.insert(it.path, it.isExposed)
             }
             return Result.ok(Unit)

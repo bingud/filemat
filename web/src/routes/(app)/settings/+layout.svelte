@@ -5,8 +5,8 @@
     import SettingsSidebar from "./_components/SettingsSidebar.svelte";
     import { page } from "$app/state";
     import { settingSections } from "./settings";
-    import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { openSettingsSection } from "$lib/code/util/uiUtil";
+    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
 
     let { children } = $props()
 
@@ -29,6 +29,11 @@
         uiState.settings.section = urlSection
     }
 </script>
+
+
+<svelte:head>
+    <title>{pageTitle(uiState.settings.title || "Settings")}</title>
+</svelte:head>
 
 
 <div class="flex w-full h-full flex-col md:flex-row">

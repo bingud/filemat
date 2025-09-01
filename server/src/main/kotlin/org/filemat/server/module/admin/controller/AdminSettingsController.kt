@@ -5,13 +5,14 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.auth.Authenticated
+import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
-import org.filemat.server.module.role.model.RoleMeta
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.setting.service.SettingService
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -29,7 +30,17 @@ class AdminSettingsController(
     private val userRoleService: UserRoleService,
     private val logService: LogService,
     private val settingService: SettingService,
+    private val fileVisibilityService: FileVisibilityService,
 ) : AController() {
+
+    @GetMapping("/file-visibility-entries")
+    fun adminGetFileVisibilityEntriesMapping(
+        request: HttpServletRequest,
+    ): ResponseEntity<String> {
+        val visibilities: Map<String, Boolean> = fileVisibilityService.getAllFileVisibilities()
+        val serialized = Json.encodeToString(visibilities)
+        return ok(serialized)
+    }
 
     /**
      * Set system setting `followSymLinks`

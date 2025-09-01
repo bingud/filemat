@@ -1,11 +1,10 @@
 package org.filemat.server.config
 
 import jakarta.annotation.PostConstruct
-import kotlinx.coroutines.*
 import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
 import org.filemat.server.module.file.service.FilesystemService
-import org.filemat.server.module.file.service.FolderVisibilityService
+import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.springframework.stereotype.Component
 import kotlin.system.exitProcess
@@ -13,7 +12,7 @@ import kotlin.system.exitProcess
 @Component("initialization")
 class Initialization(
     private val databaseSetup: DatabaseSetup,
-    private val folderVisibilityService: FolderVisibilityService,
+    private val fileVisibilityService: FileVisibilityService,
     private val filePermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
 ) {
@@ -34,7 +33,7 @@ class Initialization(
 
         if (State.App.isSetup) {
             // Load exposed folders to memory
-            folderVisibilityService.initialize().line()
+            fileVisibilityService.initialize().line()
 
             // Load file permissions to memory
             filePermissionService.loadPermissionsFromDatabase()
