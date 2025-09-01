@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.auth.Authenticated
+import org.filemat.server.module.auth.service.SensitiveAuthService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
@@ -31,7 +32,31 @@ class AdminSettingsController(
     private val logService: LogService,
     private val settingService: SettingService,
     private val fileVisibilityService: FileVisibilityService,
+    private val sensitiveAuthService: SensitiveAuthService,
 ) : AController() {
+
+    @PostMapping("/authenticate-sensitive-code")
+    fun adminAuthenticateSensitiveCodeMapping(
+        request: HttpServletRequest,
+        @RequestParam("code") code: String,
+    ): ResponseEntity<String> {
+        sensitiveAuthService.verifyOtp(code).let {
+            if (it.hasError) return internal(it.error)
+            if (it.rejected) return bad(it.error)
+            return ok(it.value.toString())
+        }
+    }
+
+    @PostMapping("/generate-sensitive-code")
+    fun adminGenerateSensitiveCodeMapping(
+        request: HttpServletRequest,
+    ): ResponseEntity<String> {
+        sensitiveAuthService.createOtp().let {
+            if (it.hasError) return internal(it.error)
+            if (it.rejected) return bad(it.error)
+            return ok(it.value.toString())
+        }
+    }
 
     @GetMapping("/file-visibility-entries")
     fun adminGetFileVisibilityEntriesMapping(

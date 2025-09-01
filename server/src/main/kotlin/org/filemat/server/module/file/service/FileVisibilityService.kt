@@ -30,6 +30,9 @@ class FileVisibilityService(
     fun initialize() {
         println("Loading file visibility configurations...\n")
 
+        // Hide authentication code file
+        hiddenFileTrie.insert(Props.authCodeFile, true)
+
         val visibilityData = runCatching { fileVisibilityRepository.getAll() }
             .onFailure {
                 it.printStackTrace()

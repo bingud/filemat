@@ -269,7 +269,8 @@
                 <h2 class="text-2xl">Disable 2FA</h2>
 
                 <div class="flex flex-col gap-6">
-                    <label for="input-totp" class="">Enter the 6-digit code to disable 2FA:</label>
+                    <label for="in
+                    put-totp" class="">Enter the 6-digit code to disable 2FA:</label>
                     <input use:autofocus id="input-totp" class="!rounded-lg w-[10rem] max-w-full" type="number" max="999999" bind:value={totpInput}>
                 </div>
 

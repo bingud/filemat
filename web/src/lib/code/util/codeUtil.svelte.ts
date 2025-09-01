@@ -5,6 +5,7 @@ import { untrack } from "svelte"
 import type { FileType } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 
+type ObjectKey = string | number | symbol
 
 /**
  * Returns whether HTTP status indicates that server is down.
@@ -467,7 +468,7 @@ export function run<T>(block: () => T): T {
     return block()
 }
 
-export function mapToObject<K extends string | number | symbol, V, T>(arr: T[], mapper: (value: T) => { key: K, value: V }): Record<K, V> {
+export function mapToObject<K extends ObjectKey, V, T>(arr: T[], mapper: (value: T) => { key: K, value: V }): Record<K, V> {
     let obj = {} as Record<K, V>
     arr.forEach((v) => {
         const entry = mapper(v)
@@ -614,4 +615,24 @@ export async function sha256(message: string) {
     return Array.from(new Uint8Array(hashBuffer))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('')
+}
+
+export function entriesOf<K extends ObjectKey, V>(obj: Record<K, V>): [string, V][] {
+    return Object.entries(obj)
+}
+
+export function formatDuration(seconds: number): string {
+    if (seconds < 60) {
+        return `${seconds} second${seconds === 1 ? "" : "s"}`
+    }
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) {
+        return `${minutes} minute${minutes === 1 ? "" : "s"}`
+    }
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) {
+        return `${hours} hour${hours === 1 ? "" : "s"}`
+    }
+    const days = Math.floor(hours / 24)
+    return `${days} day${days === 1 ? "" : "s"}`
 }

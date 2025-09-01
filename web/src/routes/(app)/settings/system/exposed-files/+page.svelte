@@ -1,18 +1,34 @@
 <script lang="ts">
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { formData, handleError, handleErrorResponse, handleException, handleServerDownError, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { entriesOf, formatDuration, formData, handleError, handleErrorResponse, handleException, handleServerDownError, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import CodeChunk from "$lib/component/CodeChunk.svelte";
+    import Loader from "$lib/component/Loader.svelte";
+    import { toast } from "@jill64/svelte-toast";
+    import { Dialog } from "bits-ui";
     import { onMount } from "svelte";
 
     const title = "Exposed files"
 
+    type VisibilityMap = { [key: string]: boolean }
+    let visibilities: VisibilityMap | null = $state(null)
+
+    let loading = $state(false)
+    let loginDialogOpen = $state(false)
+    let expirationUpdatingInterval: NodeJS.Timeout | null = $state(null)
+
+    let verifiedCode: {
+        code: string,
+        expirationDate: number,
+    } | null = $state(null)
+
+    let codeInput: string = $state("")
+    let remainingSeconds: number | null = $state(null)
+    
+
     onMount(() => {
         uiState.settings.title = title
+        loadVisibilities()
     })
-
-    type VisibilityMap = { [key: string]: boolean }
-
-    let visibilities: VisibilityMap | null = $state(null)
 
     async function loadVisibilities() {
         const response = await safeFetch(`/api/v1/admin/system/file-visibility-entries`, { method: "GET" })
@@ -30,13 +46,155 @@
             handleError(`Failed to load file visibilities`, json.message || "Failed to load list of exposed files.", status.serverDown)
         }
     }
+
+    async function verifyCode() {
+        if (codeInput.length !== 16) {
+            toast.error(`The code must be 16 letters long.`)
+            return
+        }
+
+        if (loading) return
+        loading = true
+        const response = await safeFetch(`/api/v1/admin/system/authenticate-sensitive-code`, {
+            body: formData({ code: codeInput })
+        })
+        loading  = false
+
+        if (response.failed) {
+            handleException(`Failed to verify auth OTP.`, `Failed to verify code.`, response.exception)
+            return
+        }
+
+        const status = response.code
+        if (status.ok) {
+            const text = response.content
+            const expirationDate = parseInt(text)
+            verifiedCode = {
+                code: codeInput,
+                expirationDate: expirationDate
+            }
+
+            if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
+            expirationUpdatingInterval = setInterval(calculateRemainingSeconds, 3000)
+            calculateRemainingSeconds()
+
+            loginDialogOpen = false
+        } else {
+            const json = response.json()
+            handleErrorResponse(json, `Failed to verify code.`)
+        }
+    }
+
+    function calculateRemainingSeconds() {
+        if (!verifiedCode) {
+            if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
+            return
+        }
+        const now = unixNow()
+        remainingSeconds = verifiedCode.expirationDate - now
+        const isExpired = remainingSeconds <= 0
+        
+        if (isExpired) {
+            verifiedCode = null
+        }
+    }
+
+    async function generateCode() {
+        if (loading) return
+        loading = true
+
+        const response = await safeFetch(`/api/v1/admin/system/generate-sensitive-code`)
+        loading = false
+        if (response.failed) {
+            handleException(`Failed to generate auth OTP.`, `Failed to generate code.`, response.exception)
+            return
+        }
+
+        const status = response.code
+        if (status.failed) {
+            const json = response.json()
+            handleErrorResponse(json, `Failed to generate code.`)
+        }
+    }
+
+    function openLogin() {
+        generateCode()
+        loginDialogOpen = true
+    }
 </script>
 
-<div class="flex flex-col gap-4">
+
+<div class="page flex-col gap-8">
     <div class="flex flex-col gap-2">
-        <h3 class="font-medium">Exposed files</h3>
-        <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            Configure which files and folders are exposed through Filemat.
-        </p>
+        <p>Configure which files are accessible in Filemat.</p>
+        <p class="opacity-50">To configure file visibility, you must enter a code from application console/logs or a special file.</p>
+
+        {#if verifiedCode && remainingSeconds}
+            <p>You can change exposed files for {formatDuration(remainingSeconds)}</p>
+        {:else}
+            <button class="basic-button" on:click={openLogin}>Configure files</button>
+        {/if}
     </div>
+
+    {#if visibilities}
+        <table class="table-auto w-full border-collapse">
+            <!-- <thead>
+                <tr>
+                    <th class="text-left p-2">Path</th>
+                    <th class="text-left p-2">Visibility</th>
+                </tr>
+            </thead> -->
+            <tbody>
+                {#each entriesOf(visibilities) as [path, isExposed]}
+                    <tr class="border-b border-light">
+                        <td class="p-2">{path}</td>
+                        <td class="p-2 flex items-center gap-2">
+                            {#if isExposed}
+                                <span class="text-green-500">⬤</span>
+                                Exposed
+                            {:else}
+                                <span class="text-red-500">⬤</span>
+                                Hidden
+                            {/if}
+                        </td>
+                    </tr>
+                {:else}
+                    <tr>
+                        <td colspan="2" class="p-6 text-center">
+                            No files are configured.
+                        </td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    {:else}
+        <Loader class="m-auto"></Loader>
+    {/if}
 </div>
+
+
+<Dialog.Root bind:open={loginDialogOpen}>
+    <Dialog.Portal>
+        <Dialog.Overlay
+            class="fixed inset-0 z-50 bg-black/50"
+        />
+        <Dialog.Content>
+            <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
+                <p>Enter the authentication code to configure exposed files.</p>
+                <div class="flex flex-col gap-2">
+                    <p>The code can be found in:</p>
+                    <ul class="list-disc list-inside">
+                        <li>Application console or logs</li>
+                        <li><CodeChunk>/var/lib/filemat/auth-code.txt</CodeChunk></li>
+                    </ul>
+                </div>
+                <form on:submit={verifyCode} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">
+                    <label for="code-input">Code:</label>
+                    <input id="code-input" required minlength="16" maxlength="16" bind:value={codeInput}>
+
+                    <button type="submit" class="tw-form-button">{#if !loading}Continue{:else}...{/if}</button>
+                </form>
+            </div>
+        </Dialog.Content>
+    </Dialog.Portal>
+</Dialog.Root>

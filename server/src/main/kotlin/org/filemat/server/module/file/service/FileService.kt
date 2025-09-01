@@ -374,8 +374,9 @@ class FileService(
      */
     fun isAllowedToAccessFile(user: Principal, canonicalPath: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
         // Deny blocked folder
-        val isAllowedResult = isPathAllowed(canonicalPath = canonicalPath)
-        if (isAllowedResult.isNotSuccessful) return isAllowedResult.cast()
+        isPathAllowed(canonicalPath = canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
         // Verify the file location and handle conflicts
         val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)

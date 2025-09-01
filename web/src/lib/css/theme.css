@@ -7,3 +7,7 @@
 @utility f-bg-grey-light {
     @apply dark:bg-neutral-850;
 }
+
+@utility border-light {
+    @apply border-neutral-700;
+}

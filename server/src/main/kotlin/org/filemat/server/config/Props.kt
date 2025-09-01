@@ -12,6 +12,7 @@ object Props {
     const val appName = "Filemat"
     const val dataFolder = "/var/lib/filemat"
     const val setupCodeFile = "$dataFolder/setup-code.txt"
+    const val authCodeFile = "$dataFolder/auth-code.txt"
     const val defaultUploadFolderPath = "/tmp/filemat"
 
     val sensitiveFolders = SensitiveFolderPaths
