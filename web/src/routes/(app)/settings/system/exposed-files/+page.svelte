@@ -23,6 +23,24 @@
 
     let codeInput: string = $state("")
     let remainingSeconds: number | null = $state(null)
+
+    let newFile: {
+        path: string,
+        isExposed: boolean,
+        isDialogOpen: boolean,
+        isLoading: false,
+        reset: Function,
+    } = $state({
+        path: "",
+        isExposed: true,
+        isDialogOpen: false,
+        isLoading: false,
+        reset: function () { 
+            this.path = ""
+            this.isExposed = true
+            this.isDialogOpen = false
+        }
+    })
     
 
     onMount(() => {
@@ -117,6 +135,19 @@
         }
     }
 
+    function openNewFile() {
+        newFile.isDialogOpen = true
+    }
+
+    async function addNewFile() {
+        if (!verifiedCode) {
+            openLogin()
+            return
+        }
+
+        const response = await safeFetch()
+    }
+
     function openLogin() {
         generateCode()
         loginDialogOpen = true
@@ -130,7 +161,8 @@
         <p class="opacity-50">To configure file visibility, you must enter a code from application console/logs or a special file.</p>
 
         {#if verifiedCode && remainingSeconds}
-            <p>You can change exposed files for {formatDuration(remainingSeconds)}</p>
+            <p class="p-4 rounded-lg bg-neutral-300 dark:bg-neutral-800 my-4">You can change exposed files for the next {formatDuration(remainingSeconds)}.</p>
+            <button on:click={openNewFile} class="basic-button">Add new file</button>
         {:else}
             <button class="basic-button" on:click={openLogin}>Configure files</button>
         {/if}
@@ -173,6 +205,7 @@
 </div>
 
 
+<!-- Authentication dialog -->
 <Dialog.Root bind:open={loginDialogOpen}>
     <Dialog.Portal>
         <Dialog.Overlay
@@ -193,6 +226,61 @@
                     <input id="code-input" required minlength="16" maxlength="16" bind:value={codeInput}>
 
                     <button type="submit" class="tw-form-button">{#if !loading}Continue{:else}...{/if}</button>
+                </form>
+            </div>
+        </Dialog.Content>
+    </Dialog.Portal>
+</Dialog.Root>
+
+<!-- New file configuration dialog -->
+<Dialog.Root bind:open={newFile.isDialogOpen}>
+    <Dialog.Portal>
+        <Dialog.Overlay
+            class="fixed inset-0 z-50 bg-black/50"
+        />
+        <Dialog.Content>
+            <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
+                <p>Configure a new file</p>
+                <form on:submit={verifyCode} class="flex flex-col w-full gap-6">
+                    <fieldset class="contents" disabled={newFile.isLoading}>
+                        <div class="flex flex-col gap-2 w-full">
+                            <label for="code-input">Full path:</label>
+                            <input id="code-input" required minlength="1" bind:value={newFile.path} class="w-full">
+                        </div>
+
+                        <!-- Visibility switcher -->
+                        <div class="flex flex-col items-center select-none gap-2">
+                            <p>Visibility:</p>
+                            <div class="flex h-[2rem] rounded-lg overflow-hidden">
+                                <button
+                                    type="button"
+                                    disabled={newFile.isLoading}
+                                    class="h-full w-1/2 px-4 rounded-l-lg bg-neutral-300 dark:bg-neutral-800
+                                        {newFile.isExposed 
+                                            ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' 
+                                            : ''}"
+                                    aria-pressed={newFile.isExposed}
+                                    on:click={() => newFile.isExposed = true}
+                                >
+                                    Exposed
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={newFile.isLoading}
+                                    class="h-full w-1/2 px-4 rounded-r-lg bg-neutral-300 dark:bg-neutral-800
+                                        {!newFile.isExposed 
+                                            ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' 
+                                            : ''}"
+                                    aria-pressed={newFile.isExposed === false}
+                                    on:click={() => newFile.isExposed = false}
+                                >
+                                    Hidden
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="tw-form-button">{#if !newFile.isLoading}Add file{:else}...{/if}</button>
+                    </fieldset>
                 </form>
             </div>
         </Dialog.Content>

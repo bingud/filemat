@@ -91,4 +91,9 @@ class FileVisibilityService(
             return Result.error("Failed to save folder visibility configuration.")
         }
     }
+
+    /**
+     * Create new folder visibility configurations
+     */
+    fun insertPath(path: IFileVisibility, userAction: UserAction): Result<Unit> = insertPaths(listOf(path), userAction)
 }
