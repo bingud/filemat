@@ -75,6 +75,12 @@ class FileVisibilityService(
      */
     fun insertPaths(paths: List<IFileVisibility>, userAction: UserAction): Result<Unit> {
         try {
+            // Check if any path already exists
+            paths.forEach {
+                val hasRule = visibilityTrie.hasExplicitRule(it.path)
+                if (hasRule) return Result.reject("Added path already exists.")
+            }
+
             val now = unixNow()
             paths.forEach {
                 fileVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)

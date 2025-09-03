@@ -157,7 +157,7 @@
             })
         }
     }
-    
+
     function openNewFile() {
         newFile.isDialogOpen = true
     }
@@ -168,9 +168,15 @@
             return
         }
 
+        if (!visibilities) return
+        if (visibilities[newFile.path]) {
+            toast.error(`This file was already added.`)
+            return
+        }
+
         if (loading) return
         loading = true
-        const response = await safeFetch(`/api/v1/admin/system/add-file-visibity`, {
+        const response = await safeFetch(`/api/v1/admin/system/add-file-visibility`, {
             body: formData({ auth_code: verifiedCode.code, path: newFile.path, isExposed: newFile.isExposed })
         })
         loading = false
@@ -188,7 +194,10 @@
                 notification: json.message || `Failed to add new file.`,
                 isServerDown: status.serverDown
             })
+            return
         }
+
+        visibilities[newFile.path] = newFile.isExposed
     }
 
     function openLogin() {
@@ -284,7 +293,7 @@
         <Dialog.Content>
             <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
                 <p>Configure a new file</p>
-                <form on:submit={verifyCode} class="flex flex-col w-full gap-6">
+                <form on:submit={addNewFile} class="flex flex-col w-full gap-6">
                     <fieldset class="contents" disabled={newFile.isLoading}>
                         <div class="flex flex-col gap-2 w-full">
                             <label for="code-input">Full path:</label>

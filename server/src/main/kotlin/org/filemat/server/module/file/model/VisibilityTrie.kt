@@ -76,6 +76,15 @@ class VisibilityTrie {
         return result
     }
 
+    fun hasExplicitRule(path: String): Boolean {
+        var node = root
+        val parts = path.split("/").filter { it.isNotEmpty() }
+        for (part in parts) {
+            node = node.children[part] ?: return false
+        }
+        return node.hasRule
+    }
+
     private class TrieNode {
         val children = mutableMapOf<String, TrieNode>()
         var isExposed: Boolean = false

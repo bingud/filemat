@@ -60,6 +60,7 @@ class AdminSettingsController(
         )
 
         fileVisibilityService.insertPath(fileVisibility, UserAction.ADD_FILE_VISIBILITY_CONFIGURATION).let {
+            if (it.rejected) return bad(it.error)
             if (it.isNotSuccessful) return internal(it.error)
         }
 
