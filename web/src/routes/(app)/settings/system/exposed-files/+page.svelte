@@ -1,6 +1,6 @@
 <script lang="ts">
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { entriesOf, formatDuration, formData, handleError, handleErrorResponse, handleException, handleServerDownError, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { entriesOf, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { toast } from "@jill64/svelte-toast";
@@ -52,17 +52,26 @@
         const response = await safeFetch(`/api/v1/admin/system/file-visibility-entries`, { method: "GET" })
         if (response.failed) {
             visibilities = null
-            handleException(`failed to load file visibilities`, `Failed to load list of exposed files.`, response.exception)
+            handleErr({
+                description: `failed to load file visibilities`,
+                notification: `Failed to load list of exposed files.`,
+            })
             return
         }
 
         const status = response.code
         const json = response.json()
-        if (status.ok) {
-            visibilities = json
-        } else {
-            handleError(`Failed to load file visibilities`, json.message || "Failed to load list of exposed files.", status.serverDown)
+        if (status.failed) {
+            visibilities = null
+            handleErr({
+                description: `Failed to load file visibilities`,
+                notification: json.message || `Failed to load list of exposed files.`,
+                isServerDown: status.serverDown
+            })
+            return
         }
+
+        visibilities = json
     }
 
     async function verifyCode() {
@@ -76,31 +85,38 @@
         const response = await safeFetch(`/api/v1/admin/system/authenticate-sensitive-code`, {
             body: formData({ code: codeInput })
         })
-        loading  = false
+        loading = false
 
         if (response.failed) {
-            handleException(`Failed to verify auth OTP.`, `Failed to verify code.`, response.exception)
+            handleErr({
+                description: `Failed to verify auth OTP.`,
+                notification: `Failed to verify code.`,
+            })
             return
         }
 
         const status = response.code
-        if (status.ok) {
-            const text = response.content
-            const expirationDate = parseInt(text)
-            verifiedCode = {
-                code: codeInput,
-                expirationDate: expirationDate
-            }
-
-            if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
-            expirationUpdatingInterval = setInterval(calculateRemainingSeconds, 3000)
-            calculateRemainingSeconds()
-
-            loginDialogOpen = false
-        } else {
+        if (status.failed) {
             const json = response.json()
-            handleErrorResponse(json, `Failed to verify code.`)
+            handleErr({
+                description: `Failed to verify code.`,
+                notification: json.message || `Failed to verify code.`,
+                isServerDown: status.serverDown
+            })
+            return
         }
+
+        const expirationDate = parseInt(response.content)
+        verifiedCode = {
+            code: codeInput,
+            expirationDate: expirationDate
+        }
+
+        if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
+        expirationUpdatingInterval = setInterval(calculateRemainingSeconds, 3000)
+        calculateRemainingSeconds()
+
+        loginDialogOpen = false
     }
 
     function calculateRemainingSeconds() {
@@ -118,23 +134,30 @@
     }
 
     async function generateCode() {
-        if (loading) return
+    if (loading) return
         loading = true
 
         const response = await safeFetch(`/api/v1/admin/system/generate-sensitive-code`)
         loading = false
         if (response.failed) {
-            handleException(`Failed to generate auth OTP.`, `Failed to generate code.`, response.exception)
+            handleErr({
+                description: `Failed to generate auth OTP.`,
+                notification: `Failed to generate code.`,
+            })
             return
         }
 
         const status = response.code
         if (status.failed) {
             const json = response.json()
-            handleErrorResponse(json, `Failed to generate code.`)
+            handleErr({
+                description: `Failed to generate code.`,
+                notification: json.message || `Failed to generate code.`,
+                isServerDown: status.serverDown
+            })
         }
     }
-
+    
     function openNewFile() {
         newFile.isDialogOpen = true
     }
@@ -145,7 +168,27 @@
             return
         }
 
-        const response = await safeFetch()
+        if (loading) return
+        loading = true
+        const response = await safeFetch(`/api/v1/admin/system/add-file-visibity`, {
+            body: formData({ auth_code: verifiedCode.code, path: newFile.path, isExposed: newFile.isExposed })
+        })
+        loading = false
+
+        if (response.failed) {
+            handleException(`Failed to add file visibility configuration.`, `Failed to add new file.`, response.exception)
+            return
+        }
+
+        const status = response.code
+        if (status.failed) {
+            const json = response.json()
+            handleErr({
+                description: `Failed to add file visibility`,
+                notification: json.message || `Failed to add new file.`,
+                isServerDown: status.serverDown
+            })
+        }
     }
 
     function openLogin() {

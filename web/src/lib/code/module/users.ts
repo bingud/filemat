@@ -1,6 +1,6 @@
 import type { MiniUser } from "../auth/types"
 import type { ulid } from "../types/types"
-import { safeFetch, formData, handleException, handleError, handleErrorResponse } from "../util/codeUtil.svelte"
+import { safeFetch, formData, handleErr,  } from "../util/codeUtil.svelte"
 
 
 
@@ -16,23 +16,29 @@ export async function loadMiniUsers(userIds: ulid[] | null, allUsers: boolean = 
         body.allUsers = true
     }
 
-    const response = await safeFetch(`/api/v1/admin/user/minilist`, 
-        { method: "POST", credentials: "same-origin", body: formData(body) }
-    )
+    const response = await safeFetch(`/api/v1/admin/user/minilist`, {
+        method: "POST",
+        credentials: "same-origin",
+        body: formData(body)
+    })
     if (response.failed) {
-        handleException(`Failed to fetch list of user mini metadata: ${status}`, "Failed to load users with this role.", response.exception)
+        handleErr({
+            description: `Failed to fetch list of user mini metadata`,
+            notification: `Failed to load users with this role.`,
+        })
         return null
     }
     const st = response.code
     const json = response.json()
 
-    if (st.ok) {
-        return json
-    } else if (st.serverDown) {
-        handleError(`Server ${st} while fetching yser mini metadata`, `Server is unavailable.`)
-        return null
-    } else {
-        handleErrorResponse(json, `Failed to load users with this role.`)
+    if (st.failed) {
+        handleErr({
+            description: `Failed to load users with this role.`,
+            notification: json.message || `Failed to load users with this role.`,
+            isServerDown: st.serverDown
+        })
         return null
     }
+
+    return json
 }

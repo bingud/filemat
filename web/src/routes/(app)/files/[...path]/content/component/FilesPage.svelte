@@ -2,7 +2,7 @@
 	import FolderIcon from '$lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
     import { deleteFiles, downloadFilesAsZip, getFileData, getFileDataWithDifferentPath, getFileLastModifiedDate, moveFile, moveMultipleFiles, startTusUpload, type FileData } from "$lib/code/module/files"
-    import { addSuffix, dynamicInterval, explicitEffect, filenameFromPath, isFolder, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNow, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { addSuffix, dynamicInterval, explicitEffect, filenameFromPath, handleErr, isFolder, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNow, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "../../content/code/breadcrumbState.svelte"
@@ -16,7 +16,7 @@
     import { Popover } from "$lib/component/bits-ui-wrapper"
     import FileIcon from "$lib/component/icons/FileIcon.svelte"
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
-    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"    
+    import { formData, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"    
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filePermissionMeta } from "$lib/code/data/permissions";
@@ -82,46 +82,54 @@
     
     async function handleNewFolder() {
         newButtonPopoverOpen = false
-        
+
         const folderName = prompt("Enter folder name:")
         if (!folderName) return
-        
-        // Construct the full target path
+
         const currentPath = filesState.path === '/' ? '' : filesState.path
         const targetPath = `${currentPath}/${folderName}`
         console.log(`targetPath`, targetPath)
         console.log(`currentPath`, currentPath)
-        
-        // Call API to create folder using safeFetch
-        const response = await safeFetch('/api/v1/folder/create', { 
+
+        const response = await safeFetch('/api/v1/folder/create', {
             method: 'POST',
             body: formData({ path: targetPath })
         })
         if (response.failed) {
-            handleException("Failed to create folder", "Failed to create folder.", response.exception)
+            handleErr({
+                description: "Failed to create folder",
+                notification: "Failed to create folder.",
+            })
             return
         }
-        
+
         const status = response.code
         const json = response.json()
-        
-        if (status.ok) {
-            filesState.data.entries?.push({
-                path: targetPath,
-                filename: folderName,
-                modifiedDate: unixNowMillis(),
-                createdDate: unixNowMillis(),
-                fileType: "FOLDER",
-                size: 0,
-                permissions: keysOf(filePermissionMeta),
+
+        if (status.notFound) {
+            handleErr({
+                description: "Parent folder not found when creating folder",
+                notification: "This folder was not found."
             })
-        } else if (status.serverDown) {
-            handleError(`Server ${status} when creating folder`, "Failed to create folder. Server is unavailable.")
-        } else if (status.notFound) {
-            handleError(`parent folder not found when creating folder`, `This folder was not found.`)
-        } else {
-            handleErrorResponse(json, "Failed to create folder.")
+            return
+        } else if (status.failed) {
+            handleErr({
+                description: "Failed to create folder.",
+                notification: json.message || "Failed to create folder.",
+                isServerDown: status.serverDown
+            })
+            return
         }
+
+        filesState.data.entries?.push({
+            path: targetPath,
+            filename: folderName,
+            modifiedDate: unixNowMillis(),
+            createdDate: unixNowMillis(),
+            fileType: "FOLDER",
+            size: 0,
+            permissions: keysOf(filePermissionMeta),
+        })
     }
     
     function handleNewFile() {

@@ -7,7 +7,7 @@
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { ulid } from "$lib/code/types/types";
-    import { delay, explicitEffect, forEachObject, formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { delay, explicitEffect, forEachObject, formatUnixTimestamp, formData, handleErr, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -52,22 +52,32 @@
         const body = formData({ userId: userId })
         const response = await safeFetch(`/api/v1/admin/user/get`, { method: "POST", body: body, credentials: "same-origin" })
         if (response.failed) {
-            handleException(`Failed to fetch user by user id`, "Failed to load user data.", response.exception)
+            handleErr({
+                description: `Failed to fetch user by user id`,
+                notification: `Failed to load user data.`,
+            })
             return
         }
         const status = response.code
         const json = response.json()
 
-        if (status.ok) {
-            user = json
-        } else if (status.serverDown) {
-            handleError(`Failed to fetch user data. server ${status}`, `Failed to load user data. Server is unavailable.`)
-        } else if (status.notFound) {
-            handleError(`user not found`, `This user was not found.`)
-        } else {
-            handleErrorResponse(json, "Failed to load user data.")
+        if (status.notFound) {
+            handleErr({
+                description: `User not found`,
+                notification: `This user was not found.`
+            })
+            return
+        } else if (status.failed) {
+            handleErr({
+                description: `Failed to load user data.`,
+                notification: json.message || `Failed to load user data.`,
+                isServerDown: status.serverDown
+            })
             user = null
+            return
         }
+
+        user = json
     }
 
     /**
@@ -106,7 +116,8 @@
 
     let removingRoles = $state(false)
     async function removeSelectedRoles() {
-        if (removingRoles) return; removingRoles = true
+        if (removingRoles) return
+        removingRoles = true
         try {
             if (selectedRoles.length < 1 || !selectingRoles || !user) return
 
@@ -127,33 +138,46 @@
             const body = formData({ userId: userId, roleIdList: JSON.stringify(selectedRoles) })
             const response = await safeFetch(`/api/v1/admin/user-role/remove`, { body: body })
             if (response.failed) {
-                handleException(`Failed to remove selected roles from user`, `Failed to remove selected roles.`, response.exception)
+                handleErr({
+                    description: `Failed to remove selected roles from user`,
+                    notification: `Failed to remove selected roles.`,
+                })
                 return
             }
             const json = response.json()
             const status = response.code
 
-            if (status.ok) {
-                const removedRoles = json as ulid[]
-                if (user && user.userId === userId) {
-                    removedRoles.forEach((roleId) => {
-                        removeString(user!.roles, roleId)
-                    })
-                }
-
-                const removedRolesDifference = selectedRoles.length - removedRoles.length
-                if (removedRolesDifference > 0) {
-                    handleError(`Failed to remove ${removedRolesDifference} roles from user`, `Failed to remove ${removedRolesDifference} ${removedRolesDifference === 1 ? "role" : "roles"}.`)
-                }
-
-                toggleRoleSelection()
-            } else if (status.serverDown) {
-                handleError(`Server ${status} when removing selected roles`, `Failed to remove selected roles. Server is unavailable.`)
-            } else if (status.notFound) {
-                handleError(`User not found when removing roles`, `This user was not found.`)
-            } else {
-                handleErrorResponse(json, `Failed to remove selected roles.`)
+            if (status.notFound) {
+                handleErr({
+                    description: `User not found when removing roles`,
+                    notification: `This user was not found.`
+                })
+                return
+            } else if (status.failed) {
+                handleErr({
+                    description: `Failed to remove selected roles.`,
+                    notification: json.message || `Failed to remove selected roles.`,
+                    isServerDown: status.serverDown
+                })
+                return
             }
+
+            const removedRoles = json as ulid[]
+            if (user && user.userId === userId) {
+                removedRoles.forEach((roleId) => {
+                    removeString(user!.roles, roleId)
+                })
+            }
+
+            const removedRolesDifference = selectedRoles.length - removedRoles.length
+            if (removedRolesDifference > 0) {
+                handleErr({
+                    description: `Failed to remove ${removedRolesDifference} roles from user`,
+                    notification: `Failed to remove ${removedRolesDifference} ${removedRolesDifference === 1 ? "role" : "roles"}.`
+                })
+            }
+
+            toggleRoleSelection()
         } finally {
             removingRoles = false
         }

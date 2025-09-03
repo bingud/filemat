@@ -1,7 +1,7 @@
 import type { SystemPermission } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 import type { ulid } from "../types/types"
-import { arrayRemove, formData, handleError, handleErrorResponse, handleException, removeString, safeFetch } from "../util/codeUtil.svelte"
+import { arrayRemove, formData, handleErr, handleException, removeString, safeFetch } from "../util/codeUtil.svelte"
 
 
 /**
@@ -17,16 +17,21 @@ export async function addRoleToUser(userId: ulid, roleId: ulid): Promise<boolean
     const status = response.code
     const json = response.json()
 
-    if (status.ok) {
-        return true
-    } else if (status.serverDown) {
-        handleError(`Server ${status} when assigning role`, `Server is unavilable.`)
-    } else if (status.notFound) {
-        handleError(`user not found when adding role`, `This user was not found.`)
-    } else {
-        handleErrorResponse(json, `Failed to assign role.`)
+    if (status.notFound) {
+        handleErr({
+            description: `user not found when adding role`, 
+            notification: `This user was not found.`
+        })
+        return false
+    } else if (status.failed) {
+        handleErr({
+            description: `Server ${status} when assigning role`,
+            notification: json.message || `Failed to assign role.`,
+            isServerDown: status.serverDown
+        })
+        return false
     }
-    return false
+    return true
 }
 
 
@@ -44,21 +49,27 @@ export async function changeRolePermissions(roleId: ulid, newList: SystemPermiss
     const status = response.code
     const json = response.json()
 
-    if (status.ok) {
-        if (appState.roleListObject) {
-            const role = appState.roleListObject[roleId]
-            role.permissions = newList
-        }
-
-        return true
-    } else if (status.serverDown) {
-        handleError(`Server ${status} when changing role permissions`, `Failed to update role permissions. Server is unavailable.`)
-    } else if (status.notFound) {
-        handleError(`Role not found when changing perms`, `This role was not found.`)
-    } else { 
-        handleErrorResponse(json, `Failed to update role permissions.`)
+    if (status.notFound) {
+        handleErr({
+            description: `Role not found when changing perms`, 
+            notification: `This role was not found.`
+        })
+        return false
+    } else if (status.failed) {
+        handleErr({
+            description: `Failed to update role permissions.`, 
+            notification: json.message || `Failed to update role permissions.`,
+            isServerDown: status.serverDown
+        })
+        return false 
     }
-    return false
+
+    if (appState.roleListObject) {
+        const role = appState.roleListObject[roleId]
+        role.permissions = newList
+    }
+
+    return true
 }
 
 
@@ -68,25 +79,27 @@ export async function changeRolePermissions(roleId: ulid, newList: SystemPermiss
 export async function deleteRole(roleId: ulid): Promise<boolean> {
     const response = await safeFetch(`/api/v1/admin/role/delete`, { body: formData({ roleId: roleId }) })
     if (response.failed) {
-        handleException(`Failed to delete rome`, `Failed to delete role.`, response.exception)
+        handleException(`Failed to delete role`, `Failed to delete role.`, response.exception)
         return false
     }
     const status = response.code
     const json = response.json()
 
-    if (status.ok) {
-        if (appState.roleList) {
-            arrayRemove(appState.roleList, (v) => v.roleId === roleId)
-        }
-
+    if (status.notFound) {
+        console.log(`Role already did not exist.`)
         return true
-    } else if (status.notFound) {
-        console.log(`role aleady did not exist.`)
-        return true
-    } else if (status.serverDown) {
-        handleError(`Server ${status} when deleting role`, `Failed to delete role. Server is unavailable.`)
-    } else { 
-        handleErrorResponse(json, `Failed to delete role.`)
+    } else if (!status.ok) {
+        handleErr({
+            description: `Failed to delete role.`,
+            notification: json.message || `Failed to delete role.`,
+            isServerDown: status.serverDown
+        })
+        return false
     }
-    return false
+
+    if (appState.roleList) {
+        arrayRemove(appState.roleList, v => v.roleId === roleId)
+    }
+
+    return true
 }

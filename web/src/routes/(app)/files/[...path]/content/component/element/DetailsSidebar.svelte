@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleError, handleErrorResponse, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction, handleErr } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
@@ -90,31 +90,44 @@
      * @param signal - The abort signal
      */
     async function loadPermissionData(path: string, signal: AbortSignal) {
-        const response = await safeFetch(`/api/v1/permission/entity`, { body: formData({ path: path, "include-mini-user-list": true }), signal: signal })
+        const response = await safeFetch(`/api/v1/permission/entity`, {
+            body: formData({ path: path, "include-mini-user-list": true }),
+            signal: signal
+        })
         if (response.failed) {
             if (response.exception.name === "AbortError") return
-            handleException(`Failed to fetch permission data for path ${path}`, `Failed to load file permissions.`, response.exception)
+            handleErr({
+                description: `Failed to fetch permission data for path ${path}`,
+                notification: `Failed to load file permissions.`
+            })
             return
         }
         const json = response.json()
         const status = response.code
 
-        if (status.ok) {
-            if (path !== filesState.selectedEntries.single) return
-
-            const miniUsers = json.miniUserList
-            json.miniUserList = {}
-            miniUsers.forEach((v: MiniUser) => {
-                json.miniUserList[v.userId] = v.username
+        if (status.notFound) {
+            handleErr({
+                description: `File not found when getting permission data`,
+                notification: `This file was not found.`
             })
-            permissionData = json
-        } else if (status.notFound) {
-            handleError(`file not found when getting permission data`, `This file was not found.`)
-        } else if (status.serverDown) {
-            handleError(`Server ${status} when fetching file permissions`, `Failed to load file permissions. Server is unavailable.`)
-        } else {
-            handleErrorResponse(json, `Failed to load file permissions.`)
+            return
+        } else if (status.failed) {
+            handleErr({
+                description: `Failed to load file permissions.`,
+                notification: json.message || `Failed to load file permissions.`,
+                isServerDown: status.serverDown
+            })
+            return
         }
+
+        if (path !== filesState.selectedEntries.single) return
+
+        const miniUsers = json.miniUserList
+        json.miniUserList = {}
+        miniUsers.forEach((v: MiniUser) => {
+            json.miniUserList[v.userId] = v.username
+        })
+        permissionData = json
     }
 
     function onFilePermissionCreated(perm: EntityPermission, target: { user: MiniUser | null, roleId: ulid | null }) {

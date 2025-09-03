@@ -2,7 +2,7 @@
     import type { FilePermission } from "$lib/code/auth/types";
     import { filePermissionMeta } from "$lib/code/data/permissions";
     import type { ulid } from "$lib/code/types/types";
-    import { filterObject, formData, handleError, handleErrorResponse, handleException, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { filterObject, formData, handleErr, handleException, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
     import type { EntityPermissionMeta } from "../../code/types";
@@ -31,25 +31,38 @@
 
         try {
             const permissionList = keysOf(filterObject(selectedPermissions, (k, v) => v))
-            const response = await safeFetch(`/api/v1/permission/update-entity`, { body: formData({ permissionId: perm.permissionId, newPermissionList: JSON.stringify(permissionList) }) })
-            if (response.failed) {  
-                handleException(`Failed to update file permission`, `Failed to update permission.`, response.exception)
+            const response = await safeFetch(`/api/v1/permission/update-entity`, {
+                body: formData({
+                    permissionId: perm.permissionId,
+                    newPermissionList: JSON.stringify(permissionList)
+                })
+            })
+            if (response.failed) {
+                handleErr({
+                    description: `Failed to update file permission`,
+                    notification: `Failed to update permission.`,
+                })
                 return
             }
             const status = response.code
             const json = await response.json()
 
-            if (status.ok) {
-                onPermissionUpdated(perm.permissionId, permissionList, false)
-            } else if (status.serverDown) {
-                handleError(`Server ${status} when updating file permission`, `Failed to update permission. Server is unavailable.`)
+            if (status.notFound) {
+                handleErr({
+                    description: `File not found when updating permission`,
+                    notification: `This file was not found.`
+                })
                 return
-            } else if (status.notFound) {
-                handleError(`File not found when updating permission`, `This file was not found.`)
-            } else {
-                handleErrorResponse(json, `Failed to update permission.`)
+            } else if (status.failed) {
+                handleErr({
+                    description: `Failed to update permission.`,
+                    notification: json.message || `Failed to update permission.`,
+                    isServerDown: status.serverDown
+                })
                 return
             }
+
+            onPermissionUpdated(perm.permissionId, permissionList, false)
         } finally {
             loading = false
         }
@@ -61,21 +74,29 @@
 
         try {
             const response = await safeFetch(`/api/v1/permission/delete-entity`, { body: formData({ permissionId: perm.permissionId }) })
-            if (response.failed) {  
-                handleException(`Failed to delete file permission`, `Failed to delete permission.`, response.exception)
+            if (response.failed) {
+                handleErr({
+                    description: `Failed to delete file permission`,
+                    notification: `Failed to delete permission.`,
+                })
                 return
             }
             const status = response.code
             const json = await response.json()
 
-            if (status.ok) {
-                onPermissionUpdated(perm.permissionId, null, true)
-            } else if (status.serverDown) {
-                handleError(`Server ${status} when deleting file permission`, `Failed to delete permission. Server is unavailable.`)
-            } else if (status.notFound) {
-                handleError(`File not found when deleting permission`, `This file was not found.`)
+            if (status.notFound) {
+                handleErr({
+                    description: `File not found when deleting permission`,
+                    notification: `This file was not found.`
+                })
+            } else if (status.failed) {
+                handleErr({
+                    description: `Failed to delete permission.`,
+                    notification: json.message || `Failed to delete permission.`,
+                    isServerDown: status.serverDown
+                })
             } else {
-                handleErrorResponse(json, `Failed to delete permission.`)
+                onPermissionUpdated(perm.permissionId, null, true)
             }
         } finally {
             deleting = false

@@ -2,7 +2,7 @@
     import Noindex from "$lib/component/head/Noindex.svelte"
     import CodeChunk from "$lib/component/CodeChunk.svelte"
     import { toast } from "@jill64/svelte-toast";
-    import { handleError, handleException, isBlank, pageTitle, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { handleException, isBlank, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { onMount } from "svelte";
     import Loader from "$lib/component/Loader.svelte";

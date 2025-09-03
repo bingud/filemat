@@ -1,6 +1,6 @@
 <script lang="ts">
     import { appState } from "$lib/code/stateObjects/appState.svelte";
-    import { formData, handleError, handleErrorResponse, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte";
 
     let showConfirmation = $state(false)
     let savingSymlinks = $state(false)
@@ -8,34 +8,39 @@
     async function saveSymlinkSettings() {
         if (savingSymlinks) return
         savingSymlinks = true
-        
+
         try {
             const body = formData({})
             body.append("new-state", (!appState.followSymlinks).toString())
 
             const response = await safeFetch(`/api/v1/admin/system/set/follow-symlinks`, { body })
-            
+
             if (response.failed) {
-                handleException("Failed to save settings", "Could not save system settings", response.exception)
+                handleErr({
+                    description: "Failed to save settings",
+                    notification: "Could not save system settings",
+                })
                 return
             }
-            
+
             const status = response.code
             const json = response.json()
-            
-            if (status.ok) {
-                appState.followSymlinks = !appState.followSymlinks
-                showConfirmation = false
-            } else if (status.serverDown) {
-                handleError(`Server ${status} when saving settings`, "Server is unavailable")
-            } else {
-                handleErrorResponse(json, "Failed to save system settings")
+
+            if (status.failed) {
+                handleErr({
+                    description: "Failed to save system settings",
+                    notification: json.message || "Failed to save system settings",
+                    isServerDown: status.serverDown
+                })
+                return
             }
+
+            appState.followSymlinks = !appState.followSymlinks
+            showConfirmation = false
         } finally {
             savingSymlinks = false
         }
     }
-
 </script>
 
 <div class="flex flex-col gap-4">

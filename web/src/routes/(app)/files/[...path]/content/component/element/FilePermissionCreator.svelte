@@ -4,7 +4,7 @@
     import { loadMiniUsers } from "$lib/code/module/users";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import type { ulid } from "$lib/code/types/types";
-    import { forEachObject, formData, handleError, handleErrorResponse, handleException, keysOf, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { forEachObject, formData, handleErr, handleException, keysOf, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
 
     let {
@@ -64,34 +64,48 @@
                 if (v === true) permissionList.push(k)
             })
 
-            const body = formData({ mode: selectedMode, id: selectedId, permissionList: JSON.stringify(permissionList), path: path })
+            const body = formData({
+                mode: selectedMode,
+                id: selectedId,
+                permissionList: JSON.stringify(permissionList),
+                path: path
+            })
             const response = await safeFetch(`/api/v1/permission/create-entity`, { body: body })
             if (response.failed) {
-                handleException(`Failed to create file permission`, `Failed to create permission.`, response.exception)
+                handleErr({
+                    description: `Failed to create file permission`,
+                    notification: `Failed to create permission.`,
+                })
                 return
             }
             const status = response.code
             const json = await response.json()
 
-            if (status.ok) {
-                const newPermission = json as EntityPermission
-
-                let target = run(() => {
-                    if (mode.user) {
-                        return { user: miniList!.find(v => v.userId === selectedId)!, roleId: null }
-                    } else {
-                        return { user: null, roleId: selectedId! }
-                    }
+            if (status.notFound) {
+                handleErr({
+                    description: `File not found when creating permission`,
+                    notification: `This file was not found.`
                 })
-
-                onCompleted(newPermission, target)
-            } else if (status.serverDown) {
-                handleError(`Server ${status} when creating file permission`, `Failed to create permission. Server is unavailable.`)
-            } else if (status.notFound) {
-                handleError(`file not found when creating permission`, `This file was not found.`)
-            } else {
-                handleErrorResponse(json, `Failed to create permission.`)
+                return
+            } else if (status.failed) {
+                handleErr({
+                    description: `Failed to create permission.`,
+                    notification: json.message || `Failed to create permission.`,
+                    isServerDown: status.serverDown
+                })
+                return
             }
+
+            const newPermission = json as EntityPermission
+            let target = run(() => {
+                if (mode.user) {
+                    return { user: miniList!.find(v => v.userId === selectedId)!, roleId: null }
+                } else {
+                    return { user: null, roleId: selectedId! }
+                }
+            })
+
+            onCompleted(newPermission, target)
         } finally {
             createPermissionLoading = false
         }

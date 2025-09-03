@@ -2,8 +2,6 @@
     import { goto } from "$app/navigation";
     import { page } from "$app/state";
     import { addRoleToUser, changeRolePermissions, deleteRole } from "$lib/code/admin/roles";
-    
-    import { loadUserList } from "$lib/code/admin/users";
     import { PermissionType, type MiniUser, type SystemPermission, type PublicUser, type Role, type RoleMeta } from "$lib/code/auth/types";
     import { systemPermissionMeta } from "$lib/code/data/permissions";
     import { getMaxPermissionLevel, getPermissionMeta, containsPermission, hasPermissionLevel } from "$lib/code/module/permissions";
@@ -11,8 +9,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import type { ulid } from "$lib/code/types/types";
-    import { formatUnixTimestamp, formData, handleError, handleErrorResponse, handleException, includesList, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, toStatus, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, formData, handleErr, handleException, includesList, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, toStatus, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import Loader from "$lib/component/Loader.svelte";
     import Popover from "$lib/component/Popover.svelte";
@@ -70,36 +67,42 @@
         if (response.failed) {
             role = null
             status = "failed"
-            handleException(`Failed to fetch role data.`, `Failed to load role.`, response.exception)
+            handleErr({
+                description: `Failed to fetch role data.`,
+                notification: `Failed to load role.`,
+            })
             return
         }
         const code = response.code
         const json = response.json()
 
-        if (code.ok) {
-            if (json.userIds) {
-                const miniUsers = await loadMiniUsers(json.userIds)
-                json.miniUsers = miniUsers
-            }
-
-            role = json
-            status = "ready"
-        } else if (code.serverDown) {
-            handleError(`Server ${code} while fetching role data`, `Server is unavailable.`)
+        if (code.notFound) {
+            handleErr({
+                description: `Role not found`,
+                notification: `This role was not found.`
+            })
             role = null
             status = "failed"
-        } else if (code.notFound) {
-            handleError(`role not found`, `This role was not found.`)
+            return
+        } else if (code.failed) {
+            handleErr({
+                description: `Failed to load role.`,
+                notification: json.message || `Failed to load role.`,
+                isServerDown: code.serverDown
+            })
             role = null
             status = "failed"
-        } else {
-            handleErrorResponse(json, `Failed to load role.`)
-            role = null
-            status = "failed"
+            return
         }
+
+        if (json.userIds) {
+            const miniUsers = await loadMiniUsers(json.userIds)
+            json.miniUsers = miniUsers
+        }
+
+        role = json
+        status = "ready"
     }
-
-
 
     /**
      * Load list of all filemat users

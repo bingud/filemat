@@ -1,5 +1,5 @@
 import { appState } from "../stateObjects/appState.svelte"
-import { handleErrorResponse, handleException, parseJson } from "../util/codeUtil.svelte"
+import { handleErr, handleException, parseJson } from "../util/codeUtil.svelte"
 
 
 
@@ -20,11 +20,17 @@ export async function fetchSensitiveFolderList(): Promise<string[] | null> {
             return json
         } else {
             appState.sensitiveFolders = null
-            handleErrorResponse(json, "Failed to load list of sensitive folders.")
+            handleErr({
+                description: "Failed to load list of sensitive folders.",
+                notification: json?.message || "Failed to load list of sensitive folders."
+            })
             return null
         }
     } catch (e) {
-        handleException("Failed to fetch sensitive folder list.", "An error occurred while loading the list of sensitive folders.", e)
+        handleErr({
+            description: "Failed to fetch sensitive folder list.",
+            notification: "An error occurred while loading the list of sensitive folders."
+        })
         appState.sensitiveFolders = null
         return null
     }

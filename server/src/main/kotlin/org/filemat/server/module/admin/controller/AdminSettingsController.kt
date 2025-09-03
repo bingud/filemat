@@ -45,7 +45,8 @@ class AdminSettingsController(
         @RequestParam("path") path: String,
         @RequestParam("isExposed") isExposed: Boolean,
     ): ResponseEntity<String> {
-        TODO()
+        val principal = request.getPrincipal()!!
+        val ip = request.realIp()
 
         sensitiveAuthService.verifyOtp(authCode).let {
             if (it.rejected) return unauthenticated(it.error, "invalid-code")
@@ -62,12 +63,14 @@ class AdminSettingsController(
             if (it.isNotSuccessful) return internal(it.error)
         }
 
-        val message = "File visibility configuration added: set to ${if (isExposed) "exposed" else "hidden"}"
+        val visibilityWord = if (isExposed) "exposed" else "hidden"
         logService.info(
             LogType.AUDIT,
             UserAction.ADD_FILE_VISIBILITY_CONFIGURATION,
-            message,
-            ""
+            "File visibility configuration added: set to $visibilityWord",
+            "File was set to $visibilityWord: \n$path",
+            initiatorId = principal.userId,
+            initiatorIp = ip,
         )
 
         return ok("ok")

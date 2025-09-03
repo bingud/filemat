@@ -36,39 +36,21 @@ export function handleException(message: string, userMessage: string | null, exc
 }
 
 /**
- * Logs any error
+ * Prints an error to console and user
  */
-export function handleError(message: string, userMessage: string | null, isServerDown: boolean | null = null) {
-    if (isServerDown === true) return handleServerDownError(message, userMessage)
-        
-    console.log(`${message}\n(${userMessage ?? "No user message"})`)
+export function handleErr({
+    description,
+    notification,
+    isServerDown,
+}: {
+    description: string,
+    notification?: string,
+    isServerDown?: boolean,
+}) {
+    console.log(`${description}  \n${notification ?? "(No notification message)"}  \n${isServerDown ? "(Server is unavailable)" : ""}`)
 
-    if (userMessage) {
-        toast.error(userMessage)
-    }
-}
-
-export function handleServerDownError(message: string, userMessage: String | null) {
-    console.log(`${message}\n${userMessage ?? "No uesr message"}\nServer is unavailable`)
-
-    if (userMessage) {
-        toast.error(`${userMessage} Server is unavailable.`)
-    }
-}
-
-/**
- * Logs an error HTTP response
- */
-export function handleErrorResponse(response: ErrorResponse | any, defaultMessage: string) {
-    const message = response?.message
-    const error = response?.error
-    
-    console.log(`Error Response:\n\n${defaultMessage}\n${error}\n${message}`)
-
-    if (message) {
-        toast.error(message)
-    } else {
-        toast.error(defaultMessage)
+    if (notification) {
+        toast.error(`${notification} ${isServerDown ? "Sever is unavailable." : ""}`)
     }
 }
 

@@ -1,6 +1,6 @@
 import { auth } from "$lib/code/stateObjects/authState.svelte"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
-import { delay, handleError, handleErrorResponse, handleException, isServerDown, parseJson, unixNow } from "../util/codeUtil.svelte"
+import { delay, handleErr, handleException, isServerDown, parseJson, unixNow } from "../util/codeUtil.svelte"
 import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
 import { clientState } from "../stateObjects/clientState.svelte"
@@ -60,7 +60,10 @@ export async function fetchState(
                     auth.principal = null
                     auth.authenticated = false
                 } else {
-                    handleError(`Status ${status} for principal when fetching state.`, `Failed to load your account (${status})`)
+                    handleErr({
+                        description: `Status ${status} for principal when fetching state.`,
+                        notification: `Failed to load your account (${status})`
+                    })
                     return false
                 }
             }
@@ -73,7 +76,10 @@ export async function fetchState(
                 } else if (status === 401) {
                     appState.roleList = null
                 } else {
-                    handleError(`Status ${status} for role list when fetching state.`, `Failed to load roles (${status})`)
+                    handleErr({
+    description: `Status ${status} for role list when fetching state.`,
+    notification: `Failed to load roles (${status})`
+})
                     return false
                 }
             }
@@ -85,7 +91,10 @@ export async function fetchState(
                     appState.isSetup = app.isSetup
                     appState.followSymlinks = app.followSymlinks
                 } else {
-                    handleError(`Status ${status} for app state when fetching state.`, `Failed to load Filemat state (${status})`)
+                    handleErr({
+                        description: `Status ${status} for app state when fetching state.`,
+                        notification: `Failed to load Filemat state (${status})`
+                    })
                     return false
                 }
             }
@@ -96,7 +105,10 @@ export async function fetchState(
                     const ids = data.systemRoleIds.value
                     appState.systemRoleIds = ids
                 } else {
-                    handleError(`Status ${status} for system role IDs when fetching state.`, `Failed to load system roles (${status})`)
+                    handleErr({
+                        description: `Status ${status} for system role IDs when fetching state.`,
+                        notification: `Failed to load system roles (${status})`
+                    })
                 }
             }
 
@@ -107,11 +119,18 @@ export async function fetchState(
             console.log(`Loaded state.`)
             return true
         } else if (isServerDown(status)) {
-            handleError(`Server is ${status} while fetching state`, "Server is unavailable.")
+            handleErr({
+                description: `Server is ${status} while fetching state`,
+                notification: "Server is unavailable.",
+                isServerDown: true
+            })
             return false
         } else {
             const error = json as ErrorResponse
-            handleErrorResponse(error, `Failed to load state (${status})`)
+            handleErr({
+                description: `Failed to load state (${status})`,
+                notification: error?.message || `Failed to load state (${status})`
+            })
             return false
         }
     } catch (e) {

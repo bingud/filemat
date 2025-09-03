@@ -6,7 +6,7 @@
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
     import type { ulid } from "$lib/code/types/types";
-    import { formData, handleError, handleErrorResponse, handleException, isBlank, pageTitle, removeString, safeFetch, sortArrayByNumberDesc, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { formData,  handleErr,  handleException, isBlank, pageTitle, removeString, safeFetch, sortArrayByNumberDesc, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte"
 
@@ -21,27 +21,41 @@
         uiState.settings.title = "New role"
     })
 
-    async function submit() {if (running) return; running = true; try {
-        if (isBlank(nameInput)) {
-            toast.error(`Role name is empty.`)
-            return
-        } else if (nameInput.length > 128) {
-            toast.error(`Role name is too long.`)
-            return
-        }
+    async function submit() {
+        if (running) return
+        running = true
+        try {
+            if (isBlank(nameInput)) {
+                toast.error(`Role name is empty.`)
+                return
+            } else if (nameInput.length > 128) {
+                toast.error(`Role name is too long.`)
+                return
+            }
 
-        const permissions = JSON.stringify(selectedPermissions)
-        const body = formData({ name: nameInput, permissions: permissions })
+            const permissions = JSON.stringify(selectedPermissions)
+            const body = formData({ name: nameInput, permissions: permissions })
 
-        const response = await safeFetch(`/api/v1/admin/role/create`, { body: body })
-        if (response.failed) {
-            handleException(`Failed to create role: ${response.status}`, `Failed to create new role.`, response.exception)
-            return
-        }
-        const status = response.code
-        const json = response.json()
+            const response = await safeFetch(`/api/v1/admin/role/create`, { body: body })
+            if (response.failed) {
+                handleErr({
+                    description: `Failed to create role: ${response.status}`,
+                    notification: `Failed to create new role.`,
+                })
+                return
+            }
+            const status = response.code
+            const json = response.json()
 
-        if (status.ok) {
+            if (status.failed) {
+                handleErr({
+                    description: `Failed to create role.`,
+                    notification: json.message || `Failed to create role.`,
+                    isServerDown: status.serverDown
+                })
+                return
+            }
+
             const newRoleId = json.roleId as ulid
             const role: Role = {
                 roleId: newRoleId,
@@ -52,12 +66,10 @@
 
             if (appState.roleList) appState.roleList.push(role)
             await goto(`/settings/roles`)
-        } else if (status.serverDown) {
-            handleError(`Failed to create role: ${status}`, `Failed to create role.`)
-        } else {
-            handleErrorResponse(json, `Failed to create role.`)
+        } finally {
+            running = false
         }
-    } finally { running = false }}
+    }
 
     function selectPermission(id: SystemPermission) {
         if (selectedPermissions.includes(id)) {

@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { goto, invalidate } from "$app/navigation";
-    import { formData, handleError, handleErrorResponse, parseJson, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { goto } from "$app/navigation";
+    import { formData,  handleErr,  safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { toast } from "@jill64/svelte-toast";
 
@@ -31,25 +31,29 @@
 
             const response = await safeFetch(`/api/v1/auth/login/initiate`, { method: "POST", body: body })
             if (response.failed) {
-                console.log(response.exception)
-                toast.error("Failed to log in. (Local error)")
+                handleErr({
+                    description: response.exception,
+                    notification: "Failed to log in. (Local error)"
+                })
                 return
             }
             const status = response.code
+            const json = response.json()
 
-            if (status.ok) {
-                const loginStatus = response.content as "ok" | "mfa-totp"
+            if (status.failed) {
+                handleErr({
+                    description: "Failed to log in.",
+                    notification: json.message || "Failed to log in.",
+                    isServerDown: status.serverDown
+                })
+                return
+            }
 
-                if (loginStatus === "ok") {
-                    await goto("/")
-                } else if (loginStatus === "mfa-totp") {
-                    phase = "totp"
-                }
-            } else if (status.serverDown) {
-                handleError(`Server ${status} while logging in`, "Server is unavailable.")
-            } else {
-                const json = response.json()
-                handleErrorResponse(json, "Failed to log in.")
+            const loginStatus = response.content as "ok" | "mfa-totp"
+            if (loginStatus === "ok") {
+                await goto("/")
+            } else if (loginStatus === "mfa-totp") {
+                phase = "totp"
             }
         } finally {
             running = false

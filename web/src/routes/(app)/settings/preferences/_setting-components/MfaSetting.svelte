@@ -1,7 +1,7 @@
 <script lang="ts">
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { explicitEffect, formData, handleError, handleErrorResponse, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { explicitEffect, formData, handleErr, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
     import QRCode from 'qrcode'
     import CustomDialog from "$lib/component/CustomDialog.svelte";
@@ -70,24 +70,30 @@
     /**
      * Enabling functions
      */
-
     async function enable_init_requestTotpSecret() {
         dialogOpen = true
 
         const response = await safeFetch(`/api/v1/user/mfa/enable/generate-secret`)
         if (response.failed) {
-            handleErrorResponse(response, `Failed to enable 2FA.`)
+            handleErr({
+                description: `Failed to enable 2FA.`,
+                notification: response.exception,
+            })
             return
         }
 
         const json = response.json()
-        if (response.code.ok) {
-            if (!json) return
-            newTotp = json
-        } else {
-            const error = json.message
-            handleError(`Status ${response.status} when enabling 2FA.`, error.error || `Failed to enable 2FA.`)
+        if (response.code.failed) {
+            handleErr({
+                description: `Failed to enable 2FA.`,
+                notification: json?.message || `Failed to enable 2FA.`,
+                isServerDown: response.code.serverDown
+            })
+            return
         }
+
+        if (!json) return
+        newTotp = json
     }
 
     function enable_one_next() {
@@ -108,18 +114,25 @@
         })
         
         if (response.failed) {
-            handleErrorResponse(response, `Failed to enable 2FA. ${response.status}`)
+            handleErr({
+                description: `Failed to enable 2FA.`,
+                notification: `Failed to enable 2FA. ${response.status}`
+            })
             return
         }
 
-        if (response.code.ok) {
-            if (auth.principal) auth.principal.mfaTotpStatus = true
-            phase++
-        } else {
+        if (response.code.failed) {
             const json = response.json()
-            const error = json.message
-            handleError(`Status ${response.status} when confirming 2FA.`, error || `Failed to enable 2FA.`)
+            handleErr({
+                description: `Status ${response.status} when confirming 2FA.`,
+                notification: json.message || `Failed to enable 2FA.`,
+                isServerDown: response.code.serverDown
+            })
+            return
         }
+
+        if (auth.principal) auth.principal.mfaTotpStatus = true
+        phase++
     }
 
     function enable_three_finish() {
@@ -146,18 +159,25 @@
             body: formData({ totp: totpInput })
         })
         if (response.failed) {
-            handleErrorResponse(response, `Failed to enable 2FA. ${response.status}`)
+            handleErr({
+                description: `Failed to disable 2FA.`,
+                notification: `Failed to disable 2FA. ${response.status}`
+            })
             return
         }
 
-        if (response.code.ok) {
-            if (auth.principal) auth.principal.mfaTotpStatus = false
-            phase++
-        } else {
+        if (response.code.failed) {
             const json = response.json()
-            const error = json.message
-            handleError(`Status ${response.status} when disabling 2FA.`, error || `Failed to disable 2FA.`)
+            handleErr({
+                description: `Status ${response.status} when disabling 2FA.`,
+                notification: json.message || `Failed to disable 2FA.`,
+                isServerDown: response.code.serverDown
+            })
+            return
         }
+
+        if (auth.principal) auth.principal.mfaTotpStatus = false
+        phase++
     }
     
 </script>
