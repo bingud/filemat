@@ -99,3 +99,60 @@ export function autofocus(
         }
     }
 }
+
+
+
+export function prefixSlash(node: HTMLInputElement) {
+    function ensureSlashPrefix() {
+        if (!node.value.startsWith('/')) {
+            const cursorPos = node.selectionStart || 0
+            node.value = '/' + node.value
+            // Adjust cursor position to account for added slash
+            node.setSelectionRange(cursorPos + 1, cursorPos + 1)
+        }
+    }
+
+    function handleInput() {
+        ensureSlashPrefix()
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+        const cursorPos = node.selectionStart || 0
+        const isAtStart = cursorPos === 0
+        const isSelectingFromStart = node.selectionStart === 0 && (node.selectionEnd || 0) > 0
+
+        // Prevent deletion of the slash
+        if ((event.key === 'Backspace' || event.key === 'Delete') && 
+            (isAtStart || isSelectingFromStart)) {
+            if (node.value.startsWith('/') && node.value.length === 1) {
+                event.preventDefault()
+            } else if (isSelectingFromStart) {
+                event.preventDefault()
+                // Allow deletion but keep the slash
+                const newValue = '/' + node.value.slice(node.selectionEnd || 0)
+                node.value = newValue
+                node.setSelectionRange(1, 1)
+            }
+        }
+    }
+
+    function handleFocus() {
+        ensureSlashPrefix()
+    }
+
+    // Initialize
+    ensureSlashPrefix()
+
+    // Add event listeners
+    node.addEventListener('input', handleInput)
+    node.addEventListener('keydown', handleKeyDown)
+    node.addEventListener('focus', handleFocus)
+
+    return {
+        destroy() {
+            node.removeEventListener('input', handleInput)
+            node.removeEventListener('keydown', handleKeyDown)
+            node.removeEventListener('focus', handleFocus)
+        }
+    }
+}

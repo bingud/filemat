@@ -618,3 +618,66 @@ export function formatDuration(seconds: number): string {
     const days = Math.floor(hours / 24)
     return `${days} day${days === 1 ? "" : "s"}`
 }
+
+
+
+export async function doRequest(
+    {
+        body,
+        method,
+        path, 
+        onException,
+        onFailure,
+        onNotFound,
+        afterResponse,
+        errors,
+    }: {
+        body?: FormData,
+        method?: 'GET' | 'POST',
+        path: string,
+        onException?: (exception: any) => any,
+        onFailure?: (response: SafeFetchResult) => any,
+        onNotFound?: (response: SafeFetchResult) => any,
+        afterResponse?: (response: SafeFetchResult) => any,
+        errors: {
+            exception: {
+                description: string,
+                notification: string,
+            },
+            failed: {
+                description: string,
+                notification: string,
+            }
+        }
+    }
+) {
+    const response = await safeFetch(path, { body, method })
+
+    if (afterResponse) afterResponse(response)
+
+    if (response.failed) {
+        handleException(
+            errors.exception.description, 
+            errors.exception.notification, 
+            response.exception
+        )
+
+        if (onException) onException(response.exception)
+        return
+    }
+
+    const status = response.code
+    if (status.notFound) {
+        if (onNotFound) onNotFound(response)
+    } else if (status.failed) {
+        const json = response.json()
+        handleErr({
+            description: errors.failed.description,
+            notification: json.message || errors.failed.notification,
+            isServerDown: status.serverDown
+        })
+
+        if (onFailure) onFailure(response)
+        return
+    }
+}

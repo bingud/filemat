@@ -65,7 +65,8 @@ class VisibilityTrie {
 
         fun dfs(node: TrieNode, path: List<String>) {
             if (node.hasRule) {
-                result.put(path.joinToString("/"), node.isExposed)
+                val fullPath = "/" + path.joinToString("/")
+                result[fullPath] = node.isExposed
             }
             for ((part, child) in node.children) {
                 dfs(child, path + part)

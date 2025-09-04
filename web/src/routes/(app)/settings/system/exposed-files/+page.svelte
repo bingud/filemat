@@ -1,7 +1,9 @@
 <script lang="ts">
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { entriesOf, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { doRequest, entriesOf, explicitEffect, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { prefixSlash } from "$lib/code/util/uiUtil";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
+    import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { toast } from "@jill64/svelte-toast";
     import { Dialog } from "bits-ui";
@@ -36,13 +38,12 @@
         isDialogOpen: false,
         isLoading: false,
         reset: function () { 
-            this.path = ""
+            this.path = "/"
             this.isExposed = true
             this.isDialogOpen = false
         }
     })
-    
-
+ 
     onMount(() => {
         uiState.settings.title = title
         loadVisibilities()
@@ -74,7 +75,7 @@
         visibilities = json
     }
 
-    async function verifyCode() {
+    async function verifyAuthCode() {
         if (codeInput.length !== 16) {
             toast.error(`The code must be 16 letters long.`)
             return
@@ -113,13 +114,13 @@
         }
 
         if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
-        expirationUpdatingInterval = setInterval(calculateRemainingSeconds, 3000)
-        calculateRemainingSeconds()
+        expirationUpdatingInterval = setInterval(calculateRemainingCodeSeconds, 3000)
+        calculateRemainingCodeSeconds()
 
         loginDialogOpen = false
     }
 
-    function calculateRemainingSeconds() {
+    function calculateRemainingCodeSeconds() {
         if (!verifiedCode) {
             if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
             return
@@ -133,7 +134,7 @@
         }
     }
 
-    async function generateCode() {
+    async function generateAuthCode() {
     if (loading) return
         loading = true
 
@@ -158,21 +159,17 @@
         }
     }
 
-    function openNewFile() {
+    function openNewConfigurationDialog() {
         newFile.isDialogOpen = true
     }
 
-    async function addNewFile() {
+    async function addNewConfiguration() {
         if (!verifiedCode) {
             openLogin()
             return
         }
 
         if (!visibilities) return
-        if (visibilities[newFile.path]) {
-            toast.error(`This file was already added.`)
-            return
-        }
 
         if (loading) return
         loading = true
@@ -198,11 +195,44 @@
         }
 
         visibilities[newFile.path] = newFile.isExposed
+        newFile.reset()
     }
 
     function openLogin() {
-        generateCode()
+        generateAuthCode()
         loginDialogOpen = true
+    }
+
+    async function deleteConfiguration(path: string) {
+        if (!verifiedCode) {
+            openLogin()
+            return
+        }
+
+        if (!visibilities) return
+        if (loading) return
+
+        loading = true
+        await doRequest({
+            method: 'POST',
+            path: `/api/v1/admin/system/remove-file-visibility`,
+            body: formData({ auth_code: verifiedCode.code, path: newFile.path }),
+            afterResponse: () => {
+                loading = false
+            },
+            errors: {
+                exception: {
+                    description: `Failed to remove file visibility configuration.`,
+                    notification: `Failed to remove file.`
+                },
+                failed: {
+                    description: `Failed to remove file visibility configuration.`,
+                    notification: `Failed to remove file.`
+                }
+            }
+        })
+
+        delete visibilities[newFile.path]
     }
 </script>
 
@@ -214,7 +244,7 @@
 
         {#if verifiedCode && remainingSeconds}
             <p class="p-4 rounded-lg bg-neutral-300 dark:bg-neutral-800 my-4">You can change exposed files for the next {formatDuration(remainingSeconds)}.</p>
-            <button on:click={openNewFile} class="basic-button">Add new file</button>
+            <button on:click={openNewConfigurationDialog} class="basic-button">Add new file</button>
         {:else}
             <button class="basic-button" on:click={openLogin}>Configure files</button>
         {/if}
@@ -226,6 +256,7 @@
                 <tr>
                     <th class="text-left p-2">Path</th>
                     <th class="text-left p-2">Visibility</th>
+                    <th class="text-left p-2">Delete</th>
                 </tr>
             </thead> -->
             <tbody>
@@ -240,6 +271,19 @@
                                 <span class="text-red-500">⬤</span>
                                 Hidden
                             {/if}
+                        </td>
+
+                        <!-- Delete button -->
+                        <td class="ho">
+                            <button
+                                title="Delete this file configuration"
+                                class="flex items-center justify-center rounded-lg p-2 my-1 hover:bg-neutral-300 hover:dark:bg-neutral-800 hover:fill-red-500"
+                                on:click={() => { deleteConfiguration(path) }}
+                            >
+                                <div class="h-[1.2rem]">
+                                    <TrashIcon></TrashIcon>
+                                </div>
+                            </button>
                         </td>
                     </tr>
                 {:else}
@@ -273,7 +317,7 @@
                         <li><CodeChunk>/var/lib/filemat/auth-code.txt</CodeChunk></li>
                     </ul>
                 </div>
-                <form on:submit={verifyCode} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">
+                <form on:submit={verifyAuthCode} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">
                     <label for="code-input">Code:</label>
                     <input id="code-input" required minlength="16" maxlength="16" bind:value={codeInput}>
 
@@ -293,11 +337,11 @@
         <Dialog.Content>
             <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
                 <p>Configure a new file</p>
-                <form on:submit={addNewFile} class="flex flex-col w-full gap-6">
+                <form on:submit={addNewConfiguration} class="flex flex-col w-full gap-6">
                     <fieldset class="contents" disabled={newFile.isLoading}>
                         <div class="flex flex-col gap-2 w-full">
                             <label for="code-input">Full path:</label>
-                            <input id="code-input" required minlength="1" bind:value={newFile.path} class="w-full">
+                            <input id="code-input" required minlength="1" bind:value={newFile.path} use:prefixSlash class="w-full">
                         </div>
 
                         <!-- Visibility switcher -->
