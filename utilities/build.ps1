@@ -7,6 +7,38 @@ param(
 # Set error action preference to stop on errors
 $ErrorActionPreference = "Stop"
 
+# Helper function for retrying commands
+function Invoke-WithRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$ScriptBlock,
+        [int]$MaxRetries = 3,
+        [int]$RetryDelaySeconds = 5
+    )
+
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        try {
+            & $ScriptBlock
+            if ($LASTEXITCODE -ne 0) {
+                throw "Command failed with exit code $LASTEXITCODE"
+            }
+            return # Success
+        }
+        catch {
+            if ($attempt -lt $MaxRetries) {
+                Write-Warning "Attempt $attempt of $MaxRetries failed: $($_.Exception.Message)"
+                Write-Warning "Retrying in $RetryDelaySeconds seconds..."
+                Start-Sleep -Seconds $RetryDelaySeconds
+            }
+            else {
+                Write-Error "All $MaxRetries attempts failed."
+                throw # Re-throw the last exception
+            }
+        }
+    }
+}
+
+
 # Get script directory and set base path
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $BasePath = Split-Path -Parent $ScriptDir
@@ -50,7 +82,7 @@ try {
     if (-not (Test-Path "package.json")) {
         throw "package.json not found in frontend folder"
     }
-    npm install
+    Invoke-WithRetry -ScriptBlock { npm install }
     if (Test-Path $FrontendBuildFolder) {
         Remove-Item $FrontendBuildFolder -Recurse -Force
     }
@@ -72,7 +104,8 @@ try {
         Write-Host `
             "(Success) Frontend files copied to backend static folder" `
             -ForegroundColor Green
-    } else {
+    }
+    else {
         throw "Frontend build folder not found: $FrontendBuildFolder"
     }
 
@@ -100,8 +133,9 @@ try {
         }
         $ImageTag = "${DockerRepo}:${ImageVersion}"
         $LatestTag = "${DockerRepo}:latest"
-        docker build -t $ImageTag -t $LatestTag -f $DockerfilePath .
-        if ($LASTEXITCODE -ne 0) { throw "Docker build failed" }
+        Invoke-WithRetry -ScriptBlock {
+            docker build -t $ImageTag -t $LatestTag -f $DockerfilePath .
+        }
         Write-Host "(Success) Docker image built: $ImageTag" -ForegroundColor Green
 
         # Step 6: Push to Docker Hub (optional)
@@ -110,19 +144,20 @@ try {
             $PushChoice = Read-Host "Do you want to push to Docker Hub? (y/N)"
             if ($PushChoice -match "^[Yy]") {
                 Write-Host "Pushing to Docker Hub..." -ForegroundColor Yellow
-                docker push $ImageTag
-                if ($LASTEXITCODE -ne 0) { throw "Failed to push versioned image" }
-                docker push $LatestTag
-                if ($LASTEXITCODE -ne 0) { throw "Failed to push latest image" }
+                Invoke-WithRetry -ScriptBlock { docker push $ImageTag }
+                Invoke-WithRetry -ScriptBlock { docker push $LatestTag }
                 Write-Host "(Success) Images pushed to Docker Hub" -ForegroundColor Green
-            } else {
+            }
+            else {
                 Write-Host "Skipping Docker Hub push" -ForegroundColor Yellow
             }
-        } else {
+        }
+        else {
             Write-Host "`n6. Skipping Docker Hub push (NoPush flag specified)" `
                 -ForegroundColor Yellow
         }
-    } else {
+    }
+    else {
         Write-Host "`nSkipping Docker build and push." -ForegroundColor Yellow
     }
 
@@ -145,11 +180,13 @@ try {
     }
     Write-Host "JAR file: $DestinationJarPath" -ForegroundColor White
 
-} catch {
+}
+catch {
     Write-Host "`nError: $($_.Exception.Message)" -ForegroundColor Red
     Read-Host 'Press any key to exit'
     exit 1
-} finally {
+}
+finally {
     # Return to base directory
     Set-Location $BasePath
 }
