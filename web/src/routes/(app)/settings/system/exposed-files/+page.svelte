@@ -216,7 +216,7 @@
         await doRequest({
             method: 'POST',
             path: `/api/v1/admin/system/remove-file-visibility`,
-            body: formData({ auth_code: verifiedCode.code, path: newFile.path }),
+            body: formData({ auth_code: verifiedCode.code, path: path }),
             afterResponse: () => {
                 loading = false
             },
@@ -232,7 +232,7 @@
             }
         })
 
-        delete visibilities[newFile.path]
+        delete visibilities[path]
     }
 </script>
 

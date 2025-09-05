@@ -91,11 +91,28 @@ class FileVisibilityService(
             logService.error(
                 type = LogType.SYSTEM,
                 action = userAction,
-                description = "Failed to insert folder visibility to database",
+                description = "Failed to insert file visibility to database",
                 message = e.stackTraceToString()
             )
-            return Result.error("Failed to save folder visibility configuration.")
+            return Result.error("Failed to save file visibility configuration.")
         }
+    }
+
+    fun removePath(path: String, userAction: UserAction): Result<Unit> {
+        try {
+            fileVisibilityRepository.remove(path)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to remove file visibility from database",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to remove file visibility configuration.")
+        }
+
+        visibilityTrie.remove(path)
+        return Result.ok()
     }
 
     /**

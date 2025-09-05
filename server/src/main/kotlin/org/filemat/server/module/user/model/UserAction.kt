@@ -40,7 +40,8 @@ enum class UserAction(val index: Int) {
     VERIFY_LOGIN_TOTP_MFA(31),
     ENABLE_TOTP_MFA(32),
     DISABLE_TOTP_MFA(33),
-    ADD_FILE_VISIBILITY_CONFIGURATION(34);
+    ADD_FILE_VISIBILITY_CONFIGURATION(34),
+    REMOVE_FILE_VISIBILITY_CONFIGURATION(35);
 
     companion object {
         init {

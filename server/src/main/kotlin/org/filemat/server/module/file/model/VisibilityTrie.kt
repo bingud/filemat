@@ -11,6 +11,7 @@ class VisibilityTrie {
         val isExplicit: Boolean
     )
 
+
     fun insert(path: String, isExposed: Boolean) {
         var node = root
         val parts = path.split("/").filter { it.isNotEmpty() }
@@ -85,6 +86,30 @@ class VisibilityTrie {
         }
         return node.hasRule
     }
+
+    fun remove(path: String) {
+        fun dfs(node: TrieNode, parts: List<String>, depth: Int): Boolean {
+            if (depth == parts.size) {
+                if (!node.hasRule) return false
+                node.hasRule = false
+                return node.children.isEmpty()
+            }
+
+            val part = parts[depth]
+            val child = node.children[part] ?: return false
+            val shouldDeleteChild = dfs(child, parts, depth + 1)
+
+            if (shouldDeleteChild) {
+                node.children.remove(part)
+            }
+
+            return !node.hasRule && node.children.isEmpty()
+        }
+
+        val parts = path.split("/").filter { it.isNotEmpty() }
+        dfs(root, parts, 0)
+    }
+
 
     private class TrieNode {
         val children = mutableMapOf<String, TrieNode>()

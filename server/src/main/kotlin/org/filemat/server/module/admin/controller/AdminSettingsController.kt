@@ -10,6 +10,7 @@ import org.filemat.server.module.file.model.FileVisibility
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
@@ -37,6 +38,35 @@ class AdminSettingsController(
     private val fileVisibilityService: FileVisibilityService,
     private val sensitiveAuthService: SensitiveAuthService,
 ) : AController() {
+
+    @PostMapping("/remove-file-visibility")
+    fun adminRemoveFileVisibilityMapping(
+        request: HttpServletRequest,
+        @RequestParam("auth_code") authCode: String,
+        @RequestParam("path") path: String,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+        val ip = request.realIp()
+
+        sensitiveAuthService.verifyOtp(authCode).let {
+            if (it.rejected) return unauthenticated(it.error, "invalid-code")
+            if (it.hasError) return internal(it.error)
+        }
+
+        fileVisibilityService.removePath(path, UserAction.REMOVE_FILE_VISIBILITY_CONFIGURATION)
+
+        logService.info(
+            LogType.AUDIT,
+            UserAction.REMOVE_FILE_VISIBILITY_CONFIGURATION,
+            "File visibility configuration removed",
+            "",
+            initiatorId = principal.userId,
+            initiatorIp = ip,
+            meta = meta("path" to path)
+        )
+
+        return ok()
+    }
 
     @PostMapping("/add-file-visibility")
     fun adminAddFileVisibilityMapping(
@@ -74,7 +104,7 @@ class AdminSettingsController(
             initiatorIp = ip,
         )
 
-        return ok("ok")
+        return ok()
     }
 
     @PostMapping("/authenticate-sensitive-code")
@@ -124,7 +154,7 @@ class AdminSettingsController(
         settingService.set_followSymLinks(user, newState).let {
             if (it.hasError) return internal(it.error, "")
             if (it.isNotSuccessful) return bad(it.error, "")
-            return ok("ok")
+            return ok()
         }
     }
 }

@@ -16,4 +16,7 @@ interface FileVisibilityRepository : CrudRepository<FileVisibility, String> {
     @Query("INSERT OR REPLACE INTO folder_visibility (path, is_exposed, created_date) VALUES (:path, :isExposed, :now)")
     fun insertOrReplace(path: String, isExposed: Boolean, now: Long): Int
 
+    @Modifying
+    @Query("DELETE FROM folder_visibility WHERE path = :path")
+    fun remove(path: String): Int
 }
