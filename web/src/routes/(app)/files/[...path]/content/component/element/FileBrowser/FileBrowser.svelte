@@ -316,6 +316,18 @@
         dragging = false
     }
 
+    function changeSortingMode(mode: typeof filesState.sortingMode) {
+        const current = filesState.sortingMode
+
+        if (mode === current) {
+            const currentDirection = filesState.sortingDirection
+            if (currentDirection === "asc") filesState.sortingDirection = "desc"
+            if (currentDirection === "desc") filesState.sortingDirection = "asc"
+        } else {
+            filesState.sortingDirection = "asc"
+            filesState.sortingMode = mode
+        }
+    }
 </script>
 
 
@@ -323,16 +335,41 @@
     <div on:click|stopPropagation class="w-full h-fit overflow-x-hidden">
         <!-- Header row (separate grid) -->
         <div class="file-grid gap-x-2 px-4 py-2 font-medium text-neutral-700 dark:text-neutral-400">
-            <div class="truncate text-left">
+            <button
+                on:click={() => changeSortingMode("name")}
+                class="truncate text-left flex items-center gap-1"
+            >
                 Name
-            </div>
-            <div class="whitespace-nowrap max-md:hidden text-right">
+                <span class="w-3 text-neutral-500 inline-block text-center">
+                    {#if filesState.sortingMode === "name"}
+                        {filesState.sortingDirection === "asc" ? "▲" : "▼"}
+                    {/if}
+                </span>
+            </button>
+
+            <button
+                on:click={() => changeSortingMode("modified")}
+                class="whitespace-nowrap max-md:hidden text-right flex items-center gap-1 justify-end"
+            >
                 Last Modified
-            </div>
-            <div class="whitespace-nowrap max-sm:hidden text-right">
+                <span class="w-3 text-neutral-500 inline-block text-center">
+                    {#if filesState.sortingMode === "modified"}
+                        {filesState.sortingDirection === "asc" ? "▲" : "▼"}
+                    {/if}
+                </span>
+            </button>
+
+            <button
+                on:click={() => changeSortingMode("size")}
+                class="whitespace-nowrap max-sm:hidden text-right flex items-center gap-1 justify-end"
+            >
                 Size
-            </div>
-            <div class="text-center"></div>
+                <span class="w-3 text-neutral-500 inline-block text-center">
+                    {#if filesState.sortingMode === "size"}
+                        {filesState.sortingDirection === "asc" ? "▲" : "▼"}
+                    {/if}
+                </span>
+            </button>
         </div>
 
         <!-- Each entry is a grid item -->

@@ -33,7 +33,7 @@
         isLoading: false,
         reset: Function,
     } = $state({
-        path: "",
+        path: "/",
         isExposed: true,
         isDialogOpen: false,
         isLoading: false,

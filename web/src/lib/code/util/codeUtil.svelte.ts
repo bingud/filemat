@@ -343,8 +343,15 @@ export function unixNowMillis(): number {
 /**
  * Alphabetically sorts array of objects
  */
-export function sortArrayAlphabetically<T>(arr: T[], accessor: (obj: T) => string): T[] {
-    return [...arr].sort((a, b) => accessor(a).localeCompare(accessor(b)))
+export function sortArrayAlphabetically<T>(
+    arr: T[],
+    accessor: (obj: T) => string,
+    direction: "asc" | "desc" = "asc"
+): T[] {
+    return [...arr].sort((a, b) => {
+        const res = accessor(a).localeCompare(accessor(b))
+        return direction === "asc" ? res : -res
+    })
 }
 
 /**
