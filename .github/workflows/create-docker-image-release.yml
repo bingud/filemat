@@ -38,6 +38,9 @@ jobs:
 
       - name: Prepare files (frontend + jar)
         run: ./utilities/build-files.sh "${{ inputs.release_tag || github.ref_name }}"
+        
+      - name: Make Gradlew executable
+        run: chmod +x ./server/gradlew
 
       - name: Build & Push Docker image
         working-directory: server
