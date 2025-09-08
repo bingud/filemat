@@ -26,7 +26,8 @@ const config = {
 		warningFilter: (w) => {
 			if (
                 w.message.includes("event_directive_deprecated")
-                || w.message.includes("css_unused_selector")
+                || w.message.includes("css_unused_selector") 
+                || w.message.includes("a11y_no_static_element_interactions")
             ) return false
 			return true
 		},
