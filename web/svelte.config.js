@@ -24,7 +24,10 @@ const config = {
 	},
 	compilerOptions: {
 		warningFilter: (w) => {
-			if (w.message.includes("event_directive_deprecated")) return false
+			if (
+                w.message.includes("event_directive_deprecated")
+                || w.message.includes("css_unused_selector")
+            ) return false
 			return true
 		},
 	}
