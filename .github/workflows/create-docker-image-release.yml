@@ -36,11 +36,11 @@ jobs:
       - name: Make build script executable
         run: chmod +x ./utilities/build-files.sh
 
-      - name: Prepare files (frontend + jar)
-        run: ./utilities/build-files.sh "${{ inputs.release_tag || github.ref_name }}"
-        
       - name: Make Gradlew executable
         run: chmod +x ./server/gradlew
+
+      - name: Prepare files (frontend + jar)
+        run: ./utilities/build-files.sh "${{ inputs.release_tag || github.ref_name }}"
 
       - name: Build & Push Docker image
         working-directory: server
