@@ -3,6 +3,11 @@ name: Build and Publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to deploy (e.g. 1.0.0-beta)"
+        required: true
 
 jobs:
   build:
@@ -27,17 +32,17 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          
+
       - name: Make build script executable
         run: chmod +x ./utilities/build-files.sh
 
       - name: Prepare files (frontend + jar)
-        run: ./utilities/build-files.sh "${{ github.ref_name }}"
+        run: ./utilities/build-files.sh "${{ inputs.release_tag || github.ref_name }}"
 
       - name: Build & Push Docker image
         working-directory: server
         run: |
-          IMAGE_VERSION="${{ github.ref_name }}"
+          IMAGE_VERSION="${{ inputs.release_tag || github.ref_name }}"
           DOCKER_REPO="bingud/filemat"
           IMAGE_TAG="$DOCKER_REPO:$IMAGE_VERSION"
           LATEST_TAG="$DOCKER_REPO:latest"
