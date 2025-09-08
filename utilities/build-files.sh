@@ -31,7 +31,7 @@ echo "Building version: $IMAGE_VERSION"
 
 # 1. Build frontend
 cd "$FRONTEND_FOLDER"
-npm ci
+npm install
 rm -rf "$FRONTEND_BUILD_FOLDER"
 npm run build
 
