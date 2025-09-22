@@ -22,6 +22,10 @@ class Initialization(
      */
     @PostConstruct //(ApplicationReadyEvent::class)
     fun initialize() {
+        // Initialize singletons
+        State
+        Props
+
         databaseSetup.initialize_setUpSchema().line()
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()

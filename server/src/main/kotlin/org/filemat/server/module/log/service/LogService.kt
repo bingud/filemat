@@ -264,18 +264,19 @@ class LogService(
                 meta = meta?.let { Json.encodeToString(it) },
             )
 
-            if (State.App.printLogs || State.App.isDev) {
-                printLog(false)
-            }
-
-            return true
         } catch (e: Exception) {
             if (!loggedException) {
+                println("===\nFAILED TO INSERT LOG TO DATABASE\n===")
                 e.printStackTrace()
                 loggedException = true
             }
             printLog(true)
             return false
         }
+
+        if (State.App.printLogs || State.App.isDev) {
+            printLog(false)
+        }
+        return true
     }
 }
