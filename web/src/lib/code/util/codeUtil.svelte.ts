@@ -50,7 +50,9 @@ export function handleErr({
     console.log(`${description}  \n${notification ?? "(No notification message)"}  \n${isServerDown ? "(Server is unavailable)" : ""}`)
 
     if (notification) {
-        toast.error(`${notification} ${isServerDown ? "Sever is unavailable." : ""}`)
+        const downMessage = "Sever is unavailable."
+        const containsDownMessage = notification.includes(downMessage)
+        toast.error(`${notification} ${isServerDown && !containsDownMessage ? downMessage : ""}`)
     }
 }
 

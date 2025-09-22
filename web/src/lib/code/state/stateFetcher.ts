@@ -77,9 +77,9 @@ export async function fetchState(
                     appState.roleList = null
                 } else {
                     handleErr({
-    description: `Status ${status} for role list when fetching state.`,
-    notification: `Failed to load roles (${status})`
-})
+                        description: `Status ${status} for role list when fetching state.`,
+                        notification: `Failed to load roles (${status})`
+                    })
                     return false
                 }
             }
