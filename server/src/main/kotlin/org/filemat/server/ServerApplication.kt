@@ -11,6 +11,9 @@ import kotlin.system.exitProcess
 class ServerApplication
 
 fun main(args: Array<String>) {
+	println("=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*")
+	println("FILEMAT STARTING")
+
 	val currentUser = System.getProperty("user.name")
 	println("Current user: $currentUser")
 

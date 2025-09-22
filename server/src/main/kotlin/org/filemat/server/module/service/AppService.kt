@@ -15,6 +15,9 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.attribute.UserPrincipal
 import java.nio.file.attribute.UserPrincipalLookupService
 
+/**
+ * Service for application utilities
+ */
 @Service
 class AppService(private val settingService: SettingService, private val logService: LogService) {
 
@@ -36,9 +39,6 @@ class AppService(private val settingService: SettingService, private val logServ
             val attr = PosixFilePermissions.asFileAttribute(perms)
 
             Files.createFile(path, attr)
-            val lookupService: UserPrincipalLookupService = path.fileSystem.userPrincipalLookupService
-            val rootUser: UserPrincipal = lookupService.lookupPrincipalByName("root")
-            Files.setOwner(path, rootUser)
             Files.write(path, code.toByteArray(), StandardOpenOption.WRITE)
         } catch (e: Exception) {
             logService.error(
