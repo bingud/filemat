@@ -6,7 +6,9 @@ export type FileMetadata = {
     modifiedDate: number,
     createdDate: number,
     fileType: FileType,
-    size: number
+    size: number,
+    isExecutable: boolean,
+    isWritable: boolean,
 }
 
 export type FullFileMetadata = FileMetadata & {

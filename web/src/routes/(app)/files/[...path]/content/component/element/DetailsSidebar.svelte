@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction, handleErr } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction, handleErr, isFolder } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
@@ -170,9 +170,9 @@
     {#if filesState.metaLoading}
         <div></div>
     {:else if filesState.selectedEntries.hasMultiple}
-    <div class="w-full flex flex-col px-6 shrink-0 flex-none">
-        <h3 class="truncate text-lg">Multiple files selected</h3>
-    </div>
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none">
+            <h3 class="truncate text-lg">Multiple files selected</h3>
+        </div>
     {:else if filesState.selectedEntries.singleMeta}
         {@const file = filesState.selectedEntries.singleMeta}
         {@const filename = filenameFromPath(file.path) || "/"}
@@ -182,6 +182,11 @@
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
+
+        {#if isFolder(file) && !file.isExecutable}
+            <p class="px-6 text-sm">Missing permission to open this folder</p>
+            <hr class="basic-hr shrink-0 flex-none">
+        {/if}
         
         <div class="w-full flex flex-col px-6 gap-6 flex-none">
             <div class="detail-container">

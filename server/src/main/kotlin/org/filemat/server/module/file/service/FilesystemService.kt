@@ -14,6 +14,8 @@ import java.io.File
 import java.lang.UnsupportedOperationException
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.PosixFileAttributes
+import java.nio.file.attribute.PosixFilePermission
 import kotlin.io.path.*
 
 /**
@@ -157,7 +159,7 @@ class FilesystemService {
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {
-        val attributes = readAttributes(path.path, followSymbolicLinks = false)
+        val attributes: PosixFileAttributes = readAttributes(path.path, followSymbolicLinks = false)
             ?: return null
 
         val type = when {
@@ -173,12 +175,21 @@ class FilesystemService {
         val creationTime = attributes.creationTime().toMillis()
         val modificationTime = attributes.lastModifiedTime().toMillis()
 
+        var isExecutable = false
+        var isWritable = false
+        attributes.permissions().forEach { perm: PosixFilePermission ->
+            if (perm == PosixFilePermission.OWNER_EXECUTE) isExecutable = true
+            if (perm == PosixFilePermission.OWNER_WRITE) isWritable = true
+        }
+
         return FileMetadata(
             path = path.path.absolutePathString(),
             modifiedDate = modificationTime,
             createdDate = creationTime,
             fileType = type,
             size = attributes.size(),
+            isExecutable = isExecutable,
+            isWritable = isWritable
         )
     }
 
@@ -192,12 +203,12 @@ class FilesystemService {
     /**
      * Returns basic file attributes of path
      */
-    fun readAttributes(path: Path, followSymbolicLinks: Boolean): BasicFileAttributes? {
+    fun readAttributes(path: Path, followSymbolicLinks: Boolean): PosixFileAttributes? {
         return runCatching {
             if (followSymbolicLinks) {
-                Files.readAttributes(path, BasicFileAttributes::class.java)
+                Files.readAttributes(path, PosixFileAttributes::class.java)
             } else {
-                Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                Files.readAttributes(path, PosixFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
             }
         }.getOrNull()
     }

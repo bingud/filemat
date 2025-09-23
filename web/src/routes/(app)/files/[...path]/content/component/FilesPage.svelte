@@ -129,6 +129,8 @@
             fileType: "FOLDER",
             size: 0,
             permissions: keysOf(filePermissionMeta),
+            isExecutable: true,
+            isWritable: true,
         })
     }
     
@@ -210,7 +212,7 @@
     async function reloadPageData() {
         if (!filesState.path) return
         const meta = filesState.data.meta
-        if (!meta || !isFolder(meta.fileType)) return
+        if (!meta || !isFolder(meta)) return
 
         const modifiedDate = meta.modifiedDate
         const actualModifiedDate = await getFileLastModifiedDate(filesState.path)

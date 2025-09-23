@@ -1,8 +1,6 @@
 import { toast } from "@jill64/svelte-toast"
-import type { Response } from "node-fetch"
-import type { ErrorResponse } from "../types/types"
 import { untrack } from "svelte"
-import type { FileType } from "../auth/types"
+import type { FileMetadata, FileType } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 
 type ObjectKey = string | number | symbol
@@ -15,8 +13,8 @@ export function isServerDown(httpStatus: number): boolean {
     return false
 }
 
-export function isFolder(type: FileType): boolean {
-    return type === "FOLDER" || (type === "FOLDER_LINK" && appState.followSymlinks === true)
+export function isFolder(meta: FileMetadata): boolean {
+    return meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks === true)
 }
 
 /**

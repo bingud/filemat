@@ -3,7 +3,7 @@
     import { fileCategories } from "$lib/code/data/files";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { addSuffix, formatBytesRounded, formatUnixMillis, getFileExtension } from "$lib/code/util/codeUtil.svelte";
+    import { addSuffix, formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
@@ -35,6 +35,8 @@
     } = $props()
     
     let isSelected = $derived(filesState.selectedEntries.list.includes(entry.path))
+    
+    let isUnopenable = $derived(isFolder(entry) && !entry.isExecutable)
 </script>
 
 
@@ -44,8 +46,15 @@
     draggable={entry.permissions.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
     class="
-        file-grid h-[2.5rem] gap-x-2 items-center cursor-pointer select-none group 
-        {isSelected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'}
+        file-grid h-[2.5rem] gap-x-2 items-center select-none group 
+        {isUnopenable 
+            ? 'cursor-default' 
+            : 'cursor-pointer'
+        }
+        {isUnopenable 
+            ? isSelected ? 'bg-blue-200 dark:bg-sky-950' : 'hover:bg-neutral-200 dark:hover:bg-neutral-800'
+            : isSelected ? 'bg-blue-200/60 dark:bg-sky-950/60' : 'hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60'
+        }
     "
     href={
         (entry.fileType === "FILE" || 

@@ -2,7 +2,7 @@
     import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { addSuffix, filenameFromPath, parentFromPath, appendFilename, resolvePath } from "$lib/code/util/codeUtil.svelte";
+    import { addSuffix, filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import { onMount } from "svelte";
@@ -139,6 +139,8 @@
      * onClick for file entry
      */
     function entryOnClick(e: UIEvent, entry: FileMetadata) {
+        if (isFolder(entry) && !entry.isExecutable) return
+
         if (filesState.selectedEntries.single !== entry.path) {
             e.preventDefault()
             filesState.selectedEntries.setSelected(entry.path)

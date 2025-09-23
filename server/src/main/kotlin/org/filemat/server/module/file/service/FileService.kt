@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 
@@ -470,18 +471,23 @@ class FileService(
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         // Get folder entries
-        val rawAllEntries = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER).let {
+        val rawAllEntries: List<FileMetadata> = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
-        val rawEntries = if (!foldersOnly) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && State.App.followSymlinks) }
+        val rawEntries: List<FileMetadata> = if (!foldersOnly) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && State.App.followSymlinks) }
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
-        val entries = rawEntries.mapNotNull { meta: FileMetadata ->
+        val entries: List<FullFileMetadata> = rawEntries.mapNotNull { meta: FileMetadata ->
             // Check if `it.fileType` is symlink, resolve if it is
             val entryPath = if (meta.fileType.isSymLink()) {
-                val (resolvedResult, hasSymlink) = resolvePath(FilePath.of(meta.path))
+
+                val (
+                    resolvedResult: Result<FilePath>,
+                    hasSymlink: Boolean
+                ) = resolvePath(FilePath.of(meta.path))
+
                 resolvedResult.let {
                     if (it.isNotSuccessful) return@mapNotNull null
                     it.value
@@ -493,7 +499,7 @@ class FileService(
             val isPathAllowed = fileVisibilityService.isPathAllowed(entryPath) == null
             if (!isPathAllowed) return@mapNotNull null
 
-            val permissions = getActualFilePermissions(
+            val permissions: Set<FilePermission> = getActualFilePermissions(
                 canonicalPath = entryPath,
                 user = user,
             )
@@ -502,7 +508,13 @@ class FileService(
             val hasPermission = permissions.contains(FilePermission.READ)
             if (!hasPermission) return@mapNotNull null
 
-            val fullMeta = FullFileMetadata.from(meta, permissions)
+            val fullMeta = if (meta.fileType.isSymLink()) {
+                val resolvedMeta = filesystem.getMetadata(entryPath)
+                    ?: return@mapNotNull null
+                FullFileMetadata.from(resolvedMeta, permissions)
+            } else {
+                FullFileMetadata.from(meta, permissions)
+            }
             return@mapNotNull fullMeta
         }
 
@@ -515,7 +527,7 @@ class FileService(
         if (hasAdminAccess == true) return true
         if (hasAdminAccess == null) {
             // Check for admin perms
-            principal.getPermissions().let { perms ->
+            principal.getPermissions().let { perms: List<SystemPermission> ->
                 if (perms.any { it == SystemPermission.SUPER_ADMIN || it == SystemPermission.ACCESS_ALL_FILES }) return true
             }
         }
@@ -555,11 +567,16 @@ class FileService(
                 return Result.notFound()
             }
 
-            // List entries
-            val entries = Files.newDirectoryStream(canonicalPath.path).use { it.toList() }
+            // Check folder permissions
+            if (!Files.isExecutable(canonicalPath.path)) {
+                return Result.error("Insufficient permissions to open folder.")
+            }
 
-            val files = entries.map {
-                val entryPath = FilePath(it)
+            // List entries
+            val entries: List<Path> = Files.newDirectoryStream(canonicalPath.path).use { it.toList() }
+
+            val files: List<FileMetadata> = entries.map { path: Path ->
+                val entryPath = FilePath(path)
                 filesystem.getMetadata(entryPath)
                     ?: throw IllegalStateException("Metadata object was null for a known file.")
             }

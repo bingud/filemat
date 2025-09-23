@@ -1,7 +1,7 @@
 // This would typically be in a file like `utils.d.ts`
 
 import type { ErrorResponse } from "../types/types"
-import type { FileType } from "../auth/types"
+import type { FileMetadata, FileType } from "../auth/types"
 
 export type ObjectKey = string | number | symbol
 
