@@ -139,14 +139,13 @@
      * onClick for file entry
      */
     function entryOnClick(e: UIEvent, entry: FileMetadata) {
-        if (isFolder(entry) && !entry.isExecutable) return
-
         if (filesState.selectedEntries.single !== entry.path) {
             e.preventDefault()
             filesState.selectedEntries.setSelected(entry.path)
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
         } else {
+        if (isFolder(entry) && !entry.isExecutable) return
             openEntry(entry.path)
         }
     }

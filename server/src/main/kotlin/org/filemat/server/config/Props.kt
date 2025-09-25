@@ -1,6 +1,7 @@
 package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.properties.NonDeletableSystemPaths
 import org.filemat.server.config.properties.SensitiveFolderPaths
 
@@ -17,6 +18,8 @@ object Props {
 
     val sensitiveFolders = SensitiveFolderPaths
     val nonDeletableFolders = NonDeletableSystemPaths
+
+    val startupTime = unixNow()
 
     /**
      * Holds role-related values

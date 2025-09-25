@@ -1,5 +1,7 @@
 package org.filemat.server
 
+import org.filemat.server.common.State
+import org.filemat.server.config.Props
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.data.jdbc.repository.config.EnableJdbcRepositories
@@ -16,6 +18,7 @@ class ServerApplication
 fun main(args: Array<String>) {
 	println("=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*")
 	println("FILEMAT STARTING")
+	Props; State
 
 	val currentUser = System.getProperty("user.name")
 	println("Current user: $currentUser")

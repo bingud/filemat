@@ -2,10 +2,16 @@ package org.filemat.server.config
 
 import jakarta.annotation.PostConstruct
 import org.filemat.server.common.State
+import org.filemat.server.common.util.formatMillisecondsToReadableTime
+import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.database.DatabaseSetup
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.permission.service.EntityPermissionService
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import kotlin.system.exitProcess
 
@@ -22,10 +28,6 @@ class Initialization(
      */
     @PostConstruct //(ApplicationReadyEvent::class)
     fun initialize() {
-        // Initialize singletons
-        State
-        Props
-
         databaseSetup.initialize_setUpSchema().line()
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()
@@ -53,5 +55,12 @@ class Initialization(
     // Prints new line
     private fun <T> T.line() = this.also { println() }
     private fun shutdown(code: Int): Nothing { Thread.sleep(200); exitProcess(code) }
+
+//    @EventListener(ApplicationReadyEvent::class)
+//    @Order(Ordered.LOWEST_PRECEDENCE)
+//    fun applicationReadyListener() {
+//        val startupDuration = unixNow() - Props.startupTime
+//        println("Filemat started in $startupDuration seconds")
+//    }
 
 }

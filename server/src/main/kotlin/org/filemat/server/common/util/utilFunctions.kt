@@ -198,6 +198,15 @@ fun formatMillisToSeconds(millis: Long): String {
     return String.format("%.2f", seconds)
 }
 
+fun todo() { runCatching { TODO() }.onFailure { it.printStackTrace() } }
+
+fun runDev(block: () -> Unit) {
+    if (!State.App.isDev) return
+    runCatching {
+        block()
+    }
+}
+
 /**
  * Fully normalizes a path, makes it absolute
  */
