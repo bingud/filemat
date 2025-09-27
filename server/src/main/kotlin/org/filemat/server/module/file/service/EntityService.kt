@@ -122,6 +122,8 @@ class EntityService(
         if (existingEntity.notFound == false) return Result.reject("A file with this path has already been indexed.")
         if (existingEntity.notFound != true && existingEntity.isNotSuccessful) return Result.error("Failed to check if this file has been indexed yet.")
 
+
+
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
             path = canonicalPath.pathString,
@@ -289,6 +291,20 @@ class EntityService(
                 type = LogType.SYSTEM,
                 action = userAction,
                 description = "Failed to get filesystem entity by path",
+                message = e.stackTraceToString()
+            )
+            Result.error("Failed to get file from database.")
+        }
+    }
+
+    fun getByInode(inode: Long, userAction: UserAction): Result<FilesystemEntity> {
+        return try {
+            entityRepository.getByInode(inode)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to get file by inode from database.",
                 message = e.stackTraceToString()
             )
             Result.error("Failed to get file from database.")
