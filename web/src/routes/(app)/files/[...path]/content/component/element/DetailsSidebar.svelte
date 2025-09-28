@@ -177,6 +177,10 @@
         {@const file = filesState.selectedEntries.singleMeta}
         {@const filename = filenameFromPath(file.path) || "/"}
 
+        {#if !file || !file.fileType}
+            {console.log(`null file:`, file)}
+        {/if}
+
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <h3 title={filename} class="truncate text-lg">{filename}</h3>
         </div>
