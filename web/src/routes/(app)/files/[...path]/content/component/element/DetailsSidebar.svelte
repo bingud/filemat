@@ -31,6 +31,8 @@
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
 
+    let selectedMeta = $derived(filesState.selectedEntries.singleMeta)
+
     // Role and user IDs that already have a file permission
     let existing = $derived.by(() => {
         if (!permissionData) return null
@@ -178,7 +180,7 @@
         {@const filename = filenameFromPath(file.path) || "/"}
 
         {#if !file || !file.fileType}
-            {console.log(`null file:`, file)}
+            {console.log(`null file:`, file, filesState.selectedEntries.singleMeta)}
         {/if}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
