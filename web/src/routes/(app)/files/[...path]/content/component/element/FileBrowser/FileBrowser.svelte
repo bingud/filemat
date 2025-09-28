@@ -145,7 +145,7 @@
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
         } else {
-        if (isFolder(entry) && !entry.isExecutable) return
+            if (isFolder(entry) && !entry.isExecutable) return
             openEntry(entry.path)
         }
     }
@@ -329,6 +329,11 @@
             filesState.sortingMode = mode
         }
     }
+
+    $inspect(filesState.data.sortedEntries).with((type, value) => {
+        console.log(`filesState.data.sortedEntries:`)
+        console.log(value)
+    })
 </script>
 
 

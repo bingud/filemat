@@ -9,6 +9,7 @@
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
+  import { onMount } from "svelte";
 
     let {
         entry,
@@ -33,10 +34,17 @@
         onClickSelectCheckbox: (path: string) => void,
         entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void,
     } = $props()
+
+    onMount(() => {
+        if (!entry) {
+            console.log(`Entry in FileEntry is null`)
+            console.log(entry)
+        }
+    })
     
-    let isSelected = $derived(filesState.selectedEntries.list.includes(entry.path))
+    let isSelected = $derived(!!entry && filesState.selectedEntries.list.includes(entry.path))
     
-    let isUnopenable = $derived(isFolder(entry) && !entry.isExecutable)
+    let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
 </script>
 
 
