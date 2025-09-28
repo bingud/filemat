@@ -175,13 +175,8 @@
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <h3 class="truncate text-lg">Multiple files selected</h3>
         </div>
-    {:else if filesState.selectedEntries.singleMeta}
-        {@const file = filesState.selectedEntries.singleMeta}
-        {@const filename = filenameFromPath(file.path) || "/"}
-
-        {#if !file || !file.fileType}
-            {console.log(`null file:`, file, filesState.selectedEntries.singleMeta)}
-        {/if}
+    {:else if selectedMeta}
+        {@const filename = filenameFromPath(selectedMeta.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <h3 title={filename} class="truncate text-lg">{filename}</h3>
@@ -189,7 +184,7 @@
 
         <hr class="basic-hr shrink-0 flex-none">
 
-        {#if isFolder(file) && !file.isExecutable}
+        {#if isFolder(selectedMeta) && !selectedMeta.isExecutable}
             <p class="px-6 text-sm">Missing permission to open this folder</p>
             <hr class="basic-hr shrink-0 flex-none">
         {/if}
@@ -197,17 +192,17 @@
         <div class="w-full flex flex-col px-6 gap-6 flex-none">
             <div class="detail-container">
                 <p class="detail-title">File Size</p>
-                <p>{formatBytes(file.size)}</p>
+                <p>{formatBytes(selectedMeta.size)}</p>
             </div>
 
             <div class="detail-container">
                 <p class="detail-title">Last modified at</p>
-                <p>{formatUnixMillis(file.modifiedDate)}</p>
+                <p>{formatUnixMillis(selectedMeta.modifiedDate)}</p>
             </div>
 
             <div class="detail-container">
                 <p class="detail-title">Created at</p>
-                <p>{formatUnixMillis(file.createdDate)}</p>
+                <p>{formatUnixMillis(selectedMeta.createdDate)}</p>
             </div>
         </div>
 

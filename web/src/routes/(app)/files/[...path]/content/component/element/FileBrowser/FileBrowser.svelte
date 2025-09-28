@@ -329,11 +329,6 @@
             filesState.sortingMode = mode
         }
     }
-
-    $inspect(filesState.data.sortedEntries).with((type, value) => {
-        console.log(`filesState.data.sortedEntries:`)
-        console.log(value)
-    })
 </script>
 
 
