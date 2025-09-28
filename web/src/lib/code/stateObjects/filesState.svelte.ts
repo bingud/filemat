@@ -1,13 +1,13 @@
 import { page } from "$app/state"
-import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
+import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import type { ulid } from "$lib/code/types/types"
-import { prependIfMissing, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { generateRandomNumber, prependIfMissing, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/content/code/files"
-import { UploadState } from "./subState/uploadState.svelte"
 
 
 class FilesState {
+    nonce = generateRandomNumber()
+
     /**
      * The current file path opened
      */
@@ -233,12 +233,22 @@ class FileDataStateClass {
 
 export let filesState: FilesState
 
-export function createFilesState() {
+/**
+ * @returns class nonce
+ */
+export function createFilesState(): number {
+    if (filesState) {
+        console.log(`FilesState recreated`)
+    } else {
+        console.log(`FilesState created`)
+    }
     filesState = new FilesState()
-    console.log(`FilesState created`)
+    return filesState.nonce
 }
 
-export function destroyFilesState() {
-    filesState = undefined!
-    console.log(`FilesState destroyed`)
+export function destroyFilesState(nonce: number) {
+    if (filesState?.nonce === nonce) {
+        filesState = undefined!
+        console.log(`FilesState destroyed`)
+    }
 }

@@ -42,9 +42,8 @@
         requireFolderMeta?: boolean,
     } = $props()
 
-    console.log(`[i] FilesPage top-level logic`)
-    createFilesState()
-    createBreadcrumbState()
+    const filesStateNonce = createFilesState()
+    const breadcrumbStateNonce = createBreadcrumbState()
     
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
@@ -55,8 +54,8 @@
     })
 
     onDestroy(() => {
-        destroyFilesState()
-        destroyBreadcrumbState()
+        destroyFilesState(filesStateNonce)
+        destroyBreadcrumbState(breadcrumbStateNonce)
     })
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))

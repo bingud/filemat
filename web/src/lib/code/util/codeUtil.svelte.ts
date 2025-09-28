@@ -688,3 +688,7 @@ export async function doRequest(
         return
     }
 }
+
+export function generateRandomNumber() {
+    return crypto.getRandomValues(new Uint32Array(1))[0]
+}

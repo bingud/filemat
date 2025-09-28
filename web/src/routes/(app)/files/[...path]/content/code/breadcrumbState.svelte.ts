@@ -1,11 +1,12 @@
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { arrayRemove, forEachReversed, removeString } from "$lib/code/util/codeUtil.svelte"
+import { arrayRemove, forEachReversed, generateRandomNumber, removeString } from "$lib/code/util/codeUtil.svelte"
 import { calculateTextWidth, remToPx } from "$lib/code/util/uiUtil"
 import { filesState } from "../../../../../../lib/code/stateObjects/filesState.svelte"
 
 export type Segment = { name: string, path: string, width: number }
 
 class BreadcrumbState {
+    nonce = generateRandomNumber()
     containerWidth = $state(0) as number
 
     private list = $derived.by(() => {
@@ -61,10 +62,16 @@ class BreadcrumbState {
 
 export let breadcrumbState: BreadcrumbState
 
-export function createBreadcrumbState() {
+/**
+ * @returns class nonce
+ */
+export function createBreadcrumbState(): number {
     breadcrumbState = new BreadcrumbState()
+    return breadcrumbState.nonce
 }
 
-export function destroyBreadcrumbState() {
-    breadcrumbState = undefined!
+export function destroyBreadcrumbState(nonce: number) {
+    if (breadcrumbState?.nonce === nonce) {
+        breadcrumbState = undefined!
+    }
 }

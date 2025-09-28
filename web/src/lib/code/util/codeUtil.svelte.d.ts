@@ -350,3 +350,5 @@ export declare function entriesOf<K extends ObjectKey, V>(
 ): [string, V][]
 
 export function formatDuration(seconds: number): string
+
+export function generateRandomNumber(length: number): number
