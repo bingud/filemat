@@ -42,6 +42,7 @@
         requireFolderMeta?: boolean,
     } = $props()
 
+    console.log(`[i] FilesPage top-level logic`)
     createFilesState()
     createBreadcrumbState()
     

@@ -235,8 +235,10 @@ export let filesState: FilesState
 
 export function createFilesState() {
     filesState = new FilesState()
+    console.log(`FilesState created`)
 }
 
 export function destroyFilesState() {
     filesState = undefined!
+    console.log(`FilesState destroyed`)
 }
