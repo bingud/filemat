@@ -187,8 +187,7 @@ catch {
     exit 1
 }
 finally {
-    # Return to base directory
-    Set-Location $BasePath
+    Set-Location "$BasePath\utilities"
 }
 
 # Usage examples
