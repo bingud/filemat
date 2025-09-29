@@ -16,7 +16,7 @@
     import { Popover } from "$lib/component/bits-ui-wrapper"
     import FileIcon from "$lib/component/icons/FileIcon.svelte"
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
-    import { formData, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"    
+    import { formData, safeFetch } from "$lib/code/util/codeUtil.svelte"    
     import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filePermissionMeta } from "$lib/code/data/permissions";
@@ -194,6 +194,7 @@
     explicitEffect(() => {
         const selected = filesState.selectedEntries.single
         const current = filesState.path || "/"
+
         // if there’s a selection but it isn’t under the current directory, reset it
         if (selected && !selected.startsWith(current + (current === "/" ? "" : "/"))) {
             filesState.selectedEntries.reset()

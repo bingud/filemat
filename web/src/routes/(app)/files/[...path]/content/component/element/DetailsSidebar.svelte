@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction, handleErr, isFolder } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction, handleErr, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
@@ -13,7 +13,6 @@
     import FilePermissionEditor from "./FilePermissionEditor.svelte";
     import type { EntityPermissionMeta } from "../../code/types"; 
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
-    import { dev } from "$app/environment";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
 
@@ -25,13 +24,12 @@
 
     let abortController = new AbortController()
     let permissionData: PermissionData | null = $state(null)
+    let showPermissions = $state(false)
     let permissionDataLoading = $state(false)
     let permissionDataDebounced = $state(false)
     let permissionCreatorOpen = $state(false)
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
-
-    let selectedMeta = $derived(filesState.selectedEntries.singleMeta)
 
     // Role and user IDs that already have a file permission
     let existing = $derived.by(() => {
@@ -43,7 +41,7 @@
             if (v.permissionType === "USER") {
                 users.push(v.userId!)
             } else {
-                users.push(v.roleId!)
+                roles.push(v.roleId!)
             }
         })
 
@@ -51,18 +49,24 @@
     })
 
     let lastLoaded = ""
-    $effect(() => {
+    explicitEffect(() => {
         const selectedPath = filesState.selectedEntries.single
 
         if (!selectedPath) return
         if (!filesState.ui.detailsOpen) return
         if (lastLoaded === selectedPath) return
 
+        showPermissions = false
         permissionData = null
         permissionDataDebounced = true
         
         loadPermissionDataDebounced(selectedPath)
-    })
+    }, () => [ 
+        filesState.selectedEntries.single, 
+        filesState.ui.detailsOpen, 
+        // permiss  ionData, 
+        // permissionDataDebounced 
+    ])
 
     // Debounced function to load permission data
     const loadPermissionDataDebounced = debounceFunction(async (path: string) => {
@@ -70,13 +74,14 @@
 
         abortController.abort()
         abortController = new AbortController()
-    
+
         if (hasAnyPermission(["MANAGE_ALL_FILE_PERMISSIONS", "MANAGE_OWN_FILE_PERMISSIONS"])) {
             permissionDataLoading = true
             await loadPermissionData(path, abortController.signal)
             if (path !== filesState.selectedEntries.single) return
             lastLoaded = path
             permissionDataLoading = false
+            showPermissions = true
         }
     }, 100, 5000)
 
@@ -174,7 +179,8 @@
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <h3 class="truncate text-lg">Multiple files selected</h3>
         </div>
-    {:else if selectedMeta}
+    {:else if filesState.selectedEntries.singleMeta}
+        {@const selectedMeta = filesState.selectedEntries.singleMeta}
         {@const filename = filenameFromPath(selectedMeta.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
@@ -182,7 +188,8 @@
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
-        {#if isFolder(selectedMeta) && !selectedMeta.isExecutable}
+        
+        {#if selectedMeta && isFolder(selectedMeta) && !selectedMeta.isExecutable}
             <p class="px-6 text-sm">Missing permission to open this folder</p>
             <hr class="basic-hr shrink-0 flex-none">
         {/if}
@@ -245,7 +252,7 @@
             </div>
 
             <div class="flex flex-col bg-neutral-400/50 dark:bg-neutral-900 rounded-md px-2 py-2 mx-2 overflow-y-auto min-h-[3rem] flex-auto custom-scrollbar">
-                {#if permissionData && permissionData.permissions.length > 0}
+                {#if showPermissions && permissionData && permissionData.permissions.length > 0}
                     <div in:fade={{duration: 75}} class="w-fill min-h-full h-fit flex flex-col gap-1">
                         <!-- User Permissions -->
                         {#each permissionData.permissions.filter(v => v.permissionType === "USER") as meta}

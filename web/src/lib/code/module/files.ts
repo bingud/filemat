@@ -290,7 +290,9 @@ export function startTusUpload(file: File) {
                         createdDate: unixNowMillis(),
                         fileType: "FILE",
                         size: uploadedFile.size,
-                        permissions: filesState.data.meta!.permissions
+                        permissions: filesState.data.meta!.permissions,
+                        isWritable: true,
+                        isExecutable: true,
                     })
                 }
 

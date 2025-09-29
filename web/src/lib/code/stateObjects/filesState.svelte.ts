@@ -1,7 +1,7 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { generateRandomNumber, prependIfMissing, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { generateRandomNumber, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/content/code/files"
 
 
@@ -13,7 +13,7 @@ class FilesState {
      */
     path: string = $derived.by(() => {
         if (page.url.pathname.startsWith("/files")) {
-            let path = page.params.path
+            let path = page.params.path!
             return prependIfMissing(path, "/")
         } else {
             return "/"
@@ -90,9 +90,11 @@ class SelectedEntryStateClass {
     selectedPositions = new SingleChildBooleanTree()
 
     list = $state([]) as string[]
-    // path = $state(null) as ulid | null
     meta = $derived.by(() => {
-        if (!filesState.data.entries) return null
+        if (!filesState.data.entries) {
+            return null
+        }
+
         let obj: Record<string, FullFileMetadata | null> = {}
         this.list.forEach((path) => {
             if (filesState.path === path) {
@@ -103,6 +105,7 @@ class SelectedEntryStateClass {
                 obj[path] = meta || null
             }
         })
+
         return obj
     })
 
@@ -111,10 +114,11 @@ class SelectedEntryStateClass {
         if (!this.meta) return null
 
         // Only return if one entry is selected
-        const values = valuesOf(this.meta)
-        if (values.length > 1) return null
+        const metaList = valuesOf(this.meta)
+        if (metaList.length > 1) return null
 
-        return values[0]
+        const value = metaList[0]
+        return value
     })
 
     hasMultiple = $derived(this.list.length > 1)

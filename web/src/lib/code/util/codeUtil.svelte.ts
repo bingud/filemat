@@ -692,3 +692,7 @@ export async function doRequest(
 export function generateRandomNumber() {
     return crypto.getRandomValues(new Uint32Array(1))[0]
 }
+
+export function printStack() {
+    console.log(new Error().stack)
+}
