@@ -164,7 +164,6 @@
             editedPermission = null;
         }
     }
-
 </script>
 
 
@@ -183,7 +182,6 @@
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
-
         {#if isFolder(selectedMeta) && !selectedMeta.isExecutable}
             <p class="px-6 text-sm">Missing permission to open this folder</p>
             <hr class="basic-hr shrink-0 flex-none">
