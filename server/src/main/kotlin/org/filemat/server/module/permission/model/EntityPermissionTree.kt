@@ -75,6 +75,9 @@ class EntityPermissionTree() {
 
     private val treeLock = ReentrantReadWriteLock()
 
+    /**
+     * Removes a permission from the inverted index.
+     */
     private fun permissionIndex_remove(permission: EntityPermission) {
         if (permission.permissionType == PermissionType.USER) {
             val set = userPermissionsIndex[permission.userId]
@@ -95,6 +98,9 @@ class EntityPermissionTree() {
         }
     }
 
+    /**
+     * Adds a permission to the inverted index.
+     */
     private fun permissionIndex_put(permission: EntityPermission) {
         if (permission.permissionType == PermissionType.USER) {
             permission.userId ?: throw NullPointerException("Cannot insert role permission into user permission index (userId is null)")
@@ -108,6 +114,9 @@ class EntityPermissionTree() {
     }
 
 
+    /**
+     * Gets or creates all nodes along the path, returning the leaf node.
+     */
     private fun getOrCreateTreePath(path: String): Node {
         treeLock.write {
             val trim = path.trim('/')
@@ -250,7 +259,8 @@ class EntityPermissionTree() {
     }
 
     /**
-     * Update permission for a specific entity ID on a specific path
+     * Moves or renames a path in the tree.
+     * Returns true if successful, false if source doesn't exist or target already exists.
      */
     fun movePath(oldPath: String, newPath: String): Boolean {
         treeLock.write {
@@ -282,11 +292,17 @@ class EntityPermissionTree() {
         }
     }
 
+    /**
+     * Gets all permissions directly assigned to a path (non-inherited).
+     */
     fun getAllPermissionsForPath(path: String): List<EntityPermission> {
         val node = findNode(path, getClosestNode = false) ?: return emptyList()
         return collectAllPermissions(node)
     }
 
+    /**
+     * Collects all user and role permissions from a node.
+     */
     private fun collectAllPermissions(node: Node): List<EntityPermission> {
         val results = mutableListOf<EntityPermission>()
         treeLock.read {
@@ -297,12 +313,19 @@ class EntityPermissionTree() {
         return results
     }
 
+    /**
+     * Gets the permission directly assigned to a path for a user (non-inherited).
+     */
     fun getDirectPermissionForUser(path: String, userId: Ulid): EntityPermission? {
         treeLock.read {
             val node = findNode(path, getClosestNode = false) ?: return null
             return node.userPermissions[userId]
         }
     }
+
+    /**
+     * Gets the permission directly assigned to a path for a role (non-inherited).
+     */
     fun getDirectPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
         treeLock.read {
             val node = findNode(path, getClosestNode = false) ?: return null
@@ -310,10 +333,16 @@ class EntityPermissionTree() {
         }
     }
 
+    /**
+     * Finds a permission by its ID anywhere in the tree.
+     */
     fun getPermissionById(permissionId: Ulid): EntityPermission? {
         return findPermissionById(root, permissionId)
     }
 
+    /**
+     * Recursively searches for a permission by ID in the tree.
+     */
     private fun findPermissionById(node: Node, permissionId: Ulid, isFirst: Boolean = true): EntityPermission? {
         if (isFirst) treeLock.readLock().lock()
 
@@ -342,6 +371,10 @@ class EntityPermissionTree() {
         return removePermissionByPermissionIdRecursive(root, permissionId)
     }
 
+    /**
+     * Recursively removes a permission by ID from the tree.
+     * Returns true if found and removed.
+     */
     private fun removePermissionByPermissionIdRecursive(node: Node, permissionId: Ulid, isFirst: Boolean = true): Boolean {
         if (isFirst) {
             treeLock.writeLock().lock()
@@ -399,6 +432,9 @@ class EntityPermissionTree() {
         return result
     }
 
+    /**
+     * Recursively traverses the tree and collects top-level accessible entities for the user.
+     */
     private fun traverseAndCollectTopLevelAccessible(
         node: Node,
         userId: Ulid,
@@ -426,6 +462,9 @@ class EntityPermissionTree() {
         }
     }
 
+    /**
+     * Checks if a node is a top-level accessible entity (parent has no access).
+     */
     private fun isTopLevelAccessible(node: Node, userId: Ulid, roleIds: List<Ulid>): Boolean {
         // Root is always top-level if accessible
         if (node.parent == null) return true

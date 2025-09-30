@@ -42,8 +42,9 @@ class FileService(
 ) {
 
     fun getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
-        val permissions = entityPermissionService.getPermittedEntities(user)
-        val fullMeta = permissions.mapNotNull { entityPermission ->
+        val entityPermissions = entityPermissionService.getPermittedEntities(user)
+
+        val fileMetadataList = entityPermissions.mapNotNull { entityPermission ->
             val entity = entityService.getById(entityPermission.entityId, UserAction.GET_USER).valueOrNull ?: return@mapNotNull null
             if (entity.path == null) return@mapNotNull null
 
@@ -52,7 +53,7 @@ class FileService(
             return@mapNotNull fullMeta
         }
 
-        return fullMeta.toResult()
+        return fileMetadataList.toResult()
     }
 
     /**
