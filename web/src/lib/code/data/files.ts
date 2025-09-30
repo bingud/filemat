@@ -14,7 +14,7 @@ export function isFileCategory(value: any): value is FileCategory {
 }
 
 export function isTextFileCategory(value: any): value is TextFileCategory {
-    return textFileCategoryList.includes(value)
+    return textFileCategoryList.includes(value.toLowerCase())
 }
 
 export const fileCategories: Record<string, FileCategory> = {
