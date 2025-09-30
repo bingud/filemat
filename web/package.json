@@ -38,7 +38,6 @@
 		"@codemirror/view": "^6.36.5",
 		"@jill64/svelte-toast": "^2.1.6",
 		"@lucide/svelte": "^0.544.0",
-		"@rollup/rollup-win32-x64-msvc": "^4.52.3",
 		"@tailwindcss/postcss": "^4.1.13",
 		"@tailwindcss/vite": "^4.1.13",
 		"@videojs/themes": "^1.0.1",
