@@ -443,9 +443,14 @@ class EntityPermissionTree() {
     ) {
         // Check if user has permission for this node
         val userPermission = node.userPermissions[userId]
-        val rolePermissions = roleIds.mapNotNull { roleId -> node.rolePermissions[roleId] }
+            ?.takeIf { FilePermission.READ in it.permissions }
 
-        val hasAccess = userPermission != null || rolePermissions.isNotEmpty()
+        val rolePermissions = roleIds.mapNotNull { roleId ->
+            node.rolePermissions[roleId]
+                ?.takeIf { FilePermission.READ in it.permissions }
+        }
+
+        val hasAccess = (userPermission != null) || rolePermissions.isNotEmpty()
 
         if (hasAccess) {
             // Check if this should be included (is "top-level" in accessible area)
@@ -471,8 +476,8 @@ class EntityPermissionTree() {
 
         // Check immediate parent - if user doesn't have access to it, this node is top-level
         val parent = node.parent!!
-        val parentHasUserPermission = parent.userPermissions.containsKey(userId)
-        val parentHasRolePermission = roleIds.any { roleId -> parent.rolePermissions.containsKey(roleId) }
+        val parentHasUserPermission = parent.userPermissions[userId]?.permissions?.contains(FilePermission.READ) ?: false
+        val parentHasRolePermission = roleIds.any { roleId -> parent.rolePermissions[roleId]?.permissions?.contains(FilePermission.READ) ?: false }
 
         return !parentHasUserPermission && !parentHasRolePermission
     }

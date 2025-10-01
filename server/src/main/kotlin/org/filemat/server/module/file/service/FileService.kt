@@ -41,7 +41,7 @@ class FileService(
     private val filesystemService: FilesystemService,
 ) {
 
-    fun getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
+    fun  getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
         val entityPermissions = entityPermissionService.getPermittedEntities(user)
 
         val fileMetadataList = entityPermissions.mapNotNull { entityPermission ->
