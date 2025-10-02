@@ -26,6 +26,8 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.pathString
 
 
 /**
@@ -471,19 +473,20 @@ class FileService(
         val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
+        val followSymlinks = State.App.followSymlinks
+
         // Get folder entries
         val rawAllEntries: List<FileMetadata> = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
-        val rawEntries: List<FileMetadata> = if (!foldersOnly) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && State.App.followSymlinks) }
+        val rawEntries: List<FileMetadata> = if (foldersOnly == false) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && followSymlinks) }
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
         val entries: List<FullFileMetadata> = rawEntries.mapNotNull { meta: FileMetadata ->
             // Check if `it.fileType` is symlink, resolve if it is
-            val entryPath = if (meta.fileType.isSymLink()) {
-
+            val entryPath = if (meta.fileType.isSymLink() && followSymlinks) {
                 val (
                     resolvedResult: Result<FilePath>,
                     hasSymlink: Boolean
@@ -578,8 +581,9 @@ class FileService(
 
             val files: List<FileMetadata> = entries.map { path: Path ->
                 val entryPath = FilePath(path)
-                filesystem.getMetadata(entryPath)
+                return@map filesystem.getMetadata(entryPath)
                     ?: throw IllegalStateException("Metadata object was null for a known file.")
+
             }
 
             return files.toResult()

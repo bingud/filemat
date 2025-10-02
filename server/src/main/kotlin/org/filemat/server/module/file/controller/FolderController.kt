@@ -89,9 +89,9 @@ class FolderController(private val fileService: FileService) : AController() {
             rawPath = path,
             foldersOnly = foldersOnly
         )
-        if (result.hasError) return internal(result.error, "")
+        if (result.hasError) return internal(result.error)
         if (result.notFound) return notFound()
-        if (result.isNotSuccessful) return bad(result.error, "")
+        if (result.isNotSuccessful) return bad(result.error)
 
         val pair = result.value
         val entries: List<FullFileMetadata>? = pair.second
