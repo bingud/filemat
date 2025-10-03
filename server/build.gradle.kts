@@ -44,11 +44,12 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testImplementation("org.springframework.boot:spring-boot-starter-test")
-	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-	testImplementation("org.junit.jupiter:junit-jupiter:5.12.0")
-	testImplementation("io.mockk:mockk:1.13.17")
+	testImplementation("org.springframework.boot:spring-boot-starter-test:3.5.6") {
+		exclude(module = "junit")
+		exclude(module = "mockito-core")
+	}
+	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:2.2.20")
+	testImplementation("io.mockk:mockk-jvm:1.14.6")
 
 	implementation("org.bytedeco:javacv:1.5.11")
 	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:linux-x86_64")
