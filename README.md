@@ -37,18 +37,7 @@ Filemat is currently not available on APT.
 
 
 ### \- Running the Docker image
-
-Make sure you have Docker installed. ([https://docs.docker.com/get-started/get-docker/](<https://docs.docker.com/get-started/get-docker/>))  
-  
-If using a Docker UI, run the container image called `bingud/filemat`, or use the commands below.  
-Make sure to use a volume so that Filemat data persists outside of the container.  
-The container is listening on port `8080`.  
-  
-Run the container using the `docker run` command:  
-`docker run -d --name filemat -p 443:8080 -v /srv/filemat-data:/var/lib/filemat --restart unless-stopped bingud/filemat`  
-  
-You can change the display name, network port, docker volume location, environment variables and other properties this way:  
-`docker run -d --name myName -p 5555:8080 -v /myHostFolder:/var/lib/filemat -e "MY_VARIABLE=myValue" --restart always bingud/filemat`  
+[Go to Docker deployment docs](</docs/docker-deployment.md>)
 
 
 ### \- Running normally
