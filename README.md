@@ -12,7 +12,6 @@
 
 Filemat is a web-based file manager.  
 It's self hosted, and it allows you to access files on your local machine through a web UI.  
-  
 
 
 ## Features
@@ -22,12 +21,10 @@ It's self hosted, and it allows you to access files on your local machine throug
     - File and administration permissions for users and roles
 
 
-
 ## Requirements
 
 - Linux
 - Java 21
-
 
 
 ## Installation
@@ -72,4 +69,3 @@ Input multiple values by putting a colon in between (`/one:/two`)
 ## How filemat runs
 
 - Filemat uses a single database file to function, so it's easy to move around and configure.
-- It can run as root and allow you to configure file permissions yourself, without tampering with low-level filesystem permissions.
