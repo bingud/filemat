@@ -24,7 +24,7 @@
 <div class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none md:contents">
     <!-- Navbar -->
     {#if uiState.settings.menuOpen || uiState.isDesktop}
-        <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar md:w-sidebar-desktop h-full bg-layout pointer-events-auto z-10 flex flex-col justify-between shrink-0 {classes}">
+        <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar md:w-sidebar-desktop h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0 {classes}">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
                 {#each settingSections.allUser() as section}

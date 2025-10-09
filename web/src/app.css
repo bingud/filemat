@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
-@import "$lib/css/forms.css";
-@import "$lib/css/loader.css";
-@import "$lib/css/buttons.css";
-@import "$lib/css/theme.css";
+@import "./lib/css/forms.css";
+@import "./lib/css/loader.css";
+@import "./lib/css/buttons.css";
+@import "./lib/css/theme.css";
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 @plugin 'tailwind-scrollbar';
 
 
 html {
+    /* Background */
+    @apply bg-bg-light dark:bg-bg-dark;
+    /* Text */
+    @apply text-neutral-950 dark:text-neutral-50;
+    /* Icons */
     @apply fill-neutral-950 dark:fill-neutral-50 stroke-neutral-950 dark:stroke-neutral-50;
+
+    @apply h-svh;
 }
 
-:root {
-    --bg-dark: #111111;
-    --bg-dark-layout: #141414;
-
-    --bg-light: #fafafa;
-    --bg-light-layout: #e5e5e5;
-}
 
 @theme {
     --spacing-without-sidebar: calc(100% - var(--spacing-sidebar));
@@ -33,44 +33,23 @@ html {
 
     --color-neutral-850: #202020;
     --color-neutral-250: #dddddd;
+    --color-neutral-350: #BCBCBC;
 
     --spacing-details-sidebar: 20rem;
+
+    --breakpoint-xs: 25.75rem
 }
 
-
-/* 
-    Background Colors
-*/
-.bg-main {
-    @apply bg-(--bg-light) dark:bg-(--bg-dark);
-}
-
-.bg-layout {
-    @apply bg-(--bg-light-layout) dark:bg-(--bg-dark-layout);
-}
 
 .custom-scrollbar {
     @apply scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
 }
-
-
-/* 
-    Text Colors
-*/
-.text-main {
-    @apply text-neutral-950 dark:text-neutral-50;
-}
-
 
 /* 
     Layouts
 */
 .page {
     @apply flex w-full h-full min-h-0;
-}
-
-@theme {
-    --breakpoint-xs: 25.75rem
 }
 
 button {

@@ -1,4 +1,4 @@
 {
     "css.validate": true,
-    "css.lint.unknownAtRules": "ignore"
+    "css.lint.unknownAtRules": "ignore",
 }

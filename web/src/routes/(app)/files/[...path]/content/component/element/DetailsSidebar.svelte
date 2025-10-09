@@ -15,6 +15,7 @@
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
+  import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -172,7 +173,7 @@
 </script>
 
 
-<div class="h-full w-full flex flex-col gap-6 py-6 bg-neutral-200 dark:bg-neutral-850 min-h-0">
+<div class="h-full w-full flex flex-col gap-6 py-6 bg-surface min-h-0">
     {#if filesState.metaLoading}
         <div></div>
     {:else if filesState.selectedEntries.hasMultiple}
@@ -221,9 +222,9 @@
                 <!-- Create permission button -->
                 <Dialog.Root bind:open={permissionCreatorOpen}>
                     <Dialog.Trigger>
-                        <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-2 rounded-md bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 shadow-sm">
-                            <div class="size-full aspect-square rotate-45">
-                                <CloseIcon></CloseIcon>
+                        <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-2 rounded-md bg-surface-button disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 shadow-sm">
+                            <div class="size-full aspect-square">
+                                <PlusIcon></PlusIcon>
                             </div>
                         </button>
                     </Dialog.Trigger>

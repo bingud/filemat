@@ -356,7 +356,7 @@
     <div class="w-full flex h-full min-h-0">
         <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} md:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
             <!-- Header -->
-            <div class="w-full shrink-0 flex flex-col px-2 items-center justify-between overflow-hidden rounded-lg py-2 bg-neutral-200 dark:bg-neutral-900 mt-2 gap-2">
+            <div class="w-full shrink-0 flex flex-col px-2 items-center justify-between overflow-hidden rounded-lg py-2 bg-surface mt-2 gap-2">
                 <!-- Top row -->
                 <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full flex items-center">
                     <Breadcrumbs></Breadcrumbs>                    
@@ -380,7 +380,7 @@
                     <div class="h-full flex items-center gap-2">
                         <Popover.Root bind:open={newButtonPopoverOpen}>
                             <Popover.Trigger title="Create or upload a file or folder." class="h-full flex items-center justify-center" hidden={filesState.data.meta?.fileType.startsWith("FILE")}>
-                                <div class="h-full flex items-center justify-center gap-2 bg-neutral-300 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 rounded-md px-4">
+                                <div class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
                                     <div class="h-[1.2rem]">
                                         <PlusIcon></PlusIcon>
                                     </div>
@@ -467,6 +467,6 @@
 
 
     .action-button {
-        @apply h-full aspect-square flex items-center justify-center rounded-lg dark:bg-neutral-800 dark:hover:bg-neutral-700 p-2;
+        @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-button;
     }
 </style>

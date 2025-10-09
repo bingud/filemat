@@ -1,7 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
-import { resolve } from 'node:path';
+import path, { resolve } from 'node:path';
 
 
 export default defineConfig({
@@ -10,6 +10,11 @@ export default defineConfig({
         tailwindcss(),
         sveltekit(),
     ],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, './src'),
+        }
+    },
 })
 
 
