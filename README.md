@@ -11,12 +11,12 @@
 ## What is Filemat?
 
 Filemat is a web-based file manager.  
-It's self hosted, and it allows you to access files on your local machine through a web UI.  
+It's self hosted, and it allows you to access your local files from anywhere using a web UI.  
 
 
 ## Features
 
-- User accounts and roles
+- User management, roles
 - Granular permissions
     - File and administration permissions for users and roles
 
