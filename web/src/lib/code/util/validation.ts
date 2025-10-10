@@ -21,8 +21,8 @@ export class Validator {
         return null
     }
 
-    public static isUlidValid(ulid: ulid | string): boolean {
-        if (isBlank(ulid) || ulid.length !== 26) return false
+    public static isUlidValid(ulid: ulid | string | undefined): ulid is ulid {
+        if (isBlank(ulid) || ulid?.length !== 26) return false
         return true
     }
   

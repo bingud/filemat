@@ -1,5 +1,5 @@
 import { streamFileContent } from "$lib/code/module/files"
-import { filesState } from "../../../../../../lib/code/stateObjects/filesState.svelte"
+import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 
 
 

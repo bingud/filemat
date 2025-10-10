@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, handleException, isBlank, safeFetch, sortArrayByNumber, debounceFunction, handleErr, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, safeFetch, debounceFunction, handleErr, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
@@ -11,7 +11,7 @@
     import { Dialog } from "$lib/component/bits-ui-wrapper";
     import FilePermissionCreator from "./FilePermissionCreator.svelte";
     import FilePermissionEditor from "./FilePermissionEditor.svelte";
-    import type { EntityPermissionMeta } from "../../code/types"; 
+    import type { EntityPermissionMeta } from "../_code/types"; 
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";

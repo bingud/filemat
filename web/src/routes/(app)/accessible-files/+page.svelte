@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import FilesPage from "../files/[...path]/content/component/FilesPage.svelte";
+    import FilesPage from "../files/[...path]/+page.svelte"
 
 
     onMount(() => {
