@@ -61,11 +61,6 @@ coverage/
 /.nyc_output/
 /jacoco.exec
 
-# NPM/Yarn/Pnpm lock files (keep only one if you use a specific package manager)
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
 # SvelteKit specific
 .svelte-kit/
 .static/

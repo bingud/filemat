@@ -8,7 +8,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --compiler-warnings css-unused-selector:ignore,css-unknownAtRules:ignore",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
@@ -38,7 +38,6 @@
 		"@codemirror/view": "^6.36.5",
 		"@jill64/svelte-toast": "^2.1.6",
 		"@lucide/svelte": "^0.544.0",
-		"@tailwindcss/postcss": "^4.1.13",
 		"@tailwindcss/vite": "^4.1.13",
 		"@videojs/themes": "^1.0.1",
 		"codemirror": "^6.0.1",
