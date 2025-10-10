@@ -482,21 +482,6 @@ class FileService(
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
         val entries: List<FullFileMetadata> = rawEntries.mapNotNull { meta: FileMetadata ->
-
-            // Check if `it.fileType` is symlink, resolve if it is
-//            val entryPath = if (meta.fileType.isSymLink() && followSymlinks) {
-//                val (
-//                    resolvedResult: Result<FilePath>,
-//                    hasSymlink: Boolean
-//                ) = resolvePath(FilePath.of(meta.path))
-//
-//                resolvedResult.let {
-//                    if (it.isNotSuccessful) return@mapNotNull null
-//                    it.value
-//                }
-//            } else {
-//                FilePath.of(meta.path)
-//            }
             val entryPath = FilePath.of(meta.path)
 
             val isPathAllowed = fileVisibilityService.isPathAllowed(entryPath) == null
@@ -511,13 +496,6 @@ class FileService(
             val hasPermission = permissions.contains(FilePermission.READ)
             if (!hasPermission) return@mapNotNull null
 
-//            val fullMeta = if (meta.fileType.isSymLink()) {
-//                val resolvedMeta = filesystem.getMetadata(entryPath)
-//                    ?: return@mapNotNull null
-//                FullFileMetadata.from(resolvedMeta, permissions)
-//            } else {
-//                FullFileMetadata.from(meta, permissions)
-//            }
             val fullMeta = FullFileMetadata.from(meta, permissions)
 
             return@mapNotNull fullMeta
