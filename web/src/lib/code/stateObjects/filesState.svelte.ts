@@ -2,7 +2,7 @@ import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
-import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/files"
+import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
 
 
 class FilesState {
@@ -155,6 +155,8 @@ class FileUiStateClasss {
      * Is details opened
      */
     detailsOpen = $state(uiState.isDesktop)
+
+    newFilePopoverOpen = $state(false)
 
     toggleSidebar() {
         this.detailsOpen = !this.detailsOpen

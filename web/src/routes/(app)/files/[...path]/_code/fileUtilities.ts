@@ -1,6 +1,11 @@
+import type { EntityPermission, Role } from "$lib/code/auth/types"
+import { filePermissionMeta } from "$lib/code/data/permissions";
 import { streamFileContent } from "$lib/code/module/files"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+import { formData, handleErr, keysOf, safeFetch, unixNowMillis } from "$lib/code/util/codeUtil.svelte";
 
+export type EntityPermissionMeta = { permission: EntityPermission & { permissionType: "USER"} ; username: string; role: null}  |
+        { permission: EntityPermission & { permissionType: "ROLE"} ; username: null; role: Role} 
 
 
 export async function loadFileContent(filePath: string) {

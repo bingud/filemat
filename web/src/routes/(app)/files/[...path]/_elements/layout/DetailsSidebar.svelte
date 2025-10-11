@@ -9,13 +9,14 @@
     import { fade } from "svelte/transition";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import { Dialog } from "$lib/component/bits-ui-wrapper";
-    import FilePermissionCreator from "./FilePermissionCreator.svelte";
-    import FilePermissionEditor from "./FilePermissionEditor.svelte";
-    import type { EntityPermissionMeta } from "../_code/types"; 
+    import FilePermissionCreator from "../ui/FilePermissionCreator.svelte";
+    import FilePermissionEditor from "../ui/FilePermissionEditor.svelte";
+    
+    import type { EntityPermissionMeta } from "../../_code/fileUtilities";
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
-  import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
+    import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],

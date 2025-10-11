@@ -1,13 +1,12 @@
 <script lang="ts">
 	import FolderIcon from '$lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { deleteFiles, downloadFilesAsZip, getFileData, getFileDataWithDifferentPath, getFileLastModifiedDate, moveFile, moveMultipleFiles, startTusUpload, type FileData } from "$lib/code/module/files"
-    import { addSuffix, dynamicInterval, explicitEffect, filenameFromPath, handleErr, isFolder, keysOf, letterS, pageTitle, parentFromPath, resolvePath, unixNow, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { dynamicInterval, explicitEffect, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
-    import Breadcrumbs from './_elements/Breadcrumbs.svelte';
-    import DetailsSidebar from './_elements/DetailsSidebar.svelte';
+    import Breadcrumbs from './_elements/layout/Breadcrumbs.svelte';
+    import DetailsSidebar from './_elements/layout/DetailsSidebar.svelte';
     import { createFilesState, destroyFilesState, filesState } from "$lib/code/stateObjects/filesState.svelte"
     import { fade, fly } from "svelte/transition"
     import { linear } from "svelte/easing"
@@ -16,23 +15,19 @@
     import { Popover } from "$lib/component/bits-ui-wrapper"
     import FileIcon from "$lib/component/icons/FileIcon.svelte"
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte"
-    import { formData, safeFetch } from "$lib/code/util/codeUtil.svelte"    
-    import { uploadWithTus } from "$lib/code/module/files"
     import { appState } from "$lib/code/stateObjects/appState.svelte";
-    import { filePermissionMeta } from "$lib/code/data/permissions";
     import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
     import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
-    import { confirmDialogState, folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
     import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
-    import FileDropzone from './_elements/FileDropzone.svelte';
+    import FileDropzone from './_elements/ui/FileDropzone.svelte';
     import { clientState } from '$lib/code/stateObjects/clientState.svelte';
-    import { toast } from '@jill64/svelte-toast';
-    import { isDialogOpen } from '$lib/code/util/stateUtils';
     import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte';
-    import FileViewer from './_elements/FileViewer.svelte';
-    import type { FullFileMetadata } from '$lib/code/auth/types';
+    import FileViewer from './_elements/layout/FileViewer.svelte';
+    import { event_filesDropped, handleKeyDown, handleNewFile, handleUpload, loadPageData, recoverScrollPosition, reloadPageData, saveScrollPosition } from './_code/pageLogic';
+    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
+
 
     let {
         overrideTopLevelFolderUrlPath = null,
@@ -50,7 +45,7 @@
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
-        };
+        }
     })
 
     onDestroy(() => {
@@ -59,84 +54,7 @@
     })
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
-    let newButtonPopoverOpen = $state(false)
     
-    function handleKeyDown(event: KeyboardEvent) {
-        if (isDialogOpen()) return
-
-        // Navigate to the parent folder
-        if (event.key === "Backspace") {
-            const currentPath = filesState.path
-            if (currentPath === "/") return
-
-            const parentPath = currentPath.slice(0, currentPath.lastIndexOf("/"))
-            goto(`/files${parentPath}`)
-        }
-    }
-
-    // Functions for new item actions
-    function handleUpload() {
-        newButtonPopoverOpen = false
-        uploadWithTus()
-    }
-    
-    async function handleNewFolder() {
-        newButtonPopoverOpen = false
-
-        const folderName = prompt("Enter folder name:")
-        if (!folderName) return
-
-        const currentPath = filesState.path === '/' ? '' : filesState.path
-        const targetPath = `${currentPath}/${folderName}`
-        console.log(`targetPath`, targetPath)
-        console.log(`currentPath`, currentPath)
-
-        const response = await safeFetch('/api/v1/folder/create', {
-            method: 'POST',
-            body: formData({ path: targetPath })
-        })
-        if (response.failed) {
-            handleErr({
-                description: "Failed to create folder",
-                notification: "Failed to create folder.",
-            })
-            return
-        }
-
-        const status = response.code
-        const json = response.json()
-
-        if (status.notFound) {
-            handleErr({
-                description: "Parent folder not found when creating folder",
-                notification: "This folder was not found."
-            })
-            return
-        } else if (status.failed) {
-            handleErr({
-                description: "Failed to create folder.",
-                notification: json.message || "Failed to create folder.",
-                isServerDown: status.serverDown
-            })
-            return
-        }
-
-        filesState.data.entries?.push({
-            path: targetPath,
-            filename: folderName,
-            modifiedDate: unixNowMillis(),
-            createdDate: unixNowMillis(),
-            fileType: "FOLDER",
-            size: 0,
-            permissions: keysOf(filePermissionMeta),
-            isExecutable: true,
-            isWritable: true,
-        })
-    }
-    
-    function handleNewFile() {
-        newButtonPopoverOpen = false
-    }
 
     let lastDataLoadDate: number = unixNow()
     const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
@@ -206,144 +124,6 @@
         saveScrollPosition()
     })
 
-    /**
-     * Reload the current folder data.
-     * If modification date of folder has changed, fetch new data
-     */
-    async function reloadPageData() {
-        if (!filesState.path) return
-        const meta = filesState.data.meta
-        if (!meta || !isFolder(meta)) return
-
-        const modifiedDate = meta.modifiedDate
-        const actualModifiedDate = await getFileLastModifiedDate(filesState.path)
-
-        // Folder modification date has not changed
-        // Local folder is up to date
-        if (modifiedDate === actualModifiedDate) return
-
-        await loadPageData(filesState.path, { silent: true, dataType: "object" })
-    }
-
-    async function loadPageData(filePath: string, options: { silent?: boolean, isRefresh?: boolean, overrideDataUrlPath?: string, dataType: "object" | "array" }) {
-        filesState.lastFilePathLoaded = filePath
-        if (!options.silent) filesState.metaLoading = true
-
-        const result = (options.overrideDataUrlPath
-            ? await getFileDataWithDifferentPath(filePath, options.overrideDataUrlPath, filesState.abortController?.signal)
-            : await getFileData(filePath, filesState.abortController?.signal, {})
-        )
-
-        if (result.notFound) {
-            if (filesState.path === "/") return
-            if (options.isRefresh) {
-                toast.plain("This folder is not available anymore.")
-            } else {
-                toast.error("This folder was not found.")
-            }
-
-            await goto(`/files/${parentFromPath(filesState.path)}`)
-        }
-        if (result.isUnsuccessful) return
-        const dataResult = result.value
-
-        if (filesState.lastFilePathLoaded !== filePath) return
-        
-        filesState.metaLoading = false
-        if (!result) return
-
-        if (options.dataType === "object") {
-            const data = dataResult as FileData
-            filesState.data.meta = data.meta!
-
-            if (data.meta.fileType === "FOLDER") {
-                filesState.data.entries = data.entries || null
-            } else if (data.meta.fileType === "FOLDER_LINK") {
-                if (appState.followSymlinks) {
-                    data.entries?.forEach((entry) => {
-                        const linkPath = `${addSuffix(filePath, "/")}${entry.filename!}`
-                        entry.path = linkPath
-                    })
-                    filesState.data.entries = data.entries || null
-                }
-            }
-
-            // If no entry is selected and this is a folder, select the current folder
-            if (filesState.selectedEntries.single === null && data.meta.fileType === "FOLDER") {
-                filesState.selectedEntries.list = [data.meta.path]
-            }
-        } else {
-            const data = dataResult as FullFileMetadata[]
-            filesState.data.entries = data
-        }
-    }
-
-    // Scrolling position
-    function saveScrollPosition() {
-        if (!filesState.path || !filesState.scroll.container) return
-        const pos = filesState.scroll.container.scrollTop
-        filesState.scroll.pathPositions[filesState.path] = pos
-    }
-
-    function recoverScrollPosition() {
-        if (!filesState.path || !filesState.scroll.container) return
-        const pos = filesState.scroll.pathPositions[filesState.path]
-        if (!pos) return
-        filesState.scroll.container.scrollTo({top: pos})
-    }
-
-    function option_deleteSelectedFiles() {
-        const selected = filesState.selectedEntries.list
-        if (!selected.length) return
-        
-        confirmDialogState.show({
-            title: "Delete File",
-            message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected file${filesState.selectedEntries.count > 1 ? 's':''}? This cannot be undone.`,
-            confirmText: "Delete",
-            cancelText: "Cancel"
-        })?.then((confirmed: boolean) => {
-            if (!confirmed) return
-            if (!filesState.selectedEntries.meta) return
-
-            const list = valuesOf(filesState.selectedEntries.meta).filter(v => !!v)
-            deleteFiles(list)
-        })
-    }
-
-    function option_downloadSelectedFiles() {
-        const selected = filesState.selectedEntries.list
-        if (!selected || !selected.length) return
-        downloadFilesAsZip(selected)
-    }
-
-    async function option_moveSelectedFiles() {
-        if (!filesState.selectedEntries.hasSelected || !filesState.data.meta) return
-
-        const newParentPath = await folderSelectorState.show!({
-            title: "Choose the target folder.",
-            initialSelection: filesState.path
-        })
-        if (!newParentPath) return
-
-        if (filesState.selectedEntries.hasMultiple) {
-            moveMultipleFiles(newParentPath, filesState.selectedEntries.list)
-        } else {
-            const selected = filesState.selectedEntries.single!
-            const filename = filenameFromPath(selected)
-            moveFile(selected, resolvePath(newParentPath, filename))
-        }
-    }
-
-
-    function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
-        console.log(`file droippe`, e.detail.files)
-        const files = Array.from(e.detail.files)
-        
-        files.forEach(file => {
-            startTusUpload(file)
-        })
-    }
-
 </script>
 
 
@@ -378,7 +158,7 @@
 
                     <!-- Right buttons -->
                     <div class="h-full flex items-center gap-2">
-                        <Popover.Root bind:open={newButtonPopoverOpen}>
+                        <Popover.Root bind:open={filesState.ui.newFilePopoverOpen}>
                             <Popover.Trigger title="Create or upload a file or folder." class="h-full flex items-center justify-center" hidden={filesState.data.meta?.fileType.startsWith("FILE")}>
                                 <div class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
                                     <div class="h-[1.2rem]">

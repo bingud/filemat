@@ -5,7 +5,7 @@
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
-    import { breadcrumbState, type Segment } from '../_code/breadcrumbState.svelte';
+    import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte';
 
     function openEntry(path: string) {
         goto(`/files${path}`)

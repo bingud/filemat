@@ -9,13 +9,13 @@
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
-    import UploadPanel from "../UploadPanel.svelte";
+    import UploadPanel from "../ui/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files";
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
-    import FolderTreeSelector from "../FolderTreeSelector.svelte";
+    import FolderTreeSelector from "../ui/FolderTreeSelector.svelte";
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import FileEntry from "./FileEntry.svelte";

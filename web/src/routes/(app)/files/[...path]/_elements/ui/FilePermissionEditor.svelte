@@ -5,7 +5,7 @@
     import { filterObject, formData, handleErr, handleException, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
-    import type { EntityPermissionMeta } from "../../code/types";
+    import type { EntityPermissionMeta } from "../../_code/fileUtilities";
 
 
     let { editedPermission, onPermissionUpdated }: {
