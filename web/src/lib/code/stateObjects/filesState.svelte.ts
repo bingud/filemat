@@ -1,7 +1,7 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { generateRandomNumber, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { generateRandomNumber, isFolder, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
 
 
@@ -175,7 +175,10 @@ class FileDataStateClass {
     // Decoded content of currently open file
     decodedContent = $state(null) as any | null
     // Download URL of currently open file
-    contentUrl = $derived(`/api/v1/file/content?path=${filesState.path}`)
+    contentUrl = $derived.by(() => {
+        if (!this.meta) return null
+        return `/api/v1/file/content?path=${filesState.path}`
+    })
     // All entries in the current directory
     entries = $state(null) as FullFileMetadata[] | null
     // Sorted entries in the current directory

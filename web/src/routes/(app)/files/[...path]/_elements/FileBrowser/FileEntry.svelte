@@ -64,12 +64,7 @@
             : isSelected ? 'bg-blue-200/60 dark:bg-sky-950/60' : 'hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60'
         }
     "
-    href={
-        (entry.fileType === "FILE" || 
-        (entry.fileType === "FILE_LINK" && appState.followSymlinks))
-            ? addSuffix(filesState.data.contentUrl, "/") + `${entry.filename!}`
-            : `/files${entry.path}`
-    }
+    href={`/files${entry.path}`}
     on:dragstart={(e) => { event_dragStart(e, entry) }}
     on:dragover={(e) => { event_dragOver(e, entry) }}
     on:dragleave={(e) => { event_dragLeave(e, entry) }}

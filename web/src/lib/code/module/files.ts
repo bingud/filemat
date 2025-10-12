@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, printStack, resolvePath, Result, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 

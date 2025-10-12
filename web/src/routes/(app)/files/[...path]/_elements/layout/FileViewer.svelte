@@ -64,7 +64,10 @@
 
     // Re-create text editor
     explicitEffect(() => [ 
-        uiState.isDark, filesState.data.decodedContent, textEditorContainer, isText 
+        uiState.isDark,
+        filesState.data.decodedContent,
+        textEditorContainer,
+        isText
     ], () => {
         if (isText) {
             createTextEditor()
@@ -137,6 +140,7 @@
         await loadFileContent(filesState.path)
         filesState.contentLoading = false
     }
+
 </script>
 
 
@@ -160,7 +164,7 @@
             <div class="w-full flex-grow min-h-0 flex items-center justify-center">
                 {#if isSymlink === false}
                     {#if isText}
-                        <div class="w-full h-full custom-scrol  lbar" bind:this={textEditorContainer}></div>
+                        <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                     {:else if type === "image"}
                         <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
                     {:else if type === "video"}
