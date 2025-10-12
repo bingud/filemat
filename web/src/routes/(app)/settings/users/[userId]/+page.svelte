@@ -29,7 +29,9 @@
         return includesList(user.roles, appState.roleList.map(v=>v.roleId))
     })
 
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        page.params.userId 
+    ], () => {
         uiState.settings.title = title
 
         const userId = page.params.userId
@@ -43,7 +45,7 @@
         loading = true
         loadUser(userId).then(() => { loading = false })
         mounted = true
-    }, () => [ page.params.userId ])
+    })
 
     /**
      * Load user data

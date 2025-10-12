@@ -506,12 +506,13 @@ export function decodeBase64(input: string) {
 /**
  * Creates an $effect where dependencies are specified manually.
  */
-export function explicitEffect(fn: () => any, depsFn: () => any[]) {
+export function explicitEffect(depsFn: () => any[], fn: () => any) {
     $effect(() => {
         depsFn()
         return untrack(fn)
     })
 }
+
 
 /**
  * Creates an interval with a dynamic delay

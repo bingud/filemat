@@ -63,11 +63,13 @@
     })
 
     // Re-create text editor
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        uiState.isDark, filesState.data.decodedContent, textEditorContainer, isText 
+    ], () => {
         if (isText) {
             createTextEditor()
         }
-    }, () => [ uiState.isDark, filesState.data.decodedContent, textEditorContainer, isText ])
+    })
 
     // Create the video player
     $effect(() => {

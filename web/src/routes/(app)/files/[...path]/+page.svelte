@@ -61,7 +61,9 @@
     let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
 
     // Load page data when path changes
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        filesState.path 
+    ], () => {
         const path = filesState.path
         
         if (path) {
@@ -92,10 +94,12 @@
         }, () => ((clientState.isIdle ? pageDataPollingConfig.idleDelay : pageDataPollingConfig.delay) * 1000))
 
         return () => { pollingInterval!.cancel() }
-    }, () => [ filesState.path ])
+    })
 
     // Run when user stops being idle
-    explicitEffect(() => {
+    explicitEffect(() => [
+        clientState.isIdle 
+    ], () => {
         if (clientState.isIdle === false) {
             const now = unixNow()
             const elapsed = now - (lastDataLoadDate ?? 0)
@@ -106,10 +110,12 @@
                 reloadPageData()
             }
         }
-    }, () => [ clientState.isIdle ])
+    })
 
     // Unselect entry when path changes
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        filesState.selectedEntries.single, filesState.path
+    ], () => {
         const selected = filesState.selectedEntries.single
         const current = filesState.path || "/"
 
@@ -117,7 +123,7 @@
         if (selected && !selected.startsWith(current + (current === "/" ? "" : "/"))) {
             filesState.selectedEntries.reset()
         }
-    }, () => [ filesState.selectedEntries.single, filesState.path ])
+    })
 
 
     beforeNavigate(() => {

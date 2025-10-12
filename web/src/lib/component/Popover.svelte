@@ -47,9 +47,11 @@
         } 
     })
 
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        button 
+    ], () => {
         calcCoords()
-    }, () => [ button ])
+    })
 
     /**
      * Function to calculate the location of the button

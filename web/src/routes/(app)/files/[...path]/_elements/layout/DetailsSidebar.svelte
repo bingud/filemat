@@ -51,7 +51,10 @@
     })
 
     let lastLoaded = ""
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        filesState.selectedEntries.single, 
+        filesState.ui.detailsOpen, 
+    ], () => {
         const selectedPath = filesState.selectedEntries.single
 
         if (!selectedPath) return
@@ -63,12 +66,7 @@
         permissionDataDebounced = true
         
         loadPermissionDataDebounced(selectedPath)
-    }, () => [ 
-        filesState.selectedEntries.single, 
-        filesState.ui.detailsOpen, 
-        // permiss  ionData, 
-        // permissionDataDebounced 
-    ])
+    })
 
     // Debounced function to load permission data
     const loadPermissionDataDebounced = debounceFunction(async (path: string) => {

@@ -34,26 +34,30 @@
     })
 
     // Data clearing on close
-    explicitEffect(() => {
+    explicitEffect(() => [
+        dialogOpen
+    ], () => {
         if (!dialogOpen) {
             newTotp = null
             qrCodeBase64
             phase = 1
             totpInput = undefined
         }
-    }, () => [dialogOpen])
+    })
 
     function cancel() { dialogOpen = false } // Resetting values done by effect
     function goBack() { phase-- }
 
     // Cancel operation if 2FA is toggled from elsewhere
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        auth.principal?.mfaTotpStatus
+    ], () => {
         const status = auth.principal?.mfaTotpStatus || null
         if (previousMfaStatus !== status) {
             cancel()
             previousMfaStatus = status
         }
-    }, () => [ auth.principal?.mfaTotpStatus ])
+    })
     
     onMount(() => {
         uiState.settings.title = title

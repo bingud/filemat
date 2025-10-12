@@ -1,6 +1,6 @@
 <script lang="ts">
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { doRequest, entriesOf, explicitEffect, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { doRequest, entriesOf, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { prefixSlash } from "$lib/code/util/uiUtil";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";

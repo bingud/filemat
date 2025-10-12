@@ -54,7 +54,9 @@
         }
     }
 
-    explicitEffect(() => {
+    explicitEffect(() => [ 
+        folderSelectorState.isOpen 
+    ], () => {
         if (folderSelectorState.isOpen === true) {
             initializeTree()
         } else {
@@ -67,7 +69,7 @@
             initialSelection = null
             hasScrolledToInitial = false
         }
-    }, () => [ folderSelectorState.isOpen ])
+    })
 
     async function initializeTree() {
         folderTree = {

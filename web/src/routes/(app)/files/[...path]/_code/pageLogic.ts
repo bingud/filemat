@@ -38,7 +38,8 @@ export async function loadPageData(filePath: string, options: { silent?: boolean
     filesState.lastFilePathLoaded = filePath
     if (!options.silent) filesState.metaLoading = true
 
-    const result = (options.overrideDataUrlPath
+    const result = (
+        options.overrideDataUrlPath
         ? await getFileDataWithDifferentPath(filePath, options.overrideDataUrlPath, filesState.abortController?.signal)
         : await getFileData(filePath, filesState.abortController?.signal, {})
     )
