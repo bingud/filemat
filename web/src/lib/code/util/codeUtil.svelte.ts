@@ -421,6 +421,10 @@ export function parentFromPath(path: string): string {
         : ''
 }
 
+export function appendTrailingSlash(path: string): string {
+    return path + (path === "/" ? "" : "/")
+}
+
 /**
  * Formats byte number to readable
  */

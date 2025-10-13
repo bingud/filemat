@@ -50,12 +50,13 @@
         return { users: users, roles: roles }
     })
 
+    // Load permissions for selected file
     let lastLoaded = ""
     explicitEffect(() => [ 
-        filesState.selectedEntries.single, 
+        filesState.selectedEntries.singlePath, 
         filesState.ui.detailsOpen, 
     ], () => {
-        const selectedPath = filesState.selectedEntries.single
+        const selectedPath = filesState.selectedEntries.singlePath
 
         if (!selectedPath) return
         if (!filesState.ui.detailsOpen) return
@@ -78,7 +79,7 @@
         if (hasAnyPermission(["MANAGE_ALL_FILE_PERMISSIONS", "MANAGE_OWN_FILE_PERMISSIONS"])) {
             permissionDataLoading = true
             await loadPermissionData(path, abortController.signal)
-            if (path !== filesState.selectedEntries.single) return
+            if (path !== filesState.selectedEntries.singlePath) return
             lastLoaded = path
             permissionDataLoading = false
             showPermissions = true
@@ -127,7 +128,7 @@
             return
         }
 
-        if (path !== filesState.selectedEntries.single) return
+        if (path !== filesState.selectedEntries.singlePath) return
 
         const miniUsers = json.miniUserList
         json.miniUserList = {}
@@ -152,6 +153,7 @@
     function onPermissionClicked(perm: EntityPermissionMeta) {
         editedPermission = perm
     }
+
     function onPermissionUpdated(id: ulid, newPermissions: FilePermission[] | null, deleted: boolean) {
         if (permissionData) {
             if (deleted) {
@@ -169,6 +171,8 @@
             editedPermission = null;
         }
     }
+
+    $inspect(filesState.selectedEntries.list)
 </script>
 
 
@@ -242,8 +246,8 @@
                                         </div>
                                     </Dialog.Close>
                                 </div>
-                                {#if filesState.selectedEntries.single}
-                                    <FilePermissionCreator path={filesState.selectedEntries.single} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
+                                {#if filesState.selectedEntries.singlePath}
+                                    <FilePermissionCreator path={filesState.selectedEntries.singlePath} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
                                 {/if}
                             </div>
                         </Dialog.Content>

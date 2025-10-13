@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FolderIcon from '$lib/component/icons/FolderIcon.svelte';
     import { beforeNavigate, goto } from "$app/navigation"
-    import { dynamicInterval, explicitEffect, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -114,13 +114,15 @@
 
     // Unselect entry when path changes
     explicitEffect(() => [ 
-        filesState.selectedEntries.single, filesState.path
+        filesState.selectedEntries.singlePath,
+        filesState.path
     ], () => {
-        const selected = filesState.selectedEntries.single
+        const selected = filesState.selectedEntries.singlePath
         const current = filesState.path || "/"
 
         // if there’s a selection but it isn’t under the current directory, reset it
-        if (selected && !selected.startsWith(current + (current === "/" ? "" : "/"))) {
+        if (selected && !selected.startsWith(appendTrailingSlash(current)) && selected !== current) {
+            console.log(selected, current)
             filesState.selectedEntries.reset()
         }
     })

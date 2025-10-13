@@ -45,8 +45,8 @@
     // Function to scroll selected entry into view
     function scrollSelectedEntryIntoView() {
         setTimeout(() => {
-            if (filesState.selectedEntries.single) {
-                const selector = `[data-entry-path="${filesState.selectedEntries.single.replace(/"/g, '\\"')}"]`;
+            if (filesState.selectedEntries.singlePath) {
+                const selector = `[data-entry-path="${filesState.selectedEntries.singlePath.replace(/"/g, '\\"')}"]`;
                 const element = document.querySelector(selector);
                 if (element) {
                     element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -74,9 +74,9 @@
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // Check if we have a selected entry
-            if (filesState.selectedEntries.single && filesState.data.entries) {
+            if (filesState.selectedEntries.singlePath && filesState.data.entries) {
                 // Find the selected entry in the entries list
-                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.single);
+                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.singlePath);
                 if (selectedEntry) {
                     // Delete the selected entry
                     option_delete(selectedEntry);
@@ -97,7 +97,7 @@
             
             event.preventDefault();
             const entries = filesState.data.sortedEntries;
-            const currentPath = filesState.selectedEntries.single;
+            const currentPath = filesState.selectedEntries.singlePath;
             
             // Find the index of currently selected entry
             let currentIndex = -1;
@@ -139,7 +139,7 @@
      * onClick for file entry
      */
     function entryOnClick(e: UIEvent, entry: FileMetadata) {
-        if (filesState.selectedEntries.single !== entry.path) {
+        if (filesState.selectedEntries.singlePath !== entry.path) {
             e.preventDefault()
             filesState.selectedEntries.setSelected(entry.path)
             // Scroll selected entry into view
@@ -397,23 +397,18 @@
             <div class="z-50 relative">
                 <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
                     <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
-                        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
-                            {#if filesState.data.contentUrl}
-                                <a 
-                                    href={
-                                        (menuEntry.fileType === "FILE" || 
-                                        (menuEntry.fileType === "FILE_LINK" && appState.followSymlinks))
-                                            ? addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`
-                                            : `/files${menuEntry.path}`
-                                    }
-                                    target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
-                                >
-                                    <div class="size-5 flex-shrink-0">
-                                        <NewTabIcon />
-                                    </div>
-                                    <span>Open in new tab</span>
-                                </a>
+                        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
+                            <a 
+                                href={`/files${menuEntry.path}`}
+                                target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
+                            >
+                                <div class="size-5 flex-shrink-0">
+                                    <NewTabIcon />
+                                </div>
+                                <span>Open in new tab</span>
+                            </a>
 
+                            {#if filesState.data.contentUrl}
                                 <a download href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                     <div class="size-5 flex-shrink-0">
                                         <DownloadIcon />

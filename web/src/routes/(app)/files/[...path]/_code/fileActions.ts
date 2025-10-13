@@ -17,7 +17,7 @@ export async function option_moveSelectedFiles() {
     if (filesState.selectedEntries.hasMultiple) {
         moveMultipleFiles(newParentPath, filesState.selectedEntries.list)
     } else {
-        const selected = filesState.selectedEntries.single!
+        const selected = filesState.selectedEntries.singlePath!
         const filename = filenameFromPath(selected)
         moveFile(selected, resolvePath(newParentPath, filename))
     }
@@ -35,9 +35,9 @@ export function option_deleteSelectedFiles() {
         cancelText: "Cancel"
     })?.then((confirmed: boolean) => {
         if (!confirmed) return;
-        if (!filesState.selectedEntries.meta) return;
+        if (!filesState.selectedEntries.metadataMap) return;
 
-        const list = valuesOf(filesState.selectedEntries.meta).filter(v => !!v);
+        const list = valuesOf(filesState.selectedEntries.metadataMap).filter(v => !!v);
         deleteFiles(list);
     });
 }

@@ -79,7 +79,7 @@ export async function loadPageData(filePath: string, options: { silent?: boolean
         }
 
         // If no entry is selected and this is a folder, select the current folder
-        if (filesState.selectedEntries.single === null && data.meta.fileType === "FOLDER") {
+        if (filesState.selectedEntries.singlePath === null && data.meta.fileType === "FOLDER") {
             filesState.selectedEntries.list = [data.meta.path]
         }
     } else {

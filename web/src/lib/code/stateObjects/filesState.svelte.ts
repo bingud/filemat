@@ -90,31 +90,29 @@ class SelectedEntryStateClass {
     selectedPositions = new SingleChildBooleanTree()
 
     list = $state([]) as string[]
-    meta = $derived.by(() => {
-        if (!filesState.data.entries) {
-            return null
-        }
+    metadataMap = $derived.by(() => {
+        const entriesMap = new Map(
+            filesState.data.entries?.map(e => [e.path, e]) || []
+        )
 
-        let obj: Record<string, FullFileMetadata | null> = {}
-        this.list.forEach((path) => {
-            if (filesState.path === path) {
-                const meta = filesState.data.meta
-                obj[path] = meta || null
-            } else {
-                const meta = filesState.data.entries!.find(v => v.path === path)
-                obj[path] = meta || null
-            }
-        })
+        let obj: Record<string, FullFileMetadata | null> = Object.fromEntries(
+            this.list.map(path => [
+                path,
+                path === filesState.path 
+                    ? (filesState.data.meta || null)
+                    : (entriesMap.get(path) || null)
+            ])
+        )
 
         return obj
     })
 
-    single = $derived(this.list.length === 1 ? this.list[0] : null)
+    singlePath = $derived(this.list.length === 1 ? this.list[0] : null)
     singleMeta = $derived.by(() => {
-        if (!this.meta) return null
+        if (!this.metadataMap) return null
 
         // Only return if one entry is selected
-        const metaList = valuesOf(this.meta)
+        const metaList = valuesOf(this.metadataMap)
         if (metaList.length > 1) return null
 
         const value = metaList[0]
