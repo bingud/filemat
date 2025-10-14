@@ -1,30 +1,22 @@
 <script lang="ts">
-    import { dev } from "$app/environment";
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { addSuffix, filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder } from "$lib/code/util/codeUtil.svelte";
-    import { Popover } from "$lib/component/bits-ui-wrapper";
-    import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
+    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
-    import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import UploadPanel from "../ui/UploadPanel.svelte";
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files";
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
-    import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte";
     import { appState } from '$lib/code/stateObjects/appState.svelte';
-    import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import FileEntry from "./FileEntry.svelte";
     import { isDialogOpen } from "$lib/code/util/stateUtils";
+    import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
     let menuEntry: FullFileMetadata | null = $state(null)
-    let entryMenuPopoverOpen = $state(dev)
 
     let entryMenuYPos: number | null = $state(null)
     let entryMenuXPos: number | null = $state(null)
@@ -156,7 +148,7 @@
     function entryMenuOnClick(button: HTMLButtonElement, entry: FullFileMetadata) {
         entryMenuButton = button
         menuEntry = entry
-        entryMenuPopoverOpen = true
+        filesState.ui.fileContextMenuPopoverOpen = true
     }
 
     function openEntry(path: string) {
@@ -213,7 +205,7 @@
     }
 
     async function option_rename(entry: FileMetadata) {
-        entryMenuPopoverOpen = false
+        filesState.ui.fileContextMenuPopoverOpen = false
         const newFilename = await inputDialogState.show({title: "Rename file", message: "Enter the new filename:", confirmText: "Rename", cancelText: "Cancel"})
         if (!newFilename) return
         if (newFilename === entry.filename) return
@@ -240,14 +232,14 @@
     function entryOnContextMenu(e: MouseEvent, entry: FullFileMetadata) {
         e.preventDefault()
 
-        entryMenuPopoverOpen = false
+        filesState.ui.fileContextMenuPopoverOpen = false
         entryMenuXPos = null
         entryMenuYPos = null
 
         setTimeout(() => {
             entryMenuXPos = e.clientX
             entryMenuYPos = e.clientY
-            entryMenuPopoverOpen = true
+            filesState.ui.fileContextMenuPopoverOpen = true
             menuEntry = entry
         })
     }
@@ -395,64 +387,15 @@
     {#if entryMenuButton && menuEntry}
         {#key entryMenuButton || menuEntry}
             <div class="z-50 relative">
-                <Popover.Root bind:open={entryMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
-                    <Popover.Content onInteractOutside={() => { entryMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
-                        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
-                            <a 
-                                href={`/files${menuEntry.path}`}
-                                target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
-                            >
-                                <div class="size-5 flex-shrink-0">
-                                    <NewTabIcon />
-                                </div>
-                                <span>Open in new tab</span>
-                            </a>
-
-                            {#if filesState.data.contentUrl}
-                                <a download href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <DownloadIcon />
-                                    </div>
-                                    <span>Download</span>
-                                </a>
-                            {/if}
-
-                            {#if menuEntry.permissions.includes("MOVE")}
-                                <button on:click={() => { option_rename(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <EditIcon />
-                                    </div>
-                                    <span>Rename</span>
-                                </button>
-
-                                <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <MoveIcon />
-                                    </div>
-                                    <span>Move</span>
-                                </button>
-                            {/if}
-
-                            {#if menuEntry.permissions.includes("DELETE")}
-                                <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                    <div class="size-5 flex-shrink-0">
-                                        <TrashIcon />
-                                    </div>
-                                    <span>Delete</span>
-                                </button>
-                            {/if}
-
-                            <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                <div class="size-5 flex-shrink-0">
-                                    <InfoIcon />
-                                </div>
-                                <span>Details</span>
-                            </button>
-                            <hr class="basic-hr my-2">
-                            <p class="px-4 truncate opacity-70">File: {menuEntry.filename!}</p>
-                        </div>
-                    </Popover.Content>
-                </Popover.Root>
+                <FileContextMenuPopover
+                    entryMenuButton={entryMenuButton}
+                    entryMenuPopoverOnOpenChange={entryMenuPopoverOnOpenChange}
+                    menuEntry={menuEntry}
+                    option_rename={option_rename}
+                    option_move={option_move}
+                    option_delete={option_delete}
+                    option_details={option_details}
+                ></FileContextMenuPopover>
             </div>
         {/key}
     {/if}

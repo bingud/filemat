@@ -1,2 +1,3 @@
 [*.svelte]
 disable_inspection=Svelte:UsingOnEvent
+tab_width=4

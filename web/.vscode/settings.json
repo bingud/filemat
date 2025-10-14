@@ -1,5 +1,7 @@
 {
     "css.validate": true,
     "css.lint.unknownAtRules": "ignore",
-    "runNpmButtons.spinIcon": false
+    "runNpmButtons.spinIcon": false,
+    "editor.indentSize": 4,
+    "editor.detectIndentation": false,
 }

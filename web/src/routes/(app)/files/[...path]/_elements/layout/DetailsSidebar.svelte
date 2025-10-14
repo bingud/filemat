@@ -171,8 +171,6 @@
             editedPermission = null;
         }
     }
-
-    $inspect(filesState.selectedEntries.list)
 </script>
 
 

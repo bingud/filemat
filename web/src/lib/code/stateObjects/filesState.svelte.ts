@@ -156,6 +156,8 @@ class FileUiStateClasss {
 
     newFilePopoverOpen = $state(false)
 
+    fileContextMenuPopoverOpen = $state(false)
+
     toggleSidebar() {
         this.detailsOpen = !this.detailsOpen
     }
