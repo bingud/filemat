@@ -9,12 +9,15 @@ import { toast } from "@jill64/svelte-toast";
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
 
+/**
+ * Fetches file metadata (and folder entries if the file is a folder)
+ */
 export async function getFileData(
     path: string,
     signal: AbortSignal | undefined,
     options: { foldersOnly?: boolean }
 ): Promise<Result<FileData>> {
-    const response = await safeFetch("/api/v1/folder/file-or-folder-entries", {
+    const response = await safeFetch("/api/v1/folder/file-and-folder-entries", {
         body: formData({ path: path, foldersOnly: options.foldersOnly || false }),
         signal: signal
     })
@@ -49,7 +52,7 @@ export async function getFileData(
     return Result.ok(data)
 }
 
-export async function getFileDataWithDifferentPath(
+export async function getFileListFromCustomEndpoint(
     path: string,
     urlPath: string,
     signal: AbortSignal | undefined,
@@ -290,7 +293,7 @@ export function startTusUpload(file: File) {
                         createdDate: unixNowMillis(),
                         fileType: "FILE",
                         size: uploadedFile.size,
-                        permissions: filesState.data.meta!.permissions,
+                        permissions: filesState.data.folderMeta!.permissions,
                         isWritable: true,
                         isExecutable: true,
                     })

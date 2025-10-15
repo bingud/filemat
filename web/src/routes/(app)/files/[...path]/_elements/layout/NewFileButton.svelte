@@ -12,7 +12,7 @@
 
 
 <Popover.Root bind:open={filesState.ui.newFilePopoverOpen}>
-    <Popover.Trigger title="Create or upload a file or folder." class="h-full flex items-center justify-center" hidden={filesState.data.meta?.fileType.startsWith("FILE")}>
+    <Popover.Trigger title="Create or upload a file or folder." class="h-full flex items-center justify-center" hidden={filesState.data.folderMeta == null}>
         <div class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
             <div class="h-[1.2rem]">
                 <PlusIcon></PlusIcon>

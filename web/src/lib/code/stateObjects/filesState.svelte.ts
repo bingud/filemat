@@ -68,8 +68,13 @@ class FilesState {
     /**
      * Clear state on file navigation
      */
-    clearState() {
+    clearAllState() {
         this.data.clear()
+        this.ui.clear()
+    }
+
+    clearOpenState() {
+        this.data.clearOpenContent()
         this.ui.clear()
     }
 
@@ -99,7 +104,7 @@ class SelectedEntryStateClass {
             this.list.map(path => [
                 path,
                 path === filesState.path 
-                    ? (filesState.data.meta || null)
+                    ? (filesState.data.currentMeta || null)
                     : (entriesMap.get(path) || null)
             ])
         )
@@ -169,14 +174,21 @@ class FileUiStateClasss {
 
 class FileDataStateClass {
     // Metadata of currently open file
-    meta = $state(null) as FullFileMetadata | null
+    fileMeta = $state(null) as FullFileMetadata | null
+    // Metadata of currently open parent folder
+    folderMeta = $state(null) as FullFileMetadata | null
+
+    currentMeta = $derived.by(() => {
+        return this.fileMeta || this.folderMeta
+    })
+
     // Raw content of currently open file
     content = $state(null) as Blob | null
     // Decoded content of currently open file
     decodedContent = $state(null) as any | null
     // Download URL of currently open file
     contentUrl = $derived.by(() => {
-        if (!this.meta) return null
+        if (!this.fileMeta) return null
         return `/api/v1/file/content?path=${filesState.path}`
     })
     // All entries in the current directory
@@ -227,10 +239,17 @@ class FileDataStateClass {
     })
 
     clear() {
-        this.meta = null
+        this.fileMeta = null
+        this.folderMeta = null
         this.content = null
         this.decodedContent = null
         this.entries = null
+    }
+
+    clearOpenContent() {
+        this.fileMeta = null
+        this.content = null
+        this.decodedContent = null
     }
 }
 

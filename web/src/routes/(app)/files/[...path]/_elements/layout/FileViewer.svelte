@@ -20,8 +20,8 @@
     import { lookup as getMimetypeFromFilename } from 'mime-types'
 
 
-    const extension = $derived(filesState.data.meta ? getFileExtension(filesState.data.meta.path) : null)
-    const isSymlink = $derived(filesState.data.meta?.fileType.includes("LINK") && !appState.followSymlinks)
+    const extension = $derived(filesState.data.fileMeta ? getFileExtension(filesState.data.fileMeta.path) : null)
+    const isSymlink = $derived(filesState.data.fileMeta?.fileType.includes("LINK") && !appState.followSymlinks)
     const fileType = $derived.by(() => {
         if (isSymlink) return "text"
         return extension ? fileCategories[extension] : null
@@ -84,7 +84,7 @@
                 persistVolume: true,
                 sources: [{
                     src: filesState.data.contentUrl,
-                    type: getMimetypeFromFilename(filesState.data.meta!.filename!) || "video/mp4"
+                    type: getMimetypeFromFilename(filesState.data.fileMeta!.filename!) || "video/mp4"
                 }]
             })
 
@@ -146,7 +146,7 @@
 
 <div on:click|stopPropagation class="size-full flex flex-col">
     
-    {#if filesState.data.meta}
+    {#if filesState.data.fileMeta}
         {#if filesState.contentLoading}
             <div class="center">
                 <Loader></Loader>
@@ -166,7 +166,7 @@
                     {#if isText}
                         <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                     {:else if type === "image"}
-                        <img src={filesState.data.contentUrl} alt={filesState.data.meta.path} class="max-w-full max-h-full size-auto">
+                        <img src={filesState.data.contentUrl} alt={filesState.data.fileMeta.path} class="max-w-full max-h-full size-auto">
                     {:else if type === "video"}
                         <div class="size-full overflow-hidden">
                             <video bind:this={videoElement} class="video-js h-full w-full">
@@ -176,7 +176,7 @@
                     {:else if type === "audio"}
                         <audio src={filesState.data.contentUrl} controls></audio>
                     {:else if type === "pdf"}
-                        <iframe src={filesState.data.contentUrl} title={filesState.data.meta.path} class="w-full h-full"></iframe>
+                        <iframe src={filesState.data.contentUrl} title={filesState.data.fileMeta.path} class="w-full h-full"></iframe>
                     {/if}
                 {:else}
                     <div>
@@ -196,7 +196,7 @@
                 </div>
             </div>
         {/if}
-    {:else if !filesState.data.meta}
+    {:else if !filesState.data.fileMeta}
         <div class="center">
             <p class="">No file is open.</p>
         </div>

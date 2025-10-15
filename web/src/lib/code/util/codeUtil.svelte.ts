@@ -701,3 +701,10 @@ export function generateRandomNumber() {
 export function printStack() {
     console.log(new Error().stack)
 }
+
+export function isPathDirectChild(parent: string, child: string): boolean {
+    const p = parent.replace(/\/+$/, '')
+    const c = child.replace(/\/+$/, '')
+    const rel = c.slice(p.length)
+    return c.startsWith(p + '/') && !rel.slice(1).includes('/')
+}

@@ -6,7 +6,7 @@ import { filenameFromPath, formData, handleErr, keysOf, resolvePath, safeFetch, 
 
 
 export async function option_moveSelectedFiles() {
-    if (!filesState.selectedEntries.hasSelected || !filesState.data.meta) return
+    if (!filesState.selectedEntries.hasSelected || !filesState.data.folderMeta) return
 
     const newParentPath = await folderSelectorState.show!({
         title: "Choose the target folder.",

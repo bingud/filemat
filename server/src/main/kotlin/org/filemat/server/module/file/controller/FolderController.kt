@@ -74,7 +74,7 @@ class FolderController(private val fileService: FileService) : AController() {
         return ok(serialized)
     }
 
-    @PostMapping("/file-or-folder-entries")
+    @PostMapping("/file-and-folder-entries")
     fun fileOrFolderEntriesMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,

@@ -352,3 +352,5 @@ export declare function entriesOf<K extends ObjectKey, V>(
 export function formatDuration(seconds: number): string
 
 export function generateRandomNumber(length: number): number
+
+export function isPathDirectChild(parent: string, child: string): boolean

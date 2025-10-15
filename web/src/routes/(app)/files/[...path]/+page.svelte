@@ -1,6 +1,6 @@
 <script lang="ts">
     import { beforeNavigate } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -21,7 +21,7 @@
     import { clientState } from '$lib/code/stateObjects/clientState.svelte';
     import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte';
     import FileViewer from './_elements/layout/FileViewer.svelte';
-    import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadPageData, saveScrollPosition } from './_code/pageLogic';
+    import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
     import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
     import NewFileButton from './_elements/layout/NewFileButton.svelte';
 
@@ -36,12 +36,21 @@
 
     const filesStateNonce = createFilesState()
     const breadcrumbStateNonce = createBreadcrumbState()
+
+    const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
+    let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
     
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
 
+        // Automatically refresh folder entries
+        pollingInterval = dynamicInterval(() => {
+            reloadCurrentFolder()
+        }, () => ((clientState.isIdle ? pageDataPollingConfig.idleDelay : pageDataPollingConfig.delay) * 1000))
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
+            pollingInterval?.cancel()
         }
     })
 
@@ -54,43 +63,45 @@
     
 
     let lastDataLoadDate: number = unixNow()
-    const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
-    let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
 
     // Load page data when path changes
     explicitEffect(() => [ 
         filesState.path 
     ], () => {
-        const path = filesState.path
+        const newPath = filesState.path
         
-        if (path) {
+        if (newPath) {
             filesState.abort()
-            filesState.clearState()
 
-            filesState.data.content = null
+            const folderMeta = filesState.data.folderMeta
+            const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
+            const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
 
-            if (path === "/") {
+            if (pathIsChild || pathIsParentFolder) {
+                filesState.clearOpenState()
+            } else {
+                filesState.clearAllState()
+            }
+
+            if (newPath === "/") {
                 filesState.scroll.pathPositions = {}
             }
 
-            (path === "/" && overrideTopLevelFolderUrlPath 
-                ? loadPageData(path, { overrideDataUrlPath: overrideTopLevelFolderUrlPath, dataType: "array" })
-                : loadPageData(path, { dataType: "object" })
-            ).then(() => {
-                recoverScrollPosition()
-            })
+            // Do not load page data if navigating back to current parent folder
+            // Use existing state
+            if (pathIsParentFolder === false) {
+                (newPath === "/" && overrideTopLevelFolderUrlPath 
+                    ? loadPageData(newPath, { overrideDataUrlPath: overrideTopLevelFolderUrlPath, fileDataType: "array" })
+                    : loadPageData(newPath, { fileDataType: "object" })
+                ).then(() => {
+                    recoverScrollPosition()
+                })
+
+                if (!pathIsChild) pollingInterval?.reset()
+            }
         }
 
-        pollingInterval = dynamicInterval(() => {
-            const meta = filesState.data.meta
-            if (meta && (meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks))) {
-                if (filesState.path === path) {
-                    reloadPageData()
-                }
-            }
-        }, () => ((clientState.isIdle ? pageDataPollingConfig.idleDelay : pageDataPollingConfig.delay) * 1000))
-
-        return () => { pollingInterval!.cancel() }
+        return () => { pollingInterval?.cancel() }
     })
 
     // Run when user stops being idle
@@ -104,7 +115,7 @@
             // Fetch page data if last fetch was too long ago
             if (elapsed > pageDataPollingConfig.delay) {
                 pollingInterval?.reset()
-                reloadPageData()
+                reloadCurrentFolder()
             }
         }
     })
@@ -119,7 +130,6 @@
 
         // if there’s a selection but it isn’t under the current directory, reset it
         if (selected && !selected.startsWith(appendTrailingSlash(current)) && selected !== current) {
-            console.log(selected, current)
             filesState.selectedEntries.reset()
         }
     })
@@ -174,15 +184,27 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full">
-                {#if !filesState.metaLoading && (!requireFolderMeta || filesState.data.meta)}
-                    {#if filesState.data.sortedEntries && (!filesState.data.meta || filesState.data.meta.fileType === "FOLDER" || (filesState.data.meta.fileType === "FOLDER_LINK" && appState.followSymlinks))}
+                {#if !filesState.metaLoading && (!requireFolderMeta || filesState.data.folderMeta)}
+                    <!-- {@const isFolderOpen = filesState.data.sortedEntries && (!filesState.data.meta || filesState.data.meta.fileType === "FOLDER" || (filesState.data.meta.fileType === "FOLDER_LINK" && appState.followSymlinks))} -->
+                    {@const isFileOpen = filesState.data.fileMeta}
+                    <!-- {#if filesState.data.sortedEntries && (!filesState.data.meta || filesState.data.meta.fileType === "FOLDER" || (filesState.data.meta.fileType === "FOLDER_LINK" && appState.followSymlinks))}
                         <FileBrowser />
                     {:else}
                         <div class="center">
                             <FileViewer />
                         </div>                    
+                    {/if} -->
+
+                    <div class="{isFileOpen ? '!hidden' : '!contents'}">
+                        <FileBrowser />
+                    </div>
+
+                    {#if isFileOpen}
+                        <div class="center">
+                            <FileViewer />
+                        </div>
                     {/if}
-                {:else if !filesState.metaLoading && !filesState.data.meta}
+                {:else if !filesState.metaLoading && !filesState.data.currentMeta}
                     <div class="center">
                         <p class="text-xl">Failed to load this file.</p>
                     </div>

@@ -1,9 +1,9 @@
 import { goto } from "$app/navigation"
 import type { FullFileMetadata } from "$lib/code/auth/types"
-import { getFileData, getFileDataWithDifferentPath, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData } from "$lib/code/module/files"
+import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, isFolder, parentFromPath } from "$lib/code/util/codeUtil.svelte"
+import { addSuffix, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 
@@ -34,13 +34,23 @@ export function recoverScrollPosition() {
 }
 
 
-export async function loadPageData(filePath: string, options: { silent?: boolean, isRefresh?: boolean, overrideDataUrlPath?: string, dataType: "object" | "array" }) {
+export async function loadPageData(
+    filePath: string, 
+    options: { 
+        silent?: boolean,
+        isRefresh?: boolean,
+        overrideDataUrlPath?: string,
+        fileDataType: "object" | "array",
+        parentFolderOnly?: boolean,
+    }
+) {
     filesState.lastFilePathLoaded = filePath
     if (!options.silent) filesState.metaLoading = true
 
+    // Get file metadata + folder entries
     const result = (
         options.overrideDataUrlPath
-        ? await getFileDataWithDifferentPath(filePath, options.overrideDataUrlPath, filesState.abortController?.signal)
+        ? await getFileListFromCustomEndpoint(filePath, options.overrideDataUrlPath, filesState.abortController?.signal)
         : await getFileData(filePath, filesState.abortController?.signal, {})
     )
 
@@ -62,27 +72,39 @@ export async function loadPageData(filePath: string, options: { silent?: boolean
     filesState.metaLoading = false
     if (!result) return
 
-    if (options.dataType === "object") {
+    if (options.fileDataType === "object") {
         const data = dataResult as FileData
-        filesState.data.meta = data.meta!
+        const type = data.meta.fileType
 
-        if (data.meta.fileType === "FOLDER") {
+        // If the metadata is a folder, set folder entries and folder metadata
+        // If its a file, set file metadata
+        if (type === "FOLDER") {
+            if (!options.parentFolderOnly) filesState.data.fileMeta = null
+            filesState.data.folderMeta = data.meta
+
             filesState.data.entries = data.entries || null
-        } else if (data.meta.fileType === "FOLDER_LINK") {
+        } else if (type === "FOLDER_LINK") {
             if (appState.followSymlinks) {
+                if (!options.parentFolderOnly) filesState.data.fileMeta = null
+                filesState.data.folderMeta = data.meta
+
                 data.entries?.forEach((entry) => {
                     const linkPath = `${addSuffix(filePath, "/")}${entry.filename!}`
                     entry.path = linkPath
                 })
                 filesState.data.entries = data.entries || null
+            } else {
+                filesState.data.fileMeta = data.meta
             }
+        } else if (type === "FILE" || type === "FILE_LINK") {
+            if (!options.parentFolderOnly) filesState.data.fileMeta = data.meta
         }
 
         // If no entry is selected and this is a folder, select the current folder
-        if (filesState.selectedEntries.singlePath === null && data.meta.fileType === "FOLDER") {
+        if (filesState.selectedEntries.singlePath === null && type === "FOLDER") {
             filesState.selectedEntries.list = [data.meta.path]
         }
-    } else {
+    } else if (options.fileDataType === "array") {
         const data = dataResult as FullFileMetadata[]
         filesState.data.entries = data
     }
@@ -93,9 +115,9 @@ export async function loadPageData(filePath: string, options: { silent?: boolean
  * Reload the current folder data.
  * If modification date of folder has changed, fetch new data
 */
-export async function reloadPageData() {
+export async function reloadCurrentFolder() {
     if (!filesState.path) return
-    const meta = filesState.data.meta
+    const meta = filesState.data.folderMeta
     if (!meta || !isFolder(meta)) return
 
     const modifiedDate = meta.modifiedDate
@@ -105,7 +127,7 @@ export async function reloadPageData() {
     // Local folder is up to date
     if (modifiedDate === actualModifiedDate) return
 
-    await loadPageData(filesState.path, { silent: true, dataType: "object" })
+    await loadPageData(meta.path, { parentFolderOnly: true, silent: true, fileDataType: "object" })
 }
 
 
