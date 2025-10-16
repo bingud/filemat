@@ -342,7 +342,7 @@
 
             <button
                 on:click={() => changeSortingMode("modified")}
-                class="whitespace-nowrap max-md:hidden text-right flex items-center gap-1 justify-end"
+                class="whitespace-nowrap max-lg:hidden text-right flex items-center gap-1 justify-end"
             >
                 Last Modified
                 <span class="w-3 text-neutral-500 inline-block text-center">

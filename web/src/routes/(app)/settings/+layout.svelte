@@ -36,18 +36,18 @@
 </svelte:head>
 
 
-<div class="flex w-full h-full flex-col md:flex-row">
-    <SettingsSidebar classes="md:border-l border-neutral-300 dark:border-neutral-800"></SettingsSidebar>
+<div class="flex w-full h-full flex-col lg:flex-row">
+    <SettingsSidebar classes="lg:border-l border-neutral-300 dark:border-neutral-800"></SettingsSidebar>
 
-    <div class="flex flex-col w-full md:w-without-sidebar-desktop h-full overflow-y-auto custom-scrollbar">
-        <div class="w-full flex items-center h-fit bg-surface md:p-6">
-            <button on:click={() => { uiState.settings.menuOpen = true }} aria-label="Open settings navigation menu" class="p-4 size-[3.5rem] md:hidden">
+    <div class="flex flex-col w-full lg:w-without-sidebar-desktop h-full overflow-y-auto custom-scrollbar">
+        <div class="w-full flex items-center h-fit bg-surface lg:p-6">
+            <button on:click={() => { uiState.settings.menuOpen = true }} aria-label="Open settings navigation menu" class="p-4 size-[3.5rem] lg:hidden">
                 <MenuIcon />
             </button>
             <h2 class="text-lg capitalize">{uiState.settings.title}</h2>
         </div>
 
-        <div id="setting-page" class="w-full flex-grow h-fit p-4 md:p-6">
+        <div id="setting-page" class="w-full flex-grow h-fit p-4 lg:p-6">
             {@render children()}
         </div>
     </div>

@@ -149,7 +149,7 @@
 
 <div class="page">
     <div class="w-full flex h-full min-h-0">
-        <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} md:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar md:gutter-stable-both">
+        <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
             <!-- Header -->
             <div class="w-full shrink-0 flex flex-col px-2 items-center justify-between overflow-hidden rounded-lg py-2 bg-surface mt-2 gap-2">
                 <!-- Top row -->
@@ -220,7 +220,7 @@
         <div class="contents">
             <!-- File info sidebar -->
             {#if filesState.ui.detailsOpen}
-                <div on:click={filesState.unselect} class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex justify-end pointer-events-none md:contents min-h-0">
+                <div on:click={filesState.unselect} class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex justify-end pointer-events-none lg:contents min-h-0">
                     <div transition:fly={{ duration: 150, x: 400, opacity: 1 }} class="flex flex-col h-full max-w-full w-details-sidebar shrink-0 pointer-events-auto min-h-0">
                         <DetailsSidebar />
                     </div>

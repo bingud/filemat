@@ -1,3 +1,3 @@
 
 
-export const desktopWidth = 768
+export const desktopWidth = 1024
