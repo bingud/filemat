@@ -159,16 +159,38 @@ class FileUiStateClasss {
      */
     detailsOpen = $state(uiState.isDesktop)
 
+    /**
+     * Is popover for file creation / upload open
+     */
     newFilePopoverOpen = $state(false)
 
+    /**
+     * Is a file context menu popover open
+     */
     fileContextMenuPopoverOpen = $state(false)
+    
+    /**
+     * File view type
+     */
+    fileViewType = $state("rows")  as "rows" | "tiles"
 
     toggleSidebar() {
         this.detailsOpen = !this.detailsOpen
     }
+    switchFileViewType(): typeof this.fileViewType {
+        if (this.fileViewType === "rows") {
+            this.fileViewType = "tiles"
+            return "tiles"
+        } else {
+            this.fileViewType = "rows"
+            return "rows"
+        }
+    }
 
     clear() {
         if (!uiState.isDesktop) this.detailsOpen = false
+        this.fileContextMenuPopoverOpen = false
+        this.newFilePopoverOpen = false
     }
 }
 

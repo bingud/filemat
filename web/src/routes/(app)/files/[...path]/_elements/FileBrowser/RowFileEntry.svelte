@@ -1,15 +1,14 @@
 <script lang="ts">
     import { type FullFileMetadata } from "$lib/code/auth/types";
     import { fileCategories } from "$lib/code/data/files";
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { addSuffix, formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
+    import { formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
-  import { onMount } from "svelte";
+    import { onMount } from "svelte";
 
     let {
         entry,
@@ -54,7 +53,7 @@
     draggable={entry.permissions.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
     class="
-        file-grid h-[2.5rem] gap-x-2 items-center select-none group 
+        file-row-grid h-[2.5rem] gap-x-2 items-center select-none group 
         {isUnopenable 
             ? 'cursor-default' 
             : 'cursor-pointer'

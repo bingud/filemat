@@ -21,8 +21,10 @@
     import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte';
     import FileViewer from './_elements/layout/FileViewer.svelte';
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
-    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
+    import { handleNewFolder, option_changeFileView, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
     import NewFileButton from './_elements/layout/NewFileButton.svelte';
+    import GridIcon from "$lib/component/icons/GridIcon.svelte";
+    import RowsIcon from "$lib/component/icons/RowsIcon.svelte";
 
 
     let {
@@ -159,20 +161,28 @@
                     <!-- Left buttons -->
                     <div class="h-full flex items-center gap-2 py-[0.2rem]">
                         {#if filesState.selectedEntries.hasSelected === false}
-                            <button on:click={handleNewFolder} title="Create a new folder inside this folder." class="action-button"><NewFolderIcon /></button>
-                            <button on:click={handleNewFile} title="Create a new blank file inside this folder." class="action-button"><NewFileIcon /></button>
+                            <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="action-button"><NewFolderIcon /></button>
+                            <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="action-button"><NewFileIcon /></button>
                         {:else}
-                            <button on:click={option_downloadSelectedFiles} title="Download the selected files." class="action-button"><DownloadIcon /></button>
-                            <button on:click={option_deleteSelectedFiles} title="Delete the selected files." class="action-button"><TrashIcon /></button>
-                            <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}." class="action-button"><MoveIcon /></button>
+                            <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="action-button"><DownloadIcon /></button>
+                            <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="action-button"><TrashIcon /></button>
+                            <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="action-button"><MoveIcon /></button>
                         {/if}
                     </div>
 
                     <!-- Right buttons -->
-                    <div class="h-full flex items-center gap-2">
+                    <div class="h-full flex items-center gap-2 py-[0.2rem]">
+                        <button on:click={option_changeFileView} title="Change file view" class="action-button">
+                            {#if filesState.ui.fileViewType === "rows"}
+                                <GridIcon />
+                            {:else}
+                                <RowsIcon />
+                            {/if}
+                        </button>
+
                         <NewFileButton></NewFileButton>
 
-                        <button title="Toggle the file details sidebar." on:click={() => { filesState.ui.toggleSidebar() }} class="action-button">
+                        <button title="Toggle the file details sidebar" on:click={() => { filesState.ui.toggleSidebar() }} class="action-button">
                             <InfoIcon />
                         </button>
                     </div>
@@ -180,17 +190,9 @@
             </div>
 
             <!-- Files -->
-            <div class="h-[calc(100%-3rem)] w-full">
+            <div class="h-[calc(100%-3rem)] w-full pt-2">
                 {#if !filesState.metaLoading && (!requireFolderMeta || filesState.data.folderMeta)}
-                    <!-- {@const isFolderOpen = filesState.data.sortedEntries && (!filesState.data.meta || filesState.data.meta.fileType === "FOLDER" || (filesState.data.meta.fileType === "FOLDER_LINK" && appState.followSymlinks))} -->
                     {@const isFileOpen = filesState.data.fileMeta}
-                    <!-- {#if filesState.data.sortedEntries && (!filesState.data.meta || filesState.data.meta.fileType === "FOLDER" || (filesState.data.meta.fileType === "FOLDER_LINK" && appState.followSymlinks))}
-                        <FileBrowser />
-                    {:else}
-                        <div class="center">
-                            <FileViewer />
-                        </div>                    
-                    {/if} -->
 
                     <div class="{isFileOpen ? '!hidden' : '!contents'}">
                         <FileBrowser />

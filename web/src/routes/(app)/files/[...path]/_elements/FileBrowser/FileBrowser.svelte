@@ -10,9 +10,10 @@
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte";
     import { appState } from '$lib/code/stateObjects/appState.svelte';
-    import FileEntry from "./FileEntry.svelte";
+    import RowFileEntry from "./RowFileEntry.svelte";
     import { isDialogOpen } from "$lib/code/util/stateUtils";
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
+    import GridFileEntry from "./GridFileEntry.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -325,61 +326,81 @@
 
 
 {#if filesState.data.sortedEntries}
+    <!-- File list -->
     <div on:click|stopPropagation class="w-full h-fit overflow-x-hidden">
-        <!-- Header row (separate grid) -->
-        <div class="file-grid gap-x-2 px-4 py-2 font-medium text-neutral-700 dark:text-neutral-400">
-            <button
-                on:click={() => changeSortingMode("name")}
-                class="truncate text-left flex items-center gap-1"
-            >
-                Name
-                <span class="w-3 text-neutral-500 inline-block text-center">
-                    {#if filesState.sortingMode === "name"}
-                        {filesState.sortingDirection === "asc" ? "▲" : "▼"}
-                    {/if}
-                </span>
-            </button>
+        {#if filesState.ui.fileViewType === "rows"}
+            <!-- Header row (separate grid) -->
+            <div class="file-row-grid gap-x-2 px-4 pb-2 font-medium text-neutral-700 dark:text-neutral-400">
+                <button
+                    on:click={() => changeSortingMode("name")}
+                    class="truncate text-left flex items-center gap-1"
+                >
+                    Name
+                    <span class="w-3 text-neutral-500 inline-block text-center">
+                        {#if filesState.sortingMode === "name"}
+                            {filesState.sortingDirection === "asc" ? "▲" : "▼"}
+                        {/if}
+                    </span>
+                </button>
 
-            <button
-                on:click={() => changeSortingMode("modified")}
-                class="whitespace-nowrap max-lg:hidden text-right flex items-center gap-1 justify-end"
-            >
-                Last Modified
-                <span class="w-3 text-neutral-500 inline-block text-center">
-                    {#if filesState.sortingMode === "modified"}
-                        {filesState.sortingDirection === "asc" ? "▲" : "▼"}
-                    {/if}
-                </span>
-            </button>
+                <button
+                    on:click={() => changeSortingMode("modified")}
+                    class="whitespace-nowrap max-lg:hidden text-right flex items-center gap-1 justify-end"
+                >
+                    Last Modified
+                    <span class="w-3 text-neutral-500 inline-block text-center">
+                        {#if filesState.sortingMode === "modified"}
+                            {filesState.sortingDirection === "asc" ? "▲" : "▼"}
+                        {/if}
+                    </span>
+                </button>
 
-            <button
-                on:click={() => changeSortingMode("size")}
-                class="whitespace-nowrap max-sm:hidden text-right flex items-center gap-1 justify-end"
-            >
-                Size
-                <span class="w-3 text-neutral-500 inline-block text-center">
-                    {#if filesState.sortingMode === "size"}
-                        {filesState.sortingDirection === "asc" ? "▲" : "▼"}
-                    {/if}
-                </span>
-            </button>
-        </div>
+                <button
+                    on:click={() => changeSortingMode("size")}
+                    class="whitespace-nowrap max-sm:hidden text-right flex items-center gap-1 justify-end"
+                >
+                    Size
+                    <span class="w-3 text-neutral-500 inline-block text-center">
+                        {#if filesState.sortingMode === "size"}
+                            {filesState.sortingDirection === "asc" ? "▲" : "▼"}
+                        {/if}
+                    </span>
+                </button>
+            </div>
 
-        <!-- Each entry is a grid item -->
-        {#each filesState.data.sortedEntries as entry (entry.path)}
-            <FileEntry
-                entry={entry}
-                event_dragStart={event_dragStart}
-                event_dragOver={event_dragOver}
-                event_dragLeave={event_dragLeave}
-                event_drop={event_drop}
-                event_dragEnd={event_dragEnd}
-                entryOnClick={entryOnClick}
-                entryOnContextMenu={entryOnContextMenu}
-                onClickSelectCheckbox={onClickSelectCheckbox}
-                entryMenuOnClick={entryMenuOnClick}
-            />
-        {/each}
+            <!-- Each entry is a grid item -->
+            {#each filesState.data.sortedEntries as entry (entry.path)}
+                <RowFileEntry
+                    entry={entry}
+                    event_dragStart={event_dragStart}
+                    event_dragOver={event_dragOver}
+                    event_dragLeave={event_dragLeave}
+                    event_drop={event_drop}
+                    event_dragEnd={event_dragEnd}
+                    entryOnClick={entryOnClick}
+                    entryOnContextMenu={entryOnContextMenu}
+                    onClickSelectCheckbox={onClickSelectCheckbox}
+                    entryMenuOnClick={entryMenuOnClick}
+                />
+            {/each}
+        {:else if filesState.ui.fileViewType === "tiles"}
+            <div class="w-full h-fit flex flex-wrap gap-3 pt-">
+                {#each filesState.data.sortedEntries as entry (entry.path)}
+                    <GridFileEntry
+                        entry={entry}
+                        event_dragStart={event_dragStart}
+                        event_dragOver={event_dragOver}
+                        event_dragLeave={event_dragLeave}
+                        event_drop={event_drop}
+                        event_dragEnd={event_dragEnd}
+                        entryOnClick={entryOnClick}
+                        entryOnContextMenu={entryOnContextMenu}
+                        onClickSelectCheckbox={onClickSelectCheckbox}
+                        entryMenuOnClick={entryMenuOnClick}
+                    />
+                {/each}
+            </div>
+        {/if}
     </div>
 
 
@@ -426,7 +447,7 @@
 <style>
     @import "/src/app.css" reference;
     
-    :global(.file-grid) {
+    :global(.file-row-grid) {
         @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
     }
 

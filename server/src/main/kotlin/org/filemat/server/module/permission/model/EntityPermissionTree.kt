@@ -1,10 +1,7 @@
 package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.common.util.concurrentMutableSetOf
-import org.filemat.server.common.util.getFilenameFromPath
-import org.filemat.server.common.util.removeIf
-import org.filemat.server.common.util.replace
+import org.filemat.server.common.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -464,6 +461,8 @@ class EntityPermissionTree() {
         // Always recurse into children to find deeper accessible entities
         for (child in node.children.values) {
             traverseAndCollectTopLevelAccessible(child, userId, roleIds, result)
+            // CAUSES INFINITE LOOP
+            todo()
         }
     }
 

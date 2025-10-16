@@ -339,7 +339,7 @@
         </div>
     {:else}
         <div class="w-full h-full flex flex-col items-center pt-4">
-            <p class="opacity-80">Select a file to see details</p>
+            <p class="opacity-80 select-none">Select a file to see details</p>
         </div>
     {/if}
 </div>
