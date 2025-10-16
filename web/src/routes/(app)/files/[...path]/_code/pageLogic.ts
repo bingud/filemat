@@ -121,7 +121,7 @@ export async function reloadCurrentFolder() {
     if (!meta || !isFolder(meta)) return
 
     const modifiedDate = meta.modifiedDate
-    const actualModifiedDate = await getFileLastModifiedDate(filesState.path)
+    const actualModifiedDate = await getFileLastModifiedDate(meta.path)
 
     // Folder modification date has not changed
     // Local folder is up to date

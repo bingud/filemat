@@ -11,7 +11,6 @@
     import { linear } from "svelte/easing"
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte"
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
     import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
@@ -60,8 +59,6 @@
     })
 
     const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
-    
-
     let lastDataLoadDate: number = unixNow()
 
     // Load page data when path changes
