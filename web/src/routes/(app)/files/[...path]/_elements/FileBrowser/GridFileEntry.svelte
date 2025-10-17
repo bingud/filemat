@@ -86,7 +86,8 @@
     on:dragend={(e) => { event_dragEnd(e, entry) }}
 >
     <!-- Icon / preview and checkbox -->
-    <div class="entry-preview flex flex-col w-full">
+    <div class="entry-preview relative flex flex-col w-full">
+        <!-- Preview image -->
         <div class="h-full fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center">
             {#if entry.filename}
                 {@const format = getFileCategoryFromFilename(entry.filename)}
@@ -108,6 +109,13 @@
                 {/if}
             {/if}
         </div>
+
+        <!-- Selection Checkbox -->
+        {#key isSelected}
+            <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="absolute top-0 left-0 flex items-center justify-center p-1">
+                <input checked={isSelected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
+            </div>
+        {/key}
     </div>
 
     <!-- Filename + Icon -->
