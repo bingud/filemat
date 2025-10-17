@@ -384,7 +384,9 @@
                 />
             {/each}
         {:else if filesState.ui.fileViewType === "tiles"}
-            <div class="w-full h-fit flex flex-wrap gap-3 pt-">
+            <div class="w-full h-fit grid gap-2
+                    grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]"
+            >
                 {#each filesState.data.sortedEntries as entry (entry.path)}
                     <GridFileEntry
                         entry={entry}

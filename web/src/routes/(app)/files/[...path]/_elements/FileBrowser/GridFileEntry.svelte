@@ -68,7 +68,7 @@
     draggable={entry.permissions.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
     class="
-        grid-file-entry flex flex-col items-center select-none group rounded-lg
+        grid-file-entry w-full min-w-0 flex flex-col items-center select-none group rounded-lg
         {isUnopenable 
             ? 'cursor-default' 
             : 'cursor-pointer'
@@ -140,7 +140,6 @@
 <style>
     /* Config */
     .grid-file-entry {
-        --entry-width: 9rem;
         --entry-height: 7rem;
         --entry-padding: 0.5rem;
 
@@ -150,7 +149,8 @@
         --entry-preview-height: calc(var(--entry-free-height) - var(--entry-bar-height));
 
         /* Entry Styling */
-        width: var(--entry-width);
+        /* width: 9rem;
+        max-width: 11rem; */
         height: var(--entry-height);
         padding: var(--entry-padding);
     }
