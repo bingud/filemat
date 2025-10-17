@@ -211,7 +211,7 @@ class FileDataStateClass {
     // Download URL of currently open file
     contentUrl = $derived.by(() => {
         if (!this.fileMeta) return null
-        return `/api/v1/file/content?path=${filesState.path}`
+        return `/api/v1/file/content?path=${this.fileMeta.path}`
     })
     // All entries in the current directory
     entries = $state(null) as FullFileMetadata[] | null

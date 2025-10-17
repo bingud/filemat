@@ -146,61 +146,55 @@
 
 
 <div on:click|stopPropagation class="size-full flex flex-col">
-    <!-- {#if filesState.data.fileMeta} -->
-        {#if filesState.contentLoading}
-            <div class="center">
-                <Loader></Loader>
-            </div>
-        {:else if isViewableFile && (!isText || filesState.data.decodedContent != null)}
-            {@const type = displayedFileCategory}
+    {#if filesState.contentLoading}
+        <div class="center">
+            <Loader></Loader>
+        </div>
+    {:else if isViewableFile && (!isText || filesState.data.decodedContent != null)}
+        {@const type = displayedFileCategory}
 
-            <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
-            {#if displayedFileCategory !== fileCategory}
-                <div class="w-full h-fit p-2 shrink-0 flex justify-end">
-                    {@render openAsButton()}
-                </div>
-            {/if}
-            
-            <div class="w-full flex-grow min-h-0 flex items-center justify-center">
-                {#if isSymlink === false}
-                    {#if isText}
-                        <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
-                    {:else if type === "image"}
-                        <img src={filesState.data.contentUrl} alt={meta.path} class="max-w-full max-h-full size-auto">
-                    {:else if type === "video"}
-                        <div class="size-full overflow-hidden">
-                            <video bind:this={videoElement} class="video-js h-full w-full">
-                                <track kind="captions" srclang="en" label="No captions" />
-                            </video>
-                        </div>
-                    {:else if type === "audio"}
-                        <audio src={filesState.data.contentUrl} controls></audio>
-                    {:else if type === "pdf"}
-                        <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
-                    {/if}
-                {:else}
-                    <div>
-                        <div class="flex flex-col items-center justify-center gap-4">
-                            <p class="text-neutral-700 dark:text-neutral-300">This is a symbolic link.</p>
-                            <p class="text-neutral-500 dark:text-neutral-400 max-w-full break-all text-center">Target path:<br><CodeChunk>{filesState.data.decodedContent}</CodeChunk></p>
-                        </div>
-                    </div>
-                {/if}
-            </div>
-        {:else}
-            <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
-                <p class="">This file type doesn't have a preview.</p>
-                <div class="flex items-center gap-4">
-                    <a download href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
-                    {@render openAsButton()}
-                </div>
+        <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
+        {#if displayedFileCategory !== fileCategory}
+            <div class="w-full h-fit p-2 shrink-0 flex justify-end">
+                {@render openAsButton()}
             </div>
         {/if}
-    <!-- {:else if !filesState.data.fileMeta}
-        <div class="center">
-            <p class="">No file is open.</p>
+        
+        <div class="w-full flex-grow min-h-0 flex items-center justify-center">
+            {#if isSymlink === false}
+                {#if isText}
+                    <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
+                {:else if type === "image"}
+                    <img src={filesState.data.contentUrl} alt={meta.path} class="max-w-full max-h-full size-auto">
+                {:else if type === "video"}
+                    <div class="size-full overflow-hidden">
+                        <video bind:this={videoElement} class="video-js h-full w-full">
+                            <track kind="captions" srclang="en" label="No captions" />
+                        </video>
+                    </div>
+                {:else if type === "audio"}
+                    <audio src={filesState.data.contentUrl} controls></audio>
+                {:else if type === "pdf"}
+                    <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
+                {/if}
+            {:else}
+                <div>
+                    <div class="flex flex-col items-center justify-center gap-4">
+                        <p class="text-neutral-700 dark:text-neutral-300">This is a symbolic link.</p>
+                        <p class="text-neutral-500 dark:text-neutral-400 max-w-full break-all text-center">Target path:<br><CodeChunk>{filesState.data.decodedContent}</CodeChunk></p>
+                    </div>
+                </div>
+            {/if}
         </div>
-    {/if} -->
+    {:else}
+        <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
+            <p class="">This file type doesn't have a preview.</p>
+            <div class="flex items-center gap-4">
+                <a download href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
+                {@render openAsButton()}
+            </div>
+        </div>
+    {/if}
 </div>
 
 
