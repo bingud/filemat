@@ -41,7 +41,7 @@
 		"@tailwindcss/vite": "^4.1.13",
 		"@videojs/themes": "^1.0.1",
 		"codemirror": "^6.0.1",
-		"mime-types": "^3.0.1",
+		"mime": "^4.1.0",
 		"qrcode": "^1.5.4",
 		"tailwind-scrollbar": "^4.0.2",
 		"thememirror": "^2.0.1",

@@ -17,6 +17,13 @@ export function isTextFileCategory(value: any): value is TextFileCategory {
     return textFileCategoryList.includes(value?.toLowerCase())
 }
 
+export function getFileCategory(extension: string): FileCategory | null {
+    return fileCategories[extension.toLowerCase()] || null
+}
+export function getFileCategoryFromFilename(name: string): FileCategory | null {
+    return getFileCategory(getFileExtension(name))
+}
+
 export const fileCategories: Record<string, FileCategory> = {
     // HTML and Web Files
     "html": "html",

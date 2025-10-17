@@ -2,7 +2,7 @@ import type { ulid } from "../types/types"
 
 export type FileMetadata = {
     path: string,
-    filename: string | undefined,
+    filename: string | null,
     modifiedDate: number,
     createdDate: number,
     fileType: FileType,

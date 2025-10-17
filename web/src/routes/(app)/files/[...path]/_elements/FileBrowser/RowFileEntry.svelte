@@ -1,6 +1,6 @@
 <script lang="ts">
     import { type FullFileMetadata } from "$lib/code/auth/types";
-    import { fileCategories } from "$lib/code/data/files";
+    import { fileCategories, getFileCategory, getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
@@ -80,8 +80,8 @@
 
         <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
             <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem]">
-                {#key entry.filename}
-                    {@const format = fileCategories[getFileExtension(entry.filename!)]}
+                {#if entry.filename}
+                    {@const format = getFileCategoryFromFilename(entry.filename)}
 
                     {#if format === "image"}
                         <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=48&path={entry.path}" class="size-full w-auto">
@@ -98,7 +98,7 @@
                             <FolderArrow />
                         {/if}
                     {/if}
-                {/key}
+                {/if}
             </div>
             <p class="truncate py-1">
                 {entry.filename!}

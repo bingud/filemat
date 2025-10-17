@@ -3,7 +3,7 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
+import { addSuffix, filenameFromPath, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 
@@ -74,19 +74,20 @@ export async function loadPageData(
 
     if (options.fileDataType === "object") {
         const data = dataResult as FileData
-        const type = data.meta.fileType
+        const meta = data.meta
+        const type = meta.fileType
 
         // If the metadata is a folder, set folder entries and folder metadata
         // If its a file, set file metadata
         if (type === "FOLDER") {
             if (!options.parentFolderOnly) filesState.data.fileMeta = null
-            filesState.data.folderMeta = data.meta
+            filesState.data.folderMeta = meta
 
             filesState.data.entries = data.entries || null
         } else if (type === "FOLDER_LINK") {
             if (appState.followSymlinks) {
                 if (!options.parentFolderOnly) filesState.data.fileMeta = null
-                filesState.data.folderMeta = data.meta
+                filesState.data.folderMeta = meta
 
                 data.entries?.forEach((entry) => {
                     const linkPath = `${addSuffix(filePath, "/")}${entry.filename!}`
@@ -94,10 +95,14 @@ export async function loadPageData(
                 })
                 filesState.data.entries = data.entries || null
             } else {
-                filesState.data.fileMeta = data.meta
+                filesState.data.fileMeta = meta
             }
         } else if (type === "FILE" || type === "FILE_LINK") {
-            if (!options.parentFolderOnly) filesState.data.fileMeta = data.meta
+            if (!options.parentFolderOnly) {
+                filesState.data.fileMeta = meta
+                filesState.data.fileMeta.filename = filenameFromPath(meta.path)
+            }
+
         }
 
         // If no entry is selected and this is a folder, select the current folder

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { fileCategories, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
+    import { fileCategories, getFileCategoryFromFilename, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
     import { explicitEffect, getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
     import {basicSetup} from "codemirror"
@@ -17,17 +17,18 @@
     import videojs from 'video.js'
     import 'video.js/dist/video-js.min.css'
     import type Player from "video.js/dist/types/player";
-    import { lookup as getMimetypeFromFilename } from 'mime-types'
+    import mime from 'mime'
 
+    
+    let meta = $derived(filesState.data.fileMeta!) 
 
-    const extension = $derived(filesState.data.fileMeta ? getFileExtension(filesState.data.fileMeta.path) : null)
-    const isSymlink = $derived(filesState.data.fileMeta?.fileType.includes("LINK") && !appState.followSymlinks)
-    const fileType = $derived.by(() => {
+    const isSymlink = $derived(meta.fileType.includes("LINK") && !appState.followSymlinks)
+    const fileCategory = $derived.by(() => {
         if (isSymlink) return "text"
-        return extension ? fileCategories[extension] : null
+        return getFileCategoryFromFilename(meta.filename!)
     })
 
-    let displayedFileCategory = $derived(fileType)
+    let displayedFileCategory = $derived(fileCategory)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))
     let isText = $derived(isTextFileCategory(displayedFileCategory))
 
@@ -84,7 +85,7 @@
                 persistVolume: true,
                 sources: [{
                     src: filesState.data.contentUrl,
-                    type: getMimetypeFromFilename(filesState.data.fileMeta!.filename!) || "video/mp4"
+                    type: mime.getType(meta.filename!) || "video/mp4"
                 }]
             })
 
@@ -145,8 +146,7 @@
 
 
 <div on:click|stopPropagation class="size-full flex flex-col">
-    
-    {#if filesState.data.fileMeta}
+    <!-- {#if filesState.data.fileMeta} -->
         {#if filesState.contentLoading}
             <div class="center">
                 <Loader></Loader>
@@ -155,7 +155,7 @@
             {@const type = displayedFileCategory}
 
             <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
-            {#if displayedFileCategory !== fileType}
+            {#if displayedFileCategory !== fileCategory}
                 <div class="w-full h-fit p-2 shrink-0 flex justify-end">
                     {@render openAsButton()}
                 </div>
@@ -166,7 +166,7 @@
                     {#if isText}
                         <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                     {:else if type === "image"}
-                        <img src={filesState.data.contentUrl} alt={filesState.data.fileMeta.path} class="max-w-full max-h-full size-auto">
+                        <img src={filesState.data.contentUrl} alt={meta.path} class="max-w-full max-h-full size-auto">
                     {:else if type === "video"}
                         <div class="size-full overflow-hidden">
                             <video bind:this={videoElement} class="video-js h-full w-full">
@@ -176,7 +176,7 @@
                     {:else if type === "audio"}
                         <audio src={filesState.data.contentUrl} controls></audio>
                     {:else if type === "pdf"}
-                        <iframe src={filesState.data.contentUrl} title={filesState.data.fileMeta.path} class="w-full h-full"></iframe>
+                        <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
                     {/if}
                 {:else}
                     <div>
@@ -196,11 +196,11 @@
                 </div>
             </div>
         {/if}
-    {:else if !filesState.data.fileMeta}
+    <!-- {:else if !filesState.data.fileMeta}
         <div class="center">
             <p class="">No file is open.</p>
         </div>
-    {/if}
+    {/if} -->
 </div>
 
 

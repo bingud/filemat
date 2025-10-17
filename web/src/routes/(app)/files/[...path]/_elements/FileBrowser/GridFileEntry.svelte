@@ -1,6 +1,6 @@
 <script lang="ts">
     import { type FullFileMetadata } from "$lib/code/auth/types";
-    import { fileCategories } from "$lib/code/data/files";
+    import { fileCategories, getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
@@ -88,8 +88,8 @@
     <!-- Icon / preview and checkbox -->
     <div class="entry-preview flex flex-col w-full">
         <div class="h-full fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center">
-            {#key entry.filename}
-                {@const format = fileCategories[getFileExtension(entry.filename!)]}
+            {#if entry.filename}
+                {@const format = getFileCategoryFromFilename(entry.filename)}
 
                 {#if format === "image"}
                     <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=48&path={entry.path}" class="size-full w-auto">
@@ -106,7 +106,7 @@
                         <FolderArrow />
                     {/if}
                 {/if}
-            {/key}
+            {/if}
         </div>
     </div>
 
