@@ -21,10 +21,12 @@
     import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte';
     import FileViewer from './_elements/layout/FileViewer.svelte';
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
-    import { handleNewFolder, option_changeFileView, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
+    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
+    import { option_changeFileView } from "./_code/pageLogic"
     import NewFileButton from './_elements/layout/NewFileButton.svelte';
     import GridIcon from "$lib/component/icons/GridIcon.svelte";
     import RowsIcon from "$lib/component/icons/RowsIcon.svelte";
+    import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil";
 
 
     let {
@@ -43,6 +45,9 @@
     
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
+
+        const fileViewType = fileViewType_getFromLocalstorage()
+        if (fileViewType) filesState.ui.fileViewType = fileViewType
 
         // Automatically refresh folder entries
         pollingInterval = dynamicInterval(() => {

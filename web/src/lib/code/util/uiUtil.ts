@@ -1,5 +1,6 @@
 import { goto } from "$app/navigation"
 import { desktopWidth } from "../config/values"
+import type { filesState } from "../stateObjects/filesState.svelte"
 import { uiState, type SettingSectionId } from "../stateObjects/uiState.svelte"
 
 
@@ -155,4 +156,11 @@ export function prefixSlash(node: HTMLInputElement) {
             node.removeEventListener('focus', handleFocus)
         }
     }
+}
+
+export function fileViewType_saveInLocalstorage(state: typeof filesState.ui.fileViewType) {
+    localStorage.setItem("fileViewType", state)
+}
+export function fileViewType_getFromLocalstorage(): typeof filesState.ui.fileViewType | null {
+    return localStorage.getItem("fileViewType") as typeof filesState.ui.fileViewType
 }

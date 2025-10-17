@@ -49,11 +49,6 @@ export function option_downloadSelectedFiles() {
     downloadFilesAsZip(selected)
 }
 
-export function option_changeFileView() {
-    filesState.ui.switchFileViewType()
-}
-
-
 export async function handleNewFolder() {
     filesState.ui.newFilePopoverOpen = false
 

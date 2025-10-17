@@ -3,6 +3,7 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
+import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 
 
 class FilesState {
@@ -178,13 +179,13 @@ class FileUiStateClasss {
         this.detailsOpen = !this.detailsOpen
     }
     switchFileViewType(): typeof this.fileViewType {
-        if (this.fileViewType === "rows") {
-            this.fileViewType = "tiles"
-            return "tiles"
-        } else {
-            this.fileViewType = "rows"
-            return "rows"
-        }
+        const newType = this.fileViewType === "rows" 
+                ? "tiles" 
+                : "rows"
+
+        this.fileViewType = newType
+        fileViewType_saveInLocalstorage(newType)
+        return newType
     }
 
     clear() {
