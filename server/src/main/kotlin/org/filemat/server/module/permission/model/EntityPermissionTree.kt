@@ -261,28 +261,37 @@ class EntityPermissionTree() {
      */
     fun movePath(oldPath: String, newPath: String): Boolean {
         treeLock.write {
-            // locate source
+            // locate source node
             val node = findNode(oldPath, getClosestNode = false)
                 ?: return false
 
-            // ensure the new path doesnt exist yet
+            // fail if target already exists
             if (findNode(newPath, getClosestNode = false) != null) return false
 
-            // split newPath
+            // split newPath into parent path and new name
             val trimmed = newPath.trim('/')
             val segments = if (trimmed.isBlank()) emptyList() else trimmed.split('/')
             val newName = segments.lastOrNull().orEmpty()
             val parentPath = "/" + segments.dropLast(1).joinToString("/")
+
+            // get or create the new parent node
             val newParent = if (parentPath == "/") root else getOrCreateTreePath(parentPath)
 
-            // detach from old parent
+            // Prevent creating a cycle: do not move a node into its own subtree.
+            // Walk up from newParent to root; if we encounter `node`, newParent is
+            // a descendant of `node` and the move would create a cycle.
+            var current: Node? = newParent
+            while (current != null) {
+                if (current === node) return false
+                current = current.parent
+            }
+
+            // detach from old parent (if any)
             node.parent?.children?.remove(node.segment)
 
-            // reassign
+            // reassign node name and parent, then attach to new parent
             node.segment = newName
             node.parent = newParent
-
-            // attach to new parent
             newParent.children[newName] = node
 
             return true
@@ -460,9 +469,8 @@ class EntityPermissionTree() {
 
         // Always recurse into children to find deeper accessible entities
         for (child in node.children.values) {
-            traverseAndCollectTopLevelAccessible(child, userId, roleIds, result)
             // CAUSES INFINITE LOOP
-            todo()
+            traverseAndCollectTopLevelAccessible(child, userId, roleIds, result)
         }
     }
 

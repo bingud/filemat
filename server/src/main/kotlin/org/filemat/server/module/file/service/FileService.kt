@@ -108,7 +108,7 @@ class FileService(
         val newPath = FilePath.ofAlreadyNormalized(newPathParent.path.resolve(rawNewPath.path.fileName))
 
         // Check if file is being moved into itself
-        if (newPath.path.startsWith(canonicalPath.path))
+        if (canonicalPath == newPath || newPath.startsWith(canonicalPath)) return Result.reject("File cannot be moved into itself.")
 
         // Check target parent folder `WRITE` permission
         isAllowedToEditFolder(user = user, canonicalPath = newPathParent).let {
@@ -121,7 +121,7 @@ class FileService(
         }
 
         // Update the entity
-        entityService.move(path = canonicalPath, newPath = newPath.pathString, userAction = UserAction.MOVE_FILE).let {
+        entityService.move(path = canonicalPath, newPath = newPath, userAction = UserAction.MOVE_FILE).let {
             if (it.isNotSuccessful) {
                 // Revert file move
                 filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)

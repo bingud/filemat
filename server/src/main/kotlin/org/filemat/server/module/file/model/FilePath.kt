@@ -20,6 +20,8 @@ data class FilePath(
         return pathString.hashCode()
     }
 
+    fun startsWith(other: FilePath) = this.path.startsWith(other.path)
+
     companion object {
         fun of(rawPath: String) = FilePath(Paths.get(rawPath))
         fun ofAlreadyNormalized(path: Path) = FilePath(path, path)

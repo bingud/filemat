@@ -170,10 +170,12 @@ class EntityService(
      */
     fun move(
         path: FilePath,
-        newPath: String?,
+        newPath: FilePath?,
         userAction: UserAction
     ): Result<Unit> {
         val oldBase = path.path
+
+        if (newPath != null && (path == newPath || newPath.startsWith(path))) return Result.error("Cannot move a folder into itself.")
 
         // Do all operations in a DB transaction
         return runCatching {
