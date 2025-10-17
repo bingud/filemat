@@ -67,7 +67,7 @@
         {/snippet}
 
         {#if !hiddenEmpty}
-            <div class="size-fit z-10 shrink-0">
+            <div class="size-fit z-[1] shrink-0">
                 <Popover.Root>
                     <Popover.Trigger>
                         <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
