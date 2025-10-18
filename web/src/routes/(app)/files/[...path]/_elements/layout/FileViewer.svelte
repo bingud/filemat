@@ -20,10 +20,11 @@
     import mime from 'mime'
 
     
-    let meta = $derived(filesState.data.fileMeta!) 
+    let meta = $derived(filesState.data.fileMeta) 
 
-    const isSymlink = $derived(meta.fileType.includes("LINK") && !appState.followSymlinks)
+    const isSymlink = $derived(meta?.fileType.includes("LINK") && !appState.followSymlinks)
     const fileCategory = $derived.by(() => {
+        if (!meta) return null
         if (isSymlink) return "text"
         return getFileCategoryFromFilename(meta.filename!)
     })
@@ -77,7 +78,7 @@
 
     // Create the video player
     $effect(() => {
-        if (videoElement && !player) {
+        if (meta && videoElement && !player) {
             player = videojs(videoElement, {
                 controls: true,
                 fluid: false,
@@ -146,7 +147,7 @@
 
 
 <div on:click|stopPropagation class="size-full flex flex-col">
-    {#if filesState.contentLoading}
+    {#if filesState.contentLoading || !meta}
         <div class="center">
             <Loader></Loader>
         </div>

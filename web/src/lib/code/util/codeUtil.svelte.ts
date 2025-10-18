@@ -13,7 +13,8 @@ export function isServerDown(httpStatus: number): boolean {
     return false
 }
 
-export function isFolder(meta: FileMetadata): boolean {
+export function isFolder(meta: FileMetadata | null | undefined): boolean {
+    if (!meta) return false
     return meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks === true)
 }
 
