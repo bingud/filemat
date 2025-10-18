@@ -127,6 +127,7 @@ class SelectedEntryStateClass {
 
     hasMultiple = $derived(this.list.length > 1)
     hasSelected = $derived(this.list.length > 0)
+    isCurrentPathSelected = $derived(filesState.path === this.singlePath)
     count = $derived(this.list.length)
 
     setSelected(path: string, preventSave: boolean = false) {

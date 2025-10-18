@@ -1,6 +1,6 @@
 <script lang="ts">
     import { beforeNavigate } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, isFolder, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -165,13 +165,17 @@
                 <div class="w-full h-[2.5rem] flex items-center justify-between">
                     <!-- Left buttons -->
                     <div class="h-full flex items-center gap-2 py-[0.2rem]">
-                        {#if filesState.selectedEntries.hasSelected === false}
+                        {#if filesState.data.folderMeta && isFolder(filesState.data.currentMeta!) &&
+                                (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
+                        }
                             <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="action-button"><NewFolderIcon /></button>
                             <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="action-button"><NewFileIcon /></button>
-                        {:else}
+                        {:else if filesState.selectedEntries.hasSelected}
                             <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="action-button"><DownloadIcon /></button>
                             <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="action-button"><TrashIcon /></button>
-                            <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="action-button"><MoveIcon /></button>
+                            {#if filesState.data.fileMeta == null}
+                                <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="action-button"><MoveIcon /></button>
+                            {/if}
                         {/if}
                     </div>
 
