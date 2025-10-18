@@ -196,12 +196,14 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full pt-2">
-                {#if !filesState.metaLoading && (!requireFolderMeta || filesState.data.folderMeta)}
+                {#if !filesState.metaLoading}
                     {@const isFileOpen = filesState.data.fileMeta}
 
-                    <div class="{isFileOpen ? '!hidden' : '!contents'}">
-                        <FileBrowser />
-                    </div>
+                    {#if filesState.data.folderMeta}
+                        <div class="{isFileOpen ? '!hidden' : '!contents'}">
+                            <FileBrowser />
+                        </div>
+                    {/if}
 
                     {#if isFileOpen}
                         <div class="center">
