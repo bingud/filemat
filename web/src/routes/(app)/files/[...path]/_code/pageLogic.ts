@@ -1,6 +1,6 @@
 import { goto } from "$app/navigation"
 import type { FullFileMetadata } from "$lib/code/auth/types"
-import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData } from "$lib/code/module/files"
+import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { addSuffix, filenameFromPath, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
@@ -62,7 +62,7 @@ export async function loadPageData(
             toast.error("This folder was not found.")
         }
 
-        await goto(`/files/${parentFromPath(filesState.path)}`)
+        await navigateToFilePath(parentFromPath(filesState.path))
     }
     if (result.isUnsuccessful) return
     const dataResult = result.value

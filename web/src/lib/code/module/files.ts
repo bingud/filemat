@@ -5,6 +5,7 @@ import type { FileCategory } from "../data/files";
 import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, printStack, resolvePath, Result, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
+import { goto } from "$app/navigation";
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
@@ -391,6 +392,19 @@ export async function deleteFiles(entries: FileMetadata[]) {
     if (filesState.data.entries && entries) {
         filesState.data.entries = filesState.data.entries.filter(e => paths.includes(e.path) === false)
     }
+
+    // Navigate to parent folder if current file was deleted
+    const currentPath = filesState.data.currentMeta?.path || null
+    if (currentPath && entries.some(e => currentPath.startsWith(e.path))) {
+        let closestParent = parentFromPath(currentPath)
+        entries.forEach((entry) => {
+            if (closestParent.startsWith(entry.path)) {
+                closestParent = parentFromPath(closestParent)
+            }
+        })
+
+        if (closestParent) navigateToFilePath(closestParent)
+    }
     
     // If deleted entry was selected, clear selection
     filesState.selectedEntries.unselectAll(paths)
@@ -576,4 +590,8 @@ export async function getFileLastModifiedDate(path: string, silent: boolean = tr
     }
 
     return null
+}
+
+export function navigateToFilePath(path: string) {
+    return goto(`/files/${path}`)
 }
