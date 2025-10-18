@@ -181,13 +181,15 @@
 
                     <!-- Right buttons -->
                     <div class="h-full flex items-center gap-2 py-[0.2rem]">
-                        <button on:click={option_changeFileView} title="Change file view" class="action-button">
-                            {#if filesState.ui.fileViewType === "rows"}
-                                <GridIcon />
-                            {:else}
-                                <RowsIcon />
-                            {/if}
-                        </button>
+                        {#if isFolder(filesState.data.currentMeta)}
+                            <button on:click={option_changeFileView} title="Change file view" class="action-button">
+                                {#if filesState.ui.fileViewType === "rows"}
+                                    <GridIcon />
+                                {:else}
+                                    <RowsIcon />
+                                {/if}
+                            </button>
+                        {/if}
 
                         <NewFileButton></NewFileButton>
 
