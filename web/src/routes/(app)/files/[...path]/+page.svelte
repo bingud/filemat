@@ -31,10 +31,8 @@
 
     let {
         overrideTopLevelFolderUrlPath = null,
-        requireFolderMeta = true,
     }: {
         overrideTopLevelFolderUrlPath?: string | null,
-        requireFolderMeta?: boolean,
     } = $props()
 
     const filesStateNonce = createFilesState()
@@ -102,11 +100,12 @@
                 })
 
                 if (!pathIsChild) pollingInterval?.reset()
-            }
+            } else { queueMicrotask(recoverScrollPosition) }
         }
 
         return () => { pollingInterval?.cancel() }
     })
+
 
     // Run when user stops being idle
     explicitEffect(() => [
