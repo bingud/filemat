@@ -93,9 +93,9 @@
                 {@const format = getFileCategoryFromFilename(entry.filename)}
 
                 {#if format === "image"}
-                    <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=128&path={entry.path}" class="size-full w-auto">
+                    <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
                 {:else if format === "video"}
-                    <img loading="lazy" alt="" src="/api/v1/file/video-preview?size=128&path={entry.path}" class="size-full w-auto">
+                    <img loading="lazy" alt="" src="/api/v1/file/video-preview?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
                 {:else}
                     {#if entry.fileType === "FILE"}
                         <FileIcon />
