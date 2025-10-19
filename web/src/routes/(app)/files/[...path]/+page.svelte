@@ -202,27 +202,25 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full pt-2">
-                {#if !filesState.metaLoading}
-                    {@const isFileOpen = filesState.data.fileMeta}
-
-                    {#if filesState.data.folderMeta}
-                        <div class="{isFileOpen ? '!hidden' : '!contents'}">
-                            <FileBrowser />
-                        </div>
-                    {/if}
-
-                    {#if isFileOpen}
-                        <div class="center">
-                            <FileViewer />
-                        </div>
-                    {/if}
-                {:else if !filesState.metaLoading && !filesState.data.currentMeta}
-                    <div class="center">
-                        <p class="text-xl">Failed to load this file.</p>
+                {#if filesState.data.folderMeta}
+                    <div class="{filesState.data.fileMeta || filesState.metaLoading ? '!hidden' : '!contents'}">
+                        <FileBrowser />
                     </div>
-                {:else}
+                {/if}
+
+                {#if filesState.data.fileMeta}
+                    <div class="center" class:!hidden={filesState.metaLoading}>
+                        <FileViewer />
+                    </div>
+                {/if}
+                
+                {#if filesState.metaLoading}
                     <div class="center">
                         <Loader></Loader>
+                    </div>
+                {:else if !filesState.data.currentMeta}
+                    <div class="center">
+                        <p class="text-xl">Failed to load this file.</p>
                     </div>
                 {/if}
             </div>
