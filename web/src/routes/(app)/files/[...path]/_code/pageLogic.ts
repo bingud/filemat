@@ -35,13 +35,14 @@ export function recoverScrollPosition() {
 
 
 export async function loadPageData(
-    filePath: string, 
+    filePath: string,
     options: { 
         silent?: boolean,
         isRefresh?: boolean,
         overrideDataUrlPath?: string,
         fileDataType: "object" | "array",
         parentFolderOnly?: boolean,
+        loadParentFolder?: boolean,
     }
 ) {
     filesState.lastFilePathLoaded = filePath
@@ -103,6 +104,14 @@ export async function loadPageData(
                 filesState.data.fileMeta.filename = filenameFromPath(meta.path)
             }
 
+            // Load parent folder of file
+            if (options.loadParentFolder && filesState.data.folderMeta == null) {
+                loadPageData(parentFromPath(meta.path), {
+                    fileDataType: "object",
+                    loadParentFolder: false,
+                    parentFolderOnly: true,
+                })
+            }
         }
 
         // If no entry is selected and this is a folder, select the current folder

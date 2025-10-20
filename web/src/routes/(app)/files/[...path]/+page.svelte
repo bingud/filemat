@@ -94,7 +94,7 @@
             if (pathIsParentFolder === false) {
                 (newPath === "/" && overrideTopLevelFolderUrlPath 
                     ? loadPageData(newPath, { overrideDataUrlPath: overrideTopLevelFolderUrlPath, fileDataType: "array" })
-                    : loadPageData(newPath, { fileDataType: "object" })
+                    : loadPageData(newPath, { fileDataType: "object", loadParentFolder: true })
                 ).then(() => {
                     recoverScrollPosition()
                 })
