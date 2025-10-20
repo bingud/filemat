@@ -27,6 +27,7 @@
     import GridIcon from "$lib/component/icons/GridIcon.svelte";
     import RowsIcon from "$lib/component/icons/RowsIcon.svelte";
     import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil";
+    import FileSortingButton from "./_elements/layout/FileSortingButton.svelte";
 
 
     let {
@@ -181,6 +182,8 @@
                     <!-- Right buttons -->
                     <div class="h-full flex items-center gap-2 py-[0.2rem]">
                         {#if isFolder(filesState.data.currentMeta)}
+                            <FileSortingButton></FileSortingButton>
+                        
                             <button on:click={option_changeFileView} title="Change file view" class="action-button">
                                 {#if filesState.ui.fileViewType === "rows"}
                                     <GridIcon />

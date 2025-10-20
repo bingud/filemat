@@ -21,20 +21,20 @@
         </div>
     </Popover.Trigger>
     <Popover.Content align="end" class="relative z-50">
-        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
-            <button on:click={handleUpload} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+        <div class="w-[14rem] surface-popover-container">
+            <button on:click={handleUpload} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     <PlusIcon />
                 </div>
                 <span>Upload</span>
             </button>
-            <button on:click={handleNewFolder} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+            <button on:click={handleNewFolder} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     <FolderIcon />
                 </div>
                 <span>Folder</span>
             </button>
-            <button on:click={handleNewFile} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+            <button on:click={handleNewFile} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     <FileIcon />
                 </div>

@@ -11,7 +11,7 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import { page } from '$app/state';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
-    import ConfirmDialog from '$lib/component/ConfirmDialog.svelte';
+    import ConfirmDialog from '$lib/component/popover/ConfirmDialog.svelte';
     import { confirmDialogState, inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import InputDialog from '$lib/component/InputDialog.svelte';
     import { onUserIdleChange } from '$lib/code/util/stateUtils';

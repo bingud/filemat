@@ -12,7 +12,7 @@
     import { formatUnixTimestamp, formData, handleErr, handleException, includesList, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, toStatus, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import Loader from "$lib/component/Loader.svelte";
-    import Popover from "$lib/component/Popover.svelte";
+    import Popover from "$lib/component/popover/CustomPopover.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
 

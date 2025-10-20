@@ -4,7 +4,7 @@
     import { explicitEffect, formData, handleErr, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
     import QRCode from 'qrcode'
-    import CustomDialog from "$lib/component/CustomDialog.svelte";
+    import CustomDialog from "$lib/component/popover/CustomDialog.svelte";
     import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { Validator } from "$lib/code/util/validation";

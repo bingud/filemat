@@ -11,7 +11,7 @@
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import Popover from "$lib/component/Popover.svelte";
+    import Popover from "$lib/component/popover/CustomPopover.svelte";
     import { fade } from "svelte/transition";
 
     const title = "Manage user"

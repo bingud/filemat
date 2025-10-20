@@ -1,0 +1,10 @@
+
+
+/* Styles for reused popover */
+.surface-popover-container {
+    @apply max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50;
+}
+
+.surface-popover-button {
+    @apply py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2;
+}

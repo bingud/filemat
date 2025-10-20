@@ -176,6 +176,11 @@ class FileUiStateClasss {
      */
     fileViewType = $state("rows")  as "rows" | "tiles"
 
+    /**
+     * Is file sorting menu popover open
+     */
+    fileSortingMenuPopoverOpen = $state(false)
+
     toggleSidebar() {
         this.detailsOpen = !this.detailsOpen
     }
@@ -193,6 +198,7 @@ class FileUiStateClasss {
         if (!uiState.isDesktop) this.detailsOpen = false
         this.fileContextMenuPopoverOpen = false
         this.newFilePopoverOpen = false
+        this.fileSortingMenuPopoverOpen = false
     }
 }
 
