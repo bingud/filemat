@@ -166,7 +166,12 @@
                 {#if isText}
                     <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                 {:else if type === "image"}
-                    <img src={filesState.data.contentUrl} alt={meta.path} class="max-w-full max-h-full size-auto">
+                    <img 
+                        src={filesState.data.contentUrl} 
+                        alt={meta.path} 
+                        class="max-w-full max-h-full size-auto"
+                        on:dragstart={(e) => { if (e.dataTransfer?.effectAllowed) { e.dataTransfer.dropEffect = 'link'; e.dataTransfer.setData('isFromPage', 'true') } }}
+                    >
                 {:else if type === "video"}
                     <div class="size-full overflow-hidden">
                         <video bind:this={videoElement} class="video-js h-full w-full">

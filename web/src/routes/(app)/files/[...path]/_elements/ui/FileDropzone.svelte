@@ -13,7 +13,7 @@
     const handleDocumentDragEnter = (e: DragEvent) => {
         e.preventDefault()
         // Only show dropzone if files are being dragged
-        if (e.dataTransfer?.types.includes('Files')) {
+        if (e.dataTransfer?.types.includes('Files') && e.dataTransfer?.dropEffect !== 'link') {
             dragCounter++
             if (!isVisible) {
                 isVisible = true
@@ -41,7 +41,8 @@
         e.preventDefault()
         
         const files = e.dataTransfer?.files
-        if (files && files.length > 0) {
+        const isFromPage = e.dataTransfer?.getData('isFromPage')
+        if (files && files.length > 0 && !isFromPage) {
             dispatch('filesDropped', { files })
         }
         

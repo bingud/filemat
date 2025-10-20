@@ -10,7 +10,6 @@ import { toast } from "@jill64/svelte-toast"
 
 
 export function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
-    console.log(`file droippe`, e.detail.files)
     const files = Array.from(e.detail.files)
     
     files.forEach(file => {

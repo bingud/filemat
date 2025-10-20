@@ -244,8 +244,9 @@
     </div>
 </div>
 
-<FileDropzone on:filesDropped={event_filesDropped}></FileDropzone>
-
+{#if isFolder(filesState.data.currentMeta)}
+    <FileDropzone on:filesDropped={event_filesDropped}></FileDropzone>
+{/if}
 
 <style>
     @import "/src/app.css" reference;
