@@ -237,7 +237,7 @@ export function startTusUpload(file: File) {
 
                 const state = uploadState.all[targetPath]
                 if (state) {
-                    state.actualPath = actualFilenameHeader
+                    state.actualPath = actualFilename
                 }
             }
         },

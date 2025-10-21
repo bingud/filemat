@@ -41,10 +41,28 @@
     }
 </script>
 
+<style>
+    .panel-container {
+        --panel-max-height: 25rem;
+        --panel-header-height: 3rem;
+        --panel-content-max-height: calc(
+            var(--panel-max-height) - var(--panel-header-height)
+        );
+        
+        max-height: min(--panel-max-height, 100%);
+    }
+    
+    .panel-header {
+        height: var(--panel-header-height);
+    }
+    .panel-content {
+        max-height: var(--panel-content-max-height);
+    }
+</style>
 
-<div class="w-full flex flex-col dark:bg-neutral-900 rounded-lg overflow-hidden">
+<div class="panel-container w-full flex flex-col dark:bg-neutral-900 rounded-lg overflow-hidden">
     <!-- Header -->
-    <div class="w-full flex items-center justify-between px-3 py-2 bg-neutral-850">
+    <div class="panel-header w-full flex items-center justify-between px-3 py-2 bg-neutral-850">
         <div class="">
             {#if counts.uploading > 0}<span>{counts.uploading} uploading</span><span class="last:hidden">,</span>{/if}
             {#if counts.successful > 0}<span>{counts.successful} uploaded</span><span class="last:hidden">,</span>{/if}
@@ -61,7 +79,7 @@
     </div>
 
     <!-- Uploads -->
-    <div class="flex flex-col w-full">
+    <div class="panel-content flex flex-col w-full overflow-auto custom-scrollbar">
         {#each uploadState.list as up}
             <div class="w-full flex justify-between items-center px-3 h-[2.5rem] gap-3">
                 <div class="flex items-center h-full flex-grow min-w-0 overflow-hidden">
@@ -69,12 +87,11 @@
                 </div>
                 
                 <div class="h-full flex items-center gap-3">
-
                     <!-- Upload status -->
                     {#if up.status === "uploading"}
                         <p class="whitespace-nowrap">{formatBytes(up.bytesUploaded)} / {formatBytes(up.bytesTotal)}</p>
                     {:else}
-                        <div class="w-[6rem]">
+                        <div class="xw-[6rem] text-end">
                             {#if up.status === "success"}
                                 <p>Uploaded</p>
                             {:else if up.status === "failed"}

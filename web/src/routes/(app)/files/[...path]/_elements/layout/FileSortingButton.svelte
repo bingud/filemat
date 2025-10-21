@@ -45,7 +45,7 @@
 
             <hr class="basic-hr my-2">
 
-            <button on:click={() => { direction = "asc" }} class="surface-popover-button">
+            <button on:click={() => { filesState.sortingDirection = "asc" }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     {#if direction === "asc"}
                         <SortAscendingIcon />
@@ -63,7 +63,7 @@
                     {/if}
                 </span>
             </button>
-            <button on:click={() => { direction = "desc" }} class="surface-popover-button">
+            <button on:click={() => { filesState.sortingDirection = "desc" }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     {#if direction === "desc"}
                         <SortDescendingIcon />
