@@ -3,6 +3,7 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
+import type { FileSortingMode, fileSortingModes } from "../types/fileTypes"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 
 
@@ -63,7 +64,7 @@ class FilesState {
     /**
      * File sorting
      */
-    sortingMode: "modified" | "created" | "name" | "size" = $state("modified")
+    sortingMode: FileSortingMode = $state("modified")
     sortingDirection: "desc" | "asc" = $state("desc")
     
     /**

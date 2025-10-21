@@ -1,35 +1,85 @@
-<script>
+<script lang="ts">
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { fileSortingModes, type FileSortingMode } from "$lib/code/types/fileTypes";
+    import { entriesOf } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
-    import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
+    import CheckmarkIcon from "$lib/component/icons/CheckmarkIcon.svelte";
     import SortAscendingIcon from "$lib/component/icons/SortAscendingIcon.svelte";
     import SortDescendingIcon from "$lib/component/icons/SortDescendingIcon.svelte";
-    import { handleUpload } from "../../_code/pageLogic";
 
+    let mode = $derived(filesState.sortingMode)
+    let direction = $derived(filesState.sortingDirection)
 
+    function handle(newMode: FileSortingMode) {
+        filesState.sortingMode = newMode
+    }
+    
 </script>
 
 
 <Popover.Root bind:open={filesState.ui.fileSortingMenuPopoverOpen}>
-    <Popover.Trigger title="Create or upload a file or folder." class="h-full flex items-center justify-center">
+    <Popover.Trigger title="Change file sorting mode." class="h-full flex items-center justify-center">
         <div class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
             <div class="h-[1.2rem]">
-                {#if filesState.sortingDirection === "asc"}
+                {#if direction === "asc"}
                     <SortAscendingIcon></SortAscendingIcon>
                 {:else}
                     <SortDescendingIcon></SortDescendingIcon>
                 {/if}
             </div>
-            <p class="capitalize">{filesState.sortingMode}</p>
+            <p class="capitalize">{mode}</p>
         </div>
     </Popover.Trigger>
     <Popover.Content align="end" class="relative z-50">
         <div class="w-[14rem] surface-popover-container">
-            <button on:click={handleUpload} class="surface-popover-button">
+            {#each entriesOf(fileSortingModes) as [modeId, modeName]}
+                <button on:click={() => handle(modeId)} class="surface-popover-button">
+                    <div class="size-5 flex-shrink-0">
+                        {#if mode === modeId}
+                            <CheckmarkIcon />
+                        {/if}
+                    </div>
+                    <span>{modeName}</span>
+                </button>
+            {/each}
+
+            <hr class="basic-hr my-2">
+
+            <button on:click={() => { direction = "asc" }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
-                    <PlusIcon />
+                    {#if direction === "asc"}
+                        <SortAscendingIcon />
+                    {/if}
                 </div>
-                <span>Name</span>
+                <span>
+                    {#if mode === "name"}
+                        A to Z
+                    {:else if mode === "modified"}
+                        Oldest first
+                    {:else if mode === "size"}
+                        Smallest first
+                    {:else if mode === "created"}
+                        Oldest first
+                    {/if}
+                </span>
+            </button>
+            <button on:click={() => { direction = "desc" }} class="surface-popover-button">
+                <div class="size-5 flex-shrink-0">
+                    {#if direction === "desc"}
+                        <SortDescendingIcon />
+                    {/if}
+                </div>
+                <span>
+                    {#if mode === "name"}
+                        Z to A
+                    {:else if mode === "modified"}
+                        Newest first
+                    {:else if mode === "size"}
+                        Largest first
+                    {:else if mode === "created"}
+                        Newest first
+                    {/if}
+                </span>
             </button>
         </div>
     </Popover.Content>

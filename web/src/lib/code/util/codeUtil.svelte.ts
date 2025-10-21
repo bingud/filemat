@@ -612,8 +612,8 @@ export async function sha256(message: string) {
         .join('')
 }
 
-export function entriesOf<K extends ObjectKey, V>(obj: Record<K, V>): [string, V][] {
-    return Object.entries(obj)
+export function entriesOf<K extends ObjectKey, V>(obj: Record<K, V>): [K, V][] {
+    return Object.entries(obj) as [K, V][]
 }
 
 export function formatDuration(seconds: number): string {

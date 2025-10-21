@@ -11,7 +11,7 @@
     import { pushState } from "$app/navigation";
     import { page } from "$app/state";
     import Close from "$lib/component/icons/CloseIcon.svelte";
-    import Checkmark from "$lib/component/icons/Checkmark.svelte";
+    import Checkmark from "$lib/component/icons/CheckmarkIcon.svelte";
     import { dev } from "$app/environment";
     import { envVars } from "$lib/code/data/environmentVariables";
 
