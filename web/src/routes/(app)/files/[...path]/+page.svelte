@@ -23,11 +23,13 @@
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
     import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
     import { option_changeFileView } from "./_code/pageLogic"
-    import NewFileButton from './_elements/layout/NewFileButton.svelte';
+    import NewFileButton from './_elements/button/NewFileButton.svelte';
     import GridIcon from "$lib/component/icons/GridIcon.svelte";
     import RowsIcon from "$lib/component/icons/RowsIcon.svelte";
     import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil";
-    import FileSortingButton from "./_elements/layout/FileSortingButton.svelte";
+    import FileSortingButton from "./_elements/button/FileSortingButton.svelte";
+    import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte";
+    import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte";
 
 
     let {
@@ -155,7 +157,7 @@
     <div class="w-full flex h-full min-h-0">
         <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
             <!-- Header -->
-            <div class="w-full shrink-0 flex flex-col px-2 items-center justify-between overflow-hidden rounded-lg py-2 bg-surface mt-2 gap-2">
+            <div class="w-full shrink-0 flex flex-col items-center justify-between gap-2 overflow-hidden bg-surface pb-2 lg:py-2 px-2 rounded-b-lg lg:rounded-lg lg:mt-2">
                 <!-- Top row -->
                 <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full flex items-center">
                     <Breadcrumbs></Breadcrumbs>                    
@@ -164,40 +166,36 @@
                 <!-- Lower row -->
                 <div class="w-full h-[2.5rem] flex items-center justify-between">
                     <!-- Left buttons -->
-                    <div class="h-full flex items-center gap-2 py-[0.2rem]">
+                    <div class="h-full flex items-center gap-2">
                         {#if filesState.data.folderMeta && isFolder(filesState.data.currentMeta!) &&
                                 (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
                         }
-                            <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="action-button"><NewFolderIcon /></button>
-                            <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="action-button"><NewFileIcon /></button>
+                            <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
+                            <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
                         {:else if filesState.selectedEntries.hasSelected}
-                            <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="action-button"><DownloadIcon /></button>
-                            <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="action-button"><TrashIcon /></button>
+                            <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
+                            <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
                             {#if filesState.data.fileMeta == null}
-                                <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="action-button"><MoveIcon /></button>
+                                <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
                             {/if}
                         {/if}
                     </div>
 
                     <!-- Right buttons -->
-                    <div class="h-full flex items-center gap-2 py-[0.2rem]">
+                    <div class="h-full flex items-center gap-2">
                         {#if isFolder(filesState.data.currentMeta)}
                             <FileSortingButton></FileSortingButton>
                         
-                            <button on:click={option_changeFileView} title="Change file view" class="action-button">
-                                {#if filesState.ui.fileViewType === "rows"}
-                                    <GridIcon />
-                                {:else}
-                                    <RowsIcon />
-                                {/if}
-                            </button>
+                            <FileViewTypeButton></FileViewTypeButton>
                         {/if}
 
-                        <NewFileButton></NewFileButton>
+                        {#if uiState.isDesktop}
+                            <NewFileButton></NewFileButton>
+                        {/if}
 
-                        <button title="Toggle the file details sidebar" on:click={() => { filesState.ui.toggleSidebar() }} class="action-button">
-                            <InfoIcon />
-                        </button>
+                        {#if uiState.isDesktop}
+                            <FileDetailsButton></FileDetailsButton>
+                        {/if}
                     </div>
                 </div>
             </div>
@@ -255,7 +253,7 @@
     @import "/src/app.css" reference;
 
 
-    .action-button {
+    :global(.file-action-button) {
         @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-button;
     }
 </style>
