@@ -95,7 +95,7 @@ class LoginService(
         }
 
         // Verify the login
-        if (!passwordEncoder.matches(password, user.password)) return bad("Password is incorrect.", "incorrect-password")
+        if (!passwordEncoder.matches(password, user.password)) return unauthenticated("Password is incorrect.", "incorrect-password")
             .also { loginLog(LogLevel.WARN, "Failed login - Incorrect password", "", meta, ip) }
         if (user.isBanned) return bad("This account is banned.", "banned")
             .also { loginLog(LogLevel.WARN, "Failed login - User banned", "", meta, ip) }
