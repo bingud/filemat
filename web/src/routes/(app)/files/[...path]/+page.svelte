@@ -10,7 +10,6 @@
     import { fade, fly } from "svelte/transition"
     import { linear } from "svelte/easing"
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-    import InfoIcon from "$lib/component/icons/InfoIcon.svelte"
     import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
     import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
     import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
@@ -22,10 +21,7 @@
     import FileViewer from './_elements/layout/FileViewer.svelte';
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
     import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
-    import { option_changeFileView } from "./_code/pageLogic"
     import NewFileButton from './_elements/button/NewFileButton.svelte';
-    import GridIcon from "$lib/component/icons/GridIcon.svelte";
-    import RowsIcon from "$lib/component/icons/RowsIcon.svelte";
     import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil";
     import FileSortingButton from "./_elements/button/FileSortingButton.svelte";
     import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte";
@@ -46,6 +42,7 @@
     
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
+        filesState.ui.filePreviewLoader.setScrollContainer(filesState.scroll.container || null)
 
         const fileViewType = fileViewType_getFromLocalstorage()
         if (fileViewType) filesState.ui.fileViewType = fileViewType

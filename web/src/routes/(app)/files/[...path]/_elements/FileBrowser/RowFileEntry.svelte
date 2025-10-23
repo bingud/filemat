@@ -34,6 +34,8 @@
         entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void,
     } = $props()
 
+    const loadFilePreview = filesState.ui.filePreviewLoader.getAction()
+
     onMount(() => {
         if (!entry) {
             console.log(`Entry in FileEntry is null`)
@@ -84,9 +86,9 @@
                     {@const format = getFileCategoryFromFilename(entry.filename)}
 
                     {#if format === "image"}
-                        <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=48&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
+                        <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=48&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
                     {:else if format === "video"}
-                        <img loading="lazy" alt="" src="/api/v1/file/video-preview?size=48&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
+                        <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=48&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
                     {:else}
                         {#if entry.fileType === "FILE"}
                             <FileIcon />

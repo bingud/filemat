@@ -1,8 +1,8 @@
 <script lang="ts">
     import { type FullFileMetadata } from "$lib/code/auth/types";
-    import { fileCategories, getFileCategoryFromFilename } from "$lib/code/data/files";
+    import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
+    import { isFolder } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
@@ -34,6 +34,8 @@
         entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void,
     } = $props()
 
+    const loadFilePreview = filesState.ui.filePreviewLoader.getAction()
+
     onMount(() => {
         if (!entry) {
             console.log(`Entry in FileEntry is null`)
@@ -46,21 +48,6 @@
     let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
 </script>
 
-<!-- {#key isSelected}
-    <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pl-2 pr-1">
-        <input checked={isSelected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
-    </div>
-{/key} -->
-
-<!-- Last Modified -->
-<!-- <div class="h-full text-right whitespace-nowrap max-sm:hidden flex items-center justify-end opacity-70 py-1">
-    {formatUnixMillis(entry.modifiedDate)}
-</div> -->
-
-<!-- Size -->
-<!-- <div class="h-full text-right whitespace-nowrap max-md:hidden flex items-center justify-end py-1">
-    {formatBytesRounded(entry.size)}
-</div> -->
 
 <a
     on:click|preventDefault={(e) => entryOnClick(e, entry)}
@@ -93,9 +80,9 @@
                 {@const format = getFileCategoryFromFilename(entry.filename)}
 
                 {#if format === "image"}
-                    <img loading="lazy" alt="" src="/api/v1/file/image-thumbnail?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
+                    <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
                 {:else if format === "video"}
-                    <img loading="lazy" alt="" src="/api/v1/file/video-preview?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
+                    <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
                 {:else}
                     {#if entry.fileType === "FILE"}
                         <FileIcon />

@@ -16,7 +16,7 @@
             <MenuIcon/>
         </button>
         <div class="h-full flex gap-2 py-2">
-            {#if !uiState.isDesktop && isFolder(filesState.data.currentMeta)}
+            {#if filesState && !uiState.isDesktop && isFolder(filesState.data.currentMeta)}
                 <NewFileButton></NewFileButton>
             {/if}
         </div>

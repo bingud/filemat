@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import UploadPanel from "../ui/UploadPanel.svelte";
@@ -21,7 +21,6 @@
 
     let entryMenuYPos: number | null = $state(null)
     let entryMenuXPos: number | null = $state(null)
-    
 
     onMount(() => {
         // Set the selected entry path
@@ -32,6 +31,7 @@
         return () => {
             // Clean up listener when component unmounts
             window.removeEventListener('keydown', handleKeyDown)
+            filesState.ui.filePreviewLoader.destroy()
         }
     })
 
