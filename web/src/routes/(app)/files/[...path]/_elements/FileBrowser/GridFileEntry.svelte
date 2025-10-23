@@ -65,7 +65,7 @@
             : isSelected ? 'bg-blue-200/60 dark:bg-sky-950/60' : 'bg-neutral-200/30 dark:bg-neutral-800/30 hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60'
         }
     "
-    href={`/files${entry.path}`}
+    href={encodeURI(`/files${(entry.path)}`)}
     on:dragstart={(e) => { event_dragStart(e, entry) }}
     on:dragover={(e) => { event_dragOver(e, entry) }}
     on:dragleave={(e) => { event_dragLeave(e, entry) }}
@@ -80,9 +80,9 @@
                 {@const format = getFileCategoryFromFilename(entry.filename)}
 
                 {#if format === "image"}
-                    <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
+                    <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=128&path={encodeURI(entry.path)}&modified={entry.modifiedDate}" class="size-full w-auto">
                 {:else if format === "video"}
-                    <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=128&path={entry.path}&modified={entry.modifiedDate}" class="size-full w-auto">
+                    <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=128&path={encodeURI(entry.path)}&modified={entry.modifiedDate}" class="size-full w-auto">
                 {:else}
                     {#if entry.fileType === "FILE"}
                         <FileIcon />
