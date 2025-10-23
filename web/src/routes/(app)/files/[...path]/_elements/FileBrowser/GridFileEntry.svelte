@@ -75,7 +75,7 @@
     <!-- Icon / preview and checkbox -->
     <div class="entry-preview relative flex flex-col w-full">
         <!-- Preview image -->
-        <div class="h-full fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center">
+        <div class="h-full fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center pointer-events-none">
             {#if entry.filename}
                 {@const format = getFileCategoryFromFilename(entry.filename)}
 
