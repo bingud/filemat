@@ -56,13 +56,17 @@
         {@const hiddenEmpty = breadcrumbState.hidden.length < 1}
         <!-- Change chevron width in breadcrumb calculator -->
 
-        {#snippet breadcrumbButton(segment: Segment, className: string, withPopup: boolean)}
+        {#snippet breadcrumbButton(
+            segment: Segment, 
+            o: { classes: string, withPopup: Boolean, isClickable: boolean })}
             <button 
                 disabled={filesState.path === segment.path} 
                 title={segment.name} 
-                on:click={() => { openEntry(`/${segment.path}`) }} 
-                on:contextmenu={(e) => { if (withPopup) { onContextMenu(e, segment, e.currentTarget) } }}
-                class="py-1 px-2 whitespace-nowrap max-w-full truncate {className}"
+                on:click={() => {
+                    if (o.isClickable) { openEntry(`/${segment.path}`) } }
+                } 
+                on:contextmenu={(e) => { if (o.withPopup) { onContextMenu(e, segment, e.currentTarget) } }}
+                class="py-1 px-2 whitespace-nowrap max-w-full truncate {o.classes}"
             >{segment.name}</button>
         {/snippet}
 
@@ -75,7 +79,13 @@
                     <Popover.Content align="start" sideOffset={8}>
                         <div class="min-w-[20rem] w-fit max-w-[min(100vw,40rem)] rounded-lg bg-neutral-300 dark:bg-neutral-800 py-2">
                             {#each breadcrumbState.hidden as segment}
-                                {@render breadcrumbButton(segment, "truncate w-full text-start hover:bg-neutral-400 dark:hover:bg-neutral-700", true)}
+                                {@render breadcrumbButton(
+                                    segment, {
+                                        classes: "truncate w-full text-start hover:bg-neutral-400 dark:hover:bg-neutral-700", 
+                                        withPopup: true,
+                                        isClickable: true
+                                    }
+                                )}
                             {/each}
                         </div>
                     </Popover.Content>
@@ -91,7 +101,13 @@
                             <ChevronRightIcon classes="h-[0.6rem]" />
                         </div>
                     {/if}
-                    {@render breadcrumbButton(segment, "rounded hover:bg-neutral-300 dark:hover:bg-neutral-800", (breadcrumbState.visible.length - 1 === index))}
+                    {@render breadcrumbButton(
+                        segment, {
+                            classes: "rounded hover:bg-neutral-300 dark:hover:bg-neutral-800", 
+                            withPopup: (breadcrumbState.visible.length - 1 === index),
+                            isClickable: index !== breadcrumbState.fullList.length - 1
+                        }
+                    )}
                 </div>
             {/each}
         </div>
