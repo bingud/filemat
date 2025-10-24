@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { isFolder } from "$lib/code/util/codeUtil.svelte";
-    import MenuIcon from "$lib/component/icons/MenuIcon.svelte";
-    import FileDetailsButton from "../files/[...path]/_elements/button/FileDetailsButton.svelte";
-    import NewFileButton from "../files/[...path]/_elements/button/NewFileButton.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte"
+    import { isFolder } from "$lib/code/util/codeUtil.svelte"
+    import MenuIcon from "$lib/component/icons/MenuIcon.svelte"
+    import FileDetailsButton from "../files/[...path]/_elements/button/FileDetailsButton.svelte"
+    import NewFileButton from "../files/[...path]/_elements/button/NewFileButton.svelte"
 
 </script>
 
@@ -16,7 +17,7 @@
             <MenuIcon/>
         </button>
         <div class="h-full flex gap-2 py-2">
-            {#if filesState && !uiState.isDesktop && isFolder(filesState.data.currentMeta)}
+            {#if appState.filesStateNonce && !uiState.isDesktop && isFolder(filesState.data.currentMeta)}
                 <NewFileButton></NewFileButton>
             {/if}
         </div>

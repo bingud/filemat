@@ -49,6 +49,8 @@ class AppState {
      * List of default system role IDs
      */
     systemRoleIds: { user: ulid, admin: ulid } | null = $state(null)
+
+    filesStateNonce: number | null = $state(0)
 }
 
 /**

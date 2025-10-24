@@ -6,11 +6,10 @@ import { ImageLoadQueue } from "../../../routes/(app)/files/[...path]/_code/file
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
 import type { FileSortingMode, fileSortingModes } from "../types/fileTypes"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
+import { appState } from "./appState.svelte"
 
 
 class FilesState {
-    nonce = generateRandomNumber()
-
     /**
      * The current file path opened
      */
@@ -304,13 +303,17 @@ export function createFilesState(): number {
     } else {
         console.log(`FilesState created`)
     }
+    
     filesState = new FilesState()
-    return filesState.nonce
+    appState.filesStateNonce = generateRandomNumber()
+
+    return appState.filesStateNonce
 }
 
 export function destroyFilesState(nonce: number) {
-    if (filesState?.nonce === nonce) {
+    if (appState.filesStateNonce === nonce) {
         filesState = undefined!
+        appState.filesStateNonce = null
         console.log(`FilesState destroyed`)
     }
 }
