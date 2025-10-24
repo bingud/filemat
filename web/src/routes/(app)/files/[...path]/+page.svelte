@@ -26,7 +26,6 @@
     import FileSortingButton from "./_elements/button/FileSortingButton.svelte";
     import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte";
     import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte";
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
 
     let {
@@ -60,7 +59,6 @@
     })
 
     onDestroy(() => {
-        console.log(`destroing ${filesStateNonce}  -  ${appState.filesStateNonce}`)
         destroyFilesState(filesStateNonce)
         destroyBreadcrumbState(breadcrumbStateNonce)
     })
@@ -200,7 +198,7 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full pt-2">
-                {#if filesState.data.folderMeta}
+                {#if filesState.data.folderMeta || overrideTopLevelFolderUrlPath}
                     <div class="{filesState.data.fileMeta || filesState.metaLoading ? '!hidden' : '!contents'}">
                         <FileBrowser />
                     </div>
@@ -216,7 +214,7 @@
                     <div class="center">
                         <Loader></Loader>
                     </div>
-                {:else if !filesState.data.currentMeta}
+                {:else if !filesState.data.currentMeta && !overrideTopLevelFolderUrlPath}
                     <div class="center">
                         <p class="text-xl">Failed to load this file.</p>
                     </div>

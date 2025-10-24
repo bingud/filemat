@@ -7,6 +7,7 @@
     import Sidebar from './_components/Sidebar.svelte';
     import { fetchState, startStateAutoSync } from '$lib/code/state/stateFetcher';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
+    import { filesState } from '$lib/code/stateObjects/filesState.svelte';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
@@ -45,7 +46,6 @@
             e.returnValue = ""
         }
     }
-    $inspect(appState.filesStateNonce)
 </script>
 
 
