@@ -3,8 +3,8 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import { auth } from '$lib/code/stateObjects/authState.svelte';
     import { onDestroy, onMount } from 'svelte';
-    import Navbar from './components/Navbar.svelte';
-    import Sidebar from './components/Sidebar.svelte';
+    import Navbar from './_components/Navbar.svelte';
+    import Sidebar from './_components/Sidebar.svelte';
     import { fetchState, startStateAutoSync } from '$lib/code/state/stateFetcher';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
 
@@ -45,6 +45,7 @@
             e.returnValue = ""
         }
     }
+    $inspect(appState.filesStateNonce)
 </script>
 
 

@@ -26,6 +26,7 @@
     import FileSortingButton from "./_elements/button/FileSortingButton.svelte";
     import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte";
     import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
 
     let {
@@ -59,6 +60,7 @@
     })
 
     onDestroy(() => {
+        console.log(`destroing ${filesStateNonce}  -  ${appState.filesStateNonce}`)
         destroyFilesState(filesStateNonce)
         destroyBreadcrumbState(breadcrumbStateNonce)
     })

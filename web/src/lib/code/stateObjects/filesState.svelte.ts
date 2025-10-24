@@ -293,11 +293,12 @@ class FileDataStateClass {
 
 
 export let filesState: FilesState
+let count = 0
 
 /**
  * @returns class nonce
  */
-export function createFilesState(): number {
+export function createFilesState(): number | null {
     if (filesState) {
         console.log(`FilesState recreated`)
     } else {
@@ -306,12 +307,16 @@ export function createFilesState(): number {
     
     filesState = new FilesState()
     appState.filesStateNonce = generateRandomNumber()
+    count++
+    console.log(`${count} - created ${appState.filesStateNonce}`)
 
-    return appState.filesStateNonce
+    return appState.actualFilesStanceNonce
 }
 
-export function destroyFilesState(nonce: number) {
-    if (appState.filesStateNonce === nonce) {
+export function destroyFilesState(nonce: number | null) {
+    count++
+    console.log(`${count} - destroying ${nonce} - current ${appState.filesStateNonce}`)
+    if (appState.actualFilesStanceNonce === nonce) {
         filesState = undefined!
         appState.filesStateNonce = null
         console.log(`FilesState destroyed`)

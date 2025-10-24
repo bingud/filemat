@@ -9,4 +9,4 @@
 </script>
 
 
-<FilesPage overrideTopLevelFolderUrlPath="/api/v1/file/all-permitted" requireFolderMeta={false}></FilesPage>
+<FilesPage overrideTopLevelFolderUrlPath="/api/v1/file/all-permitted"></FilesPage>

@@ -50,7 +50,15 @@ class AppState {
      */
     systemRoleIds: { user: ulid, admin: ulid } | null = $state(null)
 
-    filesStateNonce: number | null = $state(0)
+    // This is needed to fix some stupid Svelte race condition
+    // Have to store nonce outside of $state
+    actualFilesStanceNonce: number | null = null
+    #filesStateNonce: number | null = $state(0)
+    set filesStateNonce(n: number | null) { 
+        this.#filesStateNonce = n 
+        this.actualFilesStanceNonce = n
+    }
+    get filesStateNonce() { return this.#filesStateNonce }
 }
 
 /**
