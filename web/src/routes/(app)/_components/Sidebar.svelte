@@ -9,10 +9,12 @@
     let currentButton = $derived.by(() => {
         const path = page.url.pathname
 
-        if (path === "/files") {
+        if (path.startsWith("/files")) {
             return "all"
         } else if (path.startsWith("/settings")) {
             return "settings"
+        } else if (path.startsWith("/accessible-files")) {
+            return "accessible-files"
         }
 
         return ""
@@ -32,7 +34,7 @@
             <div class="flex flex-col px-2 py-4 gap-1">
                 <a href="/files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
                 <a href="/home" on:click={hide} class="sidebar-button">Home Folder</a>
-                <a href="/accessible-files" on:click={hide} class="sidebar-button">Accessible to me</a>
+                <a href="/accessible-files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "accessible-files"}>Accessible to me</a>
             </div>
 
 
