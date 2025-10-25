@@ -25,6 +25,7 @@ It's self hosted, and it allows you to access your local files from anywhere usi
 
 - Linux
 - Java 21
+- (Or just Docker)
 
 
 ## Installation
