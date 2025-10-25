@@ -33,6 +33,15 @@ class FilesState {
     metaLoading = $state(false)
     contentLoading = $state(false)
 
+    isFolderOpen = $derived.by(() => { return isFolder(this.data.currentMeta) })
+    isFileListOpen = $derived.by(() => {
+        const currentMeta = this.data.currentMeta
+        const hasEntries = !!this.data.entries
+        
+        if (this.isFolderOpen || currentMeta == null && hasEntries) return true
+        return false
+    })
+
     /**
      * File data
      */

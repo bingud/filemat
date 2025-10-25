@@ -163,7 +163,7 @@
                 <div class="w-full h-[2.5rem] flex items-center justify-between">
                     <!-- Left buttons -->
                     <div class="h-full flex items-center gap-2">
-                        {#if filesState.data.folderMeta && isFolder(filesState.data.currentMeta!) &&
+                        {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                 (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
                         }
                             <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
@@ -179,7 +179,7 @@
 
                     <!-- Right buttons -->
                     <div class="h-full flex items-center gap-2">
-                        {#if isFolder(filesState.data.currentMeta)}
+                        {#if filesState.isFileListOpen}
                             <FileSortingButton></FileSortingButton>
                         
                             <FileViewTypeButton></FileViewTypeButton>
@@ -241,7 +241,7 @@
     </div>
 </div>
 
-{#if isFolder(filesState.data.currentMeta)}
+{#if filesState.isFolderOpen}
     <FileDropzone on:filesDropped={event_filesDropped}></FileDropzone>
 {/if}
 
