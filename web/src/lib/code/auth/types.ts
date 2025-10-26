@@ -98,3 +98,5 @@ export type EntityPermission = {
     permissions: FilePermission[],
     createdDate: number,
 }
+
+export type AccountProperty =  | "userId" | "email" | "username" | "password" | "mfaTotpSecret" | "mfaTotpStatus" | "mfaTotpCodes" | "createdDate" | "lastLoginDate" | "isBanned"
