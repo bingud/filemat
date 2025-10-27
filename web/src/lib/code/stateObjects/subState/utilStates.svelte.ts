@@ -40,6 +40,7 @@ class InputDialogState {
         message?: string,
         confirmText?: string,
         cancelText?: string,
+        type?: "text" | "password" | "number"
     } = {}) {
         return this.element?.show(options)
     }

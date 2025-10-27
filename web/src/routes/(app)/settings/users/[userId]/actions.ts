@@ -149,7 +149,8 @@ export async function changeUserPassword(user: typeof state.user) {
         title: "Change password",
         message: `Input the new password for user '${user.username}'`,
         confirmText: "Change password",
-        cancelText: "Cancel"
+        cancelText: "Cancel",
+        type: "password"
     })
     if (!rawPassword) return
 
@@ -158,7 +159,7 @@ export async function changeUserPassword(user: typeof state.user) {
         message: "Should all user's devices be logged out?"
     })
 
-    const response = await safeFetch(`/api/v1/admin/user/chnage-password`, { 
+    const response = await safeFetch(`/api/v1/admin/user/change-password`, { 
         body: formData({ "userId": user.userId, "logout": logout, password: rawPassword })
     })
     if (response.failed) {

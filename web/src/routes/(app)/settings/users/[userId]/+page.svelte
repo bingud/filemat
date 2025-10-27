@@ -1,13 +1,12 @@
 <script lang="ts">
     import { page } from "$app/state";
-    import { addRoleToUser } from "$lib/code/admin/roles";
-    import type { AccountProperty, FullPublicUser } from "$lib/code/auth/types";
-    import { getMaxPermissionLevel, rolesToPermissions } from "$lib/code/module/permissions";
+    import type { AccountProperty } from "$lib/code/auth/types";
+    import { getMaxPermissionLevel } from "$lib/code/module/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { record, ulid } from "$lib/code/types/types";
-    import { entriesOf, explicitEffect, forEachObject, formatUnixTimestamp, formData, handleErr, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { entriesOf, explicitEffect, formatUnixTimestamp, formData, handleErr, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";

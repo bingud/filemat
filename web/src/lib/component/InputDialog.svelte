@@ -4,6 +4,7 @@
     import { Dialog } from '$lib/component/bits-ui-wrapper'
 
     // Component state
+    let dialogType = $state('text')
     let dialogTitle = $state('Enter Text')
     let dialogMessage = $state('Please enter your text:')
     let dialogConfirmText = $state('Confirm')
@@ -23,12 +24,14 @@
         cancelText?: string,
         placeholder?: string,
         defaultValue?: string,
+        type?: "text" | "password" | "number",
     } = {}) {
         if (options.title) dialogTitle = options.title
         if (options.message) dialogMessage = options.message
         if (options.confirmText) dialogConfirmText = options.confirmText
         if (options.cancelText) dialogCancelText = options.cancelText
         if (options.placeholder) dialogPlaceholder = options.placeholder
+        if (options.type) dialogType = options.type
         
         // Set default value or clear input
         inputValue = options.defaultValue || ''
@@ -76,7 +79,6 @@
     // Handle dialog opening and closure
     $effect(() => {
         if (inputDialogState.isOpen && inputElement) {
-            console.log(`fockus`)
             macrotask(() => {
                 inputElement.focus()
             })
@@ -103,6 +105,7 @@
             bind:this={inputElement}
             placeholder={dialogPlaceholder}
             on:keydown={handleKeydown}
+            type={dialogType}
             class="w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-500 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-50 dark:placeholder-neutral-400 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
             autofocus
         />
