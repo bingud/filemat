@@ -70,6 +70,21 @@ class AuthTokenService(private val logService: LogService, private val authToken
         }
     }
 
+    fun removeTokensByUserId(userId: Ulid): Result<Unit> {
+        try {
+            val result = authTokenRepository.deleteToken(userId.toString())
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.LOGOUT_USER_SESSIONS,
+                description = "Failed to get auth token from database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to remove auth tokens from the database.")
+        }
+    }
+
     fun createToken(userId: Ulid, userAgent: String?, userAction: UserAction?): Result<AuthToken> {
         val token = AuthToken(
             authToken = StringUtils.randomString(128),

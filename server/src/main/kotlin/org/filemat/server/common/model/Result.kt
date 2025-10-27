@@ -1,6 +1,5 @@
 package org.filemat.server.common.model
 
-import org.springframework.http.ResponseEntity
 
 
 data class Result<T>(
@@ -64,3 +63,7 @@ fun <T, P> Result<P>.cast(): Result<T> = this as Result<T>
 
 @Suppress("UNCHECKED_CAST")
 fun <T, P> Result<P>.cast(source: String?): Result<T> = (this as Result<T>).also { this.source = source }
+
+inline fun <T, R> Result<T>.onFailure(block: (Result<T>) -> R) {
+    if (this.isNotSuccessful) block(this)
+}

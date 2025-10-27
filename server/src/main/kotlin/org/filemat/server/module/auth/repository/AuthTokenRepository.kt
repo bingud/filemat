@@ -27,4 +27,8 @@ interface AuthTokenRepository : CrudRepository<AuthToken, String> {
     @Modifying
     @Query("DELETE FROM auth_token WHERE (:unixNow > created_date + max_age)")
     fun clearExpiredTokens(unixNow: Long): Int
+
+    @Modifying
+    @Query("DELETE FROM auth_token WHERE user_id = :userId")
+    fun removeTokensByUserId(userId: String): Int
 }

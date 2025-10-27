@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.iterate
+import org.filemat.server.common.util.removeIf
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.Principal
@@ -226,6 +227,15 @@ class AuthService(
         }
 
         tokenToUserIdMap.remove(token)
+        return Result.ok()
+    }
+
+    fun logoutUserByUserId(userId: Ulid): Result<Unit> {
+        authTokenService.removeTokensByUserId(userId).let {
+            if (it.isNotSuccessful) return it
+        }
+
+        tokenToUserIdMap.removeIf { key, value -> value.userId == userId }
         return Result.ok()
     }
 }

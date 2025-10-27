@@ -7,10 +7,14 @@ import org.filemat.server.common.util.classes.wrappers.ArgonHash
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.service.AdminUserService
+import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.FullPublicUser
+import org.filemat.server.module.user.model.UserAction
+import org.filemat.server.module.user.service.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.PostMapping
@@ -29,8 +33,37 @@ class AdminUserController(
     private val adminUserService: AdminUserService,
     private val roleService: RoleService,
     private val userRoleService: UserRoleService,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val userService: UserService,
+    private val authService: AuthService
 ) : AController() {
+
+    @PostMapping("/change-password")
+    fun adminChangeUserPasswordMapping(
+        request: HttpServletRequest,
+        @RequestParam("userId") rawUserId: String,
+        @RequestParam("password") password: String,
+        @RequestParam("logout") rawLogout: String,
+    ): ResponseEntity<String> {
+        val admin = request.getPrincipal()!!
+        val ip = request.realIp()
+        val userId = parseUlidOrNull(rawUserId) ?: return bad("Invalid user ID")
+        val logout = rawLogout.toBooleanStrictOrNull() ?: return bad("Invalid logout option")
+
+        adminUserService.changeUserPassword(
+            adminId = admin.userId,
+            adminIp = ip,
+            userId = userId,
+            rawPassword = password,
+            logout = logout,
+            userAction = UserAction.CHANGE_PASSWORD
+        ).let {
+            if (it.rejected) return bad(it.error)
+            if (it.hasError) return internal(it.error)
+            if (it.notFound) return bad("This user was not found.")
+            return ok("ok")
+        }
+    }
 
     @PostMapping("/create")
     fun adminCreateUserMapping(

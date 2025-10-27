@@ -6,12 +6,16 @@ import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.model.onFailure
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.classes.wrappers.ArgonHash
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.MiniUser
 import org.filemat.server.module.user.model.PublicUser
@@ -19,6 +23,7 @@ import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.PublicUserRepository
 import org.filemat.server.module.user.repository.UserRepository
 import org.filemat.server.module.user.service.UserService
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import kotlin.jvm.optionals.getOrNull
 
@@ -28,7 +33,9 @@ class AdminUserService(
     private val logService: LogService,
     private val publicUserRepository: PublicUserRepository,
     private val userRoleService: UserRoleService,
-    private val userService: UserService
+    private val userService: UserService,
+    private val authService: AuthService,
+    private val passwordEncoder: PasswordEncoder
 ) {
 
     fun createUser(creator: Principal, email: String, username: String, password: ArgonHash): Result<Ulid> {
@@ -136,4 +143,42 @@ class AdminUserService(
         }
     }
 
+    fun changeUserPassword(adminId: Ulid, adminIp: String, userId: Ulid, rawPassword: String, logout: Boolean, userAction: UserAction): Result<Unit> {
+        return let {
+            Validator.password(rawPassword)?.let { return Result.reject(it) }
+            val password = ArgonHash(passwordEncoder.encode(rawPassword))
+
+            userService.changePassword(userId, password, userAction).onFailure {
+                return@let it
+            }
+
+            if (logout) {
+                authService.logoutUserByUserId(userId).onFailure { return it }
+            }
+            return@let Result.ok()
+        }.also { result ->
+            if (result.isSuccessful) {
+                logService.info(
+                    type = LogType.AUDIT,
+                    action = userAction,
+                    description = "Changed user password",
+                    initiatorId = adminId,
+                    initiatorIp = adminIp,
+                    targetId = userId,
+                    meta = meta("logout" to logout.toString())
+                )
+            } else {
+                logService.error(
+                    type = LogType.AUDIT,
+                    action = userAction,
+                    description = "Failed to change user password",
+                    message = result.errorOrNull ?: "No error message",
+                    initiatorId = adminId,
+                    initiatorIp = adminIp,
+                    targetId = userId,
+                    meta = meta("logout" to logout.toString()),
+                )
+            }
+        }
+    }
 }

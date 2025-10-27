@@ -3,8 +3,8 @@ package org.filemat.server.module.user.service
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.classes.wrappers.ArgonHash
 import org.filemat.server.common.util.toJsonOrNull
-import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.User
@@ -103,6 +103,21 @@ class UserService(
             logService.error(
                 type = LogType.SYSTEM,
                 action = userAction ?: UserAction.NONE,
+                description = "Failed to get user from by user ID",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to load user.")
+        }
+    }
+
+    fun changePassword(userId: Ulid, password: ArgonHash, userAction: UserAction?): Result<Unit> {
+        try {
+            userRepository.updatePassword(userId, password.password)
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ?: UserAction.CHANGE_PASSWORD,
                 description = "Failed to get user from by user ID",
                 message = e.stackTraceToString()
             )
