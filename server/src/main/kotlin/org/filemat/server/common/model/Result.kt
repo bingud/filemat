@@ -67,3 +67,8 @@ fun <T, P> Result<P>.cast(source: String?): Result<T> = (this as Result<T>).also
 inline fun <T, R> Result<T>.onFailure(block: (Result<T>) -> R) {
     if (this.isNotSuccessful) block(this)
 }
+
+inline fun <T, R> Result<T>.handle(block: (Result<T>) -> R): T {
+    block(this)
+    return this.value
+}

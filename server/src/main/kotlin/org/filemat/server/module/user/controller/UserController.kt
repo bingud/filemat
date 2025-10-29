@@ -52,8 +52,8 @@ class UserController(
         val user = request.getPrincipal()!!
         if (user.mfaTotpStatus) return bad("2FA is already enabled.", "already-enabled")
 
-        val totp = mfaService.enable_generateSecret(user)
-        val serialized = Json.encodeToString(totp)
+        val credentials = mfaService.enable_generateSecret(user)
+        val serialized = Json.encodeToString(credentials)
 
         return ok(serialized)
     }

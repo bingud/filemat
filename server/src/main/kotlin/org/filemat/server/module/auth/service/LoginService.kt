@@ -5,7 +5,9 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.f4b6a3.ulid.Ulid
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletResponse
+import kotlinx.serialization.json.Json
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.handle
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
@@ -16,7 +18,6 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
-import org.springframework.boot.web.server.Cookie.SameSite
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -28,7 +29,8 @@ class LoginService(
     private val passwordEncoder: PasswordEncoder,
     private val authTokenService: AuthTokenService,
     private val logService: LogService,
-    private val authService: AuthService
+    private val authService: AuthService,
+    private val mfaService: MfaService
 ): AController() {
 
     private val tempTokenExpirationSeconds = 600
@@ -43,7 +45,7 @@ class LoginService(
      * Creates a response to a login request
      */
     fun login(
-        principal: Principal?,
+        existingPrincipal: Principal?,
         username: String?,
         password: String?,
         ip: String,
@@ -53,34 +55,23 @@ class LoginService(
         response: HttpServletResponse,
     ): ResponseEntity<String> {
         // Rate limit
-        val rateLimit = if (principal != null) {
-            RateLimiter.consume(RateLimitId.LOGIN_AUTHED, principal.userId.toString())
+        val rateLimit = if (existingPrincipal != null) {
+            RateLimiter.consume(RateLimitId.LOGIN_AUTHED, existingPrincipal.userId.toString())
         } else RateLimiter.consume(RateLimitId.LOGIN, ip)
 
         if (!rateLimit.isAllowed) return rateLimited(rateLimit.millisUntilRefill)
 
         // Validate inputs
-        if (username == null) return bad("The username is blank.", "username-invalid")
-        if (username.contains("@")) {
-            Validator.email(username)?.let {
-                loginLog(LogLevel.WARN, "Failed login - Invalid email", it, meta, ip)
-                return bad(it, "email-invalid")
-            }
-        } else {
-            Validator.username(username)?.let {
-                loginLog(LogLevel.WARN, "Failed login - Invalid username", it, meta, ip)
-                return bad(it, "username-invalid")
-            }
-        }
-
-        Validator.password(password)?.let {
-            loginLog(LogLevel.WARN, "Failed login - Invalid password", it, meta, ip)
-            return bad(it, "password-invalid")
-        }
+        verifyLoginInputs(
+            username = username,
+            password = password,
+            meta = meta,
+            ip = ip
+        )?.let { return it }
 
         // Check existing user account
         val user = let {
-            val res: Result<User> = if (username.contains("@")) {
+            val res: Result<User> = if (username!!.contains("@")) {
                 userService.getUserByEmail(username, UserAction.LOGIN)
             } else {
                 userService.getUserByUsername(username, UserAction.LOGIN)
@@ -99,6 +90,18 @@ class LoginService(
             .also { loginLog(LogLevel.WARN, "Failed login - Incorrect password", "", meta, ip) }
         if (user.isBanned) return bad("This account is banned.", "banned")
             .also { loginLog(LogLevel.WARN, "Failed login - User banned", "", meta, ip) }
+
+        // Check if TOTP MFA is enforced
+        if (user.mfaTotpRequired && user.mfaTotpStatus == false) {
+            val principal = authService.createPrincipalFromUser(user, cacheInMemory = true)
+                .handle {
+                    if (it.hasError) return internal(it.error)
+                }
+
+            val mfa = mfaService.enable_generateSecret(principal)
+            val serialized = Json.encodeToString(mfa)
+            return bad(serialized, "mfa-enforced")
+        }
 
         // Check 2FA
         if (user.mfaTotpStatus) {
@@ -124,6 +127,28 @@ class LoginService(
         userService.setLastLoginDate(user.userId, now)
 
         return ok("ok")
+    }
+
+    private fun verifyLoginInputs(username: String?, password: String?, meta: Map<String, String>, ip: String): ResponseEntity<String>? {
+        if (username == null) return bad("The username is blank.", "username-invalid")
+        if (username.contains("@")) {
+            Validator.email(username)?.let {
+                loginLog(LogLevel.WARN, "Failed login - Invalid email", it, meta, ip)
+                return bad(it, "email-invalid")
+            }
+        } else {
+            Validator.username(username)?.let {
+                loginLog(LogLevel.WARN, "Failed login - Invalid username", it, meta, ip)
+                return bad(it, "username-invalid")
+            }
+        }
+
+        Validator.password(password)?.let {
+            loginLog(LogLevel.WARN, "Failed login - Invalid password", it, meta, ip)
+            return bad(it, "password-invalid")
+        }
+
+        return null
     }
 
     /**

@@ -27,6 +27,7 @@ class LoginController(
         @RequestHeader("User-Agent") userAgent: String,
         @RequestParam("username") username: String,
         @RequestParam("password") password: String,
+        @RequestParam("totp", required = false) totp: String?,
     ): ResponseEntity<String> {
         val ip = request.realIp()
         val principal = request.getPrincipal()
@@ -34,7 +35,7 @@ class LoginController(
         val now = unixNow()
 
         return loginService.login(
-            principal = principal,
+            existingPrincipal = principal,
             username = username,
             password = password,
             ip = ip,

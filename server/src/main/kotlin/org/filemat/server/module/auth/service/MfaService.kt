@@ -34,7 +34,7 @@ class MfaService(
 ) {
 
     @Serializable
-    data class Mfa(
+    data class MfaCredentials(
         @Transient
         val secretObject: TOTPSecret = null!!,
         @Transient
@@ -45,17 +45,17 @@ class MfaService(
     )
 
     // Cache for TOTP secrets (when user is enabling 2FA)
-    val newMfaCache = Caffeine.newBuilder()
+    val newMfaCredentialsCache = Caffeine.newBuilder()
         .expireAfterWrite(10, TimeUnit.MINUTES)
         .maximumSize(100_000)
-        .build<Ulid, Mfa>()
+        .build<Ulid, MfaCredentials>()
 
 
     /**
      * Prepares a TOTP secret for user to enable 2FA
      */
-    fun enable_generateSecret(user: Principal): Mfa {
-        newMfaCache.getIfPresent(user.userId)
+    fun enable_generateSecret(user: Principal): MfaCredentials {
+        newMfaCredentialsCache.getIfPresent(user.userId)
             ?.let { return it }
 
         val secret: TOTPSecret = RandomSecretProvider.generateSecret()
@@ -65,14 +65,14 @@ class MfaService(
         )
         val codes = List(6) { StringUtils.randomString(8).uppercase() }
 
-        val newTotpSecret = Mfa(
+        val newTotpSecret = MfaCredentials(
             secret,
             url,
             secret.base32Encoded,
             url.toString(),
             codes
         )
-        newMfaCache.put(user.userId, newTotpSecret)
+        newMfaCredentialsCache.put(user.userId, newTotpSecret)
         return newTotpSecret
     }
 
@@ -80,7 +80,7 @@ class MfaService(
      * Enables 2FA on user account
      */
     fun enable_confirmSecret(meta: RequestMeta, totp: String, codes: List<String>): Result<Unit> {
-        val mfa = newMfaCache.getIfPresent(meta.userId) ?: return Result.reject("2FA setup has expired.")
+        val mfa = newMfaCredentialsCache.getIfPresent(meta.userId) ?: return Result.reject("2FA setup has expired.")
         val actualTotp = TotpUtil.generator.generateCurrent(mfa.secretObject)
         if (totp != actualTotp.value) return Result.reject("2FA code is incorrect.")
 
@@ -102,7 +102,7 @@ class MfaService(
             meta = null
         )
 
-        newMfaCache.invalidate(meta.userId)
+        newMfaCredentialsCache.invalidate(meta.userId)
         return Result.ok()
     }
 

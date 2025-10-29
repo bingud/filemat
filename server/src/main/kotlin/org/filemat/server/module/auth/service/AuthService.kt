@@ -182,7 +182,7 @@ class AuthService(
     /**
      * Get user principal from database using user object
      */
-    private fun createPrincipalFromUser(user: User, cacheInMemory: Boolean): Result<Principal> {
+    fun createPrincipalFromUser(user: User, cacheInMemory: Boolean): Result<Principal> {
         val rolesR = userRoleService.getRolesByUserId(user.userId)
         if (rolesR.isNotSuccessful) return Result.error(rolesR.error)
         val roles = rolesR.value
