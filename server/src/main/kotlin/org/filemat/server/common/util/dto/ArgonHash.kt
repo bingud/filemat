@@ -1,4 +1,4 @@
-package org.filemat.server.common.util.classes.wrappers
+package org.filemat.server.common.util.dto
 
 /**
  * Hashed password DTO

@@ -20,6 +20,8 @@ data class PublicUser(
     override val username: String,
     @Column("mfa_totp_status")
     override val mfaTotpStatus: Boolean,
+    @Column("mfa_totp_required")
+    override val mfaTotpRequired: Boolean,
     @Column("created_date")
     override val createdDate: Long,
     @Column("last_login_date")

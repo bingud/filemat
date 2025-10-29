@@ -12,6 +12,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.TotpUtil
+import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.toJson
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
@@ -78,15 +79,15 @@ class MfaService(
     /**
      * Enables 2FA on user account
      */
-    fun enable_confirmSecret(user: Principal, totp: String, codes: List<String>): Result<Unit> {
-        val mfa = newMfaCache.getIfPresent(user.userId) ?: return Result.reject("2FA setup has expired.")
+    fun enable_confirmSecret(meta: RequestMeta, totp: String, codes: List<String>): Result<Unit> {
+        val mfa = newMfaCache.getIfPresent(meta.userId) ?: return Result.reject("2FA setup has expired.")
         val actualTotp = TotpUtil.generator.generateCurrent(mfa.secretObject)
         if (totp != actualTotp.value) return Result.reject("2FA code is incorrect.")
 
         // Validate if client has valid backup codes
         if (!codes.containsAll(mfa.codes)) return Result.reject("Backup codes could not be validated.")
 
-        updateUserMfa(user.userId, true, mfa.secret, mfa.codes, UserAction.ENABLE_TOTP_MFA).let {
+        updateUserMfa(meta, true, mfa.secret, mfa.codes, false).let {
             if (it.isNotSuccessful) return it
         }
 
@@ -95,18 +96,18 @@ class MfaService(
             action = UserAction.ENABLE_TOTP_MFA,
             description = "User enabled TOTP 2FA",
             message = "",
-            initiatorId = user.userId,
+            initiatorId = meta.userId,
             initiatorIp = null,
             targetId = null,
             meta = null
         )
 
-        newMfaCache.invalidate(user.userId)
+        newMfaCache.invalidate(meta.userId)
         return Result.ok()
     }
 
-    fun disable(principal: Principal, totp: String): Result<Unit> {
-        val user = userService.getUserByUserId(principal.userId, UserAction.DISABLE_TOTP_MFA).let {
+    fun disable(meta: RequestMeta, totp: String): Result<Unit> {
+        val user = userService.getUserByUserId(meta.userId, meta.action).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -118,19 +119,19 @@ class MfaService(
         if (!isValid) return Result.reject("2FA code is incorrect.")
 
         updateUserMfa(
-            userId = principal.userId,
+            meta = meta,
             status = false,
             secret = null,
             codes = null,
-            userAction = UserAction.DISABLE_TOTP_MFA
+            isRequired = false
         )
 
         logService.info(
             type = LogType.AUDIT,
-            action = UserAction.DISABLE_TOTP_MFA,
+            action = meta.action,
             description = "User disabled TOTP 2FA",
             message = "",
-            initiatorId = principal.userId,
+            initiatorId = meta.userId,
             initiatorIp = null,
             targetId = null,
             meta = null
@@ -142,21 +143,27 @@ class MfaService(
     /**
      * Updates 2FA state of a user
      */
-    fun updateUserMfa(userId: Ulid, status: Boolean, secret: String?, codes: List<String>?, userAction: UserAction): Result<Unit> {
+    fun updateUserMfa(
+        meta: RequestMeta,
+        status: Boolean,
+        secret: String?,
+        codes: List<String>?,
+        isRequired: Boolean,
+    ): Result<Unit> {
         try {
             val serializedCodes = codes?.toJson()
-            userRepository.updateTotpMfa(userId, status, secret, serializedCodes)
+            userRepository.updateTotpMfa(meta.userId, status, secret, serializedCodes, isRequired)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
-                action = userAction,
+                action = meta.action,
                 description = "Failed to update totp MFA in the database",
                 message = e.stackTraceToString()
             )
             return Result.error("Failed to update 2FA.")
         }
 
-        authService.updatePrincipal(userId) { existing ->
+        authService.updatePrincipal(meta.userId) { existing ->
             existing.copy(mfaTotpStatus = status)
         }
 

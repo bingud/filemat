@@ -196,6 +196,7 @@ class AuthService(
                 email = user.email,
                 username = user.username,
                 mfaTotpStatus = user.mfaTotpStatus,
+                mfaTotpRequired = user.mfaTotpRequired,
                 isBanned = user.isBanned,
                 roles = roles.map { it.roleId }.toMutableList()
             )

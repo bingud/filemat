@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     mfa_totp_secret TEXT,
     mfa_totp_status INTEGER NOT NULL,
     mfa_totp_codes TEXT,
+    mfa_totp_required INTEGER NOT NULL,
     created_date INTEGER NOT NULL,
     last_login_date INTEGER,
     is_banned INTEGER NOT NULL

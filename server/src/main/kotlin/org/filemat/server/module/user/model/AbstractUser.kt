@@ -10,6 +10,7 @@ abstract class APublicUser {
     abstract val email: String
     abstract val username: String
     abstract val mfaTotpStatus: Boolean
+    abstract val mfaTotpRequired: Boolean
     abstract val createdDate: Long
     abstract val lastLoginDate: Long?
     abstract val isBanned: Boolean

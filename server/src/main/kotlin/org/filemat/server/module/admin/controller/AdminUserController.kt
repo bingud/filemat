@@ -3,11 +3,11 @@ package org.filemat.server.module.admin.controller
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.*
-import org.filemat.server.common.util.classes.wrappers.ArgonHash
+import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.service.AdminUserService
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.service.RoleService
@@ -37,6 +37,27 @@ class AdminUserController(
     private val userService: UserService,
     private val authService: AuthService
 ) : AController() {
+
+    @PostMapping("/reset-totp-mfa")
+    fun adminResetUserMfaMapping(
+        request: HttpServletRequest,
+        @RequestParam("userId") rawUserId: String,
+    ): ResponseEntity<String> {
+        val admin = request.getPrincipal()!!
+        val meta = RequestMeta(
+            userId = parseUlidOrNull(rawUserId) ?: return bad("Invalid user ID"),
+            adminId = admin.userId,
+            ip = request.realIp(),
+            action = UserAction.RESET_TOTP_MFA
+        )
+
+        adminUserService.resetTotpMfa(meta).let {
+            if (it.rejected) return bad(it.error)
+            if (it.hasError) return internal(it.error)
+            if (it.notFound) return bad("This user was not found.")
+            return ok("ok")
+        }
+    }
 
     @PostMapping("/change-password")
     fun adminChangeUserPasswordMapping(

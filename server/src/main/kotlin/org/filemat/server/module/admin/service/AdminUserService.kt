@@ -9,10 +9,12 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.onFailure
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.Validator
-import org.filemat.server.common.util.classes.wrappers.ArgonHash
+import org.filemat.server.common.util.dto.ArgonHash
+import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
+import org.filemat.server.module.auth.service.MfaService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
@@ -35,8 +37,39 @@ class AdminUserService(
     private val userRoleService: UserRoleService,
     private val userService: UserService,
     private val authService: AuthService,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val mfaService: MfaService
 ) {
+    fun resetTotpMfa(meta: RequestMeta): Result<Unit> {
+        return mfaService.updateUserMfa(
+            meta = meta,
+            status = false,
+            secret = null,
+            codes = null,
+            isRequired = true
+        ).also {
+            if (it.isSuccessful) {
+                logService.info(
+                    type = LogType.AUDIT,
+                    action = meta.action,
+                    description = "Admin reset user TOTP",
+                    initiatorId = meta.adminId,
+                    initiatorIp = meta.ip,
+                    targetId = meta.userId,
+                )
+            } else {
+                logService.error(
+                    type = LogType.AUDIT,
+                    action = meta.action,
+                    description = "Admin reset user TOTP (failed)",
+                    message = it.errorOrNull ?: "No error message",
+                    initiatorId = meta.adminId,
+                    initiatorIp = meta.ip,
+                    targetId = meta.userId,
+                )
+            }
+        }
+    }
 
     fun createUser(creator: Principal, email: String, username: String, password: ArgonHash): Result<Ulid> {
         // Check if email or password exists already

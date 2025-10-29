@@ -49,8 +49,8 @@ interface UserRepository : CrudRepository<User, Ulid> {
     fun updateLastLoginDate(userId: Ulid, newDate: Long): Int
 
     @Modifying
-    @Query("UPDATE users SET mfa_totp_status = :status, mfa_totp_secret = :secret, mfa_totp_codes = :codes WHERE user_id = :userId")
-    fun updateTotpMfa(userId: Ulid, status: Boolean, secret: String?, codes: String?): Int
+    @Query("UPDATE users SET mfa_totp_status = :status, mfa_totp_secret = :secret, mfa_totp_codes = :codes, mfa_totp_required = :isRequired WHERE user_id = :userId")
+    fun updateTotpMfa(userId: Ulid, status: Boolean, secret: String?, codes: String?, isRequired: Boolean): Int
 
     @Modifying
     @Query("UPDATE users SET password = :password WHERE user_id = :userId")

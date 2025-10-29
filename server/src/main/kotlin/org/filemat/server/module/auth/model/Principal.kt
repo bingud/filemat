@@ -15,6 +15,7 @@ data class Principal(
     val email: String,
     val username: String,
     val mfaTotpStatus: Boolean,
+    val mfaTotpRequired: Boolean,
     val isBanned: Boolean,
     @Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
     var roles: MutableList<@Serializable(UlidSerializer::class) Ulid>,

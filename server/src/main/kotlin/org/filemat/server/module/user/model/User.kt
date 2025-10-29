@@ -22,6 +22,8 @@ data class User(
     override val mfaTotpStatus: Boolean,
     @Column("mfa_totp_codes")
     override val mfaTotpCodes: List<String>?,
+    @Column("mfa_totp_required")
+    override val mfaTotpRequired: Boolean,
     @Column("created_date")
     override val createdDate: Long,
     @Column("last_login_date")

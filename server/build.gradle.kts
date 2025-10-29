@@ -33,6 +33,7 @@ dependencies {
 	implementation("jakarta.mail:jakarta.mail-api:$jakartaMail")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
 	implementation("org.komamitsu:spring-data-sqlite:1.0.0")
+	implementation("org.flywaydb:flyway-core:11.15.0")
 	implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0")
 
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesCore")

@@ -148,6 +148,7 @@ class SetupController(
             mfaTotpSecret = null,
             mfaTotpStatus = false,
             mfaTotpCodes = null,
+            mfaTotpRequired = false,
             createdDate = now,
             lastLoginDate = null,
             isBanned = false,
