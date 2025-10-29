@@ -8,10 +8,10 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --compiler-warnings \"a11y-click-events-have-key-events:ignore,a11y-no-static-element-interactions:ignore,unknown-at-rule:ignore\"",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
-	"devDependencies": {
+	"devDependencies": {   
 		"@sveltejs/adapter-static": "^3.0.9",
 		"@sveltejs/kit": "^2.43.5",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",

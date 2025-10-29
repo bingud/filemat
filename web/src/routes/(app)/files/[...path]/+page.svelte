@@ -245,7 +245,7 @@
     <FileDropzone on:filesDropped={event_filesDropped}></FileDropzone>
 {/if}
 
-<style>
+<style lang="postcss">
     @import "/src/app.css" reference;
 
 

@@ -73,6 +73,7 @@ export type PublicUser = {
     email: string,
     username: string,
     mfaTotpStatus: boolean,
+    mfaTotpRequired: boolean,
     createdDate: number,
     lastLoginDate: number | null,
     isBanned: boolean,
@@ -99,4 +100,4 @@ export type EntityPermission = {
     createdDate: number,
 }
 
-export type AccountProperty =  | "userId" | "email" | "username" | "password" | "mfaTotpSecret" | "mfaTotpStatus" | "mfaTotpCodes" | "createdDate" | "lastLoginDate" | "isBanned"
+export type AccountProperty =  | "userId" | "email" | "username" | "password" | "mfaTotpSecret" | "mfaTotpStatus" | "mfaTotpCodes" | "createdDate" | "lastLoginDate" | "isBanned" | "mfaTotpRequired"

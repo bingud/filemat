@@ -166,7 +166,7 @@
     <button disabled={!canCreatePermission || createPermissionLoading} on:click={createPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
 </div>
 
-<style>
+<style lang="postcss">
     @import "/src/app.css" reference;
 
     .selected {

@@ -13,7 +13,7 @@
     import Loader from "$lib/component/Loader.svelte";
     import Popover from "$lib/component/popover/CustomPopover.svelte";
     import { fade } from "svelte/transition";
-    import { assignRole, changeUserPassword, loadUser, removeSelectedRoles, selectRole, toggleRoleSelection } from "./actions";
+    import { assignRole, changeUserPassword, loadUser, removeSelectedRoles, resetUserMfa, selectRole, toggleRoleSelection } from "./actions";
     import { userPageState as pageState } from "./state.svelte";
     import { onMount } from "svelte";
 
@@ -22,6 +22,7 @@
     const editableFields: record<AccountProperty, string> = {
         "email": "Email",
         "username": "Username",
+        "mfaTotpRequired": "Enforce 2FA"
     }
 
     const viewableFields: record<AccountProperty, string> = {
@@ -184,8 +185,9 @@
         <hr class="basic-hr">
 
         <!-- Second section -->
-        <section class="flex flex-col">
+        <section class="flex gap-4">
             <button on:click={() => { changeUserPassword(pageState.user) }} class="basic-button">Change password</button>
+            <button on:click={() => { resetUserMfa(pageState.user) }} class="basic-button">Reset 2FA</button>
         </section>
     </div>
 {:else if loading}
@@ -199,7 +201,7 @@
 {/if}
 
 
-<style>
+<style lang="postcss">
     @import "/src/app.css" reference;
 
     .detail-card {

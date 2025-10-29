@@ -612,7 +612,7 @@ export async function sha256(message: string) {
         .join('')
 }
 
-export function entriesOf<K extends ObjectKey, V>(obj: Record<K, V> | {[key: ObjectKey]: V}): [K, V][] {
+export function entriesOf<K extends string, V>(obj: Record<K, V> | {[key: ObjectKey]: V}): [K, V][] {
     return Object.entries(obj) as [K, V][]
 }
 

@@ -174,7 +174,40 @@ export async function changeUserPassword(user: typeof state.user) {
             notification: json.message || "Failed to change password.",
             isServerDown: response.code.serverDown,
         })
+        return
     } else {
         toast.success(`Password was changed.`)
+    }
+}
+
+export async function resetUserMfa(user: typeof state.user) {
+    if (!user) return
+
+    const confirmation = await confirmDialogState.show({
+        title: `Reset 2FA?`,
+        message: `Do you want to reset 2FA of user '${user.username}'?`
+    })
+    if (!confirmation) return
+
+    const response = await safeFetch(`/api/v1/admin/user/reset-totp-mfa`, {
+        body: formData({ userId: user.userId })
+    })
+    if (response.failed) {
+        handleException(`Exception when resetting user 2FA.`, `Failed to reset 2FA.`, response.exception)
+        return
+    }
+
+    const json = response.json()
+    if (response.code.failed) {
+        handleErr({
+            description: `Failed to reset 2FA.`,
+            notification: json.message || `Failed to reset 2FA.`,
+            isServerDown: response.code.serverDown
+        })
+        return
+    } else {
+        toast.success(`2FA was reset.`)
+        user.mfaTotpStatus = false
+        user.mfaTotpRequired = true
     }
 }

@@ -446,7 +446,7 @@
 <p bind:this={dragImageElement} class="fixed top-[100vh] right-[100vw] py-4 px-6 rounded-lg whitespace-nowrap bg-neutral-300 dark:bg-neutral-800" style="display: none;">-</p>
 
 
-<style>
+<style lang="postcss">
     @import "/src/app.css" reference;
     
     :global(.file-row-grid) {

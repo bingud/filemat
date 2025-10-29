@@ -53,7 +53,7 @@
 </div>
 
 
-<style>
+<style lang="postcss">
     .sidebar-button {
         @apply flex items-center px-4 py-2 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none;
     }

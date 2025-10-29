@@ -345,7 +345,7 @@
 </div>
 
 
-<style>
+<style lang="postcss">
     @import "/src/app.css" reference;
 
     .detail-container {
