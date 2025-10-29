@@ -25,7 +25,7 @@
 
     <!-- Right side -->
     <div class="h-full flex gap-2 p-2">
-        {#if !uiState.isDesktop}
+        {#if appState.filesStateNonce && !uiState.isDesktop}
             <FileDetailsButton></FileDetailsButton>
         {/if}
     </div>
