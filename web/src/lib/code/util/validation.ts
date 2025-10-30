@@ -7,7 +7,8 @@ import { isBlank } from "./codeUtil.svelte"
  */
 export class Validator {
     public static totp(t: any): string | null {
-        if (t.length !== 6) return "Code must be 6 digits long."
+        const str = t.toString()
+        if (str.length !== 6) return "Code must be 6 digits long."
         const int = parseInt(t)
         if (Number.isNaN(int)) return "Code can only contain digits."
         return null

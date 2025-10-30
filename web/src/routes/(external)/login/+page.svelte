@@ -1,11 +1,14 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { formData,  handleErr,  safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import type { TotpMfaCredentials } from "$lib/code/auth/types";
+    import { formData,  handleErr,  parseJson,  safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
+    import MfaSetupDialog from "$lib/component/auth/MfaSetupDialog.svelte";
     import { toast } from "@jill64/svelte-toast";
+    import QRCode from 'qrcode'
 
     let running = $state(false)
-    let phase: "login" | "totp" = $state("login")
+    let phase: "login" | "totp" | "setup-mfa" = $state("login")
 
     // Phase Login
     let usernameInput = $state("")
@@ -14,7 +17,24 @@
     // Phase Totp
     let totpInput = $state("")
 
-    async function submit_password() {
+    // 2FA setup
+    let mfaCredentials: TotpMfaCredentials | null = $state(null)
+    let mfaSetupOpen = $state(false)
+    let mfaSetupPhase = $state(1)
+    let mfaQrCodeBase64: string | null = $state(null)
+    let mfaSetupTotpInput: number | undefined = $state()
+
+    $effect(() => {
+        if (!mfaCredentials || !mfaCredentials.url) {
+            mfaQrCodeBase64 = null
+            return
+        }
+        QRCode.toDataURL(mfaCredentials.url).then((qrCodeImage) => {
+            mfaQrCodeBase64 = qrCodeImage
+        })
+    })
+
+    async function submit_password(preventNavigation: boolean = false) {
         if (running) return
         running = true
 
@@ -29,6 +49,14 @@
             body.append("username", usernameInput)
             body.append("password", passwordInput)
 
+            if (phase === "setup-mfa") {
+                const totpValidation = Validator.totp(mfaSetupTotpInput)
+                if (totpValidation) return toast.error(totpValidation)
+
+                body.append("totp", mfaSetupTotpInput!.toString())
+                body.append("mfa-codes", JSON.stringify(mfaCredentials!.codes))
+            }
+
             const response = await safeFetch(`/api/v1/auth/login/initiate`, { method: "POST", body: body })
             if (response.failed) {
                 handleErr({
@@ -39,8 +67,14 @@
             }
             const status = response.code
             const json = response.json()
+            const messageJson = parseJson(json?.message)
 
-            if (status.failed) {
+            if (status.raw === 403 && json.error === "mfa-enforced" && messageJson) {
+                mfaCredentials = messageJson
+                phase = "setup-mfa"
+                mfaSetupOpen = true
+                return
+            } else if (status.failed) {
                 handleErr({
                     description: "Failed to log in.",
                     notification: json.message || "Failed to log in.",
@@ -49,9 +83,11 @@
                 return
             }
 
+
             const loginStatus = response.content as "ok" | "mfa-totp"
             if (loginStatus === "ok") {
-                await goto("/")
+                if (!preventNavigation) await goto("/")
+                mfaSetupPhase++
             } else if (loginStatus === "mfa-totp") {
                 phase = "totp"
             }
@@ -89,14 +125,18 @@
             running = false
         }
     }
+
+    function finishMfaSetup() {
+        goto(`/`)
+    }
 </script>
 
 
 <div class="page flex-col items-center gap-12 pt-12">
     <h1>Login</h1>
 
-    {#if phase === "login"}
-        <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_password} title="Login to Filemat">
+    {#if phase === "login" || phase === "setup-mfa"}
+        <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={() => { submit_password() }} title="Login to Filemat">
             <label for="username-input">Email or username</label>
             <input type="text" bind:value={usernameInput} minlength="1" maxlength="256" required title="Enter email or username" id="username-input" class="">
 
@@ -105,6 +145,19 @@
 
             <button type="submit" class="tw-form-button">{running ? "..." : "Login"}</button>
         </form>
+
+        {#if phase === "setup-mfa" && mfaQrCodeBase64}
+            <MfaSetupDialog
+                bind:isOpen={mfaSetupOpen}
+                credentials={mfaCredentials!}
+                bind:phase={mfaSetupPhase}
+                qrCodeBase64={mfaQrCodeBase64}
+                onCancel={() => { mfaSetupOpen = false }}
+                onSubmit={() => { submit_password(true) }}
+                onFinish={finishMfaSetup}
+                bind:totpInput={mfaSetupTotpInput}
+            />
+        {/if}
     {:else if phase === "totp"}
         <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_totp} title="Login to Filemat">
             <label for="password-input">2FA code</label>

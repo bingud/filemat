@@ -6,15 +6,13 @@
     import { onMount } from "svelte";
     import QRCode from 'qrcode'
     import CustomDialog from "$lib/component/popover/CustomDialog.svelte";
-    import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
-    import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { toast } from "@jill64/svelte-toast";
-    import Loader from "$lib/component/Loader.svelte";
     import MfaSetupDialog from "$lib/component/auth/MfaSetupDialog.svelte";
+    import type { TotpMfaCredentials } from "$lib/code/auth/types";
 
     const title = "Preferences"
-    let credentials: { secret: string, url: string, codes: string[] } | null = $state(null)
+    let credentials: TotpMfaCredentials | null = $state(null)
     let qrCodeBase64: string | null = $state(null) 
 
     let dialogOpen = $state(false)
@@ -47,7 +45,6 @@
     })
 
     function cancel() { dialogOpen = false } // Resetting values done by effect
-    function goBack() { phase-- }
 
     // Cancel operation if 2FA is toggled from elsewhere
     explicitEffect(() => [ 

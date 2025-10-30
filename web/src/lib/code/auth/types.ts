@@ -101,3 +101,5 @@ export type EntityPermission = {
 }
 
 export type AccountProperty =  | "userId" | "email" | "username" | "password" | "mfaTotpSecret" | "mfaTotpStatus" | "mfaTotpCodes" | "createdDate" | "lastLoginDate" | "isBanned" | "mfaTotpRequired"
+
+export type TotpMfaCredentials = { secret: string, url: string, codes: string[] }

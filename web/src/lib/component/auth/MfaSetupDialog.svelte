@@ -22,7 +22,7 @@
         onCancel: () => any,
         onSubmit: () => any,
         onFinish?: () => any,
-        totpInput: number,
+        totpInput: number | undefined,
     } = $props()
 
     function goBack() { phase -= 1 }
