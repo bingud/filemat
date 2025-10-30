@@ -18,6 +18,9 @@ abstract class AController {
     fun internal(body: String, error: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, error).serialize())
     fun internal(body: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, "").serialize())
 
+    fun forbidden(body: String, error: String): ResponseEntity<String> = ResponseEntity.status(403).body(ErrorResponse(body, error).serialize())
+    fun forbidden(body: String): ResponseEntity<String> = ResponseEntity.status(403).body(ErrorResponse(body, "").serialize())
+
     fun rateLimited(millisUntilRefill: Long): ResponseEntity<String> =
         ResponseEntity.status(429).body(ErrorResponse("Too many requests. Try again in ${formatMillisecondsToReadableTime(millisUntilRefill)}", "ratelimit").serialize())
 

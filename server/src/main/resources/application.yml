@@ -12,6 +12,6 @@ spring:
     baseline-on-migrate: true
     table: flyway_schema_history
 
-logging:
-  level:
-    org.flywaydb: DEBUG
+#logging:
+#  level:
+#    org.flywaydb: DEBUG

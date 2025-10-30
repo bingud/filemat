@@ -10,7 +10,9 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.handle
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.config.Props
+import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
@@ -48,6 +50,8 @@ class LoginService(
         existingPrincipal: Principal?,
         username: String?,
         password: String?,
+        totp: String?,
+        mfaCodes: List<String>?,
         ip: String,
         meta: Map<String, String>,
         userAgent: String,
@@ -93,6 +97,33 @@ class LoginService(
 
         // Check if TOTP MFA is enforced
         if (user.mfaTotpRequired && user.mfaTotpStatus == false) {
+            if (totp != null && mfaCodes != null) {
+                val requestMeta = RequestMeta(userId = user.userId, action = UserAction.LOGIN)
+                mfaService.enable_confirmSecret(requestMeta, totp, mfaCodes)
+                    .handle {
+                        if (it.hasError) return internal(it.error)
+                        if (it.rejected) return bad(it.error)
+                        if (it.isNotSuccessful) return internal("Failed to verify 2FA code.")
+
+                        // Create auth token
+                        val token = authTokenService.createToken(userId = user.userId, userAgent = userAgent, userAction = UserAction.LOGIN).let { result ->
+                            if (result.isNotSuccessful) return internal(result.error, "")
+                            return@let result.value
+                        }
+
+                        // Log user in
+                        handleSuccessfulLogin(
+                            response = response,
+                            user = user,
+                            token = token,
+                            meta = meta,
+                            ip = ip,
+                            now = now
+                        )
+                        return ok("ok")
+                    }
+            }
+
             val principal = authService.createPrincipalFromUser(user, cacheInMemory = true)
                 .handle {
                     if (it.hasError) return internal(it.error)
@@ -100,17 +131,12 @@ class LoginService(
 
             val mfa = mfaService.enable_generateSecret(principal)
             val serialized = Json.encodeToString(mfa)
-            return bad(serialized, "mfa-enforced")
+            return forbidden(serialized, "mfa-enforced")
         }
 
         // Check 2FA
         if (user.mfaTotpStatus) {
-            val loginToken = StringUtils.randomString(128)
-            loginTokenCache.put(loginToken, user.userId)
-
-            val cookie = createLoginTokenCookie(loginToken)
-            response.addCookie(cookie)
-
+            addMfaAuthTokenCookie(response, user)
             return ok("mfa-totp")
         }
 
@@ -119,14 +145,33 @@ class LoginService(
             if (result.isNotSuccessful) return internal(result.error, "")
             return@let result.value
         }
-        
+
+        handleSuccessfulLogin(
+            response = response,
+            user = user,
+            token = token,
+            meta = meta,
+            ip = ip,
+            now = now
+        )
+
+        return ok("ok")
+    }
+
+    private fun addMfaAuthTokenCookie(response: HttpServletResponse, user: User) {
+        val loginToken = StringUtils.randomString(128)
+        loginTokenCache.put(loginToken, user.userId)
+
+        val cookie = createLoginTokenCookie(loginToken)
+        response.addCookie(cookie)
+    }
+
+    private fun handleSuccessfulLogin(response: HttpServletResponse, user: User, token: AuthToken, meta: Map<String, String>, ip: String, now: Long) {
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
 
         loginLog(LogLevel.INFO, "", "Successful login", meta, ip)
         userService.setLastLoginDate(user.userId, now)
-
-        return ok("ok")
     }
 
     private fun verifyLoginInputs(username: String?, password: String?, meta: Map<String, String>, ip: String): ResponseEntity<String>? {

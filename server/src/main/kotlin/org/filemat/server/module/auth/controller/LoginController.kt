@@ -2,6 +2,7 @@ package org.filemat.server.module.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
@@ -28,16 +29,21 @@ class LoginController(
         @RequestParam("username") username: String,
         @RequestParam("password") password: String,
         @RequestParam("totp", required = false) totp: String?,
+        @RequestParam("mfa-codes", required = false) rawMfaCodes: String?,
     ): ResponseEntity<String> {
         val ip = request.realIp()
         val principal = request.getPrincipal()
         val meta = mapOf("ip" to ip, "user-agent" to userAgent, "target-username" to username)
         val now = unixNow()
 
+        val mfaCodes = if (rawMfaCodes != null) Json.decodeFromStringOrNull<List<String>>(rawMfaCodes) else null
+
         return loginService.login(
             existingPrincipal = principal,
             username = username,
             password = password,
+            totp = totp,
+            mfaCodes = mfaCodes,
             ip = ip,
             meta = meta,
             userAgent = userAgent,
