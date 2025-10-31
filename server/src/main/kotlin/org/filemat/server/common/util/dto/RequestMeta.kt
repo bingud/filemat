@@ -8,6 +8,6 @@ data class RequestMeta(
     val userId: Ulid,
     val adminId: Ulid? = null,
     val ip: String? = null,
-    val action: UserAction,
+    var action: UserAction,
     val principal: Principal? = null,
 )

@@ -15,6 +15,7 @@ import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.FullPublicUser
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
+import org.springframework.context.annotation.Lazy
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.PostMapping
@@ -38,10 +39,38 @@ class AdminUserController(
     private val authService: AuthService
 ) : AController() {
 
+    @PostMapping("/edit-property")
+    fun adminEditUserPropertyMapping(
+        request: HttpServletRequest,
+        @RequestParam("userId") rawUserId: String,
+        @RequestParam("property") property: String,
+        @RequestParam("value") value: String,
+    ): ResponseEntity<String> {
+        val userId = parseUlidOrNull(rawUserId)
+            ?: return bad("User ID is invalid.")
+
+        val admin = request.getPrincipal()!!
+        val ip = request.realIp()
+
+        val meta = RequestMeta(
+            userId = userId,
+            action = UserAction.UPDATE_ACCOUNT_PROPERTY,
+            adminId = admin.userId,
+            ip = ip
+        )
+
+        adminUserService.updateProperty(meta, property, value).let {
+            if (it.hasError) return internal(it.error)
+            if (it.isNotSuccessful) return bad(it.error)
+            return ok("ok")
+        }
+    }
+
     @PostMapping("/reset-totp-mfa")
     fun adminResetUserMfaMapping(
         request: HttpServletRequest,
         @RequestParam("userId") rawUserId: String,
+        @RequestParam("enforce") rawEnforce: String,
     ): ResponseEntity<String> {
         val admin = request.getPrincipal()!!
         val meta = RequestMeta(
@@ -51,7 +80,10 @@ class AdminUserController(
             action = UserAction.RESET_TOTP_MFA
         )
 
-        adminUserService.resetTotpMfa(meta).let {
+        val enforce = rawEnforce.toBooleanStrictOrNull()
+            ?: return bad("Option for 2FA enforcement is missing.")
+
+        adminUserService.resetTotpMfa(meta, enforce).let {
             if (it.rejected) return bad(it.error)
             if (it.hasError) return internal(it.error)
             if (it.notFound) return bad("This user was not found.")

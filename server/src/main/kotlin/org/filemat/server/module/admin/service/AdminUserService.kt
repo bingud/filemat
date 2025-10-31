@@ -40,13 +40,34 @@ class AdminUserService(
     private val passwordEncoder: PasswordEncoder,
     private val mfaService: MfaService
 ) {
-    fun resetTotpMfa(meta: RequestMeta): Result<Unit> {
+    fun updateProperty(meta: RequestMeta, property: String, value: String): Result<Unit> {
+        // Check if user exists
+        userService.getUserByUserId(meta.userId, meta.action)
+            .let {
+                if (it.notFound) return Result.reject("This user does not exist.")
+                if (it.hasError) return it.cast()
+                it.value
+            }
+
+        // Update property
+        if (property == "username") {
+            meta.action = UserAction.UPDATE_MFA
+            return userService.changeUsername(meta, value)
+        } else if (property == "email") {
+            meta.action = UserAction.UPDATE_EMAIL
+            return userService.changeEmail(meta, value)
+        } else {
+            return Result.reject("Invalid property.")
+        }
+    }
+
+    fun resetTotpMfa(meta: RequestMeta, enforce: Boolean): Result<Unit> {
         return mfaService.updateUserMfa(
             meta = meta,
             status = false,
             secret = null,
             codes = null,
-            isRequired = true
+            isRequired = enforce
         ).also {
             if (it.isSuccessful) {
                 logService.info(

@@ -44,7 +44,10 @@ enum class UserAction(val index: Int) {
     REMOVE_FILE_VISIBILITY_CONFIGURATION(35),
     LOGOUT_USER_SESSIONS(36),
     CHANGE_PASSWORD(37),
-    RESET_TOTP_MFA(38);
+    RESET_TOTP_MFA(38),
+    UPDATE_ACCOUNT_PROPERTY(39),
+    UPDATE_USERNAME(40),
+    UPDATE_EMAIL(41);
 
     companion object {
         init {

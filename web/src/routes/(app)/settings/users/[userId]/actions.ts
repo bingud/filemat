@@ -1,5 +1,5 @@
 import { addRoleToUser } from "$lib/code/admin/roles"
-import type { FullPublicUser } from "$lib/code/auth/types"
+import type { AccountProperty, FullPublicUser, PublicAccountProperty } from "$lib/code/auth/types"
 import { rolesToPermissions } from "$lib/code/module/permissions"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { auth } from "$lib/code/stateObjects/authState.svelte"
@@ -8,8 +8,47 @@ import type { ulid } from "$lib/code/types/types"
 import { formData, handleErr, handleException, lockFunction, removeString, safeFetch } from "$lib/code/util/codeUtil.svelte"
 import { getRole } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
-import { userPageState as state } from "./state.svelte"
+import { userPageState as state, userPageState } from "./state.svelte"
 
+
+export async function editUserProperty(userId: ulid, property: PublicAccountProperty, currentValue: string) {
+    const newValue = await inputDialogState.show({
+        title: `Edit ${property}`,
+        message: `Enter the new value:`,
+        cancelText: `Cancel`,
+        confirmText: `Confirm`,
+        defaultValue: currentValue,
+    })
+    if (!newValue) return
+
+    const response = await safeFetch(`/api/v1/admin/user/edit-property`, {
+        body: formData({
+            userId: userId,
+            property: property,
+            value: newValue
+        })
+    })
+    if (response.failed) {
+        handleException(`Failed to update user property (${property}).`, `Failed to update ${property}.`, response.exception)
+        return
+    }
+
+    const json = response.json()
+
+    if (response.code.failed) {
+        handleErr({
+            description: `Failed to update user property (${property}).`,
+            notification: json.message || `Failed to update ${property}.`,
+            isServerDown: response.code.serverDown
+        })
+        return
+    }
+
+    if (userPageState.user?.userId === userId) {
+        userPageState.user[property] = newValue as never
+    }
+    toast.success(`Updated ${property}.`)
+}
 
 export async function removeSelectedRoles() {
     if (state.removingRoles) return
@@ -189,8 +228,14 @@ export async function resetUserMfa(user: typeof state.user) {
     })
     if (!confirmation) return
 
+    const enforceMfa = await confirmDialogState.show({
+        title: `Enforce 2FA?`,
+        message: `Should the user set up 2FA again?`
+    })
+    if (enforceMfa == null) return
+
     const response = await safeFetch(`/api/v1/admin/user/reset-totp-mfa`, {
-        body: formData({ userId: user.userId })
+        body: formData({ userId: user.userId, enforce: enforceMfa })
     })
     if (response.failed) {
         handleException(`Exception when resetting user 2FA.`, `Failed to reset 2FA.`, response.exception)
@@ -208,6 +253,6 @@ export async function resetUserMfa(user: typeof state.user) {
     } else {
         toast.success(`2FA was reset.`)
         user.mfaTotpStatus = false
-        user.mfaTotpRequired = true
+        user.mfaTotpRequired = enforceMfa
     }
 }

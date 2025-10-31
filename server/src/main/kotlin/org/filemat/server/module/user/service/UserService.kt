@@ -3,8 +3,11 @@ package org.filemat.server.module.user.service
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.dto.ArgonHash
+import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.toJsonOrNull
+import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.User
@@ -16,7 +19,70 @@ import org.springframework.stereotype.Service
 class UserService(
     private val userRepository: UserRepository,
     private val logService: LogService,
+    private val authService: AuthService,
 ) {
+    fun changeEmail(meta: RequestMeta, email: String): Result<Unit> {
+        Validator.email(email)
+            ?.let { return Result.reject(it) }
+
+        getUserByEmail(email, meta.action).let {
+            if (it.isSuccessful) return Result.reject("This email is already used.")
+            if (it.hasError) return Result.error("Failed to check if this email is already used.")
+        }
+
+        try {
+            userRepository.updateUsername(meta.userId, email)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = meta.action,
+                description = "Failed to update email in the database.",
+                message = e.stackTraceToString(),
+                targetId = meta.userId,
+                initiatorIp = meta.ip,
+                initiatorId = meta.adminId
+            )
+            return Result.error("Failed to update email.")
+        }
+
+        authService.updatePrincipal(userId = meta.userId) {
+            it.copy(email = email)
+        }
+
+        return Result.ok()
+    }
+
+    fun changeUsername(meta: RequestMeta, username: String): Result<Unit> {
+        Validator.username(username)
+            ?.let { return Result.reject(it) }
+
+        getUserByUsername(username, meta.action).let {
+            if (it.isSuccessful) return Result.reject("This username is already used.")
+            if (it.hasError) return Result.error("Failed to check if this username is already used.")
+        }
+
+        try {
+            userRepository.updateUsername(meta.userId, username)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = meta.action,
+                description = "Failed to update username in the database.",
+                message = e.stackTraceToString(),
+                targetId = meta.userId,
+                initiatorIp = meta.ip,
+                initiatorId = meta.adminId
+            )
+            return Result.error("Failed to update username.")
+        }
+
+        authService.updatePrincipal(userId = meta.userId) {
+            it.copy(username = username)
+        }
+
+        return Result.ok()
+    }
+
     /**
      * @return Email existence, Username existence
      */

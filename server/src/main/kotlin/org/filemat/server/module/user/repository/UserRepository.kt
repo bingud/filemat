@@ -55,4 +55,12 @@ interface UserRepository : CrudRepository<User, Ulid> {
     @Modifying
     @Query("UPDATE users SET password = :password WHERE user_id = :userId")
     fun updatePassword(userId: Ulid, password: String): Int
+
+    @Modifying
+    @Query("UPDATE users SET username = :username WHERE user_id = :userId")
+    fun updateUsername(userId: Ulid, username: String): Int
+
+    @Modifying
+    @Query("UPDATE users SET email = :email WHERE user_id = :userId")
+    fun updateEmail(userId: Ulid, email: String): Int
 }
