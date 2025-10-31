@@ -100,6 +100,7 @@ export type EntityPermission = {
     createdDate: number,
 }
 
+export type PublicAccountProperty = keyof FullPublicUser
 export type AccountProperty =  | "userId" | "email" | "username" | "password" | "mfaTotpSecret" | "mfaTotpStatus" | "mfaTotpCodes" | "createdDate" | "lastLoginDate" | "isBanned" | "mfaTotpRequired"
 
 export type TotpMfaCredentials = { secret: string, url: string, codes: string[] }

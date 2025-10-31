@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from "$app/state";
-    import type { AccountProperty } from "$lib/code/auth/types";
+    import type { AccountProperty, FullPublicUser, PublicAccountProperty } from "$lib/code/auth/types";
     import { getMaxPermissionLevel } from "$lib/code/module/permissions";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
@@ -13,19 +13,24 @@
     import Loader from "$lib/component/Loader.svelte";
     import Popover from "$lib/component/popover/CustomPopover.svelte";
     import { fade } from "svelte/transition";
-    import { assignRole, changeUserPassword, loadUser, removeSelectedRoles, resetUserMfa, selectRole, toggleRoleSelection } from "./actions";
+    import { assignRole, changeUserPassword, editUserProperty, loadUser, removeSelectedRoles, resetUserMfa, selectRole, toggleRoleSelection } from "./actions";
     import { userPageState as pageState } from "./state.svelte";
     import { onMount } from "svelte";
 
     const title = "Manage user"
 
-    const editableFields: record<AccountProperty, string> = {
+    const editableFields: record<PublicAccountProperty, string> = {
         "email": "Email",
         "username": "Username",
-        "mfaTotpRequired": "Enforce 2FA"
     }
 
-    const viewableFields: record<AccountProperty, string> = {
+    const viewableFields: record<PublicAccountProperty, string> = {
+        "mfaTotpStatus": "2FA enabled",
+        "userId": "User ID",
+        "mfaTotpRequired": "Enforce 2FA",
+    }
+
+    const viewableDateFields: record<PublicAccountProperty, string> = {
         "createdDate": "Created date",
         "lastLoginDate": "Last login date",
     }
@@ -92,7 +97,7 @@
                             <p class="detail-label">{name}</p>
                             <div class="h-fit flex gap-2 w-full">
                                 <p class="detail-content !w-auto flex-1">{userObj[field]}</p>
-                                <button on:click={() => { (field) }} class="basic-button edit-button">
+                                <button on:click={() => { editUserProperty(user.userId, field, userObj[field]) }} class="basic-button edit-button">
                                     <EditIcon></EditIcon>
                                 </button>
                             </div>
@@ -164,20 +169,18 @@
             <div class="detail-panel">
                 <h2 class="detail-section-title">Details</h2>
                 <div class="details-holder">
-                    <div class="detail-card">
-                        <p class="detail-label">Created at</p>
-                        <p class="detail-content">{formatUnixTimestamp(user.createdDate)}</p>
-                    </div>
-
-                    <div class="detail-card">
-                        <p class="detail-label">Last login at</p>
-                        <p class="detail-content">{user.createdDate ? formatUnixTimestamp(user.createdDate) : "N/A"}</p>
-                    </div>
-
-                    <div class="detail-card">
-                        <p class="detail-label">User ID</p>
-                        <p class="detail-content">{user.userId}</p>
-                    </div>
+                    {#each entriesOf(viewableDateFields) as [field, name]}
+                        <div class="detail-card">
+                            <p class="detail-label">{name}</p>
+                            <p class="detail-content">{formatUnixTimestamp(user[field] as number)}</p>
+                        </div>
+                    {/each}
+                    {#each entriesOf(viewableFields) as [field, name]}
+                        <div class="detail-card">
+                            <p class="detail-label">{name}</p>
+                            <p class="detail-content">{user[field]}</p>
+                        </div>
+                    {/each}
                 </div>
             </div>
         </section>
