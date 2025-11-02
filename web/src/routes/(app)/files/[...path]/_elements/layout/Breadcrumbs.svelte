@@ -6,6 +6,8 @@
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte';
+    import { page } from '$app/state';
+    import { appState } from '$lib/code/stateObjects/appState.svelte';
 
     function openEntry(path: string) {
         goto(`/files${path}`)
@@ -45,13 +47,19 @@
 
 <!-- Breadcrumbs -->
 <div class="w-full flex items-center h-[2rem] max-h-full overflow-hidden">
-    {#if filesState.path === "/"}
+    {#if filesState.path === "/" && appState.currentPath.files}
         <button 
-            title="Files" 
-            on:click={() => { openEntry(`/`) }}
+            title="Files"
             on:contextmenu={(e) => { onContextMenu(e, { name: "Files", path: "", width: calculateTextWidth("Files") }, e.currentTarget) }}
             class="py-1 px-2 whitespace-nowrap max-w-full truncate rounded hover:bg-neutral-300 dark:hover:bg-neutral-800"
         >Files</button>
+    {:else if appState.currentPath.accessibleFiles}
+        <button 
+            title="Accessible Files" 
+            on:click={() => { openEntry(`/`) }}
+            on:contextmenu={(e) => { onContextMenu(e, { name: "Accessible Files", path: "", width: calculateTextWidth("Accessible Files") }, e.currentTarget) }}
+            class="py-1 px-2 whitespace-nowrap max-w-full truncate rounded hover:bg-neutral-300 dark:hover:bg-neutral-800"
+        >Accessible Files</button>
     {:else}
         {@const hiddenEmpty = breadcrumbState.hidden.length < 1}
         <!-- Change chevron width in breadcrumb calculator -->

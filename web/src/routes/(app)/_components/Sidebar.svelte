@@ -5,20 +5,7 @@
     import { toggleDarkMode } from "$lib/code/util/uiUtil";
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
-
-    let currentButton = $derived.by(() => {
-        const path = page.url.pathname
-
-        if (path.startsWith("/files")) {
-            return "all"
-        } else if (path.startsWith("/settings")) {
-            return "settings"
-        } else if (path.startsWith("/accessible-files")) {
-            return "accessible-files"
-        }
-
-        return ""
-    })
+    import { appState } from '$lib/code/stateObjects/appState.svelte';
 
     function hide() { uiState.menuOpen = false }
 
@@ -32,15 +19,15 @@
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar lg:w-sidebar-desktop h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "all"}>All Files</a>
+                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files}>All Files</a>
                 <a href="/home" on:click={hide} class="sidebar-button">Home Folder</a>
-                <a href="/accessible-files" on:click={hide} class="sidebar-button" class:current-button={currentButton === "accessible-files"}>Accessible to me</a>
+                <a href="/accessible-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.accessibleFiles}>Accessible to me</a>
             </div>
 
 
             <!-- Bottom -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/settings/{uiState.settings.defaultSection}" on:click={hide} class="sidebar-button" class:current-button={currentButton === "settings"}>Settings</a>
+                <a href="/settings/{uiState.settings.defaultSection}" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.settings}>Settings</a>
                 <button on:click={toggleDarkMode} class="sidebar-button">{uiState.isDark ? "Dark" : "Light"} mode</button>
             </div>
         </div>

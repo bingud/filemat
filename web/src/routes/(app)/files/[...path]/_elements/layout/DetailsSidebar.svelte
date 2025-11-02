@@ -17,6 +17,7 @@
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -336,6 +337,16 @@
                     </div>
                 {/if}
             </div>
+        </div>
+    {:else if appState.currentPath.accessibleFiles}
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none">
+            <h3 class="truncate text-lg">Accessible Files</h3>
+        </div>
+
+        <hr class="basic-hr flex-none">
+
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none">
+            <p>All files that you have permission to view.</p>
         </div>
     {:else}
         <div class="w-full h-full flex flex-col items-center pt-4">

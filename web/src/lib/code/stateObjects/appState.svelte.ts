@@ -1,5 +1,13 @@
+import { page } from "$app/state"
 import type { Principal, Role } from "../auth/types"
-import type { ulid } from "../types/types"
+import type { ulid, ValuesOf } from "../types/types"
+import { entriesOf, valuesOf } from "../util/codeUtil.svelte"
+
+const sitePaths = {
+    "/accessible-files": "accessibleFiles",
+    "/files": "files",
+    "/settings": "settings"
+}
 
 class AppState {
     /**
@@ -59,6 +67,16 @@ class AppState {
         this.actualFilesStanceNonce = n
     }
     get filesStateNonce() { return this.#filesStateNonce }
+
+    currentPath = $derived.by(() => {
+        const current = page.url.pathname
+        const state: any = {}
+        
+        entriesOf(sitePaths).forEach(([path, name]) => {
+            state[name] = (current.startsWith(path))
+        })
+        return state as Record<ValuesOf<typeof sitePaths>, boolean>
+    })
 }
 
 /**
