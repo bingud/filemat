@@ -92,7 +92,7 @@ class AdminUserService(
         }
     }
 
-    fun createUser(creator: Principal, email: String, username: String, password: ArgonHash): Result<Ulid> {
+    fun createUser(admin: Principal, email: String, username: String, password: ArgonHash): Result<Ulid> {
         // Check if email or password exists already
         userService.checkExistsByEmailOrUsername(email, username).let {
             if (it.isNotSuccessful) return it.cast()
@@ -112,6 +112,7 @@ class AdminUserService(
                 mfaTotpSecret = null,
                 mfaTotpStatus = false,
                 mfaTotpCodes = null,
+                mfaTotpRequired = false,
                 createdDate = unixNow(),
                 lastLoginDate = null,
                 isBanned = false
@@ -135,9 +136,9 @@ class AdminUserService(
         logService.info(
             type = LogType.AUDIT,
             action = UserAction.CREATE_USER,
-            description = "User ${creator.username} created new user: $username",
-            message = "User '${creator.username}' created user '$username' with email '$email'",
-            initiatorId = creator.userId,
+            description = "User ${admin.username} created new user: $username",
+            message = "User '${admin.username}' created user '$username' with email '$email'",
+            initiatorId = admin.userId,
             initiatorIp = null,
             targetId = userId,
             meta = null

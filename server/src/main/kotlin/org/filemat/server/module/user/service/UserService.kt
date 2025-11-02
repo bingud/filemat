@@ -122,6 +122,7 @@ class UserService(
                 mfaTotpSecret = user.mfaTotpSecret,
                 mfaTotpStatus = user.mfaTotpStatus,
                 mfaTotpCodes = user.mfaTotpCodes.toJsonOrNull(),
+                mfaTotpRequired = user.mfaTotpRequired,
                 createdDate = user.createdDate,
                 lastLoginDate = user.lastLoginDate,
                 isBanned = user.isBanned,
@@ -180,6 +181,7 @@ class UserService(
         try {
             userRepository.updatePassword(userId, password.password)
             return Result.ok()
+
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,

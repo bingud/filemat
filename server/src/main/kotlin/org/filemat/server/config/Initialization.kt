@@ -29,6 +29,8 @@ class Initialization(
     @PostConstruct //(ApplicationReadyEvent::class)
     fun initialize() {
         databaseSetup.initialize_setUpSchema().line()
+        databaseSetup.runFlywayMigrations().line()
+
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()
 
@@ -55,12 +57,5 @@ class Initialization(
     // Prints new line
     private fun <T> T.line() = this.also { println() }
     private fun shutdown(code: Int): Nothing { Thread.sleep(200); exitProcess(code) }
-
-//    @EventListener(ApplicationReadyEvent::class)
-//    @Order(Ordered.LOWEST_PRECEDENCE)
-//    fun applicationReadyListener() {
-//        val startupDuration = unixNow() - Props.startupTime
-//        println("Filemat started in $startupDuration seconds")
-//    }
 
 }

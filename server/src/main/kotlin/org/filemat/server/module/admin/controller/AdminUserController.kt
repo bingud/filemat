@@ -15,7 +15,6 @@ import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.user.model.FullPublicUser
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
-import org.springframework.context.annotation.Lazy
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.PostMapping
@@ -136,7 +135,7 @@ class AdminUserController(
         val password = passwordEncoder.encode(rawPassword)
 
         adminUserService.createUser(
-            creator = principal,
+            admin = principal,
             email = email,
             username = username,
             password = ArgonHash(password = password)

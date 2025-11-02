@@ -8,10 +8,10 @@ spring:
       connection-init-sql: PRAGMA foreign_keys=ON;
     driver-class-name: org.sqlite.JDBC
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    table: flyway_schema_history
+    # Run flyway manually
+    enabled: false
 
-#logging:
-#  level:
-#    org.flywaydb: DEBUG
+server:
+  error:
+    whitelabel:
+      enabled: false

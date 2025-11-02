@@ -6,6 +6,8 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.service.AppService
 import org.filemat.server.module.setting.service.SettingService
+import org.flywaydb.core.Flyway
+import org.springframework.core.env.Environment
 import org.springframework.core.io.ClassPathResource
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
@@ -22,7 +24,23 @@ class DatabaseSetup(
     private val settingService: SettingService,
     private val roleService: RoleService,
     private val appService: AppService,
+    private val environment: Environment,
 ) {
+    fun runFlywayMigrations() {
+        println("Running flyway migrations...")
+
+        val jdbcUrl = environment.getProperty("spring.datasource.url")
+            ?: return println("JDBC URL is null.")
+
+        val flyway = Flyway.configure()
+            .dataSource(jdbcUrl, /* user */ null,  /* Password */ null)
+            .baselineOnMigrate(true)
+            .load()
+
+        val result = flyway.migrate()
+        println("Flyway migrations applied: ${result.migrationsExecuted}")
+    }
+
     fun initialize_loadRolesToMemory() {
         if (!roleService.loadRolesToMemory()) {
             println("Failed to load roles to memory.")

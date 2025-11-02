@@ -20,8 +20,8 @@ interface UserRepository : CrudRepository<User, Ulid> {
 
     @Modifying
     @Query("INSERT INTO users " +
-            "(user_id, email, username, password, mfa_totp_secret, mfa_totp_status, mfa_totp_codes, created_date, last_login_date, is_banned) " +
-            "VALUES (:userId, :email, :username, :password, :mfaTotpSecret, :mfaTotpStatus, :mfaTotpCodes, :createdDate, :lastLoginDate, :isBanned)")
+            "(user_id, email, username, password, mfa_totp_secret, mfa_totp_status, mfa_totp_codes, mfa_totp_required, created_date, last_login_date, is_banned) " +
+            "VALUES (:userId, :email, :username, :password, :mfaTotpSecret, :mfaTotpStatus, :mfaTotpCodes, :mfaTotpRequired, :createdDate, :lastLoginDate, :isBanned)")
     fun createUser(
         userId: Ulid,
         email: String,
@@ -30,6 +30,7 @@ interface UserRepository : CrudRepository<User, Ulid> {
         mfaTotpSecret: String?,
         mfaTotpStatus: Boolean,
         mfaTotpCodes: String?,
+        mfaTotpRequired: Boolean,
         createdDate: Long,
         lastLoginDate: Long?,
         isBanned: Boolean,
