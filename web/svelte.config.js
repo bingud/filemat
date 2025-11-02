@@ -33,9 +33,6 @@ const config = {
             ) return false
 			return true
 		},
-        experimental: {
-            async: true
-        }
 	},
 };
 
