@@ -1,20 +1,14 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { hasPermissionLevel } from "$lib/code/module/permissions";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { onMount } from "svelte";
     import SymbolicLinksSetting from "./_setting-components/SymbolicLinksSetting.svelte";
     import ExposedFilesSetting from "./_setting-components/ExposedFilesSetting.svelte";
+    import LogsSetting from "./_setting-components/LogsSetting.svelte";
 
     const title = "System Settings"
 
     onMount(() => {
         uiState.settings.title = title
-        if (!hasPermissionLevel(3)) {
-            goto(`/settings`)
-            return
-        }
     })
 </script>
 
@@ -29,4 +23,5 @@
     </div>
 
     <ExposedFilesSetting></ExposedFilesSetting>
+    <LogsSetting></LogsSetting>
 </div>
