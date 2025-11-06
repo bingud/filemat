@@ -31,7 +31,7 @@ class UserController(
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
         val meta = RequestMeta(
-            userId = user.userId,
+            targetId = user.userId,
             action = UserAction.DISABLE_TOTP_MFA
         )
 
@@ -69,7 +69,7 @@ class UserController(
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
         val meta = RequestMeta(
-            userId = user.userId,
+            targetId = user.userId,
             action = UserAction.ENABLE_TOTP_MFA
         )
 

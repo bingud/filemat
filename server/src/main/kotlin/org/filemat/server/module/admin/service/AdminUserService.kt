@@ -42,7 +42,7 @@ class AdminUserService(
 ) {
     fun updateProperty(meta: RequestMeta, property: String, value: String): Result<Unit> {
         // Check if user exists
-        userService.getUserByUserId(meta.userId, meta.action)
+        userService.getUserByUserId(meta.targetUserId, meta.action)
             .let {
                 if (it.notFound) return Result.reject("This user does not exist.")
                 if (it.hasError) return it.cast()
@@ -74,9 +74,9 @@ class AdminUserService(
                     type = LogType.AUDIT,
                     action = meta.action,
                     description = "Admin reset user TOTP",
-                    initiatorId = meta.adminId,
+                    initiatorId = meta.initiatorId,
                     initiatorIp = meta.ip,
-                    targetId = meta.userId,
+                    targetId = meta.targetId,
                 )
             } else {
                 logService.error(
@@ -84,9 +84,9 @@ class AdminUserService(
                     action = meta.action,
                     description = "Admin reset user TOTP (failed)",
                     message = it.errorOrNull ?: "No error message",
-                    initiatorId = meta.adminId,
+                    initiatorId = meta.initiatorId,
                     initiatorIp = meta.ip,
-                    targetId = meta.userId,
+                    targetId = meta.targetId,
                 )
             }
         }

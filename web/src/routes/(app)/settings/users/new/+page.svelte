@@ -38,7 +38,7 @@
 </svelte:head>
 
 
-<div class="page flex-col">
+<div class="page settings-margin flex-col">
     <form on:submit|preventDefault={create} class="flex flex-col gap-6 w-full md:max-w-[25rem]">
         <div class="flex flex-col gap-1">
             <label for="input-email">Email</label>

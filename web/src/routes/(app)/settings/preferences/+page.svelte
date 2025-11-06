@@ -12,7 +12,7 @@
 </script>
 
 
-<div class="page flex-col gap-8">
+<div class="page settings-margin flex-col gap-8">
     <h2 class="text-lg font-medium">Account Settings</h2>
 
     {@render settingCell(MfaSetting)}

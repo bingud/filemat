@@ -9,6 +9,7 @@
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 @plugin 'tailwind-scrollbar';
 
+@source inline("bg-blue-500 bg-green-500 bg-yellow-500 bg-red-500 bg-purple-500 size-10!");
 
 html {
     /* Background */

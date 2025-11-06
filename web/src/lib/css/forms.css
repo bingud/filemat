@@ -1,3 +1,11 @@
+
+
+.basic-input {
+    @apply px-3 py-2 rounded-md!;
+}
+
+
+
 /* Block 1: Inputs base styles */
 [type='text'],
 input:where(:not([type])),

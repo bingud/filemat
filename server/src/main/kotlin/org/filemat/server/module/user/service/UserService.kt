@@ -31,21 +31,21 @@ class UserService(
         }
 
         try {
-            userRepository.updateUsername(meta.userId, email)
+            userRepository.updateUsername(meta.targetUserId, email)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
                 action = meta.action,
                 description = "Failed to update email in the database.",
                 message = e.stackTraceToString(),
-                targetId = meta.userId,
+                targetId = meta.targetId,
                 initiatorIp = meta.ip,
-                initiatorId = meta.adminId
+                initiatorId = meta.initiatorId
             )
             return Result.error("Failed to update email.")
         }
 
-        authService.updatePrincipal(userId = meta.userId) {
+        authService.updatePrincipal(userId = meta.targetUserId) {
             it.copy(email = email)
         }
 
@@ -62,21 +62,21 @@ class UserService(
         }
 
         try {
-            userRepository.updateUsername(meta.userId, username)
+            userRepository.updateUsername(meta.targetUserId, username)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
                 action = meta.action,
                 description = "Failed to update username in the database.",
                 message = e.stackTraceToString(),
-                targetId = meta.userId,
+                targetId = meta.targetId,
                 initiatorIp = meta.ip,
-                initiatorId = meta.adminId
+                initiatorId = meta.initiatorId
             )
             return Result.error("Failed to update username.")
         }
 
-        authService.updatePrincipal(userId = meta.userId) {
+        authService.updatePrincipal(userId = meta.targetUserId) {
             it.copy(username = username)
         }
 

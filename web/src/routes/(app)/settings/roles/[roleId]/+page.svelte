@@ -188,7 +188,7 @@
 
 
 {#if role}
-    <div in:fade={{duration: 70}} class="page flex-col gap-12">
+    <div in:fade={{duration: 70}} class="page settings-margin flex-col gap-12">
         <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-neutral-200 dark:bg-neutral-850">
             <h1 class="text-lg">{role.name}</h1>
             <p class="dark:text-neutral-300">Created on: {formatUnixTimestamp(role.createdDate)}</p>

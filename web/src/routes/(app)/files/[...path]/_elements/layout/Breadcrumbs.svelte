@@ -106,7 +106,7 @@
                 <div class="flex items-center h-full ">
                     {#if index !== 0 || !hiddenEmpty}
                         <div class="h-full flex items-center justify-center shrink-0">
-                            <ChevronRightIcon classes="h-[0.6rem]" />
+                            <ChevronRightIcon class="h-[0.6rem]" />
                         </div>
                     {/if}
                     {@render breadcrumbButton(

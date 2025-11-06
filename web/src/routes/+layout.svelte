@@ -2,7 +2,6 @@
 	import '../app.css';
     import {browser, dev} from "$app/environment"
     import { Toaster } from '@jill64/svelte-toast'
-    import type { ToastOptions } from 'svelte-french-toast';
     import Symbols from '$lib/component/icons/util/Symbols.svelte';
     import { onMount } from 'svelte';
     import { debounceFunction } from '$lib/code/util/codeUtil.svelte';
@@ -19,10 +18,10 @@
 	let { children } = $props();
 
     const palette = {}
-    const toastOptions: ToastOptions = {
+    const toastOptions = {
         duration: 5000,
         position: "bottom-right"
-    }
+    } as any
 
     onMount(() => {        
         loadDarkModeState()

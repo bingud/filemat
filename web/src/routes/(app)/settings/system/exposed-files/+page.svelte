@@ -237,7 +237,7 @@
 </script>
 
 
-<div class="page flex-col gap-8">
+<div class="page settings-margin flex-col gap-8">
     <div class="flex flex-col gap-2">
         <p>Configure which files are accessible in Filemat.</p>
         <p class="opacity-50">To configure file visibility, you must enter a code from application console/logs or a special file.</p>

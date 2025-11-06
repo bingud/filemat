@@ -1,16 +1,19 @@
 package org.filemat.server.module.log.service
 
 import com.github.f4b6a3.ulid.Ulid
-import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
+import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.getActualCallerPackage
-import org.filemat.server.common.util.packagePrefix
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.module.admin.model.LogMeta
+import org.filemat.server.module.log.model.Log
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.repository.LogRepository
@@ -49,124 +52,16 @@ class LogService(
     }
     val util = Util()
 
-    fun debug(
-        type: LogType,
-        action: UserAction,
-        description: String,
-        message: String = "",
-        initiatorId: Ulid? = null,
-        initiatorIp: String? = null,
-        targetId: Ulid? = null,
-        meta: MutableMap<String, String>? = null,
-    ) {
-        log(
-            level = LogLevel.DEBUG,
-            type = type,
-            action = action,
-            description = description,
-            message = message,
-            initiatorId = initiatorId,
-            initiatorIp = initiatorIp,
-            targetId = targetId,
-            meta = meta,
-        )
-    }
+    fun debug(type: LogType, action: UserAction, description: String, message: String = "", initiatorId: Ulid? = null, initiatorIp: String? = null, targetId: Ulid? = null, meta: MutableMap<String, String>? = null,) { log(level = LogLevel.DEBUG, type = type, action = action, description = description, message = message, initiatorId = initiatorId, initiatorIp = initiatorIp, targetId = targetId, meta = meta,) }
 
-    fun info(
-        type: LogType,
-        action: UserAction,
-        description: String,
-        message: String = "",
-        initiatorId: Ulid? = null,
-        initiatorIp: String? = null,
-        targetId: Ulid? = null,
-        meta: MutableMap<String, String>? = null,
-    ) {
-        log(
-            level = LogLevel.INFO,
-            type = type,
-            action = action,
-            description = description,
-            message = message,
-            initiatorId = initiatorId,
-            initiatorIp = initiatorIp,
-            targetId = targetId,
-            meta = meta,
-        )
-    }
+    fun info(type: LogType, action: UserAction, description: String, message: String = "", initiatorId: Ulid? = null, initiatorIp: String? = null, targetId: Ulid? = null, meta: MutableMap<String, String>? = null,) { log(level = LogLevel.INFO, type = type, action = action, description = description, message = message, initiatorId = initiatorId, initiatorIp = initiatorIp, targetId = targetId, meta = meta,) }
 
-    fun warn(
-        type: LogType,
-        action: UserAction,
-        description: String,
-        message: String = "",
-        initiatorId: Ulid? = null,
-        initiatorIp: String? = null,
-        targetId: Ulid? = null,
-        meta: MutableMap<String, String>? = null,
-    ) {
-        log(
-            level = LogLevel.WARN,
-            type = type,
-            action = action,
-            description = description,
-            message = message,
-            initiatorId = initiatorId,
-            initiatorIp = initiatorIp,
-            targetId = targetId,
-            meta = meta,
-        )
-    }
+    fun warn(type: LogType, action: UserAction, description: String, message: String = "", initiatorId: Ulid? = null, initiatorIp: String? = null, targetId: Ulid? = null, meta: MutableMap<String, String>? = null,) { log(level = LogLevel.WARN, type = type, action = action, description = description, message = message, initiatorId = initiatorId, initiatorIp = initiatorIp, targetId = targetId, meta = meta,) }
 
-    fun error(
-        type: LogType,
-        action: UserAction,
-        description: String,
-        message: String = "",
-        initiatorId: Ulid? = null,
-        initiatorIp: String? = null,
-        targetId: Ulid? = null,
-        meta: MutableMap<String, String>? = null,
-    ) {
-        log(
-            level = LogLevel.ERROR,
-            type = type,
-            action = action,
-            description = description,
-            message = message,
-            initiatorId = initiatorId,
-            initiatorIp = initiatorIp,
-            targetId = targetId,
-            meta = meta,
-        )
-    }
+    fun error(type: LogType, action: UserAction, description: String, message: String = "", initiatorId: Ulid? = null, initiatorIp: String? = null, targetId: Ulid? = null, meta: MutableMap<String, String>? = null,) { log(level = LogLevel.ERROR, type = type, action = action, description = description, message = message, initiatorId = initiatorId, initiatorIp = initiatorIp, targetId = targetId, meta = meta,) }
 
-    fun fatal(
-        type: LogType,
-        action: UserAction,
-        description: String,
-        message: String = "",
-        initiatorId: Ulid? = null,
-        initiatorIp: String? = null,
-        targetId: Ulid? = null,
-        meta: MutableMap<String, String>? = null,
-    ) {
-        log(
-            level = LogLevel.FATAL,
-            type = type,
-            action = action,
-            description = description,
-            message = message,
-            initiatorId = initiatorId,
-            initiatorIp = initiatorIp,
-            targetId = targetId,
-            meta = meta,
-        )
-    }
+    fun fatal(type: LogType, action: UserAction, description: String, message: String = "", initiatorId: Ulid? = null, initiatorIp: String? = null, targetId: Ulid? = null, meta: MutableMap<String, String>? = null,) { log(level = LogLevel.FATAL, type = type, action = action, description = description, message = message, initiatorId = initiatorId, initiatorIp = initiatorIp, targetId = targetId, meta = meta,) }
 
-    // Log function
-
-    var loggedException = false
 
     private fun log(
         level: LogLevel,
@@ -212,6 +107,7 @@ class LogService(
         }
     }
 
+    var loggedException = false
     fun createLog(
         level: LogLevel,
         type: LogType,
@@ -278,5 +174,32 @@ class LogService(
             printLog(false)
         }
         return true
+    }
+
+    fun getLogs(meta: RequestMeta, log: LogMeta): Result<List<Log>> {
+        try {
+            return logRepository.getPage(
+                page = log.page,
+                amount = log.amount,
+                searchText = log.searchText,
+                userId = log.userId,
+                targetId = log.targetId,
+                ip = log.ip,
+                severityList = log.severityList.takeIf { it.isNotEmpty() },
+                logTypeList = log.logTypeList.takeIf { it.isNotEmpty() },
+                fromDate = log.fromDate,
+                toDate = log.toDate,
+            ).toResult()
+        } catch (e: Exception) {
+            this.error(
+                type = LogType.SYSTEM,
+                action = meta.action,
+                description = "Failed to get logs from database.",
+                message = e.stackTraceToString(),
+                initiatorIp = meta.ip,
+                initiatorId = meta.targetId
+            )
+            return Result.error("Failed to get logs from database.")
+        }
     }
 }

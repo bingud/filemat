@@ -29,7 +29,7 @@
     @apply bg-surface-button-light dark:bg-surface-button-dark hover:bg-surface-button-light-hover hover:dark:bg-surface-button-dark-hover;
 }
 @utility bg-button {
-    @apply bg-surface hover:bg-surface-button-light dark:hover:bg-surface-button-dark ;
+    @apply bg-surface hover:bg-surface-button-light dark:hover:bg-surface-button-dark;
 }
 
 

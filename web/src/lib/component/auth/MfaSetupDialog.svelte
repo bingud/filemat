@@ -50,7 +50,7 @@
                     </button>
                     <button on:click={one_next} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
                         Next
-                        <ChevronRightIcon classes="h-[1rem] my-auto" />
+                        <ChevronRightIcon class="h-[1rem] my-auto" />
                     </button>
                 </div>
             {:else if phase === 2}
@@ -63,12 +63,12 @@
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
                     <button on:click={goBack} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
-                        <ChevronLeftIcon classes="h-[1rem] my-auto" />
+                        <ChevronLeftIcon class="h-[1rem] my-auto" />
                         Back
                     </button>
                     <button on:click={two_confirm} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
                         Confirm
-                        <ChevronRightIcon classes="h-[1rem] my-auto" />
+                        <ChevronRightIcon class="h-[1rem] my-auto" />
                     </button>
                 </div>
             {:else if phase === 3}
@@ -89,12 +89,12 @@
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
                     <button on:click={goBack} class="rounded-lg bg-neutral-900 border px-6 py-3 flex gap-2 bg-surface-button">
-                        <ChevronLeftIcon classes="h-[1rem] my-auto" />
+                        <ChevronLeftIcon class="h-[1rem] my-auto" />
                         Back
                     </button>
                     <button use:disabledFor={6000} on:click={three_finish} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 disabled:opacity-50 bg-surface-button">
                         Continue
-                        <ChevronRightIcon classes="h-[1rem] my-auto" />
+                        <ChevronRightIcon class="h-[1rem] my-auto" />
                     </button>
                 </div>
             {/if}

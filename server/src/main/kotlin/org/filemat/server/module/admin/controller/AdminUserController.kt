@@ -52,9 +52,9 @@ class AdminUserController(
         val ip = request.realIp()
 
         val meta = RequestMeta(
-            userId = userId,
+            targetId = userId,
             action = UserAction.UPDATE_ACCOUNT_PROPERTY,
-            adminId = admin.userId,
+            initiatorId = admin.userId,
             ip = ip
         )
 
@@ -73,8 +73,8 @@ class AdminUserController(
     ): ResponseEntity<String> {
         val admin = request.getPrincipal()!!
         val meta = RequestMeta(
-            userId = parseUlidOrNull(rawUserId) ?: return bad("Invalid user ID"),
-            adminId = admin.userId,
+            targetId = parseUlidOrNull(rawUserId) ?: return bad("Invalid user ID"),
+            initiatorId = admin.userId,
             ip = request.realIp(),
             action = UserAction.RESET_TOTP_MFA
         )

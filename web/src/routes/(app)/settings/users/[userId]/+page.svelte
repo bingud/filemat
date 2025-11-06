@@ -85,7 +85,7 @@
     {@const userObj = user as any}
 
     <!-- in:fade={{duration: 70}} -->
-    <div class="flex flex-col gap-8">
+    <div class="flex flex-col gap-8 settings-margin">
         <!-- First section -->
         <section class="flex flex-col lg:flex-row gap-8 lg:gap-6">
             <!-- Left side - Editable fields -->

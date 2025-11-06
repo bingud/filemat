@@ -2,8 +2,6 @@ package org.filemat.server.common.util
 
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
-import com.sun.management.OperatingSystemMXBean
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.*
@@ -16,7 +14,6 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
 import java.io.InputStream
-import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -117,7 +114,10 @@ inline fun <T> runIf(condition: Boolean, block: () -> T): T? {
 }
 
 
-fun parseUlidOrNull(str: String): Ulid? = runCatching { Ulid.from(str) }.getOrNull()
+fun parseUlidOrNull(str: String?): Ulid? {
+    str ?: return null
+    return runCatching { Ulid.from(str) }.getOrNull()
+}
 
 
 fun getUlid() = UlidCreator.getUlid()
@@ -455,4 +455,10 @@ fun getActualCallerPackage(): String {
 
 fun HttpServletRequest.getAuthToken(): String? {
     return this.cookies?.find { it.name == Props.Cookies.authToken }?.value
+}
+
+inline fun <reified T : Enum<T>> parseEnumList(str: String?): List<T> {
+    str ?: return emptyList()
+    val names = Json.decodeFromString<List<String>>(str)
+    return names.map { enumValueOf<T>(it) }
 }

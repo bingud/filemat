@@ -33,7 +33,7 @@
 
 
 
-<div class="page flex-col gap-4">
+<div class="page settings-margin flex-col gap-4">
     {#if appState.roleList}
         <a href="/settings/roles/new" class="basic-button">Create a new role</a>
 

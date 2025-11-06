@@ -1,6 +1,9 @@
 package org.filemat.server.module.log.repository
 
+import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.module.log.model.Log
+import org.filemat.server.module.log.model.LogLevel
+import org.filemat.server.module.log.model.LogType
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.CrudRepository
@@ -25,4 +28,38 @@ interface LogRepository : CrudRepository<Log, Int> {
         targetId: String?,
         meta: String?,
     ): Int
+
+    @Query(
+    """
+    SELECT *
+    FROM log
+    WHERE
+      ( :searchText IS NULL OR :searchText = '' OR
+        LOWER(description) LIKE '%' || LOWER(:searchText) || '%' OR
+        LOWER(message) LIKE '%' || LOWER(:searchText) || '%' OR
+        LOWER(metadata) LIKE '%' || LOWER(:searchText) || '%'
+      )
+      AND ( :userId IS NULL OR initiator_user_id = :userId )
+      AND ( :targetId IS NULL OR target_id = :targetId )
+      AND ( :ip IS NULL OR initiator_ip = :ip )
+      AND ( :#{#severityList == null or #severityList.size() == 0} = true OR level IN (:severityList) )
+      AND ( :#{#logTypeList == null or #logTypeList.size() == 0} = true OR type IN (:logTypeList) )
+      AND ( :fromDate IS NULL OR created_date >= :fromDate )
+      AND ( :toDate IS NULL OR created_date <= :toDate )
+    ORDER BY created_date DESC
+    LIMIT :amount OFFSET :#{#page * #amount}
+    """
+    )
+    fun getPage(
+        page: Int,
+        amount: Int,
+        searchText: String?,  // now nullable
+        userId: Ulid?,
+        targetId: Ulid?,
+        ip: String?,
+        severityList: List<LogLevel>?,
+        logTypeList: List<LogType>?,
+        fromDate: Long?,
+        toDate: Long?,
+    ): List<Log>
 }

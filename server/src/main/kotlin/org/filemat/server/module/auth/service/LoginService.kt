@@ -98,7 +98,7 @@ class LoginService(
         // Check if TOTP MFA is enforced
         if (user.mfaTotpRequired && user.mfaTotpStatus == false) {
             if (totp != null && mfaCodes != null) {
-                val requestMeta = RequestMeta(userId = user.userId, action = UserAction.LOGIN)
+                val requestMeta = RequestMeta(targetId = user.userId, action = UserAction.LOGIN)
                 mfaService.enable_confirmSecret(requestMeta, totp, mfaCodes)
                     .handle {
                         if (it.hasError) return internal(it.error)

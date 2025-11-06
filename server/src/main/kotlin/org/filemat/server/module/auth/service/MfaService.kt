@@ -80,7 +80,7 @@ class MfaService(
      * Enables 2FA on user account
      */
     fun enable_confirmSecret(meta: RequestMeta, totp: String, codes: List<String>): Result<Unit> {
-        val mfa = newMfaCredentialsCache.getIfPresent(meta.userId) ?: return Result.reject("2FA setup has expired.")
+        val mfa = newMfaCredentialsCache.getIfPresent(meta.targetUserId) ?: return Result.reject("2FA setup has expired.")
         val actualTotp = TotpUtil.generator.generateCurrent(mfa.secretObject)
         if (totp != actualTotp.value) return Result.reject("2FA code is incorrect.")
 
@@ -96,18 +96,18 @@ class MfaService(
             action = UserAction.ENABLE_TOTP_MFA,
             description = "User enabled TOTP 2FA",
             message = "",
-            initiatorId = meta.userId,
+            initiatorId = meta.targetId,
             initiatorIp = null,
             targetId = null,
             meta = null
         )
 
-        newMfaCredentialsCache.invalidate(meta.userId)
+        newMfaCredentialsCache.invalidate(meta.targetUserId)
         return Result.ok()
     }
 
     fun disable(meta: RequestMeta, totp: String): Result<Unit> {
-        val user = userService.getUserByUserId(meta.userId, meta.action).let {
+        val user = userService.getUserByUserId(meta.targetUserId, meta.action).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -131,7 +131,7 @@ class MfaService(
             action = meta.action,
             description = "User disabled TOTP 2FA",
             message = "",
-            initiatorId = meta.userId,
+            initiatorId = meta.targetId,
             initiatorIp = null,
             targetId = null,
             meta = null
@@ -152,7 +152,7 @@ class MfaService(
     ): Result<Unit> {
         try {
             val serializedCodes = codes?.toJson()
-            userRepository.updateTotpMfa(meta.userId, status, secret, serializedCodes, isRequired)
+            userRepository.updateTotpMfa(meta.targetUserId, status, secret, serializedCodes, isRequired)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -163,7 +163,7 @@ class MfaService(
             return Result.error("Failed to update 2FA.")
         }
 
-        authService.updatePrincipal(meta.userId) { existing ->
+        authService.updatePrincipal(meta.targetUserId) { existing ->
             existing.copy(mfaTotpStatus = status)
         }
 

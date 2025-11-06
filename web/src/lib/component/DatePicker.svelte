@@ -8,9 +8,9 @@
 </script>
  
 <DatePicker.Root bind:value={value} weekdayFormat="short" fixedWeeks={true} locale="en-GB">
-    <div class="flex w-full max-w-[232px] flex-col gap-1.5">
+    <div class="flex max-w-full w-[14.5rem] flex-col gap-1.5">
         <DatePicker.Input
-            class="h-input rounded-lg border border-neutral-200 dark:border-neutral-800 bg-bg text-foreground focus-within:border-neutral-300 dark:focus-within:border-neutral-700 focus-within:shadow-date-field-focus hover:border-neutral-300 dark:hover:border-neutral-700 flex w-full max-w-[232px] select-none items-center px-2 py-3 text-sm tracking-[0.01em]"
+            class="h-input rounded-md border border-neutral-200 dark:border-neutral-800 bg-bg text-foreground focus-within:border-neutral-300 dark:focus-within:border-neutral-700 focus-within:shadow-date-field-focus hover:border-neutral-300 dark:hover:border-neutral-700 flex max-w-full w-[14.5rem] select-none items-center px-2 py-3 text-sm tracking-[0.01em]"
         >
             {#snippet children({ segments })}
                 {#each segments as { part, value }, i (part + i)}
@@ -22,7 +22,7 @@
                         {:else}
                             <DatePicker.Segment
                                 {part}
-                                class="rounded-lg hover:bg-muted focus:bg-surface-button focus:text-foreground aria-[valuetext=Empty]:text-muted-foreground focus-visible:outline-none px-1 py-1"
+                                class="rounded-md hover:bg-muted focus:bg-surface-button focus:text-foreground aria-[valuetext=Empty]:text-muted-foreground focus-visible:outline-none px-1 py-1"
                             >
                                 {value}
                             </DatePicker.Segment>
@@ -30,7 +30,7 @@
                     </div>
                 {/each}
                 <DatePicker.Trigger
-                    class="text-foreground/60 bg-surface-button ml-auto inline-flex size-8 items-center justify-center rounded-lg active:scale-95"
+                    class="text-foreground/60 bg-surface-button ml-auto inline-flex size-8 items-center justify-center rounded-md active:scale-95"
                 >
                     <div class="size-6">
                         <CalendarIcon></CalendarIcon>
@@ -40,20 +40,20 @@
         </DatePicker.Input>
         <DatePicker.Content sideOffset={6} class="z-50">
             <DatePicker.Calendar
-                class="border border-neutral-200 dark:border-neutral-800 bg-surface shadow-popover rounded-lg p-[22px]"
+                class="border border-neutral-200 dark:border-neutral-800 bg-surface shadow-popover rounded-md p-[1.375rem]"
             >
                 {#snippet children({ months, weekdays })}
                     <DatePicker.Header class="flex items-center justify-between">
                         <DatePicker.PrevButton
-                            class="rounded-lg bg-surface-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
+                            class="rounded-md bg-surface-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
                         >
                             <div class="size-6">
                                 <ChevronLeftIcon />
                             </div>
                         </DatePicker.PrevButton>
-                        <DatePicker.Heading class="text-[15px] font-medium" />
+                        <DatePicker.Heading class="text-[0.9375rem] font-medium" />
                         <DatePicker.NextButton
-                            class="rounded-lg bg-surface-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
+                            class="rounded-md bg-surface-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
                         >
                             <div class="size-6">
                                 <ChevronRightIcon />
@@ -88,10 +88,10 @@
                                                 class="p-0! relative size-10 text-center text-sm"
                                             >
                                                 <DatePicker.Day
-                                                    class="rounded-lg text-foreground hover:bg-surface-button data-selected:bg-surface-button data-selected:border-2 data-selected:border-foreground data-selected:text-foreground data-selected:font-medium data-disabled:text-foreground/30 data-unavailable:text-muted-foreground data-disabled:pointer-events-none data-unavailable:line-through data-outside-month:opacity-40 data-outside-month:text-muted-foreground group relative inline-flex size-10 items-center justify-center whitespace-nowrap border border-neutral-100 dark:border-neutral-900 bg-transparent p-0 text-sm font-normal transition-none"
+                                                    class="rounded-md text-foreground hover:bg-surface-button data-selected:bg-surface-button data-selected:border-2 data-selected:border-foreground data-selected:text-foreground data-selected:font-medium data-disabled:text-foreground/30 data-unavailable:text-muted-foreground data-disabled:pointer-events-none data-unavailable:line-through data-outside-month:opacity-40 data-outside-month:text-muted-foreground group relative inline-flex size-10 items-center justify-center whitespace-nowrap border border-neutral-100 dark:border-neutral-900 bg-transparent p-0 text-sm font-normal transition-none"
                                                 >
                                                     <div
-                                                        class="bg-foreground group-data-selected:bg-transparent group-data-today:block absolute top-[5px] hidden size-1 rounded-full transition-none"
+                                                        class="bg-foreground group-data-selected:bg-transparent group-data-today:block absolute top-[0.3125rem] hidden size-1 rounded-full transition-none"
                                                     ></div>
                                                     {date.day}
                                                 </DatePicker.Day>

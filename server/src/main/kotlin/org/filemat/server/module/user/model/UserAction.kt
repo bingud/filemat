@@ -47,7 +47,8 @@ enum class UserAction(val index: Int) {
     RESET_TOTP_MFA(38),
     UPDATE_ACCOUNT_PROPERTY(39),
     UPDATE_USERNAME(40),
-    UPDATE_EMAIL(41);
+    UPDATE_EMAIL(41),
+    GET_LOGS(42);
 
     companion object {
         init {

@@ -6,25 +6,32 @@
     let {
         open = $bindable(),
         width = "w-sidebar lg:w-sidebar-desktop",
+        side = "left",
         classes = "",
         children,
-        bottom
+        bottom,
     }: {
         open: boolean;
         width?: string;
+        side?: "left" | "right";
         classes?: string;
         children: any;
         bottom?: any;
     } = $props();
 
     const transitionDuration = 150;
+    const flyDistance = 400;
 </script>
 
 <div class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none lg:contents">
     {#if open || uiState.isDesktop}
         <div 
-            transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} 
-            class="h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0 {width} {classes}"
+            transition:fly={{ 
+                duration: transitionDuration, 
+                x: side === "left" ? -flyDistance : flyDistance, 
+                opacity: 1 
+            }} 
+            class="absolute lg:static h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0 {side === "left" ? "left-0 lg:left-auto" : "right-0 lg:right-auto"} {width} {classes}"
         >
             <div class="flex flex-col px-2 py-4 gap-1">
                 {@render children()}

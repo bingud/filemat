@@ -38,7 +38,7 @@
 </svelte:head>
 
 
-<div class="page flex-col gap-8">
+<div class="page flex-col gap-8 settings-margin">
     {#if users}
         <a href="/settings/users/new" class="rounded bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-800/50 dark:hover:bg-neutral-800 px-3 py-2 w-fit dark:hover:text-blue-400">Create a new user</a>
 

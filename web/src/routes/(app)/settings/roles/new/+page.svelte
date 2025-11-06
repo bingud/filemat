@@ -86,7 +86,7 @@
 </svelte:head>
 
 
-<div class="page flex-col gap-4">
+<div class="page settings-margin flex-col gap-4">
     <form class="flex flex-col gap-8 w-full" on:submit|preventDefault={submit}>
         <div class="flex flex-col w-[27rem] max-w-full gap-2">
             <label for="name-input">Name</label>
