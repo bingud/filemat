@@ -1,6 +1,4 @@
-# Use an official OpenJDK runtime as a parent image.
-# Replace '17-slim' with the Java version your application requires (e.g., 11-slim, 21-slim).
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jre-jammy
 
 # Set the working directory in the container.
 WORKDIR /app
