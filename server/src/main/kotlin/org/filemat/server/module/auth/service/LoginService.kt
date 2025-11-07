@@ -170,7 +170,7 @@ class LoginService(
         val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
         response.addCookie(cookie)
 
-        loginLog(LogLevel.INFO, "", "Successful login", meta, ip)
+        loginLog(LogLevel.INFO, "Successful login", "", meta, ip)
         userService.setLastLoginDate(user.userId, now)
     }
 
