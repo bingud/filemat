@@ -2,7 +2,6 @@ package org.filemat.server.config.database
 
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.jdbc.repository.config.AbstractJdbcConfiguration
-import java.util.*
 
 
 /**
