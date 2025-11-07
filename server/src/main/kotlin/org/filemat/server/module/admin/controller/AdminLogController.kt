@@ -2,17 +2,16 @@ package org.filemat.server.module.admin.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonArray
 import org.filemat.server.common.model.handle
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.dto.RequestMeta
-import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.parseEnumList
-import org.filemat.server.common.util.parseUlidOrNull
-import org.filemat.server.common.util.realIp
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.model.LogMeta
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.model.serializeList
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.user.model.UserAction
@@ -67,7 +66,7 @@ class AdminLogController(
         val result = logService.getLogs(meta, logMeta).handle {
             if (it.hasError) return internal(it.error)
         }
-        val serialized = Json.encodeToString(result)
+        val serialized = result.serializeList()
 
         return ok(serialized)
     }

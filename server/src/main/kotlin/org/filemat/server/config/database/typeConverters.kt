@@ -3,7 +3,6 @@ package org.filemat.server.config.database
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.json.Json
 import org.filemat.server.module.permission.model.FilePermission
-import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.PermissionType
 import org.filemat.server.module.permission.model.SystemPermission
 import org.springframework.core.convert.converter.Converter
