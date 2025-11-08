@@ -57,6 +57,7 @@ dependencies {
 	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:linux-arm64")
 	runtimeOnly("org.bytedeco:opencv:4.10.0-1.5.11:linux-x86_64")
 	runtimeOnly("org.bytedeco:opencv:4.10.0-1.5.11:linux-arm64")
+	implementation("com.drewnoakes:metadata-extractor:2.18.0")
 
 	val twelvemonkeysVersion = "3.12.0"
 	// Core TwelveMonkeys

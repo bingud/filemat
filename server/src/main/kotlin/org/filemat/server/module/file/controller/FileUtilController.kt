@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.controller
 
+import com.drew.metadata.exif.ExifIFD0Directory
 import jakarta.servlet.http.HttpServletRequest
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.Java2DFrameConverter
@@ -27,6 +28,7 @@ import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
+import java.awt.geom.AffineTransform
 
 
 @RestController
@@ -49,7 +51,6 @@ class FileUtilController(
         val path = FilePath.of(rawPath)
         val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
-        // Resolve file path
         val (pathResult, pathContainsSymlink) = resolvePath(path)
         val canonicalPath = pathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
@@ -57,63 +58,83 @@ class FileUtilController(
             it.value
         }
 
-        // Get the file content
-        val fileContentResult = fileService.getFileContent(principal, path, existingCanonicalPath = canonicalPath)
+        val fileContentResult = fileService.getFileContent(
+            principal,
+            path,
+            existingCanonicalPath = canonicalPath
+        )
         if (fileContentResult.notFound) return streamBad("This file was not found.", "")
         if (fileContentResult.rejected) return streamBad(fileContentResult.error, "")
         if (fileContentResult.isNotSuccessful) return streamInternal(fileContentResult.error, "")
 
         val filename = path.pathString.substringAfterLast("/") + "_thumb.jpg"
 
-        // Create streaming response that handles the entire thumbnail generation process
         val responseBody = StreamingResponseBody { outputStream ->
             try {
-                // Use try-with-resources to ensure proper closure of input stream
                 fileContentResult.value.use { inputStream ->
-                    val originalImage = ImageIO.read(inputStream)
+                    val bytes = inputStream.readBytes()
 
+                    val orientation = try {
+                        val metadata = com.drew.imaging.ImageMetadataReader
+                            .readMetadata(java.io.ByteArrayInputStream(bytes))
+                        val exifDir = metadata
+                            .getFirstDirectoryOfType(
+                                ExifIFD0Directory::class.java
+                            )
+                        exifDir?.getInt(
+                            ExifIFD0Directory.TAG_ORIENTATION
+                        ) ?: 1
+                    } catch (e: Exception) {
+                        1
+                    }
+
+                    val originalImage = ImageIO
+                        .read(java.io.ByteArrayInputStream(bytes))
                     if (originalImage == null) {
                         outputStream.write("Invalid image format".toByteArray())
                         return@StreamingResponseBody
                     }
 
-                    // Calculate dimensions
-                    val thumbImage = createThumbnail(originalImage, size)
+                    val corrected = applyExifOrientation(originalImage, orientation)
+                    val thumbImage = createThumbnail(corrected, size)
+                    val finalImage = ensureJpegCompatible(thumbImage)
 
-                    // Write compressed image directly to the output stream
-                    val writer = ImageIO.getImageWritersByFormatName("jpeg").next()
+                    val writers = ImageIO.getImageWritersByFormatName("jpeg")
+                    if (!writers.hasNext()) {
+                        outputStream.write("No JPEG writer found".toByteArray())
+                        return@StreamingResponseBody
+                    }
+
+                    val writer = writers.next()
                     val params = writer.defaultWriteParam
                     params.compressionMode = ImageWriteParam.MODE_EXPLICIT
-                    params.compressionQuality = 0.4f // High compression
+                    params.compressionQuality = 0.4f
 
-                    val imageOutputStream = ImageIO.createImageOutputStream(outputStream)
-                    writer.output = imageOutputStream
-                    writer.write(null, IIOImage(thumbImage, null, null), params)
+                    val ios = ImageIO.createImageOutputStream(outputStream)
+                    writer.output = ios
+                    writer.write(null, IIOImage(finalImage, null, null), params)
                     writer.dispose()
-                    imageOutputStream.flush()
-                    imageOutputStream.close()
+                    ios.flush()
+                    ios.close()
                 }
             } catch (e: Exception) {
-                // Log the error - proper error handling in a streaming response
                 e.printStackTrace()
-                // Write a simple error message to the output
-                outputStream.write("Error generating thumbnail".toByteArray())
+                try {
+                    outputStream.write("Error generating thumbnail".toByteArray())
+                } catch (_: Exception) {
+                }
             } finally {
-                // Ensure output stream is properly flushed and closed
                 try {
                     outputStream.flush()
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                } catch (_: Exception) {
                 }
             }
         }
 
-        // Set response display type to inline (can be displayed in browser)
         val cd = ContentDisposition.inline()
             .filename(filename, StandardCharsets.UTF_8)
             .build()
 
-        // Remove Content-Length header since we don't know the exact size
         val headers = HttpHeaders().apply {
             set(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
         }
@@ -123,6 +144,92 @@ class FileUtilController(
             .contentType(MediaType.IMAGE_JPEG)
             .body(responseBody)
     }
+
+    // Applies EXIF orientation (1..8) in a single AffineTransform mapping.
+    private fun applyExifOrientation(img: BufferedImage, orientation: Int): BufferedImage {
+        if (orientation == 1) return img
+
+        val w = img.width
+        val h = img.height
+        val tx = AffineTransform()
+
+        when (orientation) {
+            2 -> {
+                // flip horizontal
+                tx.scale(-1.0, 1.0)
+                tx.translate(-w.toDouble(), 0.0)
+            }
+            3 -> {
+                // rotate 180
+                tx.translate(w.toDouble(), h.toDouble())
+                tx.rotate(Math.PI)
+            }
+            4 -> {
+                // flip vertical
+                tx.scale(1.0, -1.0)
+                tx.translate(0.0, -h.toDouble())
+            }
+            5 -> {
+                // transpose: rotate 90 CW and flip horizontal
+                tx.rotate(Math.PI / 2)
+                tx.scale(1.0, -1.0)
+                tx.translate(0.0, -h.toDouble())
+            }
+            6 -> {
+                // rotate 90 CW
+                tx.translate(h.toDouble(), 0.0)
+                tx.rotate(Math.PI / 2)
+            }
+            7 -> {
+                // transverse: rotate 270 CW and flip horizontal
+                tx.rotate(-Math.PI / 2)
+                tx.scale(1.0, -1.0)
+                tx.translate(-h.toDouble(), 0.0)
+            }
+            8 -> {
+                // rotate 270 CW
+                tx.translate(0.0, w.toDouble())
+                tx.rotate(-Math.PI / 2)
+            }
+            else -> return img
+        }
+
+        val newW = if (orientation in 5..8) h else w
+        val newH = if (orientation in 5..8) w else h
+
+        val destType = determineDestType(img)
+        val dest = BufferedImage(newW, newH, destType)
+        val g = dest.createGraphics()
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g.drawImage(img, tx, null)
+        g.dispose()
+        return dest
+    }
+
+    // Decide destination BufferedImage type: keep original type when possible, otherwise
+// preserve alpha or fallback to TYPE_INT_RGB.
+    private fun determineDestType(img: BufferedImage): Int {
+        return if (img.type != BufferedImage.TYPE_CUSTOM && img.type != 0) {
+            img.type
+        } else if (img.colorModel.hasAlpha()) {
+            BufferedImage.TYPE_INT_ARGB
+        } else {
+            BufferedImage.TYPE_INT_RGB
+        }
+    }
+
+    // Ensure JPEG-compatible (no alpha) BufferedImage
+    private fun ensureJpegCompatible(img: BufferedImage): BufferedImage {
+        if (!img.colorModel.hasAlpha()) return img
+        val rgb = BufferedImage(img.width, img.height,
+            BufferedImage.TYPE_INT_RGB)
+        val g = rgb.createGraphics()
+        g.drawImage(img, 0, 0, java.awt.Color.WHITE, null)
+        g.dispose()
+        return rgb
+    }
+
 
 
     @GetMapping("/video-preview")
