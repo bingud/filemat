@@ -75,14 +75,14 @@
     <!-- Icon / preview and checkbox -->
     <div class="entry-preview relative flex flex-col w-full">
         <!-- Preview image -->
-        <div class="h-full fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center pointer-events-none">
+        <div class="h-full fill-neutral-500 stroke-neutral-500 shrink-0 flex items-center justify-center pointer-events-none">
             {#if entry.filename}
                 {@const format = getFileCategoryFromFilename(entry.filename)}
 
                 {#if format === "image"}
-                    <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=128&path={encodeURI(entry.path)}&modified={entry.modifiedDate}" class="size-full w-auto">
+                    <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=256&path={encodeURI(entry.path)}&modified={entry.modifiedDate}" class="h-full w-auto">
                 {:else if format === "video"}
-                    <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=128&path={encodeURI(entry.path)}&modified={entry.modifiedDate}" class="size-full w-auto">
+                    <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=256&path={encodeURI(entry.path)}&modified={entry.modifiedDate}" class="h-full w-auto">
                 {:else}
                     {#if entry.fileType === "FILE"}
                         <FileIcon />
