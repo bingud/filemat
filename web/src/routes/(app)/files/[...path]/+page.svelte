@@ -152,70 +152,76 @@
 
 <div class="page">
     <div class="w-full flex h-full min-h-0">
-        <div bind:this={filesState.scroll.container} class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
+        <div class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full">
             <!-- Header -->
-            <div class="w-full shrink-0 flex flex-col items-center justify-between gap-2 overflow-hidden bg-surface pb-2 lg:py-2 px-2 rounded-b-lg lg:rounded-lg lg:mt-2">
-                <!-- Top row -->
-                <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full flex items-center">
-                    <Breadcrumbs></Breadcrumbs>                    
-                </div>
-
-                <!-- Lower row -->
-                <div class="w-full h-[2.5rem] flex items-center justify-between">
-                    <!-- Left buttons -->
-                    <div class="h-full flex items-center gap-2">
-                        {#if filesState.data.folderMeta && filesState.isFileListOpen &&
-                                (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
-                        }
-                            <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
-                            <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
-                        {:else if filesState.selectedEntries.hasSelected}
-                            <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
-                            <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
-                            {#if filesState.data.fileMeta == null}
-                                <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
-                            {/if}
-                        {/if}
+            <div class="w-full shrink-0 lg:mt-2   overflow-y-auto custom-scrollbar lg:gutter-stable-both">
+                <div class="w-full flex flex-col items-center justify-between gap-2 overflow-hidden bg-surface pb-2 lg:py-2 px-2 rounded-b-lg lg:rounded-lg">
+                    <!-- Top row -->
+                    <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full flex items-center">
+                        <Breadcrumbs></Breadcrumbs>                    
                     </div>
 
-                    <!-- Right buttons -->
-                    <div class="h-full flex items-center gap-2">
-                        {#if filesState.isFileListOpen}
-                            <FileSortingButton></FileSortingButton>
-                        
-                            <FileViewTypeButton></FileViewTypeButton>
-                        {/if}
+                    <!-- Lower row -->
+                    <div class="w-full h-[2.5rem] flex items-center justify-between">
+                        <!-- Left buttons -->
+                        <div class="h-full flex items-center gap-2">
+                            {#if filesState.data.folderMeta && filesState.isFileListOpen &&
+                                    (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
+                            }
+                                <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
+                                <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
+                            {:else if filesState.selectedEntries.hasSelected}
+                                <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
+                                <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
+                                {#if filesState.data.fileMeta == null}
+                                    <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
+                                {/if}
+                            {/if}
+                        </div>
 
-                        {#if uiState.isDesktop && filesState.isFileListOpen}
-                            <NewFileButton></NewFileButton>
-                        {/if}
+                        <!-- Right buttons -->
+                        <div class="h-full flex items-center gap-2">
+                            {#if filesState.isFileListOpen}
+                                <FileSortingButton></FileSortingButton>
+                            
+                                <FileViewTypeButton></FileViewTypeButton>
+                            {/if}
 
-                        {#if textFileViewerState.isFileSavable}
-                            <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
-                                <div class="h-[1.2rem]">
-                                    <SaveIcon />
-                                </div>
-                                <p>Save</p>
-                            </button>
-                        {/if}
+                            {#if uiState.isDesktop && filesState.isFileListOpen}
+                                <NewFileButton></NewFileButton>
+                            {/if}
 
-                        {#if uiState.isDesktop}
-                            <FileDetailsButton></FileDetailsButton>
-                        {/if}
+                            {#if textFileViewerState.isFileSavable}
+                                <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
+                                    <div class="h-[1.2rem]">
+                                        <SaveIcon />
+                                    </div>
+                                    <p>Save</p>
+                                </button>
+                            {/if}
+
+                            {#if uiState.isDesktop}
+                                <FileDetailsButton></FileDetailsButton>
+                            {/if}
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Files -->
-            <div class="h-[calc(100%-3rem)] w-full pt-2">
+            <div class="h-[calc(100%-3rem)] w-full mt-2 relative">
                 {#if filesState.data.folderMeta || overrideTopLevelFolderUrlPath}
-                    <div class="{filesState.data.fileMeta || filesState.metaLoading ? '!hidden' : '!contents'}">
+                    <div 
+                        bind:this={filesState.scroll.container} 
+                        class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both 
+                            {filesState.data.fileMeta || filesState.metaLoading ? '' : ''}
+                        ">
                         <FileBrowser />
                     </div>
                 {/if}
 
                 {#if filesState.data.fileMeta}
-                    <div class="center" class:!hidden={filesState.metaLoading}>
+                    <div class="h-full absolute top-0 left-0 center" class:!hidden={filesState.metaLoading}>
                         <FileViewer />
                     </div>
                 {/if}
@@ -256,9 +262,6 @@
 {/if}
 
 <style lang="postcss">
-    @import "/src/app.css" reference;
-
-
     :global(.file-action-button) {
         @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-button;
     }

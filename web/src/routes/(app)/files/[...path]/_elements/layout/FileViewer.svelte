@@ -156,7 +156,7 @@
 </script>
 
 
-<div on:click|stopPropagation class="size-full flex flex-col">
+<div on:click|stopPropagation class="size-full flex flex-col bg-bg overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
     {#if filesState.contentLoading || !meta}
         <div class="center">
             <Loader></Loader>
@@ -174,7 +174,7 @@
         <div class="w-full flex-grow min-h-0 flex items-center justify-center">
             {#if isSymlink === false}
                 {#if isText}
-                    <div class="w-full h-full custom-scrollbar" 
+                    <div class="w-full h-full custom-scrollbar overflow-y-auto" 
                         on:focusin={() => { textFileViewerState.isFocused = true }} 
                         on:focusout={() => { textFileViewerState.isFocused = false }}
                         bind:this={textFileViewerState.textEditorContainer}>
