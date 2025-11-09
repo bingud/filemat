@@ -1,6 +1,6 @@
 <script lang="ts">
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { fileSortingModes, type FileSortingMode } from "$lib/code/types/fileTypes";
+    import { fileSortingModes, type FileSortingMode, type SortingDirection } from "$lib/code/types/fileTypes";
     import { entriesOf } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import CheckmarkIcon from "$lib/component/icons/CheckmarkIcon.svelte";
@@ -10,8 +10,11 @@
     let mode = $derived(filesState.sortingMode)
     let direction = $derived(filesState.sortingDirection)
 
-    function handle(newMode: FileSortingMode) {
-        filesState.sortingMode = newMode
+    function setMode(newMode: FileSortingMode) {
+        filesState.setFileSortingMode(newMode)
+    }
+    function setDirection(newDirection: SortingDirection) {
+        filesState.setFileSortingDirection(newDirection)
     }
     
 </script>
@@ -33,7 +36,7 @@
     <Popover.Content align="end" class="relative z-50">
         <div class="w-[14rem] surface-popover-container">
             {#each entriesOf(fileSortingModes) as [modeId, modeName]}
-                <button on:click={() => handle(modeId)} class="surface-popover-button">
+                <button on:click={() => setMode(modeId)} class="surface-popover-button">
                     <div class="size-5 flex-shrink-0">
                         {#if mode === modeId}
                             <CheckmarkIcon />
@@ -45,7 +48,7 @@
 
             <hr class="basic-hr my-2">
 
-            <button on:click={() => { filesState.sortingDirection = "asc" }} class="surface-popover-button">
+            <button on:click={() => { setDirection("asc") }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     {#if direction === "asc"}
                         <SortAscendingIcon />
@@ -63,7 +66,7 @@
                     {/if}
                 </span>
             </button>
-            <button on:click={() => { filesState.sortingDirection = "desc" }} class="surface-popover-button">
+            <button on:click={() => { setDirection("desc") }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
                     {#if direction === "desc"}
                         <SortDescendingIcon />

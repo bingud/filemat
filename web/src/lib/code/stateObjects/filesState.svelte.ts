@@ -1,10 +1,10 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { generateRandomNumber, isFolder, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
-import type { FileSortingMode, fileSortingModes } from "../types/fileTypes"
+import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
 
@@ -74,7 +74,23 @@ class FilesState {
      * File sorting
      */
     sortingMode: FileSortingMode = $state("modified")
-    sortingDirection: "desc" | "asc" = $state("desc")
+    sortingDirection: SortingDirection = $state("desc")
+    setFileSortingMode(mode: FileSortingMode) {
+        this.sortingMode = mode
+        localStorage.setItem("fm-sorting-mode", mode)
+    }
+    setFileSortingDirection(dir: SortingDirection) {
+        this.sortingDirection = dir
+        localStorage.setItem("fm-sorting-direction", dir)
+    }
+
+    constructor() {
+        // Load file sorting options
+        const mode = localStorage.getItem("fm-sorting-mode")
+        const direction = localStorage.getItem("fm-sorting-direction")
+        if (mode && keysOf(fileSortingModes).includes(mode as any)) this.sortingMode = mode as FileSortingMode
+        if (direction && fileSortingDirections.includes(direction as any)) this.sortingDirection = direction as SortingDirection
+    }
     
     /**
      * Clear state on file navigation
