@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
+    import { config } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { addSuffix } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
@@ -45,14 +46,12 @@
                 <span>Open in new tab</span>
             </a>
 
-            {#if filesState.data.contentUrl}
-                <a download href={addSuffix(filesState.data.contentUrl, "/") + `${menuEntry.filename!}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                    <div class="size-5 flex-shrink-0">
-                        <DownloadIcon />
-                    </div>
-                    <span>Download</span>
-                </a>
-            {/if}
+            <a download href={`${config.fileContentUrlPathPrefix}${menuEntry.path}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                <div class="size-5 flex-shrink-0">
+                    <DownloadIcon />
+                </div>
+                <span>Download</span>
+            </a>
 
             {#if menuEntry.permissions.includes("MOVE")}
                 <button on:click={() => { option_rename(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">

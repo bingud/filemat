@@ -1,5 +1,5 @@
 import { goto } from "$app/navigation"
-import { desktopWidth } from "../config/values"
+import { config } from "../config/values"
 import type { filesState } from "../stateObjects/filesState.svelte"
 import { uiState, type SettingSectionId } from "../stateObjects/uiState.svelte"
 
@@ -9,7 +9,7 @@ import { uiState, type SettingSectionId } from "../stateObjects/uiState.svelte"
  */
 export function updateScreenSize() {
     const width = window.innerWidth
-    uiState.isDesktop = width >= desktopWidth
+    uiState.isDesktop = width >= config.desktopWidth
     uiState.screenWidth = width
 
     uiState.onResize()

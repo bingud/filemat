@@ -4,6 +4,7 @@ import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
+import { config } from "../config/values"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
@@ -247,7 +248,7 @@ class FileDataStateClass {
     // Download URL of currently open file
     contentUrl = $derived.by(() => {
         if (!this.fileMeta) return null
-        return `/api/v1/file/content?path=${this.fileMeta.path}`
+        return `${config.fileContentUrlPathPrefix}${encodeURIComponent(this.fileMeta.path)}`
     })
     // All entries in the current directory
     entries = $state(null) as FullFileMetadata[] | null
