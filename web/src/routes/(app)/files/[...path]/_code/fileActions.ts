@@ -2,7 +2,9 @@ import { filePermissionMeta } from "$lib/code/data/permissions";
 import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip } from "$lib/code/module/files";
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-import { filenameFromPath, formData, handleErr, keysOf, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
+import { filenameFromPath, formData, handleErr, handleException, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
+import { toast } from "@jill64/svelte-toast";
+import { textFileViewerState } from "./textFileViewerState.svelte";
 
 
 export async function option_moveSelectedFiles() {
@@ -101,4 +103,62 @@ export async function handleNewFolder() {
         isExecutable: true,
         isWritable: true,
     })
+}
+
+
+export async function saveEditedFile() {
+    if (!textFileViewerState.isFileSavable) return console.log(`File is not savable.`)
+    if (!textFileViewerState.textEditor) return console.log(`Editor is null.`)
+
+    const filePath = textFileViewerState.filePath
+    if (!filePath) return console.log(`Edited file path is null.`)
+
+    const doc = textFileViewerState.textEditor.state.doc
+    const newContent = doc.toString()
+
+    if (filesState.data.decodedContent === newContent) return console.log(`Content did not change.`)
+
+    const response = await safeFetch(`/api/v1/file/edit`, {  
+        body: formData({ path: filePath, content: newContent.toString() })
+    })
+    if (response.failed) {
+        handleException(`Exception when editing file.`, `Failed to edit file.`, response.exception)
+        return
+    }
+
+    const text = response.content
+    const json = parseJson(text)
+    
+    if (response.code.failed) {
+        handleErr({
+            description: `Failed to edit file (${response.status}).`,
+            notification: json.message || `Failed to edit file.`,
+            isServerDown: response.code.serverDown
+        })
+        return
+    }
+
+    const modifiedDate = json.modifiedDate
+    const size = json.size
+
+    // Update file data
+    if (filesState.path === filePath) {
+        filesState.data.decodedContent = newContent
+        filesState.data.fileMeta!.modifiedDate = modifiedDate
+        filesState.data.fileMeta!.size = size
+    }
+
+    // Update folder data
+    if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, filePath)) {
+        filesState.data.entries!.forEach(entry => {
+            if (entry.path === filePath) {
+                entry.modifiedDate = modifiedDate
+                entry.size = size
+            }
+        })
+    }
+
+    textFileViewerState.isFileSavable = false
+
+    toast.success(`File saved.`)
 }

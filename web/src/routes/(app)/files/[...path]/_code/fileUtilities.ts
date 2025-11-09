@@ -1,8 +1,6 @@
 import type { EntityPermission, Role } from "$lib/code/auth/types"
-import { filePermissionMeta } from "$lib/code/data/permissions";
 import { streamFileContent } from "$lib/code/module/files"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { formData, handleErr, keysOf, safeFetch, unixNowMillis } from "$lib/code/util/codeUtil.svelte";
 
 export type EntityPermissionMeta = { permission: EntityPermission & { permissionType: "USER"} ; username: string; role: null}  |
         { permission: EntityPermission & { permissionType: "ROLE"} ; username: null; role: Role} 
@@ -10,8 +8,8 @@ export type EntityPermissionMeta = { permission: EntityPermission & { permission
 
 export async function loadFileContent(filePath: string) {
     const blob = await streamFileContent(filePath, filesState.abortController.signal)
-    if (filesState.lastFilePathLoaded !== filePath) return    
-    if (!blob) return
+    if (filesState.data.fileMeta?.path !== filePath) return console.log(`Loaded blob of file that is not open anymore.`)
+    if (!blob) return console.log(`Loaded blob is null.`)
     filesState.data.content = blob
 }
 

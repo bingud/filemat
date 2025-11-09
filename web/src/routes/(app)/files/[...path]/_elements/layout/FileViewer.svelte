@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { fileCategories, getFileCategoryFromFilename, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
+    import { getFileCategoryFromFilename, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
     import { explicitEffect, getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
     import {basicSetup} from "codemirror"
@@ -11,30 +11,29 @@
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { loadFileContent } from "../../_code/fileUtilities";
-    import { onMount, untrack } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
     import videojs from 'video.js'
     import 'video.js/dist/video-js.min.css'
     import type Player from "video.js/dist/types/player";
     import mime from 'mime'
+    import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
 
     
     let meta = $derived(filesState.data.fileMeta) 
 
     const isSymlink = $derived(meta?.fileType.includes("LINK") && !appState.followSymlinks)
-    const fileCategory = $derived.by(() => {
+    const fileCategory: FileCategory | null = $derived.by(() => {
         if (!meta) return null
-        if (isSymlink) return "text"
+        if (isSymlink) return "text" as FileCategory
         return getFileCategoryFromFilename(meta.filename!)
     })
+    let isEditable = $derived(fileCategory === "text")
 
     let displayedFileCategory = $derived(fileCategory)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))
     let isText = $derived(isTextFileCategory(displayedFileCategory))
-
-    let textEditorContainer: HTMLElement | undefined = $state()
-    let textEditor: EditorView | undefined
 
     let videoElement: HTMLVideoElement | undefined = $state(undefined)
     let player: Player | undefined = $state(undefined)
@@ -49,6 +48,10 @@
                 player.dispose()
             }
         }
+    })
+
+    onDestroy(() => {
+        textFileViewerState.reset()
     })
 
     $effect(() => {
@@ -68,7 +71,7 @@
     explicitEffect(() => [ 
         uiState.isDark,
         filesState.data.decodedContent,
-        textEditorContainer,
+        textFileViewerState.textEditorContainer,
         isText
     ], () => {
         if (isText) {
@@ -109,17 +112,24 @@
     })
 
     function createTextEditor() {
-        if (textEditor) {
-            try { textEditor.destroy() } catch (e) {}
-        }
+        textFileViewerState.destroyEditor()
 
-        if (filesState.data.decodedContent == null || !textEditorContainer) return
+        if (filesState.data.decodedContent == null || !textFileViewerState.textEditorContainer) return
+
+        textFileViewerState.filePath = filesState.data.fileMeta!.path
 
         const theme = uiState.isDark ? barf : ayuLight
-        textEditor = new EditorView({
+        textFileViewerState.textEditor = new EditorView({
             doc: filesState.data.decodedContent,
-            parent: textEditorContainer,
-            extensions: [basicSetup, theme]
+            parent: textFileViewerState.textEditorContainer,
+            extensions: [
+                basicSetup, theme,
+                EditorView.updateListener.of((update) => {
+                    if (update.docChanged && isEditable) {
+                        textFileViewerState.isFileSavable = true
+                    }
+                })
+            ]
         })
     }
 
@@ -164,7 +174,11 @@
         <div class="w-full flex-grow min-h-0 flex items-center justify-center">
             {#if isSymlink === false}
                 {#if isText}
-                    <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
+                    <div class="w-full h-full custom-scrollbar" 
+                        on:focusin={() => { textFileViewerState.isFocused = true }} 
+                        on:focusout={() => { textFileViewerState.isFocused = false }}
+                        bind:this={textFileViewerState.textEditorContainer}>
+                    </div>
                 {:else if type === "image"}
                     <img 
                         src={filesState.data.contentUrl}

@@ -1,5 +1,7 @@
 package org.filemat.server.common.util
 
+import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import kotlin.random.Random
 
@@ -7,11 +9,6 @@ object StringUtils {
 
     private val charPool: List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
     private val uppercaseCharPool: List<Char> = ('A'..'Z').toList()
-
-    fun errorJsonResponse(error: String, message: String): String {
-        val response = "{\"error\":\"$error\",\"message\":\"$message\"}"
-        return response
-    }
 
     fun randomString(length: Int) = (1..length)
         .map { Random.nextInt(0, charPool.size).let { charPool[it] } }
@@ -62,4 +59,7 @@ object StringUtils {
         return ipRegex.containsMatchIn(input)
     }
 
+    fun measureByteSize(text: String): Long {
+        return StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(text)).limit().toLong()
+    }
 }

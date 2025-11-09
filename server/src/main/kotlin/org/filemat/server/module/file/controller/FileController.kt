@@ -35,7 +35,29 @@ class FileController(
     private val filesystemService: FilesystemService,
 ) : AController() {
 
-    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    @PostMapping("/edit")
+    fun editFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+        @RequestParam("content") newContent: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+
+        fileService.editFile(user = user, rawPath = path, newContent = newContent)
+            .let {
+                if (it.hasError) return internal(it.error)
+                if (it.notFound) return bad("This file does not exist.")
+                if (it.rejected) return bad(it.error)
+
+                val result = it.value
+                val json = json {
+                    put("modifiedDate", result.modifiedDate)
+                    put("size", result.size)
+                }
+                return ok(json)
+            }
+    }
 
     @PostMapping("/all-permitted")
     fun getAllPermittedFiles(

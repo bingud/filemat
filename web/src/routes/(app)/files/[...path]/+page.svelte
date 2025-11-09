@@ -20,12 +20,14 @@
     import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte';
     import FileViewer from './_elements/layout/FileViewer.svelte';
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
-    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles } from './_code/fileActions';
+    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles, saveEditedFile } from './_code/fileActions';
     import NewFileButton from './_elements/button/NewFileButton.svelte';
     import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil";
     import FileSortingButton from "./_elements/button/FileSortingButton.svelte";
     import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte";
     import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte";
+    import { textFileViewerState } from "./_code/textFileViewerState.svelte";
+    import SaveIcon from "$lib/component/icons/SaveIcon.svelte";
 
 
     let {
@@ -184,8 +186,17 @@
                             <FileViewTypeButton></FileViewTypeButton>
                         {/if}
 
-                        {#if uiState.isDesktop}
+                        {#if uiState.isDesktop && filesState.isFileListOpen}
                             <NewFileButton></NewFileButton>
+                        {/if}
+
+                        {#if textFileViewerState.isFileSavable}
+                            <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
+                                <div class="h-[1.2rem]">
+                                    <SaveIcon />
+                                </div>
+                                <p>Save</p>
+                            </button>
                         {/if}
 
                         {#if uiState.isDesktop}

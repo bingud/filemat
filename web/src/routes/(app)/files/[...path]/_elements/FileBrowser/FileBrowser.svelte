@@ -14,6 +14,7 @@
     import { isDialogOpen } from "$lib/code/util/stateUtils";
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
     import GridFileEntry from "./GridFileEntry.svelte";
+    import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -63,6 +64,7 @@
 
     function handleKeyDown(event: KeyboardEvent) {
         if (isDialogOpen()) return
+        if (textFileViewerState.isFocused) return
 
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {

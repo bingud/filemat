@@ -6,6 +6,7 @@ import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { addSuffix, filenameFromPath, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
+import { textFileViewerState } from "./textFileViewerState.svelte"
 
 
 
@@ -149,6 +150,10 @@ export function handleKeyDown(event: KeyboardEvent) {
 
     // Navigate to the parent folder
     if (event.key === "Backspace") {
+        // bypass, if editing text file
+        if (textFileViewerState.isFocused) return
+
+        // bypass, if the current folder is already top-level
         const currentPath = filesState.path
         if (currentPath === "/") return
 

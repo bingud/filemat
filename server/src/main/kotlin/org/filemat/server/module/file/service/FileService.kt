@@ -40,6 +40,44 @@ class FileService(
     private val filesystem: FilesystemService,
 ) {
 
+
+    data class EditFileResult(val modifiedDate: Long, val size: Long)
+    fun editFile(user: Principal, rawPath: FilePath, newContent: String): Result<EditFileResult> {
+        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
+        val canonicalPath = canonicalResult.let {
+            if (it.isNotSuccessful) return canonicalResult.cast()
+            it.value
+        }
+
+        isAllowedToEditFile(
+            user = user,
+            canonicalPath = canonicalPath
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val file = canonicalPath.path.toFile()
+        if (!file.exists()) {
+            return Result.notFound()
+        }
+
+        try {
+            file.writeText(newContent)
+        } catch (e: Exception) {
+            return Result.error("An error occurred while saving file.")
+        }
+
+        val modifiedDate = runCatching { file.lastModified() }.getOrElse { System.currentTimeMillis() }
+        val size = filesystem.getSize(canonicalPath).let {
+            if (it.isNotSuccessful) return@let StringUtils.measureByteSize(newContent)
+            it.value
+        }
+
+        return Result.ok(
+            EditFileResult(modifiedDate = modifiedDate, size = size)
+        )
+    }
+
     fun getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
         val entityPermissions = entityPermissionService.getPermittedEntities(user)
 
@@ -111,7 +149,7 @@ class FileService(
         if (canonicalPath == newPath || newPath.startsWith(canonicalPath)) return Result.reject("File cannot be moved into itself.")
 
         // Check target parent folder `WRITE` permission
-        isAllowedToEditFolder(user = user, canonicalPath = newPathParent).let {
+        isAllowedToEditFile(user = user, canonicalPath = newPathParent).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -396,7 +434,7 @@ class FileService(
     /**
      * Fully verifies if a user is allowed to write to a folder.
      */
-    fun isAllowedToEditFolder(user: Principal, canonicalPath: FilePath): Result<Unit> {
+    fun isAllowedToEditFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
         val isAdmin = hasAdminAccess(user)
 
         if (isAdmin == false) {
@@ -405,9 +443,9 @@ class FileService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-            // Check delete permissions
+            // Check write permissions
             hasFilePermission(canonicalPath, user, false, FilePermission.WRITE).let {
-                if (it == false) return Result.reject("You do not have permission to edit this folder.")
+                if (it == false) return Result.reject("You do not have permission to edit this file.")
             }
         }
 

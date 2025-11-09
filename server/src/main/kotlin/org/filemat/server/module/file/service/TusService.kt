@@ -16,7 +16,6 @@ import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.util.Base64
 import kotlin.io.path.exists
 
 
@@ -128,7 +127,7 @@ class TusService(
         }
 
         // Authenticate destination path
-        val isAllowed = fileService.isAllowedToEditFolder(user = user, canonicalPath = destinationParentPath)
+        val isAllowed = fileService.isAllowedToEditFile(user = user, canonicalPath = destinationParentPath)
         if (isAllowed.isNotSuccessful) {
             response.respond(400, isAllowed.errorOrNull ?: "You do not have permission to access this folder.")
             return false
@@ -194,7 +193,7 @@ class TusService(
         // Resolve the destination parent folder
         val destinationParent = let {
             resolvePath(rawDestinationParent).let { (result, hadSymlink) ->
-                if (result.isNotSuccessful) return result.cast();
+                if (result.isNotSuccessful) return result.cast()
                 result.value
             }
         }
@@ -216,7 +215,7 @@ class TusService(
             // Try “name.ext”, “name (1).ext”, “name (2).ext”, …
             var counter = 0
             var candidatePath: Path
-            var candidateName = ""
+            var candidateName: String
             do {
                 val suffix = if (counter == 0) "" else " ($counter)"
                 candidateName = "$baseName$suffix$extension"
