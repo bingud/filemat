@@ -86,9 +86,9 @@
                     {@const format = getFileCategoryFromFilename(entry.filename)}
 
                     {#if format === "image"}
-                        <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=48&path={entry.path}&modified={entry.modifiedDate}" class="h-full w-full object-contain">
+                        <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=48&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}" class="h-full w-full object-contain">
                     {:else if format === "video"}
-                        <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=48&path={entry.path}&modified={entry.modifiedDate}" class="h-full w-full object-contain">
+                        <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=48&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}" class="h-full w-full object-contain">
                     {:else}
                         {#if entry.fileType === "FILE"}
                             <FileIcon />

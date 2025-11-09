@@ -167,7 +167,7 @@
                     <div class="w-full h-full custom-scrollbar" bind:this={textEditorContainer}></div>
                 {:else if type === "image"}
                     <img 
-                        src={filesState.data.contentUrl} 
+                        src={filesState.data.contentUrl}
                         alt={meta.path} 
                         class="max-w-full max-h-full size-auto"
                         on:dragstart={(e) => { if (e.dataTransfer?.effectAllowed) { e.dataTransfer.dropEffect = 'link'; e.dataTransfer.setData('isFromPage', 'true') } }}
