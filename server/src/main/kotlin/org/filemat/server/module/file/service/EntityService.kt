@@ -91,6 +91,14 @@ class EntityService(
         }
     }
 
+    fun getEntityIdByPath(path: FilePath, action: UserAction): Result<Ulid> {
+        pathMap[path.pathString]?.let { return it.toResult() }
+        getByPath(path.pathString, action).let {
+            if (it.isNotSuccessful) return it.cast()
+            return it.value.entityId.toResult()
+        }
+    }
+
     fun delete(entityId: Ulid, userAction: UserAction): Result<Unit> {
         return try {
             map_remove(entityId)

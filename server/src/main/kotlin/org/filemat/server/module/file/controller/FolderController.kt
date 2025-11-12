@@ -8,7 +8,7 @@ import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.json
-import org.filemat.server.module.file.model.FileMetadata
+import org.filemat.server.common.util.measureNano
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.FileService
@@ -22,8 +22,6 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/folder")
 class FolderController(private val fileService: FileService) : AController() {
-
-    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     @PostMapping("/create")
     fun createFolderMapping(
@@ -84,11 +82,16 @@ class FolderController(private val fileService: FileService) : AController() {
         val path = FilePath.of(rawPath)
         val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false
 
-        val result = fileService.getFileOrFolderEntries(
-            user = principal,
-            rawPath = path,
-            foldersOnly = foldersOnly
-        )
+        val result = measureNano {
+            fileService.getFileOrFolderEntries(
+                user = principal,
+                rawPath = path,
+                foldersOnly = foldersOnly
+            )
+        }.let {
+            print("${it.first}  -  ${it.first.value.first.path}")
+            it.first
+        }
         if (result.hasError) return internal(result.error)
         if (result.notFound) return notFound()
         if (result.isNotSuccessful) return bad(result.error)

@@ -1,16 +1,23 @@
 package org.filemat.server.module.sharedFiles.model
 
 import com.github.f4b6a3.ulid.Ulid
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import org.filemat.server.config.UlidSerializer
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
+@Serializable
 @Table("shared_files")
 data class FileShare(
     @Column("share_id")
     val shareId: String,
     @Column("file_id")
+    @Serializable(with = UlidSerializer::class)
     val fileId: Ulid,
     @Column("user_id")
+    @Serializable(with = UlidSerializer::class)
     val userId: Ulid,
     @Column("created_date")
     val createdDate: Long,
@@ -19,5 +26,24 @@ data class FileShare(
     @Column("is_password")
     val isPassword: Boolean,
     @Column("password")
-    val password: String?,
+    @Transient
+    val password: String? = null,
+)
+fun FileShare.toPublic() = FileSharePublic(
+    shareId = shareId,
+    createdDate = createdDate,
+    maxAge = maxAge,
+    isPassword = isPassword,
+)
+
+@Serializable
+data class FileSharePublic(
+    @SerialName("share_id")
+    val shareId: String,
+    @SerialName("created_date")
+    val createdDate: Long,
+    @SerialName("max_age")
+    val maxAge: Long,
+    @SerialName("is_password")
+    val isPassword: Boolean,
 )
