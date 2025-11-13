@@ -42,7 +42,7 @@ export type Role = {
 export type SystemPermission =
   | "ACCESS_ALL_FILES"
   | "MANAGE_OWN_FILE_PERMISSIONS"
-  | "MANAGE_ALL_FILE_PERMISSIONS"
+  | "MANAGE_ALL_FILE_PERMISSIONS"   
   | "MANAGE_USERS"
   | "MANAGE_SYSTEM"
   | "EDIT_ROLES"

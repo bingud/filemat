@@ -82,16 +82,11 @@ class FolderController(private val fileService: FileService) : AController() {
         val path = FilePath.of(rawPath)
         val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false
 
-        val result = measureNano {
-            fileService.getFileOrFolderEntries(
-                user = principal,
-                rawPath = path,
-                foldersOnly = foldersOnly
-            )
-        }.let {
-            print("${it.first}  -  ${it.first.value.first.path}")
-            it.first
-        }
+        val result = fileService.getFileOrFolderEntries(
+            user = principal,
+            rawPath = path,
+            foldersOnly = foldersOnly
+        )
         if (result.hasError) return internal(result.error)
         if (result.notFound) return notFound()
         if (result.isNotSuccessful) return bad(result.error)

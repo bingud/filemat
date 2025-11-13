@@ -16,7 +16,7 @@ export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | n
 export async function getFileData(
     path: string,
     signal: AbortSignal | undefined,
-    options: { foldersOnly?: boolean }
+    options: { foldersOnly?: boolean, silent?: boolean }
 ): Promise<Result<FileData>> {
     const response = await safeFetch("/api/v1/folder/file-and-folder-entries", {
         body: formData({ path: path, foldersOnly: options.foldersOnly || false }),
@@ -25,7 +25,7 @@ export async function getFileData(
     if (response.failed) {
         handleErr({
             description: `Failed to fetch folder entries`,
-            notification: `Failed to open folder.`,
+            notification: options.silent ? undefined : `Failed to open folder.`,
         })
         return Result.error(`Failed to fetch folder entries`)
     }
@@ -37,7 +37,7 @@ export async function getFileData(
     } else if (status.failed) {
         handleErr({
             description: `Failed to open folder.`,
-            notification: json.message || `Failed to open folder.`,
+            notification: options.silent ? undefined : (json.message || `Failed to open folder.`),
             isServerDown: status.serverDown
         })
         return Result.error(json.message)
@@ -53,11 +53,14 @@ export async function getFileData(
     return Result.ok(data)
 }
 
-export async function getFileListFromCustomEndpoint(
-    path: string,
-    urlPath: string,
-    signal: AbortSignal | undefined,
-): Promise<Result<FullFileMetadata[]>> {
+export async function getFileListFromCustomEndpoint(params: {
+    path: string
+    urlPath: string
+    signal: AbortSignal | undefined
+    silent: boolean
+}): Promise<Result<FullFileMetadata[]>> {
+    const { path, urlPath, signal, silent } = params
+
     const response = await safeFetch(urlPath, {
         body: formData({ path: path, foldersOnly: false }),
         signal: signal
@@ -65,7 +68,7 @@ export async function getFileListFromCustomEndpoint(
     if (response.failed) {
         handleErr({
             description: `Failed to fetch folder entries`,
-            notification: `Failed to open folder.`,
+            notification: silent ? undefined : `Failed to open folder.`,
         })
         return Result.error(`Failed to fetch folder entries`)
     }
@@ -77,7 +80,7 @@ export async function getFileListFromCustomEndpoint(
     } else if (status.failed) {
         handleErr({
             description: `Failed to open folder.`,
-            notification: json.message || `Failed to open folder.`,
+            notification: silent ? undefined : (json.message || `Failed to open folder.`),
             isServerDown: status.serverDown
         })
         return Result.error(json.message)

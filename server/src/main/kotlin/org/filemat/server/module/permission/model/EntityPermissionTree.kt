@@ -449,21 +449,28 @@ class EntityPermissionTree() {
     ) {
         // Check if user has permission for this node
         val userPermission = node.userPermissions[userId]
-            ?.takeIf { FilePermission.READ in it.permissions }
+        val hasReadPermissionForUser = userPermission?.let { FilePermission.READ in userPermission.permissions }
 
-        val rolePermissions = roleIds.mapNotNull { roleId ->
-            node.rolePermissions[roleId]
-                ?.takeIf { FilePermission.READ in it.permissions }
+        // Only load role permissions if user hasn't denied READ permission
+        val rolePermissions = let {
+            if (hasReadPermissionForUser != false) {
+                roleIds.mapNotNull { roleId ->
+                    node.rolePermissions[roleId]
+                        ?.takeIf { FilePermission.READ in it.permissions }
+                }
+            } else null
         }
 
-        val hasAccess = (userPermission != null) || rolePermissions.isNotEmpty()
+        val hasAccess = (hasReadPermissionForUser == true) || (rolePermissions?.isNotEmpty() ?: false)
 
         if (hasAccess) {
             // Check if this should be included (is "top-level" in accessible area)
             if (isTopLevelAccessible(node, userId, roleIds)) {
                 // Add the permissions that grant access
-                userPermission?.let { result.add(it) }
-                result.addAll(rolePermissions)
+                if (hasReadPermissionForUser == true) {
+                    userPermission.let { result.add(it) }
+                }
+                rolePermissions?.let { result.addAll(rolePermissions) }
             }
         }
 

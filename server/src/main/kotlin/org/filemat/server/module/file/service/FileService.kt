@@ -450,7 +450,7 @@ class FileService(
 
         // Check if user can read any files
         val isAdmin = hasAdminAccess ?: hasAdminAccess(user)
-        if (isAdmin != true) {
+        if (isAdmin == false) {
             val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = user, permission = FilePermission.READ)
             if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
         }

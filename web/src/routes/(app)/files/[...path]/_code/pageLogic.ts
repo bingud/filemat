@@ -46,13 +46,18 @@ export async function loadPageData(
     }
 ) {
     filesState.lastFilePathLoaded = filePath
-    if (!options.silent) filesState.metaLoading = true
+    if (!options.silent && !options.parentFolderOnly) filesState.metaLoading = true
 
     // Get file metadata + folder entries
     const result = (
         options.overrideDataUrlPath
-        ? await getFileListFromCustomEndpoint(filePath, options.overrideDataUrlPath, filesState.abortController?.signal)
-        : await getFileData(filePath, filesState.abortController?.signal, {})
+        ? await getFileListFromCustomEndpoint({
+                path: filePath,
+                urlPath: options.overrideDataUrlPath,
+                signal: filesState.abortController?.signal,
+                silent: options.parentFolderOnly ?? false
+            })
+        : await getFileData(filePath, filesState.abortController?.signal, { silent: options.parentFolderOnly })
     )
 
     if (result.notFound) {
@@ -62,7 +67,6 @@ export async function loadPageData(
         } else {
             toast.error("This folder was not found.")
         }
-
         await navigateToFilePath(parentFromPath(filesState.path))
     }
     if (result.isUnsuccessful) return
