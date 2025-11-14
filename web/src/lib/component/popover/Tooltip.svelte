@@ -1,27 +1,35 @@
 <script lang="ts">
-    import type { snippet } from "$lib/code/types/types";
-    import { Tooltip } from "bits-ui";
+    import type { snippet } from "$lib/code/types/types"
+    import { Tooltip } from "bits-ui"
 
     let {
         children,
-        text
+        text,
+        delay = 400,
+        class: classes,
+        side = "top",
+        align = "center",
     }: {
         children: snippet,
         text: string,
+        delay?: number,
+        class?: string,
+        side?: "top" | "bottom",
+        align?: "start" | "center" | "end"
     } = $props()
 </script>
 
 
-<Tooltip.Root>
+<Tooltip.Root delayDuration={delay}>
     <Tooltip.Trigger>
         {#snippet child({props})}
-            <span {...props} class="">
+            <span {...props} class={classes}>
                 {@render children()}
             </span>
         {/snippet}
     </Tooltip.Trigger>
     <Tooltip.Portal>
-        <Tooltip.Content class="relative z-50 surface-popover-container px-3">
+        <Tooltip.Content {side} {align} class="surface-popover-container px-3 !max-w-screen overflow-hidden !break-words">
             {text}
         </Tooltip.Content>
     </Tooltip.Portal>

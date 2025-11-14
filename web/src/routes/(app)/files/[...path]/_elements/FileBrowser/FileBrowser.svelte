@@ -449,8 +449,6 @@
 
 
 <style lang="postcss">
-    @import "/src/app.css" reference;
-    
     :global(.file-row-grid) {
         @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
     }

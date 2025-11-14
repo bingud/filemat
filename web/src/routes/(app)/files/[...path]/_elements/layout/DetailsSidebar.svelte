@@ -188,7 +188,9 @@
         {@const filename = filenameFromPath(selectedMeta.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
-            <h3 title={filename} class="truncate text-lg">{filename}</h3>
+            <Tooltip text={filename} align="start">
+                <h3 class="truncate text-lg">{filename}</h3>
+            </Tooltip>
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
@@ -280,7 +282,7 @@
                                             <UserIcon></UserIcon>
                                         {/if}
                                     </div>
-                                    <Tooltip text={meta.username ?? meta.role!.name}>
+                                    <Tooltip text={meta.username ?? meta.role!.name} class="truncate">
                                         <p class="truncate">{meta.username ?? meta.role!.name}</p>
                                     </Tooltip>
                                 </div>
