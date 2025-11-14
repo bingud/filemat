@@ -2,7 +2,6 @@
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { config } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { addSuffix } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";

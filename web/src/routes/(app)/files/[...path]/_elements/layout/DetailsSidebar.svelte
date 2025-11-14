@@ -18,6 +18,7 @@
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import Tooltip from "$lib/component/popover/Tooltip.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -279,7 +280,9 @@
                                             <UserIcon></UserIcon>
                                         {/if}
                                     </div>
-                                    <p>{meta.username ?? meta.role!.name}</p>
+                                    <Tooltip text={meta.username ?? meta.role!.name}>
+                                        <p class="truncate">{meta.username ?? meta.role!.name}</p>
+                                    </Tooltip>
                                 </div>
                                 <div class="flex gap-2 flex-wrap">
                                     {#if meta.permission.permissions.length === filePermissionCount}

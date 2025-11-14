@@ -14,6 +14,7 @@
     import { confirmDialogState, inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import InputDialog from '$lib/component/InputDialog.svelte';
     import { onUserIdleChange } from '$lib/code/util/stateUtils';
+    import { Tooltip } from 'bits-ui';
 
 	let { children } = $props();
 
@@ -87,7 +88,9 @@
 <Toaster {palette} {toastOptions} />
 
 <div id="root-page" class="w-full min-h-0 h-full flex flex-col">
-    {@render children()}
+    <Tooltip.Provider>
+        {@render children()}
+    </Tooltip.Provider>
 </div>
 
 <!-- Confirmation Dialog -->

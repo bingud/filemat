@@ -108,7 +108,6 @@
         return () => { pollingInterval?.cancel() }
     })
 
-
     // Run when user stops being idle
     explicitEffect(() => [
         clientState.isIdle 
@@ -142,6 +141,7 @@
     beforeNavigate(() => {
         saveScrollPosition()
     })
+
 </script>
 
 
