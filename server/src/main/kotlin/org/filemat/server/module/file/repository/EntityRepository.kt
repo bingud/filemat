@@ -47,7 +47,7 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
         path: String?,
         inode: Long?,
         isFilesystemSupported: Boolean,
-        ownerId: Ulid?,
+        ownerId: Ulid,
         followSymlinks: Boolean
     ): Int
 }

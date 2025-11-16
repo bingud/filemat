@@ -164,26 +164,3 @@ export function fileViewType_saveInLocalstorage(state: typeof filesState.ui.file
 export function fileViewType_getFromLocalstorage(): typeof filesState.ui.fileViewType | null {
     return localStorage.getItem("fileViewType") as typeof filesState.ui.fileViewType
 }
-
-export function useReplaceChars(node: HTMLInputElement, replaceFn: (char: string) => string) {
-    function handleInput(e: any) {
-        const target = e.target as HTMLInputElement
-        const oldValue = target.value
-        const caretPos = target.selectionStart
-        
-        const newValue = oldValue.split('').map(replaceFn).join('')
-        
-        if (newValue !== oldValue) {
-            target.value = newValue
-            target.selectionStart = target.selectionEnd = caretPos
-        }
-    }
-
-    node.addEventListener('input', handleInput)
-
-    return {
-        destroy() {
-            node.removeEventListener('input', handleInput)
-        }
-    }
-}

@@ -13,7 +13,6 @@ export const systemPermissionMeta: Record<SystemPermission, PermissionMeta<Syste
     "EDIT_ROLES": { id: "EDIT_ROLES", name: "Edit roles", description: "Edit any role", type: PermissionType.system, level: 3},
     "MANAGE_SYSTEM": { id: "MANAGE_SYSTEM", name: "Manage system", description: "Manage the system", type: PermissionType.system, level: 3},
     "SUPER_ADMIN": { id: "SUPER_ADMIN", name: "Super admin", description: "Has all permissions to manage the entire system", type: PermissionType.system, level: 4},
-    "MANAGE_ALL_FILE_SHARES": { id: "MANAGE_ALL_FILE_SHARES", name: "Manage all file shares", description: "Manage all shares of a file", type: PermissionType.system, level: 1},
 }
 export const systemPermissionCount = Object.keys(systemPermissionMeta).length
 

@@ -14,8 +14,6 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
 import java.io.InputStream
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -463,9 +461,4 @@ inline fun <reified T : Enum<T>> parseEnumList(str: String?): List<T> {
     str ?: return emptyList()
     val names = Json.decodeFromString<List<String>>(str)
     return names.map { enumValueOf<T>(it) }
-}
-
-fun encodePathSegment(input: String): String {
-    return URLEncoder.encode(input, StandardCharsets.UTF_8.toString())
-        .replace("+", "%20")
 }

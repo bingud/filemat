@@ -27,7 +27,7 @@ export function pageTitle(text: string) { return `${text} — Filemat` }
  * Logs an exception
  */
 export function handleException(message: string, userMessage: string | null, exception: any) {
-    console.log(`${message || "(No description message)"}\n(${userMessage || "(No notification message)"})\n${exception}`)
+    console.log(`${message}\n(${userMessage ?? "No user message"})\n${exception}`)
 
     if (userMessage) {
         toast.error(userMessage)
@@ -42,11 +42,11 @@ export function handleErr({
     notification,
     isServerDown,
 }: {
-    description?: string,
+    description: string,
     notification?: string,
     isServerDown?: boolean,
 }) {
-    console.log(`${description || "(No description)"}  \n${notification || "(No notification message)"}  \n${isServerDown ? "(Server is unavailable)" : ""}`)
+    console.log(`${description}  \n${notification ?? "(No notification message)"}  \n${isServerDown ? "(Server is unavailable)" : ""}`)
 
     if (notification) {
         const downMessage = "Sever is unavailable."

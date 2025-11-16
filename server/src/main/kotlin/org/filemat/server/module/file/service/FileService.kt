@@ -93,7 +93,7 @@ class FileService(
             if (entity.path == null) return@mapNotNull null
 
             // Get file share data
-            val shares: List<FileSharePublic> = fileShareService.getSharesByEntityId(entity.entityId, UserAction.GET_PERMITTED_ENTITIES)
+            val shares: List<FileSharePublic> = fileShareService.getSharesByFileId(entity.entityId, UserAction.GET_PERMITTED_ENTITIES)
                 .let {
                     if (it.isNotSuccessful) return@let emptyList()
                     it.value.map { it.toPublic() }
@@ -414,7 +414,7 @@ class FileService(
                 it.value
             }
 
-        val shares: List<FileSharePublic> = entityId?.let { fileShareService.getSharesByEntityId(it, action) }
+        val shares: List<FileSharePublic> = entityId?.let { fileShareService.getSharesByFileId(it, action) }
             ?.let { it: Result<List<FileShare>> ->
                 if (it.isNotSuccessful) return it.cast()
                 it.value.map { it.toPublic() }
@@ -473,24 +473,6 @@ class FileService(
             // Check write permissions
             hasFilePermission(canonicalPath, user, false, FilePermission.WRITE).let {
                 if (it == false) return Result.reject("You do not have permission to edit this file.")
-            }
-        }
-
-        return Result.ok()
-    }
-
-    fun isAllowedToShareFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        val isAdmin = hasAdminAccess(user)
-
-        if (isAdmin == false) {
-            // Check access permissions
-            isAllowedToAccessFile(user, canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
-
-            // Check write permissions
-            hasFilePermission(canonicalPath, user, false, FilePermission.SHARE).let {
-                if (it == false) return Result.reject("You do not have permission to share this file.")
             }
         }
 
@@ -585,7 +567,7 @@ class FileService(
                     if (it.isNotSuccessful) return@let null
                     it.value
                 }
-            val shares = entityId?.let { fileShareService.getSharesByEntityId(entityId, UserAction.READ_FOLDER) }
+            val shares = entityId?.let { fileShareService.getSharesByFileId(entityId, UserAction.READ_FOLDER) }
                 ?.let {
                     if (it.hasError) return it.cast()
                     if (it.isNotSuccessful) return@let null

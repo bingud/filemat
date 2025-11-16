@@ -300,7 +300,6 @@ export function startTusUpload(file: File) {
                         permissions: filesState.data.folderMeta!.permissions,
                         isWritable: true,
                         isExecutable: true,
-                        shares: []
                     })
                 }
 

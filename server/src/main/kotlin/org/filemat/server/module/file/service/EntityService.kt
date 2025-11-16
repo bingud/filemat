@@ -116,7 +116,7 @@ class EntityService(
         }
     }
 
-    fun create(canonicalPath: FilePath, ownerId: Ulid?, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
+    fun create(canonicalPath: FilePath, ownerId: Ulid, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
         val isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
             ?: return Result.notFound()
 

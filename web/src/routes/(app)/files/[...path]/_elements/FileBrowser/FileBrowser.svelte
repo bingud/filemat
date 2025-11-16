@@ -324,7 +324,6 @@
             filesState.sortingMode = mode
         }
     }
-
 </script>
 
 
