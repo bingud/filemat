@@ -12,7 +12,19 @@ export type FileMetadata = {
 }
 
 export type FullFileMetadata = FileMetadata & {
-    permissions: FilePermission[]
+    permissions: FilePermission[],
+    shares: FileSharePublic[]
+}
+
+export type FileSharePublic = {
+    shareId: string,
+    userId: string,
+    createdDate: number,
+    maxAge: number,
+    isPassword: string,
+}
+export type FileShare = FileSharePublic & {
+    fileId: string,
 }
 
 export type FileType =
@@ -47,7 +59,8 @@ export type SystemPermission =
   | "MANAGE_SYSTEM"
   | "EDIT_ROLES"
   | "EXPOSE_FOLDERS"
-  | "SUPER_ADMIN";
+  | "SUPER_ADMIN"
+  | "MANAGE_ALL_FILE_SHARES";
 
 export type FilePermission =
   | "READ"
