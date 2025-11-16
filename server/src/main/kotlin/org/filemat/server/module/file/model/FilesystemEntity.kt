@@ -18,7 +18,7 @@ data class FilesystemEntity(
     @Column("is_filesystem_supported")
     val isFilesystemSupported: Boolean,
     @Column("owner_user_id")
-    val ownerId: Ulid,
+    val ownerId: Ulid?,
     @Column("follow_symlinks")
     val followSymlinks: Boolean,
 )

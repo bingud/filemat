@@ -19,6 +19,7 @@
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import Tooltip from "$lib/component/popover/Tooltip.svelte";
+    import FileSharingDialog from "../ui/FileSharingDialog.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -32,6 +33,8 @@
     let permissionDataLoading = $state(false)
     let permissionDataDebounced = $state(false)
     let permissionCreatorOpen = $state(false)
+
+    let sharingDialogOpen = $state(false)
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
 
@@ -216,6 +219,8 @@
                 <p>{formatUnixMillis(selectedMeta.createdDate)}</p>
             </div>
         </div>
+        
+        <FileSharingDialog bind:open={sharingDialogOpen} />
 
         <hr class="basic-hr flex-none">
 
@@ -362,8 +367,6 @@
 
 
 <style lang="postcss">
-    @import "/src/app.css" reference;
-
     .detail-container {
         @apply flex flex-col;
     }
