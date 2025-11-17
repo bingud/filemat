@@ -50,7 +50,8 @@ enum class UserAction(val index: Int) {
     UPDATE_EMAIL(41),
     GET_LOGS(42),
     GET_FILE_SHARES(43),
-    SHARE_FILE(44);
+    SHARE_FILE(44),
+    CLEAR_EXPIRED_FILE_SHARES(45);
 
     companion object {
         init {

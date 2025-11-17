@@ -3,6 +3,7 @@ package org.filemat.server.module.sharedFiles.model
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.UlidSerializer
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
@@ -37,6 +38,12 @@ fun FileShare.toPublic() = FileSharePublic(
     maxAge = maxAge,
     isPassword = isPassword,
 )
+fun FileShare.isExpired(existingNow: Long? = null): Boolean {
+    if (this.maxAge == 0L) return false
+    val now = existingNow ?: unixNow()
+
+    return this.createdDate + this.maxAge < now
+}
 
 @Serializable
 data class FileSharePublic(

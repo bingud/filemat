@@ -6,6 +6,7 @@
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
+    import Tooltip from "$lib/component/popover/Tooltip.svelte";
     import { Dialog } from "bits-ui";
     import { onMount } from "svelte";
 
@@ -73,7 +74,10 @@
             return
         }
 
-        shares = json
+        const sorted = (json as typeof shares)!.sort((a, b) => {
+            return b.createdDate - a.createdDate
+        })
+        shares = sorted
     }
 
     async function createShare() {
@@ -242,7 +246,9 @@
                                     {@const expirationDate = share.maxAge ? share.createdDate + share.maxAge : null}
 
                                     <button class="w-full p-3 rounded-md bg-surface hover:bg-surface-button text-left">
-                                        <h4 class="font-medium text-sm truncate mb-4">{share.shareId}</h4>
+                                        <Tooltip text={share.shareId} align="start">
+                                            <h4 class="font-medium text-sm truncate mb-4">{share.shareId}</h4>
+                                        </Tooltip>
                                         
                                         <div class="flex gap-6">
                                             <div class="flex-1">
@@ -256,8 +262,7 @@
                                                                 day: '2-digit',
                                                                 hour: '2-digit',
                                                                 minute: '2-digit',
-                                                                second: '2-digit',
-                                                                hour12: false
+                                                                hour12: false,
                                                             })}
                                                         </p>
                                                     </div>
@@ -272,7 +277,6 @@
                                                                     day: '2-digit',
                                                                     hour: '2-digit',
                                                                     minute: '2-digit',
-                                                                    second: '2-digit',
                                                                     hour12: false
                                                                 })}
                                                             </p>
@@ -281,7 +285,7 @@
                                                 </div>
                                             </div>
                                             
-                                            <div class="flex flex-col gap-2 flex-shrink-0 text-xs">
+                                            <div class="flex flex-col items-end gap-2 flex-shrink-0 text-xs">
                                                 {#if share.isPassword}
                                                     <span class="px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400 text-center">
                                                         Password
@@ -292,7 +296,7 @@
                                                     </span>
                                                 {/if}
                                                 
-                                                <a href="/user/{share.userId}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                <a href="/settings/users/{share.userId}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                                     User Account
                                                 </a>
                                             </div>

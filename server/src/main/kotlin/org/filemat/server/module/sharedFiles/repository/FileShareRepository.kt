@@ -24,4 +24,7 @@ interface FileShareRepository : CrudRepository<FileShare, Ulid> {
     """)
     fun insert(shareId: String, fileId: Ulid, userId: Ulid, createdDate: Long, maxAge: Long, isPassword: Boolean, password: String?)
 
+    @Modifying
+    @Query("DELETE FROM shared_files WHERE max_age > 0 AND created_date + max_age < :now")
+    fun deleteExpired(now: Long): Int
 }

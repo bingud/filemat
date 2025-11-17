@@ -5,12 +5,14 @@ import org.filemat.server.config.Props
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.data.jdbc.repository.config.EnableJdbcRepositories
+import org.springframework.scheduling.annotation.EnableScheduling
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.system.exitProcess
 
+@EnableScheduling
 @EnableJdbcRepositories
 @SpringBootApplication
 class ServerApplication

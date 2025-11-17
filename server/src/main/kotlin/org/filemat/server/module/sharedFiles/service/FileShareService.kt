@@ -1,6 +1,9 @@
 package org.filemat.server.module.sharedFiles.service
 
 import com.github.f4b6a3.ulid.Ulid
+import jakarta.annotation.PostConstruct
+import jakarta.annotation.PreDestroy
+import kotlinx.coroutines.*
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -18,10 +21,13 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.sharedFiles.model.FileShare
 import org.filemat.server.module.sharedFiles.model.FileSharePublic
+import org.filemat.server.module.sharedFiles.model.isExpired
 import org.filemat.server.module.sharedFiles.model.toPublic
 import org.filemat.server.module.sharedFiles.repository.FileShareRepository
 import org.filemat.server.module.user.model.UserAction
+import org.jetbrains.annotations.Async.Schedule
 import org.springframework.context.annotation.Lazy
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 
@@ -32,6 +38,38 @@ class FileShareService(
     private val entityService: EntityService,
     @Lazy private val fileService: FileService,
 ) {
+    private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @PostConstruct
+    fun clearExpiredFileShares() {
+        scope.launch {
+            var errorLogged = false
+
+            while (true) {
+                delay(300_000) // 5 Minutes
+
+                try {
+                    fileShareRepository.deleteExpired(unixNow())
+                    errorLogged = false
+                } catch (e: Exception) {
+                    if (!errorLogged) {
+                        errorLogged = true
+                        logService.error(
+                            type = LogType.SYSTEM,
+                            action = UserAction.CLEAR_EXPIRED_FILE_SHARES,
+                            description = "Failed to clear expired file shares.",
+                            message = e.stackTraceToString(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @PreDestroy
+    fun stop() {
+        scope.cancel()
+    }
 
     fun createShare(
         principal: Principal,
@@ -55,6 +93,8 @@ class FileShareService(
         getSharesByShareId(sharePath, UserAction.SHARE_FILE)
             .let {
                 if (it.hasError) return Result.error("Failed to check if share link is already used.")
+
+                if (it.valueOrNull?.isExpired() == true) return@let
                 if (it.valueOrNull != null) return Result.reject("This share link is already used.")
             }
 
@@ -142,7 +182,9 @@ class FileShareService(
 
     fun getSharesByEntityId(entityId: Ulid, userAction: UserAction): Result<List<FileShare>> {
         try {
-            return fileShareRepository.getSharesByFileId(entityId).toResult()
+            val all = fileShareRepository.getSharesByFileId(entityId)
+            val valid = all.filter { !it.isExpired() }
+            return valid.toResult()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -158,6 +200,7 @@ class FileShareService(
         try {
             val result = fileShareRepository.getSharesByShareId(shareId)
                 ?: return Result.notFound()
+            if (result.isExpired()) return Result.notFound()
             return result.toResult()
         } catch (e: Exception) {
             logService.error(
