@@ -20,16 +20,11 @@ import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.sharedFiles.model.FileShare
-import org.filemat.server.module.sharedFiles.model.FileSharePublic
 import org.filemat.server.module.sharedFiles.model.isExpired
-import org.filemat.server.module.sharedFiles.model.toPublic
 import org.filemat.server.module.sharedFiles.repository.FileShareRepository
 import org.filemat.server.module.user.model.UserAction
-import org.jetbrains.annotations.Async.Schedule
 import org.springframework.context.annotation.Lazy
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import java.nio.file.Files
 
 @Service
 class FileShareService(
@@ -69,6 +64,53 @@ class FileShareService(
     @PreDestroy
     fun stop() {
         scope.cancel()
+    }
+
+    fun deleteShare(
+        principal: Principal,
+        entityId: Ulid,
+        shareId: String,
+        userAction: UserAction,
+    ): Result<Unit> {
+        val entity = entityService.getById(entityId, userAction)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val share = getShareByShareIdAndEntityId(shareId, entityId, userAction)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        fileService.isAllowedToShareFile(principal, FilePath.of(entity.path!!))
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+        val canManageAll = principal.hasPermission(SystemPermission.MANAGE_ALL_FILE_SHARES)
+
+        if (canManageAll == false && share.userId != principal.userId) {
+            return Result.reject("You do not have permission to delete this share.")
+        }
+
+        return db_deleteShare(shareId, entityId, userAction)
+    }
+
+    private fun db_deleteShare(shareId: String, entityId: Ulid, userAction: UserAction): Result<Unit> {
+        try {
+            fileShareRepository.delete(shareId, entityId)
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to delete file share from the database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to delete file share.")
+        }
     }
 
     fun createShare(
@@ -210,6 +252,23 @@ class FileShareService(
                 message = e.stackTraceToString(),
             )
             return Result.error("Failed to get file shares.")
+        }
+    }
+
+    fun getShareByShareIdAndEntityId(shareId: String, entityId: Ulid, userAction: UserAction): Result<FileShare> {
+        try {
+            val result = fileShareRepository.getShareByShareIdAndFileId(shareId, entityId)
+                ?: return Result.notFound()
+
+            return result.toResult()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ,
+                description = "Failed to get file share from the database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to get file share.")
         }
     }
 }

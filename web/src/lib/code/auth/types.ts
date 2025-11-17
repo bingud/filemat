@@ -13,17 +13,15 @@ export type FileMetadata = {
 
 export type FullFileMetadata = FileMetadata & {
     permissions: FilePermission[],
-    shares: FileSharePublic[]
+    shares: FileShare[]
 }
 
-export type FileSharePublic = {
+export type FileShare = {
     shareId: string,
     userId: string,
     createdDate: number,
     maxAge: number,
     isPassword: string,
-}
-export type FileShare = FileSharePublic & {
     fileId: string,
 }
 

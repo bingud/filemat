@@ -31,26 +31,10 @@ data class FileShare(
     @kotlinx.serialization.Transient
     val password: String? = null,
 )
-fun FileShare.toPublic() = FileSharePublic(
-    shareId = shareId,
-    userId = userId,
-    createdDate = createdDate,
-    maxAge = maxAge,
-    isPassword = isPassword,
-)
+
 fun FileShare.isExpired(existingNow: Long? = null): Boolean {
     if (this.maxAge == 0L) return false
     val now = existingNow ?: unixNow()
 
     return this.createdDate + this.maxAge < now
 }
-
-@Serializable
-data class FileSharePublic(
-    val shareId: String,
-    @Serializable(with = UlidSerializer::class)
-    val userId: Ulid,
-    val createdDate: Long,
-    val maxAge: Long,
-    val isPassword: Boolean,
-)

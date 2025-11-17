@@ -220,7 +220,9 @@
             </div>
         </div>
         
-        <FileSharingDialog bind:open={sharingDialogOpen} />
+        <div class="px-6">
+            <FileSharingDialog path={selectedMeta.path} bind:open={sharingDialogOpen} />
+        </div>
 
         <hr class="basic-hr flex-none">
 

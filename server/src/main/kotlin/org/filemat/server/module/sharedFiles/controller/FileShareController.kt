@@ -6,9 +6,10 @@ import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.encodePathSegment
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.sharedFiles.model.toPublic
 import org.filemat.server.module.sharedFiles.service.FileShareService
+import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.PostMapping
@@ -23,6 +24,31 @@ class FileShareController(
     private val passwordEncoder: PasswordEncoder
 ) : AController() {
 
+    @PostMapping("/delete")
+    fun deleteFileShareMapping(
+        request: HttpServletRequest,
+        @RequestParam("entityId") rawEntityId: String,
+        @RequestParam("shareId") shareId: String,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+
+        val entityId = parseUlidOrNull(rawEntityId)
+            ?: return bad("File ID is invalid.")
+
+        fileShareService.deleteShare(
+            principal = principal,
+            entityId = entityId,
+            shareId = shareId,
+            userAction = UserAction.DELETE_FILE_SHARE
+        ).let {
+            if (it.notFound) return bad("This file was not found.")
+            if (it.rejected) return bad(it.error)
+            if (it.hasError) return internal(it.error)
+        }
+
+        return ok("ok")
+    }
+
     @PostMapping("/get")
     fun getFileSharesMapping(
         request: HttpServletRequest,
@@ -36,7 +62,7 @@ class FileShareController(
             if (it.rejected) return bad(it.error)
             if (it.notFound) return bad("This file was not found.")
             it.value
-        }.map { it.toPublic() }
+        }
 
         val serialized = Json.encodeToString(shares)
         return ok(serialized)

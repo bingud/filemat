@@ -4,7 +4,7 @@ import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, st
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { addSuffix, filenameFromPath, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
-import { isDialogOpen } from "$lib/code/util/stateUtils"
+import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
 
@@ -150,7 +150,7 @@ export async function reloadCurrentFolder() {
 
 
 export function handleKeyDown(event: KeyboardEvent) {
-    if (isDialogOpen()) return
+    if (isDialogOpen() || isUserInAnyInput()) return
 
     // Navigate to the parent folder
     if (event.key === "Backspace") {

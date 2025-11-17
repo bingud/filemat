@@ -109,3 +109,27 @@ export function isDialogOpen(): boolean {
         return true
     } else { return false }
 }
+
+export function isUserInAnyInput() {
+    const el = document.activeElement as HTMLElement
+    if (!el) return false
+
+    if (el.isContentEditable) return true
+
+    const tag = el.tagName
+
+    // Standard form controls
+    if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        tag === 'BUTTON'
+    ) {
+        return true
+    }
+
+    // Other widgets that can take input (e.g. custom components with tabindex)
+    if (el.getAttribute('tabindex') !== null) return true
+
+    return false
+}

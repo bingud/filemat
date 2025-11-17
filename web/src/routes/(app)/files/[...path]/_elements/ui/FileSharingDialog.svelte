@@ -1,6 +1,7 @@
 <script lang="ts">
-    import type { FileShare, FileSharePublic } from "$lib/code/auth/types";
+    import type { FileShare } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { useReplaceChars } from "$lib/code/util/uiUtil";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
@@ -12,11 +13,13 @@
 
     let {
         open = $bindable(),
+        path
     }: {
         open: boolean,
+        path: string,
     } = $props()
 
-    let shares: FileSharePublic[] | null = $state(null)
+    let shares: FileShare[] | null = $state(null)
     let creatingFormOpen = $state(false)
 
     let linkInput = $state('')
@@ -53,7 +56,7 @@
 
     async function loadShares() {
         const response = await safeFetch(`/api/v1/file/share/get`, {
-            body: formData({ path: filesState.path })
+            body: formData({ path: path })
         })
         if (response.failed) {
             handleException(
@@ -84,7 +87,7 @@
         if (!linkInput) return
 
         const body = formData({
-            path: filesState.path,
+            path: path,
             sharePath: linkInput,
         })
 
@@ -158,6 +161,42 @@
         if (minutes > 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
         if (seconds > 0) return `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`
         return 'now'
+    }
+
+    async function deleteShare(share: FileShare) {
+        const confirmation = await confirmDialogState.show({
+            title: `Delete file share`,
+            message: `Do you want to delete this file share? This public link will become unavailable.`,
+        })
+        if (!confirmation) return
+
+        const response = await safeFetch(`/api/v1/file/share/delete`, {
+            body: formData({ shareId: share.shareId, entityId: share.fileId })
+        })
+
+        if (response.failed) {
+            handleException(
+                `Fetch exception while deleting file share.`,
+                `Failed to delete this share.`,
+                response.exception
+            )
+            return
+        }
+        
+        const json = response.json()
+        if (response.code.failed) {
+            handleErr({
+                description: `Failed to delete file share.`,
+                notification: json.message || `Failed to delete this file share.`,
+                isServerDown: response.code.serverDown
+            })
+            return
+        }
+
+        if (shares) {
+            const index = shares.findIndex((v) => { v === share })
+            shares.splice(index, 1)
+        }
     }
 </script>
 
@@ -245,7 +284,7 @@
                                 {#each shares as share}
                                     {@const expirationDate = share.maxAge ? share.createdDate + share.maxAge : null}
 
-                                    <button class="w-full p-3 rounded-md bg-surface hover:bg-surface-button text-left">
+                                    <button on:click={() => { deleteShare(share) }} class="w-full p-3 rounded-md bg-surface hover:bg-surface-button text-left">
                                         <Tooltip text={share.shareId} align="start">
                                             <h4 class="font-medium text-sm truncate mb-4">{share.shareId}</h4>
                                         </Tooltip>
@@ -296,7 +335,7 @@
                                                     </span>
                                                 {/if}
                                                 
-                                                <a href="/settings/users/{share.userId}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                                <a on:click|stopPropagation={() => {}} target="_blank" href="/settings/users/{share.userId}" class="text-blue-600 dark:text-blue-400 hover:underline">
                                                     User Account
                                                 </a>
                                             </div>

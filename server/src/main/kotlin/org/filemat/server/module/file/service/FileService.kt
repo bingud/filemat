@@ -19,8 +19,6 @@ import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.sharedFiles.model.FileShare
-import org.filemat.server.module.sharedFiles.model.FileSharePublic
-import org.filemat.server.module.sharedFiles.model.toPublic
 import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
@@ -93,10 +91,10 @@ class FileService(
             if (entity.path == null) return@mapNotNull null
 
             // Get file share data
-            val shares: List<FileSharePublic> = fileShareService.getSharesByEntityId(entity.entityId, UserAction.GET_PERMITTED_ENTITIES)
+            val shares: List<FileShare> = fileShareService.getSharesByEntityId(entity.entityId, UserAction.GET_PERMITTED_ENTITIES)
                 .let {
                     if (it.isNotSuccessful) return@let emptyList()
-                    it.value.map { it.toPublic() }
+                    it.value
                 }
 
             // Get metadata
@@ -414,10 +412,10 @@ class FileService(
                 it.value
             }
 
-        val shares: List<FileSharePublic> = entityId?.let { fileShareService.getSharesByEntityId(it, action) }
+        val shares: List<FileShare> = entityId?.let { fileShareService.getSharesByEntityId(it, action) }
             ?.let { it: Result<List<FileShare>> ->
                 if (it.isNotSuccessful) return it.cast()
-                it.value.map { it.toPublic() }
+                it.value
             } ?: emptyList()
 
         val fullMeta = FullFileMetadata.from(meta, permissions, shares)
@@ -585,11 +583,11 @@ class FileService(
                     if (it.isNotSuccessful) return@let null
                     it.value
                 }
-            val shares = entityId?.let { fileShareService.getSharesByEntityId(entityId, UserAction.READ_FOLDER) }
+            val shares: List<FileShare> = entityId?.let { fileShareService.getSharesByEntityId(entityId, UserAction.READ_FOLDER) }
                 ?.let {
                     if (it.hasError) return it.cast()
                     if (it.isNotSuccessful) return@let null
-                    it.value.map { it.toPublic() }
+                    it.value
                 } ?: emptyList()
 
             val fullMeta = FullFileMetadata.from(meta, permissions, shares)

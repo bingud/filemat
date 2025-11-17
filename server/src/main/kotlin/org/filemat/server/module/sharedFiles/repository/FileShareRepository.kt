@@ -27,4 +27,11 @@ interface FileShareRepository : CrudRepository<FileShare, Ulid> {
     @Modifying
     @Query("DELETE FROM shared_files WHERE max_age > 0 AND created_date + max_age < :now")
     fun deleteExpired(now: Long): Int
+
+    @Modifying
+    @Query("DELETE FROM shared_files WHERE share_id = :shareId AND file_id = :entityId")
+    fun delete(shareId: String, entityId: Ulid): Int
+
+    @Query("SELECT * FROM shared_files WHERE share_id = :shareId AND file_id = :fileId")
+    fun getShareByShareIdAndFileId(shareId: String, fileId: Ulid): FileShare?
 }
