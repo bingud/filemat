@@ -2,20 +2,28 @@ import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
-import { ImageLoadQueue } from "../../../routes/(app)/files/[...path]/_code/fileBrowserUtil"
-import { SingleChildBooleanTree } from "../../../routes/(app)/files/[...path]/_code/fileUtilities"
+import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
+import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
 import { config } from "../config/values"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
+import { getContentUrl } from "../util/stateUtils"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
 
 
+export type StateMetadata = { isFiles: true, isSharedFiles: false, isAccessibleFiles: false, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+                          | { isFiles: false, isSharedFiles: true, isAccessibleFiles: false, shareId: string, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+                          | { isFiles: false, isSharedFiles: false, isAccessibleFiles: true, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+
+
 class FilesState {
+    meta: StateMetadata = $state(undefined!)
+
     /**
      * The current file path opened
      */
     path: string = $derived.by(() => {
-        if (appState.currentPath.files) {
+        if (appState.currentPath.files || appState.currentPath.sharedFiles) {
             let path = page.params.path!
             return prependIfMissing(path, "/")
         } else {
@@ -248,7 +256,7 @@ class FileDataStateClass {
     // Download URL of currently open file
     contentUrl = $derived.by(() => {
         if (!this.fileMeta) return null
-        return `${config.fileContentUrlPathPrefix}${encodeURIComponent(this.fileMeta.path)}`
+        return getContentUrl(this.fileMeta.path)
     })
     // All entries in the current directory
     entries = $state(null) as FullFileMetadata[] | null
@@ -323,7 +331,7 @@ export let filesState: FilesState
 /**
  * @returns class nonce
  */
-export function createFilesState(): number | null {
+export function createFilesState(meta: StateMetadata): number | null {
     if (filesState) {
         console.log(`FilesState recreated`)
     } else {
@@ -332,6 +340,7 @@ export function createFilesState(): number | null {
     
     filesState = new FilesState()
     appState.filesStateNonce = generateRandomNumber()
+    filesState.meta = meta
 
     return appState.actualFilesStanceNonce
 }

@@ -100,7 +100,7 @@
         if (!node) return
 
         node.isLoading = true
-        const dataResult = await getFileData(parent, undefined, {foldersOnly: true})
+        const dataResult = await getFileData(parent, "/files", undefined, {foldersOnly: true})
         node.isLoading = false
         
         const data = dataResult.value

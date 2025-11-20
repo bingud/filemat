@@ -13,6 +13,7 @@ import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.service.EntityPermissionService
+import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
@@ -38,7 +39,8 @@ class EntityService(
     private val logService: LogService,
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
-    private val platformTransactionManager: PlatformTransactionManager
+    private val platformTransactionManager: PlatformTransactionManager,
+    @Lazy private val fileShareService: FileShareService
 ) {
     private val transactionTemplate = TransactionTemplate(platformTransactionManager).apply {
         isolationLevel = TransactionDefinition.ISOLATION_REPEATABLE_READ
@@ -305,6 +307,16 @@ class EntityService(
             )
             Result.error("Failed to get file from database.")
         }
+    }
+
+    fun getByShareId(path: FilePath, shareId: String, userAction: UserAction = UserAction.GET_SHARED_FILE): Result<FilesystemEntity> {
+        val share = fileShareService.getSharesByShareId(shareId, userAction)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        return getById(share.fileId, userAction)
     }
 
     fun getByInode(inode: Long, userAction: UserAction): Result<FilesystemEntity> {

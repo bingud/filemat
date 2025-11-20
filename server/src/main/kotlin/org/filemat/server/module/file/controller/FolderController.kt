@@ -1,14 +1,12 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
-import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.json
-import org.filemat.server.common.util.measureNano
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.FileService
@@ -77,16 +75,27 @@ class FolderController(private val fileService: FileService) : AController() {
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
         @RequestParam("foldersOnly") rawFoldersOnly: String,
+        @RequestParam("shareId", required = false) shareId: String?,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
         val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false
 
-        val result = fileService.getFileOrFolderEntries(
-            user = principal,
-            rawPath = path,
-            foldersOnly = foldersOnly
-        )
+        val result = if (shareId == null) {
+            fileService.getFileOrFolderEntries(
+                user = principal,
+                rawPath = path,
+                foldersOnly = foldersOnly
+            )
+        } else {
+            fileService.getSharedFileOrFolderEntries(
+                user = principal,
+                rawPath = path,
+                foldersOnly = foldersOnly,
+                shareId = shareId
+            )
+        }
+
         if (result.hasError) return internal(result.error)
         if (result.notFound) return notFound()
         if (result.isNotSuccessful) return bad(result.error)

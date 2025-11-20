@@ -4,8 +4,8 @@
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
     import { isFolder } from "$lib/code/util/codeUtil.svelte"
     import MenuIcon from "$lib/component/icons/MenuIcon.svelte"
-    import FileDetailsButton from "../files/[...path]/_elements/button/FileDetailsButton.svelte"
-    import NewFileButton from "../files/[...path]/_elements/button/NewFileButton.svelte"
+    import FileDetailsButton from "../(files)/files/[...path]/_elements/button/FileDetailsButton.svelte";
+    import NewFileButton from "../(files)/files/[...path]/_elements/button/NewFileButton.svelte";
 
 </script>
 

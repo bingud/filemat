@@ -6,7 +6,8 @@ import { entriesOf, valuesOf } from "../util/codeUtil.svelte"
 const sitePaths = {
     "/accessible-files": "accessibleFiles",
     "/files": "files",
-    "/settings": "settings"
+    "/settings": "settings",
+    "/share": "sharedFiles"
 }
 
 class AppState {

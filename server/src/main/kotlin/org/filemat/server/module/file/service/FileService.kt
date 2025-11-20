@@ -44,6 +44,21 @@ class FileService(
     private val fileShareService: FileShareService,
 ) {
 
+    fun resolvePathWithOptionalShare(path: FilePath, shareId: String?): Result<FilePath> {
+        val sharedPath = if (shareId != null) {
+            entityService.getByShareId(path, shareId)
+                .let {
+                    if (it.isNotSuccessful) return it.cast()
+
+                    FilePath.of(
+                        it.value.path ?: return Result.notFound()
+                    )
+                }
+        } else null
+
+        val (pathResult, pathContainsSymlink) = resolvePath(sharedPath ?: path)
+        return pathResult
+    }
 
     data class EditFileResult(val modifiedDate: Long, val size: Long)
     fun editFile(user: Principal, rawPath: FilePath, newContent: String): Result<EditFileResult> {
@@ -363,6 +378,73 @@ class FileService(
             ).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
+            }
+
+            return Result.ok(metadata to entries)
+        } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
+            return Result.ok(metadata to null)
+        } else {
+            return Result.error("Requested path is not a file or folder.")
+        }
+    }
+
+    /**
+     * Returns file metadata
+     *
+     * if file is a folder, also returns entries
+     */
+    fun getSharedFileOrFolderEntries(user: Principal, rawPath: FilePath, foldersOnly: Boolean = false, shareId: String): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
+        val share = fileShareService.getSharesByShareId(shareId, UserAction.GET_SHARED_FILE)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val entity = entityService.getById(share.fileId, UserAction.GET_SHARED_FILE)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+        if (entity.path == null) return Result.notFound()
+        val rawSharePath = FilePath.of(entity.path)
+        println("Input: $rawPath")
+        println("Share Path: $rawSharePath")
+
+        // Resolve entity path
+        val (canonicalSharePathResult, parentPathHasSymlink) = resolvePath(rawSharePath)
+        if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
+        val canonicalSharePath = canonicalSharePathResult.value
+        println("Canonical Share Path: $canonicalSharePath")
+
+        // Get path of requested file
+        val canonicalPath = FilePath.ofAlreadyNormalized(
+            canonicalSharePath.path.resolve(rawPath.path.toString().removePrefix("/"))
+        )
+        println("Canonical Input: $canonicalPath")
+
+        // Get file metadata, change its path to be relative
+        val rawMetadata: FullFileMetadata = getFullMetadata(user, rawPath = canonicalPath, canonicalPath = canonicalPath, action = UserAction.GET_SHARED_FILE).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        println("File Path: ${rawMetadata.path}")
+        val metadata = rawMetadata.copy(path = rawPath.pathString)
+        val type = metadata.fileType
+
+        if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
+            // Get folder entries, change paths back to relative
+            val entries = getFolderEntries(
+                user = user,
+                canonicalPath = canonicalPath,
+                foldersOnly = foldersOnly
+            ).let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }.map { entry ->
+                val relativePath = canonicalPath.path.relativize(Path.of(entry.path))
+                val newPath = rawPath.path.resolve(relativePath)
+
+                entry.copy(path = newPath.toString())
             }
 
             return Result.ok(metadata to entries)

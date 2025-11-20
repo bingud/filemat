@@ -15,17 +15,23 @@ export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | n
  */
 export async function getFileData(
     path: string,
+    urlPath: string,
     signal: AbortSignal | undefined,
-    options: { foldersOnly?: boolean, silent?: boolean }
+    options: { foldersOnly?: boolean, silent?: boolean, shareId?: string }
 ): Promise<Result<FileData>> {
-    const response = await safeFetch("/api/v1/folder/file-and-folder-entries", {
-        body: formData({ path: path, foldersOnly: options.foldersOnly || false }),
+    const body = formData({ path: path, foldersOnly: options.foldersOnly || false })
+    if (options.shareId) {
+        body.append("shareId", options.shareId)
+    }
+
+    const response = await safeFetch(urlPath, {
+        body: body,
         signal: signal
     })
     if (response.failed) {
         handleErr({
-            description: `Failed to fetch folder entries`,
-            notification: options.silent ? undefined : `Failed to open folder.`,
+            description: `Failed to fetch file ata`,
+            notification: options.silent ? undefined : `Failed to open file.`,
         })
         return Result.error(`Failed to fetch folder entries`)
     }
@@ -36,8 +42,8 @@ export async function getFileData(
         return Result.notFound()
     } else if (status.failed) {
         handleErr({
-            description: `Failed to open folder.`,
-            notification: options.silent ? undefined : (json.message || `Failed to open folder.`),
+            description: `Failed to open file.`,
+            notification: options.silent ? undefined : (json.message || `Failed to open file.`),
             isServerDown: status.serverDown
         })
         return Result.error(json.message)
@@ -407,7 +413,8 @@ export async function deleteFiles(entries: FileMetadata[]) {
             }
         })
 
-        if (closestParent) navigateToFilePath(closestParent)
+        const pagePath = filesState.meta.isSharedFiles ? filesState.meta.pagePath : "/files"
+        if (closestParent) navigateToFilePath(closestParent, pagePath)
     }
     
     // If deleted entry was selected, clear selection
@@ -596,6 +603,6 @@ export async function getFileLastModifiedDate(path: string, silent: boolean = tr
     return null
 }
 
-export function navigateToFilePath(path: string) {
+export function navigateToFilePath(path: string, pagePath: string) {
     return goto(`/files/${path}`)
 }

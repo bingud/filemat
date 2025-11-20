@@ -36,13 +36,14 @@ export function recoverScrollPosition() {
 
 export async function loadPageData(
     filePath: string,
-    options: { 
+    options: {
+        urlPath: string,
         silent?: boolean,
         isRefresh?: boolean,
-        overrideDataUrlPath?: string,
         fileDataType: "object" | "array",
         parentFolderOnly?: boolean,
         loadParentFolder?: boolean,
+        shareId?: string,
     }
 ) {
     filesState.lastFilePathLoaded = filePath
@@ -50,31 +51,32 @@ export async function loadPageData(
 
     // Get file metadata + folder entries
     const result = (
-        options.overrideDataUrlPath
+        options.fileDataType === "array"
         ? await getFileListFromCustomEndpoint({
                 path: filePath,
-                urlPath: options.overrideDataUrlPath,
+                urlPath: options.urlPath,
                 signal: filesState.abortController?.signal,
-                silent: options.parentFolderOnly ?? false
+                silent: options.parentFolderOnly ?? false,
             })
-        : await getFileData(filePath, filesState.abortController?.signal, { silent: options.parentFolderOnly })
+        : await getFileData(filePath, options.urlPath, filesState.abortController?.signal, { silent: options.parentFolderOnly, shareId: options.shareId })
     )
+    filesState.metaLoading = false
 
     if (result.notFound) {
         if (filesState.path === "/") return
         if (options.isRefresh) {
-            toast.plain("This folder is not available anymore.")
+            toast.plain("This file is not available anymore.")
         } else {
-            toast.error("This folder was not found.")
+            toast.error("This file was not found.")
         }
-        await navigateToFilePath(parentFromPath(filesState.path))
+
+        const pagePath = filesState.meta.isSharedFiles ? filesState.meta.pagePath : "/files"
+        await navigateToFilePath(parentFromPath(filesState.path), pagePath)
     }
     if (result.isUnsuccessful) return
     const dataResult = result.value
 
     if (filesState.lastFilePathLoaded !== filePath) return
-    
-    filesState.metaLoading = false
     if (!result) return
 
     if (options.fileDataType === "object") {
@@ -111,6 +113,7 @@ export async function loadPageData(
             // Load parent folder of file
             if (options.loadParentFolder && filesState.data.folderMeta == null) {
                 loadPageData(parentFromPath(meta.path), {
+                    urlPath: options.urlPath,
                     fileDataType: "object",
                     loadParentFolder: false,
                     parentFolderOnly: true,
@@ -145,7 +148,8 @@ export async function reloadCurrentFolder() {
     // Local folder is up to date
     if (modifiedDate === actualModifiedDate) return
 
-    await loadPageData(meta.path, { parentFolderOnly: true, silent: true, fileDataType: "object" })
+    const shareId = filesState.meta.isSharedFiles ? filesState.meta.shareId : undefined
+    await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareId })
 }
 
 

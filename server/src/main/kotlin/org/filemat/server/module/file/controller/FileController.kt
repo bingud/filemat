@@ -2,18 +2,17 @@ package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.TusService
+import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
@@ -161,7 +160,8 @@ class FileController(
     fun getFileContentStreamMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
-    ) = streamFileContentMapping(request = request, rawPath = rawPath)
+        @RequestParam("shareId", required = false) shareId: String?,
+    ) = streamFileContentMapping(request = request, rawPath = rawPath, shareId = shareId)
 
     /**
      * Returns stream of content of a file
@@ -172,14 +172,13 @@ class FileController(
     fun streamFileContentMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
+        @RequestParam("shareId", required = false) shareId: String?,
     ): ResponseEntity<StreamingResponseBody> {
         val principal = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
         val rawRangeHeader: String? = request.getHeader("Range")
 
-        // Resolve file path
-        val (pathResult, pathContainsSymlink) = resolvePath(path)
-        val canonicalPath = pathResult.let {
+        val canonicalPath = fileService.resolvePathWithOptionalShare(path, shareId).let {
             if (it.notFound) return streamNotFound()
             if (it.isNotSuccessful) {
                 return streamInternal(it.error, "")

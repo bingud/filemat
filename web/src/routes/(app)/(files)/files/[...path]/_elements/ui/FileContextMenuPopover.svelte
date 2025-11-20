@@ -2,6 +2,7 @@
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { config } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { getContentUrl } from "$lib/code/util/stateUtils";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
@@ -45,7 +46,7 @@
                 <span>Open in new tab</span>
             </a>
 
-            <a download href={`${config.fileContentUrlPathPrefix}${menuEntry.path}`} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+            <a download href={getContentUrl(menuEntry.path, false)} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                 <div class="size-5 flex-shrink-0">
                     <DownloadIcon />
                 </div>

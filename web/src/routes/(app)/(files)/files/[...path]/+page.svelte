@@ -6,7 +6,7 @@
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
     import Breadcrumbs from './_elements/layout/Breadcrumbs.svelte';
     import DetailsSidebar from './_elements/layout/DetailsSidebar.svelte';
-    import { createFilesState, destroyFilesState, filesState } from "$lib/code/stateObjects/filesState.svelte"
+    import { createFilesState, destroyFilesState, filesState, type StateMetadata } from "$lib/code/stateObjects/filesState.svelte"
     import { fade, fly } from "svelte/transition"
     import { linear } from "svelte/easing"
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
@@ -31,12 +31,21 @@
 
 
     let {
-        overrideTopLevelFolderUrlPath = null,
+        meta,
     }: {
-        overrideTopLevelFolderUrlPath?: string | null,
+        meta: StateMetadata,
     } = $props()
 
-    const filesStateNonce = createFilesState()
+    const stateMeta: StateMetadata = meta || {
+        isFiles: true,
+        isSharedFiles: false,
+        isAccessibleFiles: false,
+        fileEntriesUrlPath: "/api/v1/folder/file-and-folder-entries",
+        pagePath: "/files",
+        pageTitle: "Files"
+    }
+
+    const filesStateNonce = createFilesState(stateMeta)
     const breadcrumbStateNonce = createBreadcrumbState()
 
     const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
@@ -65,7 +74,7 @@
         destroyBreadcrumbState(breadcrumbStateNonce)
     })
 
-    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || "Files"))
+    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || stateMeta.pageTitle))
     let lastDataLoadDate: number = unixNow()
 
     // Load page data when path changes
@@ -91,12 +100,14 @@
                 filesState.scroll.pathPositions = {}
             }
 
+            const shareId = filesState.meta.isSharedFiles ? filesState.meta.shareId : undefined
+
             // Do not load page data if navigating back to current parent folder
             // Use existing state
             if (pathIsParentFolder === false) {
-                (newPath === "/" && overrideTopLevelFolderUrlPath 
-                    ? loadPageData(newPath, { overrideDataUrlPath: overrideTopLevelFolderUrlPath, fileDataType: "array" })
-                    : loadPageData(newPath, { fileDataType: "object", loadParentFolder: true })
+                (newPath === "/" && stateMeta.isAccessibleFiles 
+                    ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareId })
+                    : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: true, shareId })
                 ).then(() => {
                     recoverScrollPosition()
                 })
@@ -210,7 +221,7 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full mt-2 relative">
-                {#if filesState.data.folderMeta || overrideTopLevelFolderUrlPath}
+                {#if filesState.data.folderMeta || stateMeta.isAccessibleFiles}
                     <div 
                         bind:this={filesState.scroll.container} 
                         class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both 
@@ -230,9 +241,9 @@
                     <div class="center">
                         <Loader></Loader>
                     </div>
-                {:else if !filesState.data.currentMeta && !overrideTopLevelFolderUrlPath}
+                {:else if !filesState.data.currentMeta && !stateMeta.isAccessibleFiles}
                     <div class="center">
-                        <p class="text-xl">Failed to load this file.</p>
+                        <p class="text-xl">Could not open this file.</p>
                     </div>
                 {/if}
             </div>

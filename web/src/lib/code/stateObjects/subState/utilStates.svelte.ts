@@ -1,6 +1,6 @@
 import type ConfirmDialog from "$lib/component/popover/ConfirmDialog.svelte"
 import type InputDialog from "$lib/component/InputDialog.svelte"
-import type FolderTreeSelector from "../../../../routes/(app)/files/[...path]/_elements/ui/FolderTreeSelector.svelte"
+import type FolderTreeSelector from "../../../../routes/(app)/(files)/files/[...path]/_elements/ui/FolderTreeSelector.svelte"
 
 // Confirm dialog state
 class ConfirmDialogState {
