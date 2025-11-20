@@ -1,6 +1,8 @@
 import type { Role } from "../auth/types";
+import { config } from "../config/values";
 import { appState } from "../stateObjects/appState.svelte";
 import { clientState } from "../stateObjects/clientState.svelte";
+import { filesState } from "../stateObjects/filesState.svelte";
 import { confirmDialogState, folderSelectorState, inputDialogState } from "../stateObjects/subState/utilStates.svelte";
 import type { ulid } from "../types/types";
 import { debounceFunction } from "./codeUtil.svelte";
@@ -132,4 +134,10 @@ export function isUserInAnyInput() {
     if (el.getAttribute('tabindex') !== null) return true
 
     return false
+}
+
+export function getContentUrl(path: string, encodeParam: boolean = true): string {
+    const pathParam = `path=${encodeParam ? encodeURIComponent(path) : path}`
+    const shareIdParam = filesState.meta.isSharedFiles ? `shareId=${filesState.meta.shareId}` : ``
+    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareIdParam ? '&' : ''}${shareIdParam}`
 }
