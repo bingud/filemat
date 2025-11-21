@@ -8,11 +8,9 @@ import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.TusService
-import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
@@ -156,29 +154,22 @@ class FileController(
         )
     }
 
-    @GetMapping("/content")
-    fun getFileContentStreamMapping(
-        request: HttpServletRequest,
-        @RequestParam("path") rawPath: String,
-        @RequestParam("shareId", required = false) shareId: String?,
-    ) = streamFileContentMapping(request = request, rawPath = rawPath, shareId = shareId)
-
     /**
      * Returns stream of content of a file
      *
      * Optionally returns a byte range
      */
-    @PostMapping("/content")
+    @RequestMapping("/content")
     fun streamFileContentMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
-        @RequestParam("shareId", required = false) shareId: String?,
+        @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<StreamingResponseBody> {
-        val principal = request.getPrincipal()!!
+        val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val rawRangeHeader: String? = request.getHeader("Range")
 
-        val canonicalPath = fileService.resolvePathWithOptionalShare(path, shareId).let {
+        val canonicalPath = fileService.resolvePathWithOptionalShare(path, shareToken = shareToken).let {
             if (it.notFound) return streamNotFound()
             if (it.isNotSuccessful) {
                 return streamInternal(it.error, "")

@@ -54,7 +54,8 @@ enum class UserAction(val index: Int) {
     CLEAR_EXPIRED_FILE_SHARES(45),
     DELETE_FILE_SHARE(46),
     GET_SHARED_FILE(47),
-    READ_FILE(48);
+    READ_FILE(48),
+    SHARED_FILE_LOGIN(49);
 
     companion object {
         init {

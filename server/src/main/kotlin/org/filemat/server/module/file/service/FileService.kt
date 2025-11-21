@@ -29,6 +29,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.io.path.pathString
 
 
 /**
@@ -44,9 +45,9 @@ class FileService(
     private val fileShareService: FileShareService,
 ) {
 
-    fun resolvePathWithOptionalShare(path: FilePath, shareId: String?): Result<FilePath> {
-        val sharedPath = if (shareId != null) {
-            entityService.getByShareId(path, shareId)
+    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?): Result<FilePath> {
+        val sharedPath = if (shareToken != null) {
+            entityService.getByShareToken(shareToken = shareToken)
                 .let {
                     if (it.isNotSuccessful) return it.cast()
 
@@ -114,7 +115,7 @@ class FileService(
 
             // Get metadata
             val meta =  filesystem.getMetadata(FilePath.of(entity.path)) ?: return@mapNotNull null
-            val fullMeta = FullFileMetadata.from(meta, entityPermission.permissions, shares)
+            val fullMeta = FullFileMetadata.from(meta, entityPermission.permissions)
             return@mapNotNull fullMeta
         }
 
@@ -298,7 +299,14 @@ class FileService(
      *
      * Optionally returns a byte range
      */
-    fun getFileContent(user: Principal, rawPath: FilePath, existingCanonicalPath: FilePath? = null, existingPathContainsSymlink: Boolean? = false, range: LongRange? = null,): Result<InputStream> {
+    fun getFileContent(
+        user: Principal?,
+        rawPath: FilePath,
+        existingCanonicalPath: FilePath? = null,
+        existingPathContainsSymlink: Boolean? = false,
+        range: LongRange? = null,
+        ignorePermissions: Boolean = false
+    ): Result<InputStream> {
         val (canonicalPath, pathContainsSymlink) = if (existingCanonicalPath != null && existingPathContainsSymlink != null) {
             existingCanonicalPath to existingPathContainsSymlink
         } else {
@@ -313,8 +321,10 @@ class FileService(
         // Return content of symlink file itself
         // if following symlinks is disabled
         if (pathContainsSymlink) {
-            isAllowedToAccessFile(user, rawPath).let {
-                if (it.isNotSuccessful) return it.cast()
+            if (!ignorePermissions) {
+                isAllowedToAccessFile(user, rawPath).let {
+                    if (it.isNotSuccessful) return it.cast()
+                }
             }
 
             if (Files.isSymbolicLink(rawPath.path)) {
@@ -329,8 +339,10 @@ class FileService(
             }
         }
 
-        isAllowedToAccessFile(user, canonicalPath).let {
-            if (it.isNotSuccessful) return it.cast()
+        if (!ignorePermissions) {
+            isAllowedToAccessFile(user, canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
         }
 
         if (!Files.isRegularFile(canonicalPath.path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
@@ -393,50 +405,41 @@ class FileService(
      *
      * if file is a folder, also returns entries
      */
-    fun getSharedFileOrFolderEntries(user: Principal, rawPath: FilePath, foldersOnly: Boolean = false, shareId: String): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
-        val share = fileShareService.getSharesByShareId(shareId, UserAction.GET_SHARED_FILE)
+    fun getSharedFileOrFolderEntries(rawPath: FilePath, foldersOnly: Boolean = false, shareToken: String): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
+        val entity = entityService.getByShareToken(shareToken = shareToken, UserAction.GET_SHARED_FILE)
             .let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
 
-        val entity = entityService.getById(share.fileId, UserAction.GET_SHARED_FILE)
-            .let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }
         if (entity.path == null) return Result.notFound()
         val rawSharePath = FilePath.of(entity.path)
-        println("Input: $rawPath")
-        println("Share Path: $rawSharePath")
 
         // Resolve entity path
         val (canonicalSharePathResult, parentPathHasSymlink) = resolvePath(rawSharePath)
         if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
         val canonicalSharePath = canonicalSharePathResult.value
-        println("Canonical Share Path: $canonicalSharePath")
 
         // Get path of requested file
         val canonicalPath = FilePath.ofAlreadyNormalized(
             canonicalSharePath.path.resolve(rawPath.path.toString().removePrefix("/"))
         )
-        println("Canonical Input: $canonicalPath")
 
         // Get file metadata, change its path to be relative
-        val rawMetadata: FullFileMetadata = getFullMetadata(user, rawPath = canonicalPath, canonicalPath = canonicalPath, action = UserAction.GET_SHARED_FILE).let {
+        val rawMetadata: FullFileMetadata = getFullMetadata(null, rawPath = canonicalPath, canonicalPath = canonicalPath, ignorePermissions = true, action = UserAction.GET_SHARED_FILE).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
-        println("File Path: ${rawMetadata.path}")
-        val metadata = rawMetadata.copy(path = rawPath.pathString)
+        val metadata = rawMetadata.copy(path = rawPath.pathString, filename = canonicalPath.path.fileName.pathString)
         val type = metadata.fileType
 
         if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
             // Get folder entries, change paths back to relative
             val entries = getFolderEntries(
-                user = user,
+                user = null,
                 canonicalPath = canonicalPath,
-                foldersOnly = foldersOnly
+                foldersOnly = foldersOnly,
+                ignorePermissions = true,
             ).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
@@ -478,15 +481,17 @@ class FileService(
     /**
      * Returns file metadata along with applied file permissions. Authenticates user
      */
-    fun getFullMetadata(user: Principal, rawPath: FilePath, canonicalPath: FilePath, action: UserAction): Result<FullFileMetadata> {
-        isAllowedToAccessFile(user, canonicalPath).let { it: Result<Unit> ->
-            if (it.isNotSuccessful) return it.cast()
+    fun getFullMetadata(user: Principal?, rawPath: FilePath, canonicalPath: FilePath, ignorePermissions: Boolean = false, action: UserAction): Result<FullFileMetadata> {
+        if (!ignorePermissions) {
+            isAllowedToAccessFile(user, canonicalPath).let { it: Result<Unit> ->
+                if (it.isNotSuccessful) return it.cast()
+            }
         }
 
         val meta = filesystem.getMetadata(rawPath)
             ?: return Result.notFound()
 
-        val permissions: Set<FilePermission> = getActualFilePermissions(user, canonicalPath)
+        val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(user, canonicalPath) } ?: setOf(FilePermission.READ)
         val entityId: Ulid? = entityService.getEntityIdByPath(canonicalPath, action)
             .let { it: Result<Ulid> ->
                 if (it.hasError) return it.cast()
@@ -494,13 +499,13 @@ class FileService(
                 it.value
             }
 
-        val shares: List<FileShare> = entityId?.let { fileShareService.getSharesByEntityId(it, action) }
-            ?.let { it: Result<List<FileShare>> ->
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            } ?: emptyList()
+//        val shares: List<FileShare> = entityId?.let { fileShareService.getSharesByEntityId(it, action) }
+//            ?.let { it: Result<List<FileShare>> ->
+//                if (it.isNotSuccessful) return it.cast()
+//                it.value
+//            } ?: emptyList()
 
-        val fullMeta = FullFileMetadata.from(meta, permissions, shares)
+        val fullMeta = FullFileMetadata.from(meta, permissions)
         return fullMeta.toResult()
     }
 
@@ -518,7 +523,8 @@ class FileService(
     /**
      * Fully verifies if a user is allowed to read a file
      */
-    fun isAllowedToAccessFile(user: Principal, canonicalPath: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
+    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
+        user ?: return Result.reject("Unauthenticated")
         // Deny blocked folder
         isPathAllowed(canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
@@ -628,10 +634,12 @@ class FileService(
      *
      * Verifies user permissions.
      */
-    fun getFolderEntries(user: Principal, canonicalPath: FilePath, foldersOnly: Boolean = false): Result<List<FullFileMetadata>> {
-        val hasAdminAccess = hasAdminAccess(user)
-        val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
-        if (isAllowed.isNotSuccessful) return isAllowed.cast()
+    fun getFolderEntries(user: Principal?, canonicalPath: FilePath, foldersOnly: Boolean = false, ignorePermissions: Boolean = false): Result<List<FullFileMetadata>> {
+        val hasAdminAccess = user?.let { hasAdminAccess(user) } ?: false
+        if (!ignorePermissions) {
+            val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
+            if (isAllowed.isNotSuccessful) return isAllowed.cast()
+        }
 
         val followSymlinks = State.App.followSymlinks
 
@@ -650,10 +658,7 @@ class FileService(
             val isPathAllowed = fileVisibilityService.isPathAllowed(entryPath) == null
             if (!isPathAllowed) return@mapNotNull null
 
-            val permissions: Set<FilePermission> = getActualFilePermissions(
-                canonicalPath = entryPath,
-                user = user,
-            )
+            val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(canonicalPath = entryPath, user = user) } ?: setOf(FilePermission.READ)
 
             // Check permissions for entry
             val hasPermission = permissions.contains(FilePermission.READ)
@@ -672,7 +677,7 @@ class FileService(
                     it.value
                 } ?: emptyList()
 
-            val fullMeta = FullFileMetadata.from(meta, permissions, shares)
+            val fullMeta = FullFileMetadata.from(meta, permissions)
 
             return@mapNotNull fullMeta
         }

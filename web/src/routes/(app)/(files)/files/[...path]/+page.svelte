@@ -100,14 +100,14 @@
                 filesState.scroll.pathPositions = {}
             }
 
-            const shareId = filesState.meta.isSharedFiles ? filesState.meta.shareId : undefined
+            const shareToken = filesState.meta.isSharedFiles ? filesState.meta.shareToken : undefined
 
             // Do not load page data if navigating back to current parent folder
             // Use existing state
             if (pathIsParentFolder === false) {
                 (newPath === "/" && stateMeta.isAccessibleFiles 
-                    ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareId })
-                    : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: true, shareId })
+                    ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareToken: shareToken })
+                    : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: true, shareToken: shareToken })
                 ).then(() => {
                     recoverScrollPosition()
                 })

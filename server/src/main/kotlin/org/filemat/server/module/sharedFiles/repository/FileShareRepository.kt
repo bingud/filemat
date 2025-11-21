@@ -34,4 +34,7 @@ interface FileShareRepository : CrudRepository<FileShare, Ulid> {
 
     @Query("SELECT * FROM shared_files WHERE share_id = :shareId AND file_id = :fileId")
     fun getShareByShareIdAndFileId(shareId: String, fileId: Ulid): FileShare?
+
+    @Query("SELECT is_password FROM shared_files WHERE share_id = :shareId")
+    fun getPasswordStatus(shareId: String): Int?
 }

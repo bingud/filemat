@@ -12,7 +12,7 @@ import { appState } from "./appState.svelte"
 
 
 export type StateMetadata = { isFiles: true, isSharedFiles: false, isAccessibleFiles: false, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
-                          | { isFiles: false, isSharedFiles: true, isAccessibleFiles: false, shareId: string, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+                          | { isFiles: false, isSharedFiles: true, isAccessibleFiles: false, shareId: string, shareToken: string, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
                           | { isFiles: false, isSharedFiles: false, isAccessibleFiles: true, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
 
 

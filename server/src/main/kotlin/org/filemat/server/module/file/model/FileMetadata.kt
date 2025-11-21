@@ -36,10 +36,10 @@ data class FullFileMetadata(
     override val isExecutable: Boolean,
     override val isWritable: Boolean,
     val permissions: Collection<FilePermission>,
-    val shares: List<FileShare>
+    val filename: String? = null,
 ) : AFileMetadata() {
     companion object {
-        fun from(m: FileMetadata, permissions: Collection<FilePermission>, shares: List<FileShare>): FullFileMetadata {
+        fun from(m: FileMetadata, permissions: Collection<FilePermission>, filename: String? = null): FullFileMetadata {
             return FullFileMetadata(
                 path = m.path,
                 modifiedDate = m.modifiedDate,
@@ -49,7 +49,7 @@ data class FullFileMetadata(
                 isExecutable = m.isExecutable,
                 isWritable = m.isWritable,
                 permissions = permissions,
-                shares = shares
+                filename = filename,
             )
         }
     }

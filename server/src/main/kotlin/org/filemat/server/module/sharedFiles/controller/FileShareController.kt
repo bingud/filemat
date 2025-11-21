@@ -7,6 +7,7 @@ import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.encodePathSegment
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.parseUlidOrNull
+import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
@@ -23,6 +24,35 @@ class FileShareController(
     private val fileShareService: FileShareService,
     private val passwordEncoder: PasswordEncoder
 ) : AController() {
+
+    @Unauthenticated
+    @PostMapping("/login")
+    fun loginToSharedFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("shareId") shareId: String,
+        @RequestParam("password") password: String,
+    ): ResponseEntity<String> {
+        fileShareService.login(shareId, password, UserAction.SHARED_FILE_LOGIN)
+            .let {
+                if (it.rejected) return bad(it.error)
+                if (it.hasError) return internal(it.error)
+                return ok(it.value)
+            }
+    }
+
+    @Unauthenticated
+    @PostMapping("/get-password-status")
+    fun getSharedFilePasswordStatusMapping(
+        request: HttpServletRequest,
+        @RequestParam("shareId") shareId: String,
+    ): ResponseEntity<String> {
+        fileShareService.getPasswordStatus(shareId, UserAction.GET_SHARED_FILE).let {
+            if (it.notFound) return ok("false")
+            if (it.isNotSuccessful) return internal(it.error)
+            val status = it.value
+            return ok(status.toString())
+        }
+    }
 
     @PostMapping("/delete")
     fun deleteFileShareMapping(

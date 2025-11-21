@@ -309,12 +309,21 @@ class EntityService(
         }
     }
 
-    fun getByShareId(path: FilePath, shareId: String, userAction: UserAction = UserAction.GET_SHARED_FILE): Result<FilesystemEntity> {
+    fun getByShareId(shareId: String, userAction: UserAction = UserAction.GET_SHARED_FILE): Result<FilesystemEntity> {
         val share = fileShareService.getSharesByShareId(shareId, userAction)
             .let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
+
+        return getById(share.fileId, userAction)
+    }
+
+    fun getByShareToken(shareToken: String, userAction: UserAction = UserAction.GET_SHARED_FILE): Result<FilesystemEntity> {
+        val share = fileShareService.getByShareToken(shareToken, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
 
         return getById(share.fileId, userAction)
     }

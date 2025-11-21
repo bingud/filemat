@@ -138,6 +138,6 @@ export function isUserInAnyInput() {
 
 export function getContentUrl(path: string, encodeParam: boolean = true): string {
     const pathParam = `path=${encodeParam ? encodeURIComponent(path) : path}`
-    const shareIdParam = filesState.meta.isSharedFiles ? `shareId=${filesState.meta.shareId}` : ``
-    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareIdParam ? '&' : ''}${shareIdParam}`
+    const shareTokenParam = filesState.meta.isSharedFiles ? `shareToken=${filesState.meta.shareToken}` : ``
+    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
 }

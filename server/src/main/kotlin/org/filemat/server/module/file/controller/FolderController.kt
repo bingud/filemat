@@ -7,6 +7,7 @@ import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.json
+import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.FileService
@@ -70,29 +71,29 @@ class FolderController(private val fileService: FileService) : AController() {
         return ok(serialized)
     }
 
+    @Unauthenticated
     @PostMapping("/file-and-folder-entries")
     fun fileOrFolderEntriesMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
         @RequestParam("foldersOnly") rawFoldersOnly: String,
-        @RequestParam("shareId", required = false) shareId: String?,
+        @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<String> {
-        val principal = request.getPrincipal()!!
+        val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false
 
-        val result = if (shareId == null) {
+        val result = if (shareToken == null) {
             fileService.getFileOrFolderEntries(
-                user = principal,
+                user = principal!!,
                 rawPath = path,
                 foldersOnly = foldersOnly
             )
         } else {
             fileService.getSharedFileOrFolderEntries(
-                user = principal,
                 rawPath = path,
                 foldersOnly = foldersOnly,
-                shareId = shareId
+                shareToken = shareToken
             )
         }
 
@@ -103,7 +104,7 @@ class FolderController(private val fileService: FileService) : AController() {
         val pair = result.value
         val entries: List<FullFileMetadata>? = pair.second
         val serialized = json {
-            put("meta", pair.first)
+            putNonNull("meta", pair.first)
             if (entries != null) {
                 put("entries", entries)
             }

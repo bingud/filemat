@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getFileCategoryFromFilename, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
-    import { explicitEffect, getFileExtension, isServerDown } from "$lib/code/util/codeUtil.svelte";
+    import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import {basicSetup} from "codemirror"
     import {EditorView} from "@codemirror/view"
     import { barf, ayuLight } from 'thememirror';
@@ -53,6 +53,8 @@
     onDestroy(() => {
         textFileViewerState.reset()
     })
+
+    $inspect(fileCategory)
 
     $effect(() => {
         if (filesState.data.decodedContent != null) return

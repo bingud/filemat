@@ -1,5 +1,6 @@
 package org.filemat.server.module.sharedFiles.service
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.f4b6a3.ulid.Ulid
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
@@ -8,6 +9,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
@@ -24,7 +26,9 @@ import org.filemat.server.module.sharedFiles.model.isExpired
 import org.filemat.server.module.sharedFiles.repository.FileShareRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import java.util.concurrent.TimeUnit
 
 @Service
 class FileShareService(
@@ -32,8 +36,16 @@ class FileShareService(
     private val logService: LogService,
     private val entityService: EntityService,
     @Lazy private val fileService: FileService,
+    private val passwordEncoder: PasswordEncoder,
 ) {
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // ShareToken  ->  ShareId
+    private val tokenMap = Caffeine.newBuilder()
+        .expireAfterWrite(8, TimeUnit.HOURS)
+        .maximumSize(1_000_000)
+        .build<String, String>()
+
 
     @PostConstruct
     fun clearExpiredFileShares() {
@@ -64,6 +76,47 @@ class FileShareService(
     @PreDestroy
     fun stop() {
         scope.cancel()
+    }
+
+    val incorrectPasswordResult = Result.reject<String>("Incorrect password.")
+    /**
+     * Returns share token for a password-protected shared file. It is used to find share instead of using shareID directly
+     */
+    fun login(shareId: String, password: String, userAction: UserAction): Result<String> {
+         val share = getSharesByShareId(shareId, userAction).let {
+             if (it.notFound) return incorrectPasswordResult
+             if (it.isNotSuccessful) return it.cast()
+             it.value
+         }
+
+        if (share.isPassword == false) return shareId.toResult()
+        val passwordMatches = passwordEncoder.matches(password, share.password)
+        if (!passwordMatches) return incorrectPasswordResult
+
+        val token = StringUtils.randomString(32)
+        tokenMap.put(token, shareId)
+
+        return token.toResult()
+    }
+
+    fun getPasswordStatus(
+        shareId: String,
+        userAction: UserAction,
+    ): Result<Boolean> {
+        try {
+            val int = fileShareRepository.getPasswordStatus(shareId)
+                ?: return Result.notFound()
+            val bool = if (int == 1) true else false
+            return bool.toResult()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to get share file password status",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to check if shared file has a password.")
+        }
     }
 
     fun deleteShare(
@@ -159,7 +212,8 @@ class FileShareService(
             userId = principal.userId,
             createdDate = unixNow(),
             maxAge = maxAge ?: 0,
-            isPassword = password != null
+            isPassword = password != null,
+            password = password?.password
         )
 
         insertFileShare(share, UserAction.SHARE_FILE).let {
@@ -270,5 +324,14 @@ class FileShareService(
             )
             return Result.error("Failed to get file share.")
         }
+    }
+
+    fun getByShareToken(shareToken: String, userAction: UserAction): Result<FileShare> {
+        val shareId = tokenMap.getIfPresent(shareToken)
+        getSharesByShareId(shareId ?: shareToken, userAction)
+            .let {
+                if (it.notFound) return Result.reject("File does not exist, or your login expired.")
+                return it
+            }
     }
 }

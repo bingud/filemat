@@ -5,18 +5,29 @@
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
-    import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte';
-    import { page } from '$app/state';
-    import { appState } from '$lib/code/stateObjects/appState.svelte';
+    import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
+    import { appState } from '$lib/code/stateObjects/appState.svelte'
+
+    const meta = $derived(filesState.meta)
 
     function openEntry(path: string) {
-        goto(`/files${path}`)
+        goto(`${meta.pagePath}${path}`)
     }
 
     // Context menu for breadcrumb buttons
     let contextMenuButton: HTMLButtonElement | null = $state(null)
     let menuSegment: Segment | null = $state(null)
     let contextMenuOpen = $state(false)
+
+    let topLevelButtonText = $derived.by(() => {
+        if (meta.isSharedFiles) {
+            const file = filesState.data.fileMeta
+            const filename = file?.filename
+            if (filename) return filename
+        }
+
+        return meta.pageTitle
+    })
 
     function onContextMenu(event: MouseEvent, segment: Segment, button: HTMLButtonElement) {
         event.preventDefault()
@@ -47,19 +58,17 @@
 
 <!-- Breadcrumbs -->
 <div class="w-full flex items-center h-[2rem] max-h-full overflow-hidden">
-    {#if filesState.path === "/" && appState.currentPath.files}
+    {#if filesState.path === "/" || meta.isAccessibleFiles}
         <button 
-            title="Files"
-            on:contextmenu={(e) => { onContextMenu(e, { name: "Files", path: "", width: calculateTextWidth("Files") }, e.currentTarget) }}
+            title={topLevelButtonText}
+            on:click={() => {
+                if (meta.isAccessibleFiles) {
+                    openEntry(`/`)
+                }
+            }}
+            on:contextmenu={(e) => { onContextMenu(e, { name: topLevelButtonText, path: "", width: calculateTextWidth(topLevelButtonText) }, e.currentTarget) }}
             class="py-1 px-2 whitespace-nowrap max-w-full truncate rounded hover:bg-neutral-300 dark:hover:bg-neutral-800"
-        >Files</button>
-    {:else if appState.currentPath.accessibleFiles}
-        <button 
-            title="Accessible Files" 
-            on:click={() => { openEntry(`/`) }}
-            on:contextmenu={(e) => { onContextMenu(e, { name: "Accessible Files", path: "", width: calculateTextWidth("Accessible Files") }, e.currentTarget) }}
-            class="py-1 px-2 whitespace-nowrap max-w-full truncate rounded hover:bg-neutral-300 dark:hover:bg-neutral-800"
-        >Accessible Files</button>
+        >{topLevelButtonText}</button>
     {:else}
         {@const hiddenEmpty = breadcrumbState.hidden.length < 1}
         <!-- Change chevron width in breadcrumb calculator -->

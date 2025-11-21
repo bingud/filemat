@@ -1,8 +1,8 @@
 import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
-import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types";
+import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, printStack, resolvePath, Result, safeFetch, sortArray, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
@@ -17,11 +17,11 @@ export async function getFileData(
     path: string,
     urlPath: string,
     signal: AbortSignal | undefined,
-    options: { foldersOnly?: boolean, silent?: boolean, shareId?: string }
+    options: { foldersOnly?: boolean, silent?: boolean, shareToken?: string }
 ): Promise<Result<FileData>> {
     const body = formData({ path: path, foldersOnly: options.foldersOnly || false })
-    if (options.shareId) {
-        body.append("shareId", options.shareId)
+    if (options.shareToken) {
+        body.append("shareToken", options.shareToken)
     }
 
     const response = await safeFetch(urlPath, {
@@ -52,7 +52,7 @@ export async function getFileData(
     let data = json as FileData
     if (data.entries) {
         data.entries.forEach((v) => {
-            v.filename = filenameFromPath(v.path)
+            if (!v.filename) v.filename = filenameFromPath(v.path)
         })
     }
 
@@ -306,7 +306,6 @@ export function startTusUpload(file: File) {
                         permissions: filesState.data.folderMeta!.permissions,
                         isWritable: true,
                         isExecutable: true,
-                        shares: []
                     })
                 }
 

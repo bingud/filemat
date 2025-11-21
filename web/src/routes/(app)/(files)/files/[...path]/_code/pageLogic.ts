@@ -3,7 +3,7 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, filenameFromPath, isFolder, parentFromPath, Result } from "$lib/code/util/codeUtil.svelte"
+import { addSuffix, filenameFromPath, isFolder, parentFromPath, printStack, Result } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
@@ -43,7 +43,7 @@ export async function loadPageData(
         fileDataType: "object" | "array",
         parentFolderOnly?: boolean,
         loadParentFolder?: boolean,
-        shareId?: string,
+        shareToken?: string,
     }
 ) {
     filesState.lastFilePathLoaded = filePath
@@ -58,7 +58,7 @@ export async function loadPageData(
                 signal: filesState.abortController?.signal,
                 silent: options.parentFolderOnly ?? false,
             })
-        : await getFileData(filePath, options.urlPath, filesState.abortController?.signal, { silent: options.parentFolderOnly, shareId: options.shareId })
+        : await getFileData(filePath, options.urlPath, filesState.abortController?.signal, { silent: options.parentFolderOnly, shareToken: options.shareToken })
     )
     filesState.metaLoading = false
 
@@ -107,11 +107,13 @@ export async function loadPageData(
         } else if (type === "FILE" || type === "FILE_LINK") {
             if (!options.parentFolderOnly) {
                 filesState.data.fileMeta = meta
-                filesState.data.fileMeta.filename = filenameFromPath(meta.path)
+                if (!filesState.data.fileMeta.filename) {
+                    filesState.data.fileMeta.filename = filenameFromPath(meta.path)
+                }
             }
 
             // Load parent folder of file
-            if (options.loadParentFolder && filesState.data.folderMeta == null) {
+            if (options.loadParentFolder && filesState.data.folderMeta == null && filePath !== "/") {
                 loadPageData(parentFromPath(meta.path), {
                     urlPath: options.urlPath,
                     fileDataType: "object",
@@ -148,8 +150,8 @@ export async function reloadCurrentFolder() {
     // Local folder is up to date
     if (modifiedDate === actualModifiedDate) return
 
-    const shareId = filesState.meta.isSharedFiles ? filesState.meta.shareId : undefined
-    await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareId })
+    const shareToken = filesState.meta.isSharedFiles ? filesState.meta.shareToken : undefined
+    await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareToken: shareToken })
 }
 
 
