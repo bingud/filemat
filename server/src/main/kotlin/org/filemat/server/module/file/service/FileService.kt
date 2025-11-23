@@ -45,20 +45,24 @@ class FileService(
     private val fileShareService: FileShareService,
 ) {
 
-    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?): Result<FilePath> {
+    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean): Pair<Result<FilePath>, Boolean> {
         val sharedPath = if (shareToken != null) {
             entityService.getByShareToken(shareToken = shareToken)
                 .let {
-                    if (it.isNotSuccessful) return it.cast()
+                    if (it.isNotSuccessful) return Pair(it.cast(), false)
 
                     FilePath.of(
-                        it.value.path ?: return Result.notFound()
+                        it.value.path ?: return Pair(Result.notFound(), false)
                     )
                 }
         } else null
 
-        val (pathResult, pathContainsSymlink) = resolvePath(sharedPath ?: path)
-        return pathResult
+        return resolvePath(sharedPath ?: path)
+    }
+
+    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?): Result<FilePath> {
+        val result = resolvePathWithOptionalShare(path, shareToken, true)
+        return result.first
     }
 
     data class EditFileResult(val modifiedDate: Long, val size: Long)
@@ -307,14 +311,16 @@ class FileService(
         range: LongRange? = null,
         ignorePermissions: Boolean = false
     ): Result<InputStream> {
-        val (canonicalPath, pathContainsSymlink) = if (existingCanonicalPath != null && existingPathContainsSymlink != null) {
-            existingCanonicalPath to existingPathContainsSymlink
-        } else {
-            resolvePath(rawPath).let { (path, containsSymlink) ->
-                if (path.isNotSuccessful) {
-                    return path.cast()
+        val (canonicalPath, pathContainsSymlink) = let {
+            if (existingCanonicalPath != null && existingPathContainsSymlink != null) {
+                existingCanonicalPath to existingPathContainsSymlink
+            } else {
+                resolvePath(rawPath).let { (path, containsSymlink) ->
+                    if (path.isNotSuccessful) {
+                        return path.cast()
+                    }
+                    path.value to containsSymlink
                 }
-                path.value to containsSymlink
             }
         }
 

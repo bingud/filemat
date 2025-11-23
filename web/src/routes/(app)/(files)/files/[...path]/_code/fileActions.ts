@@ -51,6 +51,12 @@ export function option_downloadSelectedFiles() {
     downloadFilesAsZip(selected)
 }
 
+export function option_downloadCurrentFolder() {
+    const folder = filesState.data.folderMeta
+    if (!folder) return
+    downloadFilesAsZip([folder.path])
+}
+
 export async function handleNewFolder() {
     filesState.ui.newFilePopoverOpen = false
 
@@ -102,7 +108,6 @@ export async function handleNewFolder() {
         permissions: keysOf(filePermissionMeta),
         isExecutable: true,
         isWritable: true,
-        shares: []
     })
 }
 

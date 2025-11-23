@@ -10,24 +10,25 @@
     import { fade, fly } from "svelte/transition"
     import { linear } from "svelte/easing"
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-    import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte';
-    import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte';
-    import TrashIcon from '$lib/component/icons/TrashIcon.svelte';
-    import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte';
-    import MoveIcon from '$lib/component/icons/MoveIcon.svelte';
-    import FileDropzone from './_elements/ui/FileDropzone.svelte';
-    import { clientState } from '$lib/code/stateObjects/clientState.svelte';
-    import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte';
-    import FileViewer from './_elements/layout/FileViewer.svelte';
-    import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic';
-    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles, saveEditedFile } from './_code/fileActions';
-    import NewFileButton from './_elements/button/NewFileButton.svelte';
-    import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil";
-    import FileSortingButton from "./_elements/button/FileSortingButton.svelte";
-    import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte";
-    import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte";
-    import { textFileViewerState } from "./_code/textFileViewerState.svelte";
-    import SaveIcon from "$lib/component/icons/SaveIcon.svelte";
+    import NewFolderIcon from '$lib/component/icons/NewFolderIcon.svelte'
+    import NewFileIcon from '$lib/component/icons/NewFileIcon.svelte'
+    import TrashIcon from '$lib/component/icons/TrashIcon.svelte'
+    import DownloadIcon from '$lib/component/icons/DownloadIcon.svelte'
+    import MoveIcon from '$lib/component/icons/MoveIcon.svelte'
+    import FileDropzone from './_elements/ui/FileDropzone.svelte'
+    import { clientState } from '$lib/code/stateObjects/clientState.svelte'
+    import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte'
+    import FileViewer from './_elements/layout/FileViewer.svelte'
+    import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic'
+    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles, saveEditedFile } from './_code/fileActions'
+    import NewFileButton from './_elements/button/NewFileButton.svelte'
+    import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil"
+    import FileSortingButton from "./_elements/button/FileSortingButton.svelte"
+    import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte"
+    import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte"
+    import { textFileViewerState } from "./_code/textFileViewerState.svelte"
+    import SaveIcon from "$lib/component/icons/SaveIcon.svelte"
+    import { auth } from "$lib/code/stateObjects/authState.svelte"
 
 
     let {
@@ -176,16 +177,23 @@
                     <div class="w-full h-[2.5rem] flex items-center justify-between">
                         <!-- Left buttons -->
                         <div class="h-full flex items-center gap-2">
+                            <!-- Parent folder options -->
                             {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                     (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
                             }
-                                <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
-                                <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
+                                {#if !filesState.meta.isSharedFiles}
+                                    <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
+                                    <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
+                                {/if}
+                                <button on:click={option_downloadSelectedFiles} title="Download this folder" class="file-action-button"><DownloadIcon /></button>
+                            <!-- Selected child file options -->
                             {:else if filesState.selectedEntries.hasSelected}
                                 <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
-                                <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
-                                {#if filesState.data.fileMeta == null}
-                                    <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
+                                {#if !filesState.meta.isSharedFiles}
+                                    <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
+                                    {#if filesState.data.fileMeta == null}
+                                        <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
+                                    {/if}
                                 {/if}
                             {/if}
                         </div>
@@ -198,7 +206,7 @@
                                 <FileViewTypeButton></FileViewTypeButton>
                             {/if}
 
-                            {#if uiState.isDesktop && filesState.isFileListOpen}
+                            {#if uiState.isDesktop && filesState.isFileListOpen && auth.authenticated}
                                 <NewFileButton></NewFileButton>
                             {/if}
 

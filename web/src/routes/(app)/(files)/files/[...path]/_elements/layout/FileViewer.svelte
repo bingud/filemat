@@ -19,6 +19,7 @@
     import type Player from "video.js/dist/types/player";
     import mime from 'mime'
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
+    import { auth } from "$lib/code/stateObjects/authState.svelte";
 
     
     let meta = $derived(filesState.data.fileMeta) 
@@ -29,7 +30,7 @@
         if (isSymlink) return "text" as FileCategory
         return getFileCategoryFromFilename(meta.filename!)
     })
-    let isEditable = $derived(fileCategory === "text")
+    let isEditable = $derived(fileCategory === "text" && auth.authenticated)
 
     let displayedFileCategory = $derived(fileCategory)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))

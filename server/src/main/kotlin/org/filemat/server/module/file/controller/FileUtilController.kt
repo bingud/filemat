@@ -28,6 +28,9 @@ import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
+import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.module.file.service.EntityService
+import org.filemat.server.module.sharedFiles.service.FileShareService
 import java.awt.geom.AffineTransform
 
 
@@ -35,24 +38,28 @@ import java.awt.geom.AffineTransform
 @RequestMapping("/v1/file")
 class FileUtilController(
     private val fileService: FileService,
+    private val fileShareService: FileShareService,
+    private val entityService: EntityService,
 ) : AController() {
 
     init {
         av_log_set_level(AV_LOG_QUIET)
     }
 
+    @Unauthenticated
     @GetMapping("/image-thumbnail")
     fun imageThumbnailMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
         @RequestParam("size", required = false) rawSize: String?,
+        @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<StreamingResponseBody> {
-        val principal = request.getPrincipal()!!
+        val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
-        val (pathResult, pathContainsSymlink) = resolvePath(path)
-        val canonicalPath = pathResult.let {
+        val (canonicalPathResult, pathContainsSymlink) = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
+        val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             it.value
@@ -61,7 +68,9 @@ class FileUtilController(
         val fileContentResult = fileService.getFileContent(
             principal,
             path,
-            existingCanonicalPath = canonicalPath
+            existingCanonicalPath = canonicalPath,
+            existingPathContainsSymlink = pathContainsSymlink,
+            ignorePermissions = shareToken != null
         )
         if (fileContentResult.notFound) return streamBad("This file was not found.", "")
         if (fileContentResult.rejected) return streamBad(fileContentResult.error, "")
@@ -231,20 +240,21 @@ class FileUtilController(
     }
 
 
-
+    @Unauthenticated
     @GetMapping("/video-preview")
     fun videoPreviewMapping(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
         @RequestParam("size", required = false) rawSize: String?,
+        @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<StreamingResponseBody> {
-        val principal = request.getPrincipal()!!
+        val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
         // Resolve file path
-        val (pathResult, pathContainsSymlink) = resolvePath(path)
-        val canonicalPath = pathResult.let {
+        val (canonicalPathResult, pathContainsSymlink) = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
+        val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             it.value
@@ -255,9 +265,11 @@ class FileUtilController(
             return streamBad("This file is not a video.", "")
         }
 
-        fileService.isAllowedToAccessFile(user = principal, canonicalPath = canonicalPath).let {
-            if (it.hasError) return streamInternal(it.error, "")
-            if (it.isNotSuccessful) return streamBad(it.errorOrNull ?: "Cannot access this file.", "")
+        if (shareToken == null) {
+            fileService.isAllowedToAccessFile(user = principal, canonicalPath = canonicalPath).let {
+                if (it.hasError) return streamInternal(it.error, "")
+                if (it.isNotSuccessful) return streamBad(it.errorOrNull ?: "Cannot access this file.", "")
+            }
         }
 
         val filename = path.pathString.substringAfterLast("/") + "_preview.jpg"

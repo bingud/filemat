@@ -8,6 +8,7 @@
     import { fetchState, startStateAutoSync } from '$lib/code/state/stateFetcher';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
     import { filesState } from '$lib/code/stateObjects/filesState.svelte';
+    import { page } from '$app/state';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
@@ -24,9 +25,11 @@
                 await goto (`/setup`)
                 return
             }
-            if (auth.authenticated !== true || !auth.principal) {
-                await goto("/login")
-                return
+            if (!page.url.pathname.startsWith(`/share`)) {
+                if (auth.authenticated !== true || !auth.principal) {
+                    await goto("/login")
+                    return
+                }
             }
 
             mounted = true
@@ -51,7 +54,7 @@
 
 {#if mounted}
     <div class="flex flex-col lg:flex-row w-full h-full overflow-hidden min-h-0">
-        <nav class="contents">
+        <nav class="contents" hidden={!auth.authenticated}>
             <!-- Mobile Top Bar -->
             <div class="contents lg:hidden">
                 <Navbar />
@@ -61,7 +64,7 @@
             <Sidebar />
         </nav>
         
-        <main id="app-page" class="w-full lg:w-without-sidebar-desktop h-without-navbar lg:h-full min-h-0">
+        <main id="app-page" class="w-full {auth.authenticated ? 'lg:w-without-sidebar-desktop h-without-navbar lg:h-full' : 'h-full'}  min-h-0">
             {@render children()}
         </main>
     </div>
