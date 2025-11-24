@@ -41,6 +41,20 @@ class FileShareController(
     }
 
     @Unauthenticated
+    @PostMapping("/get-metadata")
+    fun getFileShareMetadataMapping(
+        request: HttpServletRequest,
+        @RequestParam("shareToken") shareToken: String,
+    ): ResponseEntity<String> {
+        fileShareService.getMetadata(shareToken, UserAction.GET_FILE_SHARE_METADATA).let {
+            if (it.notFound) return notFound("This shared file was not found.")
+            if (it.isNotSuccessful) return internal(it.error)
+            val serialized = Json.encodeToString(it.value)
+            return ok(serialized)
+        }
+    }
+
+    @Unauthenticated
     @PostMapping("/get-password-status")
     fun getSharedFilePasswordStatusMapping(
         request: HttpServletRequest,

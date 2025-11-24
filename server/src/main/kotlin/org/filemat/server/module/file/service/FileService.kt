@@ -51,9 +51,10 @@ class FileService(
                 .let {
                     if (it.isNotSuccessful) return Pair(it.cast(), false)
 
-                    FilePath.of(
-                        it.value.path ?: return Pair(Result.notFound(), false)
-                    )
+                    val sharePathStr = it.value.path ?: return Pair(Result.notFound(), false)
+                    val sharePath = FilePath.of(sharePathStr)
+                    val fullPath = sharePath.path.resolve(path.pathString.removePrefix("/"))
+                    return@let FilePath.ofAlreadyNormalized(fullPath)
                 }
         } else null
 
@@ -406,6 +407,7 @@ class FileService(
         }
     }
 
+
     /**
      * Returns file metadata
      *
@@ -436,7 +438,7 @@ class FileService(
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
-        val metadata = rawMetadata.copy(path = rawPath.pathString, filename = canonicalPath.path.fileName.pathString)
+        val metadata = rawMetadata.copy(path = rawPath.pathString)
         val type = metadata.fileType
 
         if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {

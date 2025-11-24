@@ -55,8 +55,6 @@
         textFileViewerState.reset()
     })
 
-    $inspect(fileCategory)
-
     $effect(() => {
         if (filesState.data.decodedContent != null) return
         if (filesState.data.content == null) return

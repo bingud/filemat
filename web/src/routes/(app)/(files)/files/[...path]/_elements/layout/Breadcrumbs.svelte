@@ -20,9 +20,8 @@
     let contextMenuOpen = $state(false)
 
     let topLevelButtonText = $derived.by(() => {
-        if (meta.isSharedFiles) {
-            const file = filesState.data.fileMeta
-            const filename = file?.filename
+        if (meta.type === "shared") {
+            const filename = meta.shareTopLevelFilename
             if (filename) return filename
         }
 
@@ -58,11 +57,11 @@
 
 <!-- Breadcrumbs -->
 <div class="w-full flex items-center h-[2rem] max-h-full overflow-hidden">
-    {#if filesState.path === "/" || meta.isAccessibleFiles}
+    {#if filesState.path === "/" || meta.type === "accessible"}
         <button 
             title={topLevelButtonText}
             on:click={() => {
-                if (meta.isAccessibleFiles) {
+                if (meta.type === "accessible") {
                     openEntry(`/`)
                 }
             }}

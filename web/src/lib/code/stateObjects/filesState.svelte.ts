@@ -4,20 +4,20 @@ import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
-import { config } from "../config/values"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
 import { getContentUrl } from "../util/stateUtils"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
 
 
-export type StateMetadata = { isFiles: true, isSharedFiles: false, isAccessibleFiles: false, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
-                          | { isFiles: false, isSharedFiles: true, isAccessibleFiles: false, shareId: string, shareToken: string, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
-                          | { isFiles: false, isSharedFiles: false, isAccessibleFiles: true, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+export type StateMetadata = { type: "files", fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+                          | { type: "shared", shareId: string, shareToken: string, shareTopLevelFilename: string, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+                          | { type: "accessible", fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
 
 
 class FilesState {
     meta: StateMetadata = $state(undefined!)
+    getShareToken(): string | undefined { return this.meta.type === "shared" ? this.meta.shareToken : undefined }
 
     /**
      * The current file path opened

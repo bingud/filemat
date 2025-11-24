@@ -5,6 +5,7 @@ import com.github.f4b6a3.ulid.Ulid
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
+import kotlinx.serialization.Serializable
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -333,5 +334,36 @@ class FileShareService(
                 if (it.notFound) return Result.reject("File does not exist, or your login expired.")
                 return it
             }
+    }
+
+    @Serializable
+    data class FileShareMetadata(
+        val shareId: String,
+        val topLevelFilename: String,
+    )
+    fun getMetadata(shareToken: String, userAction: UserAction): Result<FileShareMetadata> {
+        val share = getByShareToken(shareToken, userAction)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val entity = entityService.getByShareId(share.shareId, userAction)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val rawSharePath = FilePath.of(entity.path ?: return Result.notFound())
+
+        // Resolve entity path
+        val (canonicalSharePathResult, parentPathHasSymlink) = resolvePath(rawSharePath)
+        if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
+        val canonicalSharePath = canonicalSharePathResult.value
+
+        return Result.ok(FileShareMetadata(
+            shareId = share.shareId,
+            topLevelFilename = canonicalSharePath.path.fileName.toString()
+        ))
     }
 }

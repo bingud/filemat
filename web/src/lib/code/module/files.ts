@@ -102,12 +102,21 @@ export async function getFileListFromCustomEndpoint(params: {
 }
 
 
-export async function streamFileContent(path: string, signal: AbortSignal): Promise<Blob | null> {
-    const response = await safeFetch(
-        `/api/v1/file/content`,
-        { body: formData({ path: path }), signal: signal },
-        true
-    )
+export async function streamFileContent(
+    path: string, 
+    options: {
+        shareToken?: string, 
+        signal: AbortSignal
+    }
+): Promise<Blob | null> {
+    const body = formData({ path: path })
+    if (options.shareToken) {
+        body.append("shareToken", options.shareToken)
+    }
+
+    const response = await safeFetch(`/api/v1/file/content`,{ 
+        body: body, signal: options.signal
+    }, true)
     if (response.failed) {
         const exception = response.exception
         if (exception.name === "AbortError") {
@@ -412,7 +421,7 @@ export async function deleteFiles(entries: FileMetadata[]) {
             }
         })
 
-        const pagePath = filesState.meta.isSharedFiles ? filesState.meta.pagePath : "/files"
+        const pagePath = filesState.meta.type === "shared" ? filesState.meta.pagePath : "/files"
         if (closestParent) navigateToFilePath(closestParent, pagePath)
     }
     

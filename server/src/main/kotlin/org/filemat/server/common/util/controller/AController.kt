@@ -13,8 +13,9 @@ abstract class AController {
 
     fun bad(body: String, error: String): ResponseEntity<String> = ResponseEntity.badRequest().body(ErrorResponse(body, error).serialize())
     fun bad(body: String): ResponseEntity<String> = ResponseEntity.badRequest().body(ErrorResponse(body, "").serialize())
-    fun notFound(): ResponseEntity<String> = ResponseEntity.notFound().build()
+    fun notFound(body: String? = null): ResponseEntity<String> = ResponseEntity.status(404).body(ErrorResponse(body ?: "", "").serialize())
     fun unauthenticated(body: String, error: String): ResponseEntity<String> = ResponseEntity.status(401).body(ErrorResponse(body, error).serialize())
+    fun unauthenticated(body: String): ResponseEntity<String> = ResponseEntity.status(401).body(ErrorResponse(body, "").serialize())
     fun internal(body: String, error: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, error).serialize())
     fun internal(body: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, "").serialize())
 

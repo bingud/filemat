@@ -155,7 +155,7 @@
     }
 
     function openEntry(path: string) {
-        goto(`/files${path}`)
+        goto(`${filesState.meta.pagePath}${path}`)
     }
     
     function entryMenuPopoverOnOpenChange(open: boolean) {

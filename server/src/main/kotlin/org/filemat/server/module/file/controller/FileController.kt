@@ -7,6 +7,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
+import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
@@ -159,6 +160,7 @@ class FileController(
      *
      * Optionally returns a byte range
      */
+    @Unauthenticated
     @RequestMapping("/content")
     fun streamFileContentMapping(
         request: HttpServletRequest,
@@ -188,7 +190,13 @@ class FileController(
         } else null
 
         // Get the file content
-        val inputStream = fileService.getFileContent(principal, path, existingCanonicalPath = canonicalPath, range = range).let {
+        val inputStream = fileService.getFileContent(
+            principal,
+            path,
+            existingCanonicalPath = canonicalPath,
+            range = range,
+            ignorePermissions = shareToken != null
+        ).let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")

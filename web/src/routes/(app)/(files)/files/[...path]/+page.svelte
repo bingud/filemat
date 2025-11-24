@@ -75,7 +75,7 @@
         destroyBreadcrumbState(breadcrumbStateNonce)
     })
 
-    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || stateMeta.pageTitle))
+    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || (filesState.meta.type === "shared" ? filesState.meta.shareTopLevelFilename : undefined) || stateMeta.pageTitle))
     let lastDataLoadDate: number = unixNow()
 
     // Load page data when path changes
@@ -101,12 +101,12 @@
                 filesState.scroll.pathPositions = {}
             }
 
-            const shareToken = filesState.meta.isSharedFiles ? filesState.meta.shareToken : undefined
+            const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
 
             // Do not load page data if navigating back to current parent folder
             // Use existing state
             if (pathIsParentFolder === false) {
-                (newPath === "/" && stateMeta.isAccessibleFiles 
+                (newPath === "/" && stateMeta.type === "accessible" 
                     ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareToken: shareToken })
                     : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: true, shareToken: shareToken })
                 ).then(() => {
@@ -181,7 +181,7 @@
                             {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                     (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
                             }
-                                {#if !filesState.meta.isSharedFiles}
+                                {#if filesState.meta.type === "shared"}
                                     <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
                                     <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
                                 {/if}
@@ -189,7 +189,7 @@
                             <!-- Selected child file options -->
                             {:else if filesState.selectedEntries.hasSelected}
                                 <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
-                                {#if !filesState.meta.isSharedFiles}
+                                {#if filesState.meta.type !== "shared"}
                                     <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
                                     {#if filesState.data.fileMeta == null}
                                         <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
@@ -229,7 +229,7 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full mt-2 relative">
-                {#if filesState.data.folderMeta || stateMeta.isAccessibleFiles}
+                {#if filesState.data.folderMeta || stateMeta.type === "accessible"}
                     <div 
                         bind:this={filesState.scroll.container} 
                         class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both 
@@ -249,7 +249,7 @@
                     <div class="center">
                         <Loader></Loader>
                     </div>
-                {:else if !filesState.data.currentMeta && !stateMeta.isAccessibleFiles}
+                {:else if !filesState.data.currentMeta && stateMeta.type !== "accessible"}
                     <div class="center">
                         <p class="text-xl">Could not open this file.</p>
                     </div>

@@ -83,6 +83,8 @@ class FolderController(private val fileService: FileService) : AController() {
         val path = FilePath.of(rawPath)
         val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false
 
+        if (shareToken == null && principal == null) return unauthenticated("Unauthenticated")
+
         val result = if (shareToken == null) {
             fileService.getFileOrFolderEntries(
                 user = principal!!,

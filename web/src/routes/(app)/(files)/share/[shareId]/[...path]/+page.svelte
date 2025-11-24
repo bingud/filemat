@@ -2,30 +2,33 @@
     import { page } from "$app/state";
     import type { StateMetadata } from "$lib/code/stateObjects/filesState.svelte";
     import { explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import Loader from "$lib/component/Loader.svelte";
     import FilesPage from "../../../files/[...path]/+page.svelte"
     
     let shareId = $derived(page.params.shareId)
     let passwordStatus: boolean | null | undefined = $state(undefined)
+    let shareMeta: { shareId: string, topLevelFilename: string } | null = $state(null)
 
     let passwordInput = $state('')
     let shareToken: string | null = $state(null)
     let loading = $state(false)
 
-    const meta: StateMetadata | undefined = $derived.by(() => {
-        if (!shareId || passwordStatus == null) return undefined
+    const pageMeta: StateMetadata | undefined = $derived.by(() => {
+        if (!shareId || passwordStatus == null || !shareMeta) return undefined
 
         return {
-            isFiles: false,
-            isSharedFiles: true,
-            isAccessibleFiles: false,
+            type: "shared",
             fileEntriesUrlPath: "/api/v1/folder/file-and-folder-entries",
             shareId: shareId,
             shareToken: shareToken ?? shareId,
+            shareTopLevelFilename: shareMeta.topLevelFilename,
             pagePath: `/share/${shareId}`,
-            pageTitle: "Shared file"
+            pageTitle: "Shared file",
         }
     })
 
+    // Load share data
+    // When share ID changes
     explicitEffect(() => [shareId], () => {
         passwordInput = ''
         passwordStatus = undefined
@@ -39,6 +42,18 @@
 
                 passwordStatus = result
             })
+    })
+
+    explicitEffect(() => [
+        shareId,
+        passwordStatus,
+        shareMeta
+    ], () => {
+        if (shareMeta && shareMeta.shareId === shareId) return
+        if (passwordStatus == null) return
+        if (!shareToken) return
+
+        loadShareMetadata(shareToken)
     })
 
     async function loadPasswordStatus(shareId: string): Promise<boolean | null> {
@@ -66,6 +81,10 @@
 
         const text = response.content
         const status = text === `true` ? true : false
+        if (status === false) {
+            shareToken = shareId
+        }
+
         return status
     }
 
@@ -98,11 +117,44 @@
 
         shareToken = response.content
     }
+
+    async function loadShareMetadata(token: string) {
+        if (!shareToken || loading) return
+
+        loading = true
+        const response = await safeFetch(`/api/v1/file/share/get-metadata`, {
+            body: formData({ shareToken: token })
+        })
+        loading = false
+        
+        if (shareToken !== token) return
+
+        if (response.failed) {
+            handleException(
+                `Failed to load shared file metadata.`,
+                `Failed to load shared file metadata.`,
+                response.exception
+            )
+            return null
+        }
+
+        const json = response.json()
+        if (response.code.failed) {
+            handleErr({
+                description: `Failed to load shared file metadata.`,
+                notification: json.message || `Failed to load shared file metadata.`,
+                isServerDown: response.code.serverDown
+            })
+            return null
+        }
+
+        shareMeta = json
+    }
 </script>
 
-{#if shareId && meta}
+{#if shareId && pageMeta}
     {#if passwordStatus === false || shareToken}
-        <FilesPage meta={meta}></FilesPage>
+        <FilesPage meta={pageMeta}></FilesPage>
     {:else if passwordStatus === true}
         <div class="page flex-col items-center justify-center">
             <form on:submit={submit_login} class="flex flex-col gap-4">
@@ -117,6 +169,8 @@
     {:else if passwordStatus === null}
         <p>Failed to check if this file has a password.</p>
     {/if}
+{:else if !pageMeta}
+    <Loader class="m-auto"></Loader>
 {:else}
     <p>Shared file link is invalid.</p>
 {/if}

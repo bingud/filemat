@@ -12,14 +12,20 @@ class BreadcrumbState {
     fullList = $derived.by(() => {
         uiState.screenWidth
         
-        const chevronWidth = remToPx(1)
-        const paddingWidth = remToPx(1)
+        const allSegmens = filesState.segments
         
-        return filesState.segments.map((seg, index) => {
+        let breadcrumbs = filesState.segments.map((seg, index) => {
             const width = calculateTextWidth(seg)
             const fullPath = filesState.segments.slice(0, index + 1).join("/")
             return { name: seg, path: fullPath, width: width }
         })
+
+        // Add parent folder to breadcrumbs when shared file is open
+        if (filesState.meta.type === "shared") {
+            const width = calculateTextWidth(filesState.meta.shareTopLevelFilename)
+            breadcrumbs.unshift({ name: filesState.meta.shareTopLevelFilename, path: "/", width: width })
+        }
+        return breadcrumbs
     })
 
     private list = $derived.by(() => {
@@ -60,8 +66,6 @@ class BreadcrumbState {
     
     visible = $derived(this.list.visible)
     hidden = $derived(this.list.hidden)
-
-
 }
 
 export let breadcrumbState: BreadcrumbState

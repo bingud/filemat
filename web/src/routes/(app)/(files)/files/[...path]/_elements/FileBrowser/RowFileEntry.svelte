@@ -65,7 +65,7 @@
             : isSelected ? 'bg-blue-200/60 dark:bg-sky-950/60' : 'hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60'
         }
     "
-    href={`/files${entry.path}`}
+    href={encodeURI(`${filesState.meta.pagePath}${(entry.path)}`)}
     on:dragstart={(e) => { event_dragStart(e, entry) }}
     on:dragover={(e) => { event_dragOver(e, entry) }}
     on:dragleave={(e) => { event_dragLeave(e, entry) }}
@@ -84,7 +84,7 @@
             <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem] pointer-events-none">
                 {#if entry.filename}
                     {@const format = getFileCategoryFromFilename(entry.filename)}
-                    {@const shareTokenParam = filesState.meta.isSharedFiles ? `&shareToken=${filesState.meta.shareToken}` : ``}
+                    {@const shareTokenParam = filesState.meta.type === "shared" ? `&shareToken=${filesState.meta.shareToken}` : ``}
 
                     {#if format === "image"}
                         <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=48&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>

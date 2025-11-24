@@ -4,9 +4,7 @@
     import type { StateMetadata } from "$lib/code/stateObjects/filesState.svelte";
 
     const meta: StateMetadata = {
-        isFiles: false,
-        isSharedFiles: false,
-        isAccessibleFiles: true,
+        type: "accessible",
         fileEntriesUrlPath: `/api/v1/file/all-permitted`,
         pagePath: "/accessible-files",
         pageTitle: "Accessible Files"
