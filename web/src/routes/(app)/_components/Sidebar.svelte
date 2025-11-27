@@ -4,7 +4,6 @@
     import { linear } from "svelte/easing";
     import { fade, fly } from "svelte/transition";
     import { appState } from '$lib/code/stateObjects/appState.svelte';
-    import { dev } from '$app/environment';
 
     function hide() { uiState.menuOpen = false }
 
@@ -21,10 +20,7 @@
                 <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files}>All Files</a>
                 <a href="/home" on:click={hide} class="sidebar-button">Home Folder</a>
                 <a href="/accessible-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.accessibleFiles}>Accessible to me</a>
-
-                {#if dev}
-                    <a href="/share/testShareId" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.sharedFiles}>Shared file</a>
-                {/if}
+                <a href="/shared-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.allSharedFiles}>Shared by me</a>
             </div>
 
 

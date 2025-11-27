@@ -29,6 +29,7 @@
     import { textFileViewerState } from "./_code/textFileViewerState.svelte"
     import SaveIcon from "$lib/component/icons/SaveIcon.svelte"
     import { auth } from "$lib/code/stateObjects/authState.svelte"
+    import { sharedFilesPageState } from "../../shared-files/state.svelte";
 
 
     let {
@@ -38,12 +39,11 @@
     } = $props()
 
     const stateMeta: StateMetadata = meta || {
-        isFiles: true,
-        isSharedFiles: false,
-        isAccessibleFiles: false,
+        type: "files",
         fileEntriesUrlPath: "/api/v1/folder/file-and-folder-entries",
         pagePath: "/files",
-        pageTitle: "Files"
+        pageTitle: "Files",
+        isArrayOnly: false,
     }
 
     const filesStateNonce = createFilesState(stateMeta)
@@ -52,6 +52,7 @@
     const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
     let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
     
+
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
         filesState.ui.filePreviewLoader.setScrollContainer(filesState.scroll.container || null)
@@ -106,8 +107,10 @@
             // Do not load page data if navigating back to current parent folder
             // Use existing state
             if (pathIsParentFolder === false) {
-                (newPath === "/" && stateMeta.type === "accessible" 
-                    ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareToken: shareToken })
+                const bodyParams = stateMeta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
+
+                (newPath === "/" && (stateMeta.isArrayOnly) 
+                    ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareToken: shareToken, bodyParams })
                     : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: true, shareToken: shareToken })
                 ).then(() => {
                     recoverScrollPosition()
@@ -231,7 +234,7 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-3rem)] w-full mt-2 relative">
-                {#if filesState.data.folderMeta || stateMeta.type === "accessible"}
+                {#if filesState.data.folderMeta || stateMeta.isArrayOnly}
                     <div 
                         bind:this={filesState.scroll.container} 
                         class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both 
@@ -251,7 +254,7 @@
                     <div class="center">
                         <Loader></Loader>
                     </div>
-                {:else if !filesState.data.currentMeta && stateMeta.type !== "accessible"}
+                {:else if !filesState.data.currentMeta && !stateMeta.isArrayOnly}
                     <div class="center">
                         <p class="text-xl">Could not open this file.</p>
                     </div>

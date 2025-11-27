@@ -7,6 +7,7 @@ import { addSuffix, filenameFromPath, isFolder, parentFromPath, printStack, Resu
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
+import { sharedFilesPageState } from "../../../shared-files/state.svelte"
 
 
 
@@ -44,6 +45,7 @@ export async function loadPageData(
         parentFolderOnly?: boolean,
         loadParentFolder?: boolean,
         shareToken?: string,
+        bodyParams?: Record<string, string>
     }
 ) {
     filesState.lastFilePathLoaded = filePath
@@ -57,6 +59,7 @@ export async function loadPageData(
                 urlPath: options.urlPath,
                 signal: filesState.abortController?.signal,
                 silent: options.parentFolderOnly ?? false,
+                bodyParams: options.bodyParams
             })
         : await getFileData(filePath, options.urlPath, filesState.abortController?.signal, { silent: options.parentFolderOnly, shareToken: options.shareToken })
     )
@@ -152,7 +155,9 @@ export async function reloadCurrentFolder() {
     if (modifiedDate === actualModifiedDate) return
 
     const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
-    await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareToken: shareToken })
+    const bodyParams = filesState.meta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
+
+    await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareToken: shareToken, bodyParams })
 }
 
 

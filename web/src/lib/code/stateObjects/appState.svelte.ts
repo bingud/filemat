@@ -7,8 +7,9 @@ const sitePaths = {
     "/accessible-files": "accessibleFiles",
     "/files": "files",
     "/settings": "settings",
-    "/share": "sharedFiles"
-}
+    "/share": "sharedFiles",
+    "/shared-files": "allSharedFiles"
+} as const
 
 class AppState {
     /**

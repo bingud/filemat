@@ -10,9 +10,10 @@ import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
 
 
-export type StateMetadata = { type: "files", fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
-                          | { type: "shared", shareId: string, shareToken: string, shareTopLevelFilename: string, fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
-                          | { type: "accessible", fileEntriesUrlPath: string, pagePath: string, pageTitle: string }
+export type StateMetadata = { type: "files",      fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
+                          | { type: "shared",     fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean, shareId: string, shareToken: string, shareTopLevelFilename: string,  }
+                          | { type: "accessible", fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
+                          | { type: "allShared",  fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
 
 
 class FilesState {
@@ -24,7 +25,8 @@ class FilesState {
      */
     path: string = $derived.by(() => {
         if (appState.currentPath.files || appState.currentPath.sharedFiles) {
-            let path = page.params.path!
+            let path = page.params.path
+            if (!path) return "/"
             return prependIfMissing(path, "/")
         } else {
             return "/"
@@ -263,6 +265,7 @@ class FileDataStateClass {
     // Sorted entries in the current directory
     sortedEntries = $derived.by(() => {
         if (!filesState.data || !filesState.data.entries) return null
+        if (filesState.meta.type === "allShared") return this.entries
         const files = filesState.data.entries.filter((v) => v.fileType === "FILE" || v.fileType === "FILE_LINK")
         const folders = filesState.data.entries.filter((v) => v.fileType === "FOLDER" || v.fileType === "FOLDER_LINK")
         

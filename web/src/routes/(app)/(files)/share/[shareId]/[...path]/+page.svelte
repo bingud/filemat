@@ -20,10 +20,11 @@
             type: "shared",
             fileEntriesUrlPath: "/api/v1/folder/file-and-folder-entries",
             shareId: shareId,
-            shareToken: shareToken ?? shareId,
-            shareTopLevelFilename: shareMeta.topLevelFilename,
             pagePath: `/share/${shareId}`,
             pageTitle: "Shared file",
+            isArrayOnly: false,
+            shareToken: shareToken ?? shareId,
+            shareTopLevelFilename: shareMeta.topLevelFilename,
         }
     })
 

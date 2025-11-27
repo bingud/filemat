@@ -13,6 +13,9 @@ interface FileShareRepository : CrudRepository<FileShare, Ulid> {
     @Query("SELECT * FROM shared_files WHERE file_id = :fileId")
     fun getSharesByFileId(fileId: Ulid): List<FileShare>
 
+    @Query("SELECT * FROM shared_files WHERE user_id = :userId")
+    fun getSharesByUserId(userId: Ulid): List<FileShare>
+
     @Query("SELECT * FROM shared_files WHERE share_id = :shareId")
     fun getSharesByShareId(shareId: String): FileShare?
 

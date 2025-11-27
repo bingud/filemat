@@ -142,7 +142,7 @@ class FileShareService(
                 it.value
             }
 
-        fileService.isAllowedToShareFile(principal, FilePath.of(entity.path!!))
+        fileService.isAllowedToAccessFile(principal, FilePath.of(entity.path!!))
             .let {
                 if (it.isNotSuccessful) return it.cast()
             }
@@ -328,6 +328,38 @@ class FileShareService(
                 message = e.stackTraceToString(),
             )
             return Result.error("Failed to get file share.")
+        }
+    }
+
+    fun getSharesByUserId(userId: Ulid, userAction: UserAction): Result<List<FileShare>> {
+        try {
+            val result = fileShareRepository.getSharesByUserId(userId)
+                .filter { !it.isExpired() }
+            return result.toResult()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ,
+                description = "Failed to get file shares from the database by user ID.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to get file shares.")
+        }
+    }
+
+    fun getAllShares(userAction: UserAction): Result<List<FileShare>> {
+        try {
+            val result = fileShareRepository.findAll()
+                .filter { !it.isExpired() }
+            return result.toResult()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction ,
+                description = "Failed to get all file shares from the database.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to get file shares.")
         }
     }
 

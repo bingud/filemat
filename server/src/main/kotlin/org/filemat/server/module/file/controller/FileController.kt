@@ -13,6 +13,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.TusService
+import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
@@ -61,14 +62,32 @@ class FileController(
             }
     }
 
+    @PostMapping("/all-shared")
+    fun getAllSharedFilesMapping(
+        request: HttpServletRequest,
+        @RequestParam("getAll") rawGetAll: String
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+        val getAll = rawGetAll.toBooleanStrictOrNull() ?: return bad("Parameter 'getAll' is invalid (should be true or false).")
+
+        val result = fileService.getSharedFileList(principal, getAll, UserAction.GET_FILE_SHARES).let {
+            if (it.hasError) return internal(it.error, "")
+            if (it.rejected) return bad(it.error)
+            it.value
+        }
+        val serialized = Json.encodeToString(result)
+
+        return ok(serialized)
+    }
+
     @PostMapping("/all-permitted")
-    fun getAllPermittedFiles(
+    fun getAllPermittedFilesMapping(
         request: HttpServletRequest,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
 
         val result = fileService.getPermittedFileList(principal).let {
-            if (it.hasError) return bad(it.error, "")
+            if (it.hasError) return internal(it.error, "")
             it.value
         }
         val serialized = Json.encodeToString(result)

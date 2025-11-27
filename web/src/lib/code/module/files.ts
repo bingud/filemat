@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
@@ -59,16 +59,24 @@ export async function getFileData(
     return Result.ok(data)
 }
 
-export async function getFileListFromCustomEndpoint(params: {
+export async function getFileListFromCustomEndpoint({
+    path, urlPath, signal, silent, bodyParams
+}: {
     path: string
     urlPath: string
     signal: AbortSignal | undefined
     silent: boolean
+    bodyParams?: Record<string, string>
 }): Promise<Result<FullFileMetadata[]>> {
-    const { path, urlPath, signal, silent } = params
+    const body = formData({ path: path, foldersOnly: false })
+    if (bodyParams) {
+        entriesOf(bodyParams).forEach(([k, v]) => {
+            body.append(k, v)
+        })
+    }
 
     const response = await safeFetch(urlPath, {
-        body: formData({ path: path, foldersOnly: false }),
+        body: body,
         signal: signal
     })
     if (response.failed) {
@@ -597,6 +605,10 @@ export async function getFileLastModifiedDate(path: string, silent: boolean = tr
     const response = await safeFetch(`/api/v1/file/last-modified-date`, { 
         body: formData({ path: path })
     })
+    if (response.failed) {
+        handleException(`Failed to get last modified date of current file.`, null, response.exception)
+        return null
+    }
     const status = response.code
     const content = response.content
 

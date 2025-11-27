@@ -12,6 +12,7 @@ import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getEffectiveFilePermissions
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
+import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -103,6 +104,62 @@ class FileService(
         )
     }
 
+    /**
+     * @return List of files that are shared by a user, or globally
+     */
+    fun getSharedFileList(user: Principal, getAll: Boolean, userAction: UserAction): Result<List<FullFileMetadata>> {
+        if (getAll && !user.hasPermission(SystemPermission.MANAGE_ALL_FILE_SHARES)) return Result.reject("You do not have permission to view all shared files.")
+
+        val shares = let {
+            if (getAll) {
+                fileShareService.getAllShares(userAction).let {
+                    if (it.isNotSuccessful) return it.cast()
+                    it.value
+                }
+            } else {
+                fileShareService.getSharesByUserId(user.userId, userAction).let {
+                    if (it.isNotSuccessful) return it.cast()
+                    it.value
+                }
+            }
+        }
+
+        val entities = shares
+            .mapNotNull { entityService.getById(entityId = it.fileId, userAction).valueOrNull }
+            .let { entities ->
+                if (!getAll) return@let entities
+
+                return@let entities.filter { entity ->
+                    entity.path ?: return@filter false
+                    isAllowedToAccessFile(
+                        user = user,
+                        canonicalPath = FilePath.of(entity.path),
+                        hasAdminAccess = null,
+                    ).let { permissionResult ->
+                        return@filter permissionResult.isSuccessful
+                    }
+                }
+            }
+
+
+        val files = entities.mapNotNull {
+            it.path ?: return@mapNotNull null
+            val path = FilePath.of(it.path)
+
+            getFullMetadata(
+                user = user,
+                rawPath = path,
+                canonicalPath = path,
+                action = userAction
+            ).valueOrNull
+        }
+
+        return files.toResult()
+    }
+
+    /**
+     * @return List of top-level files that a user has access to
+     */
     fun getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
         val entityPermissions = entityPermissionService.getPermittedEntities(user)
 
@@ -110,13 +167,6 @@ class FileService(
             // Get entity
             val entity = entityService.getById(entityPermission.entityId, UserAction.GET_PERMITTED_ENTITIES).valueOrNull ?: return@mapNotNull null
             if (entity.path == null) return@mapNotNull null
-
-            // Get file share data
-            val shares: List<FileShare> = fileShareService.getSharesByEntityId(entity.entityId, UserAction.GET_PERMITTED_ENTITIES)
-                .let {
-                    if (it.isNotSuccessful) return@let emptyList()
-                    it.value
-                }
 
             // Get metadata
             val meta =  filesystem.getMetadata(FilePath.of(entity.path)) ?: return@mapNotNull null
