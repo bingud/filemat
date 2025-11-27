@@ -6,7 +6,7 @@
     const meta: StateMetadata = {
         type: "accessible",
         fileEntriesUrlPath: `/api/v1/file/all-permitted`,
-        pagePath: "/accessible-files",
+        pagePath: "/files",
         pageTitle: "Accessible Files"
     }
 

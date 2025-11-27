@@ -7,6 +7,7 @@ import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.encodePathSegment
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.common.util.parseUlidOrNull
+import org.filemat.server.common.util.realIp
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.sharedFiles.service.FileShareService
@@ -32,7 +33,10 @@ class FileShareController(
         @RequestParam("shareId") shareId: String,
         @RequestParam("password") password: String,
     ): ResponseEntity<String> {
-        fileShareService.login(shareId, password, UserAction.SHARED_FILE_LOGIN)
+        val principal = request.getPrincipal()
+        val ip = request.realIp()
+
+        fileShareService.login(shareId, password, principal, ip, UserAction.SHARED_FILE_LOGIN)
             .let {
                 if (it.rejected) return bad(it.error)
                 if (it.hasError) return internal(it.error)

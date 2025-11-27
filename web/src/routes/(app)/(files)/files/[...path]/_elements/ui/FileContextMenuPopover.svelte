@@ -37,7 +37,7 @@
     <Popover.Content onInteractOutside={() => { filesState.ui.fileContextMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
             <a 
-                href={`/files${menuEntry.path}`}
+                href={`${filesState.meta.pagePath}${menuEntry.path}`}
                 target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
             >
                 <div class="size-5 flex-shrink-0">

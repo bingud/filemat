@@ -13,6 +13,7 @@ enum class RateLimitId {
     LOGIN_AUTHED,
     VERIFY_SETUP_CODE,
     SETUP,
+    SHARED_FILE_LOGIN,
 }
 
 private data class RateLimitConfig(
@@ -43,6 +44,7 @@ object RateLimiter {
         configureBucket(RateLimitId.LOGIN_AUTHED, 8, 30_000)
         configureBucket(RateLimitId.VERIFY_SETUP_CODE, 8, 30_000)
         configureBucket(RateLimitId.SETUP, 8, 30_000)
+        configureBucket(RateLimitId.SHARED_FILE_LOGIN, 8, 20_000)
 
         // Ensure all IDs are included in the configuration
         val configKeys = configs.keys.toList()

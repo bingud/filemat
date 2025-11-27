@@ -1,10 +1,11 @@
 import { filePermissionMeta } from "$lib/code/data/permissions";
-import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip } from "$lib/code/module/files";
+import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles } from "$lib/code/module/files";
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-import { filenameFromPath, formData, handleErr, handleException, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
+import { filenameFromPath, formData, handleErr, handleException, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { textFileViewerState } from "./textFileViewerState.svelte";
+import { getContentUrl } from "$lib/code/util/stateUtils";
 
 
 export async function option_moveSelectedFiles() {
@@ -48,13 +49,21 @@ export function option_deleteSelectedFiles() {
 export function option_downloadSelectedFiles() {
     const selected = filesState.selectedEntries.list
     if (!selected || !selected.length) return
-    downloadFilesAsZip(selected)
+
+    if (selected.length > 1 || isFolder(filesState.selectedEntries.singleMeta)) {
+        downloadFilesAsZip(selected, filesState.getShareToken())
+    } else {
+        const path = selected[0]
+        const url = getContentUrl(path)
+        downloadFiles(url, { method: "GET" })
+    }
 }
 
 export function option_downloadCurrentFolder() {
     const folder = filesState.data.folderMeta
     if (!folder) return
-    downloadFilesAsZip([folder.path])
+
+    downloadFilesAsZip([folder.path], filesState.getShareToken())
 }
 
 export async function handleNewFolder() {

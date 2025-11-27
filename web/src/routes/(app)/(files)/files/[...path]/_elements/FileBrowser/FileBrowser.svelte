@@ -227,7 +227,17 @@
         const isSelected = filesState.selectedEntries.list.includes(path)
         if (isSelected) {
             filesState.selectedEntries.unselect(path)
+
+            // Select folder
+            if (filesState.selectedEntries.count === 0) {
+                if (filesState.data.folderMeta) {
+                    filesState.selectedEntries.addSelected(filesState.data.folderMeta.path)
+                }
+            }
         } else {
+            if (filesState.data.folderMeta) {
+                filesState.selectedEntries.unselect(filesState.data.folderMeta.path)
+            }
             filesState.selectedEntries.addSelected(path)
         }
     }

@@ -10,10 +10,8 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
-import org.filemat.server.common.util.StringUtils
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.dto.ArgonHash
-import org.filemat.server.common.util.resolvePath
-import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.FilePath
@@ -83,7 +81,13 @@ class FileShareService(
     /**
      * Returns share token for a password-protected shared file. It is used to find share instead of using shareID directly
      */
-    fun login(shareId: String, password: String, userAction: UserAction): Result<String> {
+    fun login(shareId: String, password: String, principal: Principal?, ip: String, userAction: UserAction): Result<String> {
+        val rateLimit = if (principal != null) {
+            RateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN, principal.userId.toString())
+        } else RateLimiter.consume(RateLimitId.LOGIN, ip)
+
+        if (!rateLimit.isAllowed) return Result.reject("Try again in ${rateLimit.millisUntilRefill / 1000} seconds")
+
          val share = getSharesByShareId(shareId, userAction).let {
              if (it.notFound) return incorrectPasswordResult
              if (it.isNotSuccessful) return it.cast()

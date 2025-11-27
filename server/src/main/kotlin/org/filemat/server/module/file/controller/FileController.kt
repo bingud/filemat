@@ -8,6 +8,7 @@ import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
@@ -16,12 +17,15 @@ import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
+import java.io.OutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
 import kotlin.io.path.pathString
 
 
@@ -233,7 +237,7 @@ class FileController(
 
         // Set response display type to inline (can be displayed in browser)
         val cd: ContentDisposition = ContentDisposition.inline()
-            .filename(filename, StandardCharsets.UTF_8)
+            .filename(filename)
             .build()
 
         // Construct response headers
@@ -259,59 +263,133 @@ class FileController(
     /**
      * Returns a stream of ZIP file of multiple selected files
      */
+    @Unauthenticated
     @PostMapping("/zip-multiple-content")
     fun streamMultipleContentZipMapping(
         request: HttpServletRequest,
-        @RequestParam("pathList") rawPathList: String
+        @RequestParam("pathList") rawPathList: String,
+        @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<StreamingResponseBody> {
-        val principal = request.getPrincipal()!!
+        val principal = request.getPrincipal()
         val pathStrings = rawPathList.parseJsonOrNull<List<String>>()
             ?: return streamBad("List of file paths is invalid.", "validation")
         val paths = pathStrings.map { FilePath.of(it) }
 
-        val responseBody = StreamingResponseBody { out ->
-            ZipOutputStream(out).use { zip ->
-
-                fun addToZip(fp: FilePath, base: Path) {
-                    // try to stream as file
-                    fileService.getFileContent(principal, fp).let { res ->
-                        if (res.isSuccessful) {
-                            zip.putNextEntry(ZipEntry(base.toString()))
-                            BufferedInputStream(res.value).use { it.copyTo(zip) }
-                            zip.closeEntry()
-                            return
-                        }
-                    }
-                    // not a file → treat as directory
-                    val dir = fp.path
-                    if (Files.isDirectory(dir)) {
-                        Files.walk(dir).use { walk ->
-                            walk.filter { Files.isRegularFile(it) }
-                                .forEach { file ->
-                                    // compute ZIP entry name relative to fp.path
-                                    val entryName = base.resolve(dir.relativize(file)).toString()
-                                    zip.putNextEntry(ZipEntry(entryName))
-                                    fileService.getFileContent(principal, FilePath.of(file.toString())).value.use {
-                                        BufferedInputStream(it).copyTo(zip)
-                                    }
-                                    zip.closeEntry()
-                                }
-                        }
-                    }
-                }
-
-                // seed each selected path at its own top-level name
-                paths.forEach { fp ->
-                    val rootName = fp.path.fileName
-                    addToZip(fp, rootName)
+        val responseBody = StreamingResponseBody { out: OutputStream ->
+            ZipOutputStream(out).use { zip: ZipOutputStream ->
+                paths.forEach { path ->
+                    val zipRootName: Path? = path.path.fileName
+                    addToZip(zip, path, zipRootName, principal, shareToken)
                 }
             }
         }
 
         val filename = "${Props.appName.lowercase()}-download-${formatUnixToFilename(Instant.now())}.zip"
-
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$filename\"")
             .body(responseBody)
     }
+
+    private fun addToZip(
+        zip: ZipOutputStream,
+        rawPath: FilePath,
+        existingBaseZipPath: Path?,
+        principal: Principal?,
+        shareToken: String?
+    ) {
+        val isShared = shareToken != null
+        val (
+            canonicalPathResult,
+            pathContainsSymlink
+        ) = fileService.resolvePathWithOptionalShare(
+            path = rawPath,
+            shareToken = shareToken,
+            withPathContainsSymlink = true
+        )
+
+        val canonicalPath = canonicalPathResult.let {
+            if (it.isNotSuccessful) return
+            it.value
+        }
+
+        val baseZipPath: Path? = existingBaseZipPath ?: canonicalPath.path.fileName
+
+        // 1. Try to process as a single File
+        fileService.getFileContent(
+            user = principal,
+            rawPath = if (isShared) canonicalPath else rawPath,
+            existingCanonicalPath = canonicalPath,
+            existingPathContainsSymlink = pathContainsSymlink,
+            ignorePermissions = isShared
+        ).let { result ->
+            if (result.isSuccessful) {
+                val entryName = baseZipPath.toString()
+                zip.putNextEntry(ZipEntry(entryName))
+                BufferedInputStream(result.value).use { stream -> stream.copyTo(zip) }
+                zip.closeEntry()
+                return
+            }
+        }
+
+        // 2. Treat as Directory if not a file
+        if (Files.isDirectory(canonicalPath.path)) {
+            Files.walk(canonicalPath.path).use { walk ->
+                val files = walk.filter { !Files.isSymbolicLink(it) }
+
+                files.forEach { realPath ->
+                    val relativeRealPath = canonicalPath.path.relativize(realPath)
+                    val filePath = FilePath.ofAlreadyNormalized(realPath)
+
+                    val entryName = baseZipPath?.resolve(relativeRealPath)?.toString() ?: relativeRealPath.toString()
+
+                    if (realPath.isRegularFile()) {
+                        zip.putNextEntry(ZipEntry(entryName))
+
+                        fileService.getFileContent(
+                            user = principal,
+                            rawPath = filePath,
+                            existingCanonicalPath = filePath,
+                            ignorePermissions = isShared
+                        ).let { result ->
+                            if (result.isSuccessful) {
+                                result.value.use { inputStream ->
+                                    BufferedInputStream(inputStream).copyTo(zip)
+                                }
+                            }
+                        }
+                    } else if (realPath.isDirectory()) {
+                        if (isShared || fileService.isAllowedToAccessFile(principal, filePath).isSuccessful) {
+                            val dirEntryName = entryName + "/"
+                            zip.putNextEntry(ZipEntry(dirEntryName))
+                        }
+                    }
+
+                    zip.closeEntry()
+                }
+            }
+        }
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -181,11 +181,13 @@
                             {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                     (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
                             }
-                                {#if filesState.meta.type === "shared"}
+                                {#if filesState.meta.type !== "shared"}
                                     <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
                                     <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
                                 {/if}
-                                <button on:click={option_downloadSelectedFiles} title="Download this folder" class="file-action-button"><DownloadIcon /></button>
+                                {#if filesState.path !== "/" || filesState.meta.type === "shared"}
+                                    <button on:click={option_downloadSelectedFiles} title="Download this folder" class="file-action-button"><DownloadIcon /></button>
+                                {/if}
                             <!-- Selected child file options -->
                             {:else if filesState.selectedEntries.hasSelected}
                                 <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>

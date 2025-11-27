@@ -441,9 +441,15 @@ export async function deleteFiles(entries: FileMetadata[]) {
 }
 
 
-export async function downloadFilesAsZip(paths: string[]) {
+export async function downloadFilesAsZip(paths: string[], shareToken: string | undefined = undefined) {
     const serializedList = JSON.stringify(paths)
-    await downloadFiles(`/api/v1/file/zip-multiple-content`, formData({ pathList: serializedList }))
+
+    const body = formData({ pathList: serializedList })
+    if (shareToken) {
+        body.append("shareToken", shareToken)
+    }
+    
+    await downloadFiles(`/api/v1/file/zip-multiple-content`, { body })
 }
 
 
@@ -453,12 +459,18 @@ export async function downloadFilesAsZip(paths: string[]) {
  * @param url       endpoint that returns `Content-Disposition: attachment`
  * @param form      FormData to send in the POST body
  */
-async function downloadFiles(url: string, form: FormData) {
+export async function downloadFiles(
+    url: string, 
+    p: {
+        body?: FormData, 
+        method?: "POST" | "GET"
+    }
+) {
     const response = await safeFetch(
         url,
         {
-            method: 'POST',
-            body: form,
+            method: p.method || "POST",
+            body: p.body,
             credentials: 'same-origin',
         },
         true
@@ -475,7 +487,7 @@ async function downloadFiles(url: string, form: FormData) {
     const status = response.code
 
     if (status.failed) {
-        const json = await response.json()
+        const json = response.json()
         handleErr({
             description: `Failed to download file.`,
             notification: json.message || `Failed to download file. (${status})`,
