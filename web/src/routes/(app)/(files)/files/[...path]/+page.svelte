@@ -30,6 +30,8 @@
     import SaveIcon from "$lib/component/icons/SaveIcon.svelte"
     import { auth } from "$lib/code/stateObjects/authState.svelte"
     import { sharedFilesPageState } from "../../shared-files/state.svelte";
+    import { hasAnyPermission } from "$lib/code/module/permissions";
+    import SharedFileScopeSwitchPopover from "./_elements/button/SharedFileScopeSwitchPopover.svelte";
 
 
     let {
@@ -81,7 +83,7 @@
 
     // Load page data when path changes
     explicitEffect(() => [ 
-        filesState.path 
+        filesState.path,
     ], () => {
         const newPath = filesState.path
         
@@ -205,6 +207,10 @@
 
                         <!-- Right buttons -->
                         <div class="h-full flex items-center gap-2">
+                            {#if filesState.meta.type === "allShared" && hasAnyPermission(["MANAGE_ALL_FILE_SHARES"])}
+                                <SharedFileScopeSwitchPopover></SharedFileScopeSwitchPopover>
+                            {/if}
+
                             {#if filesState.isFileListOpen}
                                 <FileSortingButton></FileSortingButton>
                             

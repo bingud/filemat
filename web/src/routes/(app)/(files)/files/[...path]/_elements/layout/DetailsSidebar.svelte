@@ -180,7 +180,7 @@
 
 
 <div class="h-full w-full flex flex-col gap-6 py-6 bg-surface min-h-0">
-    {#if filesState.metaLoading}
+    {#if filesState.metaLoading && filesState.meta.type !== "allShared"}
         <div></div>
     {:else if filesState.selectedEntries.hasMultiple}
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
@@ -363,6 +363,19 @@
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <p>All files that you have permission to view.</p>
+        </div>
+    {:else if appState.currentPath.allSharedFiles}
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none">
+            <h3 class="truncate text-lg">Shared Files</h3>
+        </div>
+
+        <hr class="basic-hr flex-none">
+
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none gap-6">
+            <p>This page shows all the files that you have shared.</p>
+            {#if hasAnyPermission(["MANAGE_ALL_FILE_SHARES"])}
+                <p>You have permission to manage shares of all files.</p>
+            {/if}
         </div>
     {:else}
         <div class="w-full h-full flex flex-col items-center pt-4">

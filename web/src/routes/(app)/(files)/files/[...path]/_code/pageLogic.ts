@@ -145,19 +145,22 @@ export async function loadPageData(
 export async function reloadCurrentFolder() {
     if (!filesState.path) return
     const meta = filesState.data.folderMeta
-    if (!meta || !isFolder(meta)) return
-
-    const modifiedDate = meta.modifiedDate
-    const actualModifiedDate = await getFileLastModifiedDate(meta.path)
-
-    // Folder modification date has not changed
-    // Local folder is up to date
-    if (modifiedDate === actualModifiedDate) return
 
     const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
     const bodyParams = filesState.meta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
 
-    await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareToken: shareToken, bodyParams })
+    if (meta) {
+        const modifiedDate = meta.modifiedDate
+        const actualModifiedDate = await getFileLastModifiedDate(meta.path)
+
+        // Folder modification date has not changed
+        // Local folder is up to date
+        if (modifiedDate === actualModifiedDate) return
+
+        await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareToken: shareToken, bodyParams })
+    } else if (filesState.meta.isArrayOnly) {
+        await loadPageData(filesState.path, { urlPath: filesState.meta.fileEntriesUrlPath, fileDataType: "array", shareToken: shareToken, bodyParams })
+    }
 }
 
 

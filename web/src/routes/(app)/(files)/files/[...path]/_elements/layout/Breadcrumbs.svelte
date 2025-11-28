@@ -29,6 +29,7 @@
     })
 
     function onContextMenu(event: MouseEvent, segment: Segment, button: HTMLButtonElement) {
+        if (filesState.data.currentMeta == null) return
         event.preventDefault()
         contextMenuButton = button
         menuSegment = segment
