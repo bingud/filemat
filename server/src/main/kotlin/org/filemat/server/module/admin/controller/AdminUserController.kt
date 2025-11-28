@@ -31,11 +31,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class AdminUserController(
     private val adminUserService: AdminUserService,
-    private val roleService: RoleService,
     private val userRoleService: UserRoleService,
     private val passwordEncoder: PasswordEncoder,
-    private val userService: UserService,
-    private val authService: AuthService
 ) : AController() {
 
     @PostMapping("/edit-property")
@@ -148,30 +145,7 @@ class AdminUserController(
         }
     }
 
-    /**
-     * Returns a list of mini users
-     */
-    @PostMapping("/minilist")
-    fun adminUserMiniListMapping(
-        @RequestParam("userIdList", required = false) rawIdList: String?,
-        @RequestParam("allUsers", required = false) rawAllUsers: String?,
-    ): ResponseEntity<String> {
-        val allUsers = rawAllUsers?.toBooleanStrictOrNull() ?: false
-        if (allUsers && rawIdList != null) return bad("User ID list is present when loading all users.", "validation")
 
-        val userIds = if (rawIdList != null) {
-            Json.decodeFromStringOrNull<List<String>>(rawIdList)?.map {
-                parseUlidOrNull(it) ?: return bad("List of user IDs contains an invalid ID.", "validation")
-            } ?: return bad("List of user IDs is invalid.", "validation")
-        } else null
-
-        val list = adminUserService.getUserMiniList(userIds, allUsers).let {
-            if (it.isNotSuccessful) return internal(it.error, "")
-            it.value
-        }
-        val serialized = Json.encodeToString(list)
-        return ok(serialized)
-    }
 
     /**
      * Returns a list of all users

@@ -239,7 +239,7 @@ class TusService(
 
         // Create an entity
         entityService.create(
-            canonicalPath = destinationParent,
+            canonicalPath = destinationPath,
             ownerId = user.userId,
             userAction = UserAction.UPLOAD_FILE,
             followSymLinks = State.App.followSymlinks

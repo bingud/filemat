@@ -16,7 +16,7 @@ export async function loadMiniUsers(userIds: ulid[] | null, allUsers: boolean = 
         body.allUsers = true
     }
 
-    const response = await safeFetch(`/api/v1/admin/user/minilist`, {
+    const response = await safeFetch(`/api/v1/user/minilist`, {
         method: "POST",
         credentials: "same-origin",
         body: formData(body)

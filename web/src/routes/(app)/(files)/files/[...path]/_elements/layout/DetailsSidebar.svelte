@@ -4,7 +4,7 @@
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
     import type { EntityPermission, FilePermission, MiniUser, PermissionType, Role } from "$lib/code/auth/types";
-    import { hasAnyPermission } from "$lib/code/module/permissions";
+    import { hasAnyPermission, hasPermission } from "$lib/code/module/permissions";
     import { getRole } from "$lib/code/util/stateUtils";
     import { fade } from "svelte/transition";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
@@ -24,7 +24,7 @@
 
     type PermissionData = {
         permissions: EntityPermission[],
-        owner: ulid,
+        ownerId: ulid,
         miniUserList: Record<ulid, string>
     }
 
@@ -56,11 +56,19 @@
         return { users: users, roles: roles }
     })
 
+    let canManageFilePermissions = $derived.by(() => {
+        if (hasAnyPermission(["MANAGE_ALL_FILE_PERMISSIONS"])) return true
+
+        if (!permissionData) return false
+        if (hasAnyPermission(["MANAGE_OWN_FILE_PERMISSIONS"]) && permissionData.ownerId === auth.principal?.userId) return true
+        return false
+    })
+
     // Load permissions for selected file
     let lastLoaded = ""
     explicitEffect(() => [ 
-        filesState.selectedEntries.singlePath, 
-        filesState.ui.detailsOpen, 
+        filesState.selectedEntries.singlePath,
+        filesState.ui.detailsOpen,
     ], () => {
         const selectedPath = filesState.selectedEntries.singlePath
 
@@ -72,6 +80,8 @@
         showPermissions = false
         permissionData = null
         permissionDataDebounced = true
+
+        loadPermissionDataDebounced(selectedPath)
     })
 
     // Debounced function to load permission data
@@ -125,11 +135,14 @@
             })
             return
         } else if (status.failed) {
-            handleErr({
-                description: `Failed to load file permissions.`,
-                notification: json.message || `Failed to load file permissions.`,
-                isServerDown: status.serverDown
-            })
+            // Silence error if user doesnt have admin permissions
+            if (response.status === 400 && hasPermission("MANAGE_ALL_FILE_PERMISSIONS")) {
+                handleErr({
+                    description: `Failed to load file permissions.`,
+                    notification: json.message || `Failed to load file permissions.`,
+                    isServerDown: status.serverDown
+                })
+            }
             return
         }
 
@@ -141,6 +154,8 @@
             json.miniUserList[v.userId] = v.username
         })
         permissionData = json
+
+        console.log(permissionData?.ownerId,  auth.principal?.userId)
     }
 
     function onFilePermissionCreated(perm: EntityPermission, target: { user: MiniUser | null, roleId: ulid | null }) {
@@ -229,7 +244,7 @@
         <hr class="basic-hr flex-none">
 
         <!-- Permissions -->
-        {#if auth.authenticated}
+        {#if auth.authenticated && canManageFilePermissions}
             <div class="w-full flex flex-col gap-6 flex-auto min-h-0 max-h-fit">
                 <div class="flex w-full justify-between items-center px-6 h-[2.5rem] flex-none">
                     <h4 class="">Permissions</h4>

@@ -46,6 +46,10 @@ export function hasAnyPermission(requiredPermissions: SystemPermission[], ignore
     return false;
 }
 
+export function hasPermission(permission: SystemPermission, ignoreSuperAdmin: boolean = false): boolean {
+    return hasAnyPermission([permission], ignoreSuperAdmin)
+}
+
 
 /**
  * Returns permission level for current user

@@ -8,10 +8,10 @@ import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.admin.service.AdminUserService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.permission.model.FilePermission
-import org.filemat.server.module.permission.model.Permission
 import org.filemat.server.module.permission.model.PermissionType
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.user.service.UserService
+import org.filemat.server.module.user.service.UserUtilService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -24,7 +24,8 @@ import org.springframework.web.bind.annotation.RestController
 class PermissionController(
     private val entityPermissionService: EntityPermissionService,
     private val userService: UserService,
-    private val adminUserService: AdminUserService
+    private val adminUserService: AdminUserService,
+    private val userUtilService: UserUtilService
 ) : AController() {
 
     @PostMapping("/delete-entity")
@@ -122,7 +123,7 @@ class PermissionController(
 
         if (includeUsernames) {
             val userPermissions = meta.permissions.mapNotNull { it.userId }
-            val miniUsers = adminUserService.getUserMiniList(userPermissions).let {
+            val miniUsers = userUtilService.getUserMiniList(userPermissions).let {
                 if (it.isNotSuccessful) return bad(it.error, "")
                 it.value
             }

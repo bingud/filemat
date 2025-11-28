@@ -132,8 +132,6 @@ class EntityService(
         if (existingEntity.notFound == false) return Result.reject("A file with this path has already been indexed.")
         if (existingEntity.notFound != true && existingEntity.isNotSuccessful) return Result.error("Failed to check if this file has been indexed yet.")
 
-
-
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
             path = canonicalPath.pathString,
