@@ -516,10 +516,14 @@ class FileService(
         }
     }
 
-    fun getMetadata(user: Principal, rawPath: FilePath): Result<FileMetadata> {
-        val (pathResult, pathHasSymlink) = resolvePath(rawPath)
-        if (pathResult.isNotSuccessful) return pathResult.cast()
-        val canonicalPath = pathResult.value
+    fun getMetadata(user: Principal, rawPath: FilePath, isPathCanonical: Boolean = false): Result<FileMetadata> {
+        val canonicalPath = if (isPathCanonical) {
+            rawPath
+        } else {
+            val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+            if (pathResult.isNotSuccessful) return pathResult.cast()
+            pathResult.value
+        }
 
         return getMetadata(user, rawPath, canonicalPath)
     }

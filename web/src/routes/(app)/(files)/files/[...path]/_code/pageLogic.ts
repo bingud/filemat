@@ -151,7 +151,7 @@ export async function reloadCurrentFolder() {
 
     if (meta) {
         const modifiedDate = meta.modifiedDate
-        const actualModifiedDate = await getFileLastModifiedDate(meta.path)
+        const actualModifiedDate = await getFileLastModifiedDate(meta.path, { shareToken: filesState.getShareToken() })
 
         // Folder modification date has not changed
         // Local folder is up to date

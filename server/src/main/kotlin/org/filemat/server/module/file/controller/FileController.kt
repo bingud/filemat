@@ -10,16 +10,17 @@ import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.TusService
+import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
 import java.io.OutputStream
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
@@ -36,6 +37,8 @@ class FileController(
     private val fileService: FileService,
     private val tusService: TusService,
     private val filesystemService: FilesystemService,
+    private val fileShareService: FileShareService,
+    private val entityService: EntityService,
 ) : AController() {
 
     @PostMapping("/edit")
@@ -95,15 +98,28 @@ class FileController(
         return ok(serialized)
     }
 
+    @Unauthenticated
     @PostMapping("/last-modified-date")
     fun getFileLastModifiedDateMapping(
         request: HttpServletRequest,
-        @RequestParam("path") rawPath: String
+        @RequestParam("path") rawPath: String,
+        @RequestParam("shareToken", required = false) shareToken: String?
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
 
-        fileService.getMetadata(principal, path).let {
+        val resolvedPath = fileService.resolvePathWithOptionalShare(path, shareToken).let {
+            if (it.notFound) return bad("This file was not found.")
+            if (it.rejected) return bad(it.error)
+            if (it.hasError) return internal(it.error)
+            it.value
+        }
+
+        fileService.getMetadata(
+            principal,
+            resolvedPath,
+            isPathCanonical = shareToken != null
+        ).let {
             if (it.notFound) return notFound()
             if (it.hasError) return internal(it.error, "")
             if (it.isNotSuccessful) return bad(it.error, "")

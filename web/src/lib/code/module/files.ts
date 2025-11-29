@@ -601,9 +601,18 @@ function updateFileListAfterFileMove(oldPath: string, newPath: string) {
         }
     }
 }
-export async function getFileLastModifiedDate(path: string, silent: boolean = true): Promise<number | null> {
+export async function getFileLastModifiedDate(
+    path: string, 
+    {
+        silent = true,
+        shareToken
+    }: {
+        silent?: boolean,
+        shareToken?: string,
+    }
+): Promise<number | null> {
     const response = await safeFetch(`/api/v1/file/last-modified-date`, { 
-        body: formData({ path: path })
+        body: formData({ path: path, shareToken: shareToken })
     })
     if (response.failed) {
         handleException(`Failed to get last modified date of current file.`, null, response.exception)

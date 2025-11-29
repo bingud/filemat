@@ -209,10 +209,11 @@ export function formatUnixMillis(millis: number) {
 /**
  * Creates FormData object
  */
-export function formData(obj: { [key: string]: any }): FormData {
+export function formData(obj: { [key: string]: any | undefined }, includeUndefined: boolean = false): FormData {
     const data = new FormData()
-    Object.keys(obj).forEach((v: string) => {
-        data.append(v, obj[v])
+    entriesOf(obj).forEach(([k, v]) => {
+        if (v === undefined && !includeUndefined) return
+        data.append(k, v)
     })
     return data
 }
