@@ -1,5 +1,6 @@
 <script lang="ts">
     import { getFileData } from '$lib/code/module/files';
+    import { filesState } from '$lib/code/stateObjects/filesState.svelte';
     import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import { explicitEffect } from '$lib/code/util/codeUtil.svelte';
     import { Dialog } from '$lib/component/bits-ui-wrapper'
@@ -100,7 +101,7 @@
         if (!node) return
 
         node.isLoading = true
-        const dataResult = await getFileData(parent, "/files", undefined, {foldersOnly: true})
+        const dataResult = await getFileData(parent, filesState.meta.fileEntriesUrlPath, undefined, { foldersOnly: true })
         node.isLoading = false
         
         const data = dataResult.value
