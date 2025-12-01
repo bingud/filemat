@@ -105,7 +105,7 @@ class FileController(
         @RequestParam("path") rawPath: String,
         @RequestParam("shareToken", required = false) shareToken: String?
     ): ResponseEntity<String> {
-        val principal = request.getPrincipal()!!
+        val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
 
         val resolvedPath = fileService.resolvePathWithOptionalShare(path, shareToken).let {
