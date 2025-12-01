@@ -28,9 +28,14 @@
     const fileCategory: FileCategory | null = $derived.by(() => {
         if (!meta) return null
         if (isSymlink) return "text" as FileCategory
+
+        if (filesState.meta.type === "shared") {
+            return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
+        }
+
         return getFileCategoryFromFilename(meta.filename!)
     })
-    let isEditable = $derived(fileCategory === "text" && auth.authenticated)
+    let isEditable = $derived(fileCategory === "text" && auth.authenticated && (meta && meta.permissions.includes("WRITE")))
 
     let displayedFileCategory = $derived(fileCategory)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))
