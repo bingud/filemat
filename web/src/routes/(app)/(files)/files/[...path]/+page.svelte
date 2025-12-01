@@ -166,7 +166,7 @@
     <title>{title}</title>
 </svelte:head>
 
-
+<!-- 5.5, lg 6.5 -->
 <div class="page">
     <div class="w-full flex h-full min-h-0">
         <div class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full">
@@ -239,7 +239,7 @@
             </div>
 
             <!-- Files -->
-            <div class="h-[calc(100%-3rem)] w-full mt-2 relative">
+            <div class="h-[calc(100%-6.5rem)] lg:h-[calc(100%-7.5rem)] w-full my-2 relative">
                 {#if filesState.data.folderMeta || stateMeta.isArrayOnly}
                     <div 
                         bind:this={filesState.scroll.container} 
