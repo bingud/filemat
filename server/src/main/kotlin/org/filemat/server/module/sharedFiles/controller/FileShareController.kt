@@ -52,6 +52,7 @@ class FileShareController(
     ): ResponseEntity<String> {
         fileShareService.getMetadata(shareToken, UserAction.GET_FILE_SHARE_METADATA).let {
             if (it.notFound) return notFound("This shared file was not found.")
+            if (it.rejected) return bad(it.error)
             if (it.isNotSuccessful) return internal(it.error)
             val serialized = Json.encodeToString(it.value)
             return ok(serialized)

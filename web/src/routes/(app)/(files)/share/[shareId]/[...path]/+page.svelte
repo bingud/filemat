@@ -13,6 +13,8 @@
     let shareToken: string | null = $state(null)
     let loading = $state(false)
 
+    let errorMessage = $state("")
+
     const pageMeta: StateMetadata | undefined = $derived.by(() => {
         if (!shareId || passwordStatus == null || !shareMeta) return undefined
 
@@ -141,6 +143,7 @@
 
         const json = response.json()
         if (response.code.failed) {
+            errorMessage = json.message || `Failed to load shared file metadata.`
             handleErr({
                 description: `Failed to load shared file metadata.`,
                 notification: json.message || `Failed to load shared file metadata.`,
@@ -149,6 +152,7 @@
             return null
         }
 
+        errorMessage = ""
         shareMeta = json
     }
 </script>
@@ -170,8 +174,14 @@
     {:else if passwordStatus === null}
         <p>Failed to check if this file has a password.</p>
     {/if}
+{:else if errorMessage}
+    <div class="page flex items-center justify-center">
+        <p class="text-lg">{errorMessage}</p>
+    </div>    
 {:else if !pageMeta}
-    <Loader class="m-auto"></Loader>
+    <div class="page flex items-center justify-center">
+        <Loader></Loader>
+    </div>
 {:else}
     <p>Shared file link is invalid.</p>
 {/if}

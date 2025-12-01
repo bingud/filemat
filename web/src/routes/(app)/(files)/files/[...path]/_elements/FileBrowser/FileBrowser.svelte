@@ -337,7 +337,7 @@
 </script>
 
 
-{#if filesState.data.sortedEntries}
+{#if filesState.data.sortedEntries && filesState.data.sortedEntries.length > 0}
     <!-- File list -->
     <div on:click|stopPropagation class="w-full h-fit overflow-x-hidden">
         {#if filesState.ui.fileViewType === "rows"}
@@ -439,6 +439,10 @@
     {#if menuEntry && entryMenuXPos != null && entryMenuYPos != null}
         <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px; left: {entryMenuXPos}px"></div>
     {/if}
+{:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
+    <div class="center">
+        <p>This folder is empty.</p>
+    </div>
 {:else}
     <div class="center">
         <p>No folder is open.</p>
