@@ -125,6 +125,7 @@ class FileService(
         }
 
         val entities = shares
+            .distinctBy { it.fileId }
             .mapNotNull { entityService.getById(entityId = it.fileId, userAction).valueOrNull }
             .let { entities ->
                 if (!getAll) return@let entities

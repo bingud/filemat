@@ -5,7 +5,6 @@ import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
-import org.filemat.server.common.util.getAll
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
@@ -52,11 +51,16 @@ class EntityService(
 
     fun map_put(entity: FilesystemEntity, lock: Boolean = true) {
         val action = {
-            check(!pathMap.containsKey(entity.path))
+            entity.path?.let { path ->
+                val currentOwnerId = pathMap[path]
+                check(currentOwnerId == null || currentOwnerId == entity.entityId) {
+                    "Path cache collision: '$path' is already owned by $currentOwnerId"
+                }
+            }
 
             val previousEntity = entityMap.put(entity.entityId, entity)
             if (previousEntity != null) {
-                previousEntity.path?.let { pathMap.remove(it) }
+                previousEntity.path?.let { pathMap.remove(it, previousEntity.entityId) }
             }
 
             if (entity.path != null) {
@@ -84,12 +88,6 @@ class EntityService(
             return pathMap[path]?.let { entityId ->
                 entityMap[entityId]
             }
-        }
-    }
-    fun map_getByPathPrefix(prefix: String): List<FilesystemEntity> {
-        mapLock.read {
-            val ids = pathMap.filterKeys { it.startsWith(prefix) }.values
-            return entityMap.getAll(ids)
         }
     }
 
@@ -329,20 +327,6 @@ class EntityService(
     fun getByInode(inode: Long, userAction: UserAction): Result<FilesystemEntity> {
         return try {
             entityRepository.getByInode(inode)?.toResult() ?: Result.notFound()
-        } catch (e: Exception) {
-            logService.error(
-                type = LogType.SYSTEM,
-                action = userAction,
-                description = "Failed to get file by inode from database.",
-                message = e.stackTraceToString()
-            )
-            Result.error("Failed to get file from database.")
-        }
-    }
-
-    fun getByInodeWithNullPath(inode: Long, userAction: UserAction): Result<FilesystemEntity> {
-        return try {
-            entityRepository.getByInodeWithNullPath(inode)?.toResult() ?: Result.notFound()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
