@@ -148,18 +148,28 @@
     }
 
     function getTimeRemaining(expiryTime: number) {
-        console.log(expiryTime)
-        const remainingMs = Math.max(0, expiryTime * 1000 - Date.now())
-        
-        const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24))
-        const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-        const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))
-        const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000)
-        
+        const ms = Math.max(0, expiryTime * 1000 - Date.now())
+
+        const msMinute = 1000 * 60
+        const msHour = msMinute * 60
+        const msDay = msHour * 24
+        const avgMonthDays = 30.436875
+
+        const days = Math.floor(ms / msDay)
+        const months = Math.floor(days / avgMonthDays)
+
+        if (months > 0) return `${months} ${months === 1 ? 'month' : 'months'}`
         if (days > 0) return `${days} ${days === 1 ? 'day' : 'days'}`
+
+        const hours = Math.floor((ms % msDay) / msHour)
         if (hours > 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+
+        const minutes = Math.floor((ms % msHour) / msMinute)
         if (minutes > 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
+
+        const seconds = Math.floor((ms % msMinute) / 1000)
         if (seconds > 0) return `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`
+
         return 'now'
     }
 
