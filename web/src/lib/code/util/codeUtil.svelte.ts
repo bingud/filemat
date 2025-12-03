@@ -710,3 +710,8 @@ export function isPathDirectChild(parent: string, child: string): boolean {
     const rel = c.slice(p.length)
     return c.startsWith(p + '/') && !rel.slice(1).includes('/')
 }
+
+export function createLink(path: string): string {
+    const url = window.location.origin
+    return `${url}${path}`
+}

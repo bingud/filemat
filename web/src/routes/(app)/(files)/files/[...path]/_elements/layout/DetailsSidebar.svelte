@@ -157,8 +157,6 @@
             json.miniUserList[v.userId] = v.username
         })
         permissionData = json
-
-        console.log(permissionData?.ownerId,  auth.principal?.userId)
     }
 
     function onFilePermissionCreated(perm: EntityPermission, target: { user: MiniUser | null, roleId: ulid | null }) {

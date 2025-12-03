@@ -1,6 +1,5 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { config } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { getContentUrl } from "$lib/code/util/stateUtils";
     import { Popover } from "$lib/component/bits-ui-wrapper";

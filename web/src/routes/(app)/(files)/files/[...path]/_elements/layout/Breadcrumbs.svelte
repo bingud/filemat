@@ -6,7 +6,6 @@
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
-    import { appState } from '$lib/code/stateObjects/appState.svelte'
 
     const meta = $derived(filesState.meta)
 
