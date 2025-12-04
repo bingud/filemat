@@ -33,6 +33,9 @@
 
     let isCreating = $state(false)
 
+    // Context menu
+    let contextMenuOpen = $state(false)
+
     explicitEffect(() => [open], () => {
         if (open) {
             loadShares()
@@ -221,10 +224,10 @@
     </Dialog.Trigger>
 
     <Dialog.Portal>
-        <Dialog.Overlay
+        <Dialog.Overlay onclick={() => { open = false }}
             class="fixed inset-0 z-50 bg-black/50"
         />
-        <Dialog.Content>
+        <Dialog.Content interactOutsideBehavior="ignore">
             <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-12">
                 <div class="flex items-center justify-between w-full">
                     <h3>File sharing</h3>
@@ -292,10 +295,10 @@
                         {#if shares}
                             {#each shares as share}
                                 {@const expirationDate = share.maxAge ? share.createdDate + share.maxAge : null}
-                                <ContextMenu.Root>
+                                <ContextMenu.Root bind:open={contextMenuOpen}>
                                     <ContextMenu.Trigger>
                                         {#snippet child({props})}
-                                            <button {...props} on:click={() => { deleteShare(share) }} class="w-full p-3 rounded-md bg-surface hover:bg-surface-button text-left">
+                                            <button {...props} on:click={() => { return; deleteShare(share) }} class="w-full p-3 rounded-md bg-surface hover:bg-surface-button text-left">
                                                 <Tooltip text={share.shareId} align="start">
                                                     <h4 class="font-medium text-sm truncate mb-4">{share.shareId}</h4>
                                                 </Tooltip>
@@ -357,7 +360,7 @@
 
                                     <ContextMenu.Content>
                                         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
-                                            <button on:click={() => { navigator.clipboard.writeText(createLink(`/share/${share.shareId}`)) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                                            <button on:click={() => { navigator.clipboard.writeText(createLink(`/share/${share.shareId}`)); contextMenuOpen = false }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                                                 <div class="size-5 flex-shrink-0">
                                                     <CopyIcon />
                                                 </div>
