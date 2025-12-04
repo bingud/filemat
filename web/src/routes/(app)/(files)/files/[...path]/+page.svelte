@@ -158,7 +158,6 @@
     beforeNavigate(() => {
         saveScrollPosition()
     })
-
 </script>
 
 
@@ -172,7 +171,11 @@
         <div class="w-full {filesState.ui.detailsOpen ? 'w-[calc(100%-20rem)]' : 'w-full'} lg:w-full flex flex-col h-full">
             <!-- Header -->
             <div class="w-full shrink-0 lg:mt-2   overflow-y-auto custom-scrollbar lg:gutter-stable-both">
-                <div class="w-full flex flex-col items-center justify-between gap-2 overflow-hidden bg-surface pb-2 lg:py-2 px-2 rounded-b-lg lg:rounded-lg">
+                <div class="
+                    w-full flex flex-col items-center justify-between gap-2 overflow-hidden bg-surface rounded-b-lg lg:rounded-lg
+                    {auth.authenticated ? 'pb-2' : 'py-2'}
+                    lg:py-2 px-2
+                ">
                     <!-- Top row -->
                     <div bind:offsetWidth={breadcrumbState.containerWidth} class="w-full flex items-center">
                         <Breadcrumbs></Breadcrumbs>                    
@@ -196,11 +199,11 @@
                             <!-- Selected child file options -->
                             {:else if filesState.selectedEntries.hasSelected}
                                 <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
-                                {#if filesState.meta.type !== "shared"}
+                                {#if filesState.meta.type === "files"} 
                                     <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
-                                    {#if filesState.data.fileMeta == null}
-                                        <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
-                                    {/if}
+                                {/if}
+                                {#if filesState.data.fileMeta == null && filesState.meta.type === "files"}
+                                    <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
                                 {/if}
                             {/if}
                         </div>
@@ -240,7 +243,7 @@
 
             <!-- Files -->
             <div class="h-[calc(100%-6.5rem)] lg:h-[calc(100%-7.5rem)] w-full my-2 relative">
-                {#if filesState.data.folderMeta || stateMeta.isArrayOnly}
+                {#if filesState.data.entries != null && (filesState.data.folderMeta || stateMeta.isArrayOnly)}
                     <div 
                         bind:this={filesState.scroll.container} 
                         class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both 
@@ -257,7 +260,7 @@
                 {/if}
                 
                 {#if filesState.metaLoading}
-                    <div class="center">
+                    <div class="absolute w-full h-full top-0 left-0 flex items-center justify-center">
                         <Loader></Loader>
                     </div>
                 {:else if !filesState.data.currentMeta && !stateMeta.isArrayOnly}

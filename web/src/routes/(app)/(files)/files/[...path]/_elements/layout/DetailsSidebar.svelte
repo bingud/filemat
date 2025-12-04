@@ -66,6 +66,20 @@
         return false
     })
 
+    let displayFilename = $derived.by(() => {
+        const meta = filesState.selectedEntries.singleMeta
+        if (!meta) return ""
+
+        if (meta.path === "/") {
+            if (filesState.meta.type === "shared") {
+                return filesState.meta.shareTopLevelFilename || "/"
+            }
+            return "/"
+        }
+
+        return meta.filename || filenameFromPath(meta.path)
+    })
+
     // Load permissions for selected file
     let lastLoaded = ""
     explicitEffect(() => [ 
@@ -207,8 +221,8 @@
         {@const filename = filenameFromPath(selectedMeta.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
-            <Tooltip text={filename} align="start">
-                <h3 class="truncate text-lg">{filename}</h3>
+            <Tooltip text={displayFilename} align="start">
+                <h3 class="truncate text-lg">{displayFilename}</h3>
             </Tooltip>
         </div>
 

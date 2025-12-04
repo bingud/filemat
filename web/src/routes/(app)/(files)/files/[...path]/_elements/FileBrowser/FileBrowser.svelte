@@ -441,7 +441,7 @@
     {/if}
 {:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
     <div class="center">
-        <p>This folder is empty.</p>
+        <p>No files have been shared.</p>
     </div>
 {:else}
     <div class="center">

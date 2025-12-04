@@ -645,5 +645,5 @@ export async function getFileLastModifiedDate(
 }
 
 export function navigateToFilePath(path: string, pagePath: string) {
-    return goto(`/files/${path}`)
+    return goto(`${pagePath}/${path}`)
 }

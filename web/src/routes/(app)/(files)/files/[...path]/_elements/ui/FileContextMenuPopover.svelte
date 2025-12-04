@@ -1,10 +1,12 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { parentFromPath } from "$lib/code/util/codeUtil.svelte";
     import { getContentUrl } from "$lib/code/util/stateUtils";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
+    import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
@@ -44,6 +46,18 @@
                 </div>
                 <span>Open in new tab</span>
             </a>
+
+            {#if filesState.meta.type === "allShared"}
+                <a 
+                    href={`${filesState.meta.pagePath}${parentFromPath(menuEntry.path)}`}
+                    target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
+                >
+                    <div class="size-5 flex-shrink-0">
+                        <FolderIcon />
+                    </div>
+                    <span>Open containing folder</span>
+                </a>
+            {/if}
 
             <a download href={getContentUrl(menuEntry.path, false)} target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                 <div class="size-5 flex-shrink-0">

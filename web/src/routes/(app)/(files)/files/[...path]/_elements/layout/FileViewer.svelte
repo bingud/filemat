@@ -29,7 +29,7 @@
         if (!meta) return null
         if (isSymlink) return "text" as FileCategory
 
-        if (filesState.meta.type === "shared") {
+        if (filesState.meta.type === "shared" && filesState.path === "/") {
             return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
         }
 
