@@ -61,7 +61,7 @@
     })
 
     $effect(() => {
-        if (filesState.data.decodedContent != null) return
+        if (filesState.data.decodedContent != null && filesState.data.contentFilePath === filesState.path) return
         if (filesState.data.content == null) return
         if (!isViewableFile || !displayedFileCategory) return
 
@@ -144,7 +144,7 @@
         // Do not manually download file if not text
         if (!isTextFileCategory(type)) return
 
-        if (filesState.data.content == null) {
+        if (filesState.data.content == null || filesState.data.contentFilePath !== filesState.path) {
             if (filesState.contentLoading) return
 
             if (isText) {

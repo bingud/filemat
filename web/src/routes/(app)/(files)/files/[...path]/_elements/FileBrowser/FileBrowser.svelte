@@ -1,20 +1,20 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
-    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte";
-    import { onMount } from "svelte";
-    import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import UploadPanel from "../ui/UploadPanel.svelte";
-    import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte";
-    import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files";
-    import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import FolderTreeSelector from "../ui/FolderTreeSelector.svelte";
-    import { appState } from '$lib/code/stateObjects/appState.svelte';
-    import RowFileEntry from "./RowFileEntry.svelte";
-    import { isDialogOpen } from "$lib/code/util/stateUtils";
-    import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
-    import GridFileEntry from "./GridFileEntry.svelte";
-    import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
+    import { goto } from "$app/navigation"
+    import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
+    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte"
+    import { onMount } from "svelte"
+    import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+    import UploadPanel from "../ui/UploadPanel.svelte"
+    import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte"
+    import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files"
+    import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
+    import FolderTreeSelector from "../ui/FolderTreeSelector.svelte"
+    import { appState } from '$lib/code/stateObjects/appState.svelte'
+    import RowFileEntry from "./RowFileEntry.svelte"
+    import { isDialogOpen } from "$lib/code/util/stateUtils"
+    import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte"
+    import GridFileEntry from "./GridFileEntry.svelte"
+    import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -40,10 +40,10 @@
     function scrollSelectedEntryIntoView() {
         setTimeout(() => {
             if (filesState.selectedEntries.singlePath) {
-                const selector = `[data-entry-path="${filesState.selectedEntries.singlePath.replace(/"/g, '\\"')}"]`;
-                const element = document.querySelector(selector);
+                const selector = `[data-entry-path="${filesState.selectedEntries.singlePath.replace(/"/g, '\\"')}"]`
+                const element = document.querySelector(selector)
                 if (element) {
-                    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
                 }
             }
         }, 10)
@@ -71,10 +71,10 @@
             // Check if we have a selected entry
             if (filesState.selectedEntries.singlePath && filesState.data.entries) {
                 // Find the selected entry in the entries list
-                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.singlePath);
+                const selectedEntry = filesState.data.entries.find(e => e.path === filesState.selectedEntries.singlePath)
                 if (selectedEntry) {
                     // Delete the selected entry
-                    option_delete(selectedEntry);
+                    option_delete(selectedEntry)
                 }
             }
         } 
@@ -86,44 +86,58 @@
         }
         
         // Handle Up and Down arrow keys for entry navigation
-        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && 
-                 !event.ctrlKey && !event.altKey && !event.metaKey && 
-                 filesState.data.sortedEntries?.length) {
+        if (
+            (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+            && !event.ctrlKey && !event.altKey && !event.metaKey 
+            && filesState.data.sortedEntries?.length
+        ) {
             
-            event.preventDefault();
-            const entries = filesState.data.sortedEntries;
-            const currentPath = filesState.selectedEntries.singlePath;
+            event.preventDefault()
+            const entries = filesState.data.sortedEntries
+            const currentPath = filesState.selectedEntries.singlePath
             
             // Find the index of currently selected entry
-            let currentIndex = -1;
+            let currentIndex = -1
             if (currentPath) {
-                currentIndex = entries.findIndex(e => e.path === currentPath);
+                currentIndex = entries.findIndex(e => e.path === currentPath)
             }
             
-            let newIndex: number;
+            let newIndex: number = currentIndex
             
-            if (event.key === 'ArrowUp') {
-                if (currentIndex === -1) {
-                    // If no entry is selected, select the bottom entry
-                    newIndex = entries.length - 1;
-                } else {
-                    // Move up one entry, or wrap to bottom
-                    newIndex = (currentIndex - 1 + entries.length) % entries.length;
-                }
-            } else { // ArrowDown
+            function nextFile() {
                 if (currentIndex === -1) {
                     // If no entry is selected, select the top entry
-                    newIndex = 0;
+                    newIndex = 0
                 } else {
                     // Move down one entry, or wrap to top
-                    newIndex = (currentIndex + 1) % entries.length;
+                    newIndex = (currentIndex + 1) % entries.length
                 }
             }
-            
+
+            function previousFile() {
+                if (currentIndex === -1) {
+                    // If no entry is selected, select the bottom entry
+                    newIndex = entries.length - 1
+                } else {
+                    // Move up one entry, or wrap to bottom
+                    newIndex = (currentIndex - 1 + entries.length) % entries.length
+                }
+            }
+
+            if (event.key === 'ArrowUp' || event.key === "ArrowLeft") {
+                previousFile()
+            } else { // ArrowDown
+                nextFile()
+            }
+
             // Update selection
-            const newEntry = entries[newIndex];
-            filesState.selectedEntries.selectedPositions.set(newEntry.path, true);
-            filesState.selectedEntries.list = [newEntry.path];
+            const newEntry = entries[newIndex]
+            filesState.selectedEntries.selectedPositions.set(newEntry.path, true)
+            filesState.selectedEntries.list = [newEntry.path]
+
+            if (filesState.data.fileMeta) {
+                openEntry(newEntry.path)
+            }
             
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
@@ -155,7 +169,7 @@
     }
 
     function openEntry(path: string) {
-        goto(`${filesState.meta.pagePath}${path}`)
+        goto(`${filesState.meta.pagePath}${encodeURI(path)}`)
     }
     
     function entryMenuPopoverOnOpenChange(open: boolean) {
@@ -437,7 +451,7 @@
 
     <!-- Entry context menu floating element -->
     {#if menuEntry && entryMenuXPos != null && entryMenuYPos != null}
-        <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px; left: {entryMenuXPos}px"></div>
+        <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px left: {entryMenuXPos}px"></div>
     {/if}
 {:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
     <div class="center">
@@ -459,7 +473,7 @@
 
 <FolderTreeSelector></FolderTreeSelector>
 
-<p bind:this={dragImageElement} class="fixed top-[100vh] right-[100vw] py-4 px-6 rounded-lg whitespace-nowrap bg-neutral-300 dark:bg-neutral-800" style="display: none;">-</p>
+<p bind:this={dragImageElement} class="fixed top-[100vh] right-[100vw] py-4 px-6 rounded-lg whitespace-nowrap bg-neutral-300 dark:bg-neutral-800" style="display: none">-</p>
 
 
 <style lang="postcss">

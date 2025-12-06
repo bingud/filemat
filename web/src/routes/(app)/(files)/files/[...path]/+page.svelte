@@ -94,9 +94,12 @@
             const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
             const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
 
-            if (pathIsChild || pathIsParentFolder) {
+            if (pathIsParentFolder) {
                 filesState.clearOpenState()
-            } else {
+            } else if (pathIsChild && filesState.data.fileMeta != null) {
+                // Dont clear state of open file, if a file is currently open
+                // filesState.clearOpenState()
+            } else if (!pathIsChild && !pathIsParentFolder) {
                 filesState.clearAllState()
             }
 
@@ -253,11 +256,13 @@
                     </div>
                 {/if}
 
-                {#if filesState.data.fileMeta}
-                    <div class="h-full absolute top-0 left-0 center" class:!hidden={filesState.metaLoading}>
-                        <FileViewer />
-                    </div>
-                {/if}
+                {#key filesState.data.fileMeta}
+                    {#if filesState.data.fileMeta}
+                        <div class="h-full absolute top-0 left-0 center">
+                            <FileViewer />
+                        </div>
+                    {/if}
+                {/key}
                 
                 {#if filesState.metaLoading}
                     <div class="absolute w-full h-full top-0 left-0 flex items-center justify-center">

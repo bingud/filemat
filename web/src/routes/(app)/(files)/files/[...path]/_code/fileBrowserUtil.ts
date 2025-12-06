@@ -1,9 +1,7 @@
 export class ImageLoadQueue {
     private scrollContainer: HTMLElement | null = null
-    // High priority observer (0px margin)
     private viewportObserver: IntersectionObserver | null = null
-    // Low priority observer (400px margin)
-    private prefetchObserver: IntersectionObserver | null = null
+    private nearbyObserver: IntersectionObserver | null = null
     
     private pending: Set<HTMLImageElement> = new Set()
     private highPriority: Set<HTMLImageElement> = new Set()
@@ -11,16 +9,11 @@ export class ImageLoadQueue {
     private loading: Set<HTMLImageElement> = new Set()
     
     private processing = false
-    private rootMargin: string = "400px"
-    private concurrency = 6 // Increased from 2 for better responsiveness
+    private concurrency = 2
+    private loadDistance = 500
 
     setScrollContainer(container: HTMLElement | null) {
         this.scrollContainer = container
-        this.reinitObservers()
-    }
-
-    setRootMargin(margin: string) {
-        this.rootMargin = margin
         this.reinitObservers()
     }
 
@@ -29,13 +22,13 @@ export class ImageLoadQueue {
             root: this.scrollContainer
         }
 
-        // Observer 1: Strictly what is on screen
         this.viewportObserver = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
                     const img = entry.target as HTMLImageElement
                     if (entry.isIntersecting) {
                         this.highPriority.add(img)
+                        this.lowPriority.delete(img)
                     } else {
                         this.highPriority.delete(img)
                     }
@@ -45,26 +38,25 @@ export class ImageLoadQueue {
             { ...options, rootMargin: "0px" }
         )
 
-        // Observer 2: Nearby items (Prefetch)
-        this.prefetchObserver = new IntersectionObserver(
+        this.nearbyObserver = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
                     const img = entry.target as HTMLImageElement
-                    if (entry.isIntersecting) {
+                    if (entry.isIntersecting && !this.highPriority.has(img)) {
                         this.lowPriority.add(img)
-                    } else {
+                    } else if (!entry.isIntersecting) {
                         this.lowPriority.delete(img)
                     }
                 }
                 this.process()
             },
-            { ...options, rootMargin: this.rootMargin }
+            { ...options, rootMargin: `${this.loadDistance}px` }
         )
     }
 
     private reinitObservers() {
         this.viewportObserver?.disconnect()
-        this.prefetchObserver?.disconnect()
+        this.nearbyObserver?.disconnect()
         this.highPriority.clear()
         this.lowPriority.clear()
         
@@ -72,7 +64,7 @@ export class ImageLoadQueue {
         
         for (const img of this.pending) {
             this.viewportObserver?.observe(img)
-            this.prefetchObserver?.observe(img)
+            this.nearbyObserver?.observe(img)
         }
     }
 
@@ -85,7 +77,7 @@ export class ImageLoadQueue {
 
         this.pending.add(img)
         this.viewportObserver!.observe(img)
-        this.prefetchObserver!.observe(img)
+        this.nearbyObserver!.observe(img)
     }
 
     unregister(img: HTMLImageElement) {
@@ -93,14 +85,13 @@ export class ImageLoadQueue {
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
         this.viewportObserver?.unobserve(img)
-        this.prefetchObserver?.unobserve(img)
+        this.nearbyObserver?.unobserve(img)
     }
 
     private process() {
         if (this.processing) return
         this.processing = true
 
-        // Use microtask to allow sets to settle before processing
         queueMicrotask(() => {
             try {
                 this.runProcessLoop()
@@ -117,7 +108,6 @@ export class ImageLoadQueue {
 
             let candidate: HTMLImageElement | null = null
 
-            // 1. Find a High Priority image (in Viewport) that is pending and not loading
             for (const img of this.highPriority) {
                 if (this.pending.has(img) && !this.loading.has(img)) {
                     candidate = img
@@ -125,7 +115,6 @@ export class ImageLoadQueue {
                 }
             }
 
-            // 2. If no High Priority, find a Low Priority image (Prefetch)
             if (!candidate) {
                 for (const img of this.lowPriority) {
                     if (this.pending.has(img) && !this.loading.has(img)) {
@@ -150,13 +139,11 @@ export class ImageLoadQueue {
             return
         }
 
-        // Move to loading state
         this.pending.delete(img)
         this.loading.add(img)
         
-        // Stop observing immediately to save resources
         this.viewportObserver?.unobserve(img)
-        this.prefetchObserver?.unobserve(img)
+        this.nearbyObserver?.unobserve(img)
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
 
@@ -164,7 +151,6 @@ export class ImageLoadQueue {
             img.onload = null
             img.onerror = null
             this.loading.delete(img)
-            // Trigger process again to fill the slot
             this.process()
         }
 
@@ -187,7 +173,6 @@ export class ImageLoadQueue {
                     const currentSrc = node.getAttribute('data-src')
                     if (currentSrc !== lastSrc) {
                         lastSrc = currentSrc
-                        // Fully reset this node
                         this.unregister(node)
                         node.removeAttribute('src')
                         this.register(node)
@@ -202,9 +187,9 @@ export class ImageLoadQueue {
 
     destroy() {
         this.viewportObserver?.disconnect()
-        this.prefetchObserver?.disconnect()
+        this.nearbyObserver?.disconnect()
         this.viewportObserver = null
-        this.prefetchObserver = null
+        this.nearbyObserver = null
         this.pending.clear()
         this.highPriority.clear()
         this.lowPriority.clear()

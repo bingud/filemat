@@ -251,6 +251,7 @@ class FileDataStateClass {
         return this.fileMeta || this.folderMeta
     })
 
+    contentFilePath = $state(null) as string | null
     // Raw content of currently open file
     content = $state(null) as Blob | null
     // Decoded content of currently open file
@@ -314,12 +315,14 @@ class FileDataStateClass {
         this.content = null
         this.decodedContent = null
         this.entries = null
+        this.contentFilePath = null
     }
 
     clearOpenContent() {
         this.fileMeta = null
         this.content = null
         this.decodedContent = null
+        this.contentFilePath = null
     }
 }
 

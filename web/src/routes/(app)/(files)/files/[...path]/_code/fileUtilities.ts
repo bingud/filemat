@@ -11,6 +11,7 @@ export async function loadFileContent(filePath: string) {
     if (filesState.data.fileMeta?.path !== filePath) return console.log(`Loaded blob of file that is not open anymore.`)
     if (!blob) return console.log(`Loaded blob is null.`)
     filesState.data.content = blob
+    filesState.data.contentFilePath = filePath
 }
 
 
