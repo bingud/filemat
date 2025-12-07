@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.BufferedInputStream
 import java.io.OutputStream
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
@@ -270,15 +272,13 @@ class FileController(
             }
         }
 
-        // Set response display type to inline (can be displayed in browser)
-        val cd: ContentDisposition = ContentDisposition.inline()
-            .filename(filename)
-            .build()
+        val encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8)
+            .replace("+", "%20")
 
         // Construct response headers
         val headers = HttpHeaders().apply {
             set(HttpHeaders.ACCEPT_RANGES, "bytes")
-            set(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+            set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''$encodedFilename")
 
             if (range != null) {
                 set(HttpHeaders.CONTENT_RANGE, "bytes ${range.first}-${range.last}/${fileSize}")
