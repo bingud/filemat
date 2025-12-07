@@ -20,7 +20,9 @@
     import mime from 'mime'
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
-
+    import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
+    import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
+    import { selectSiblingFile } from "../../_code/fileBrowserUtil";
     
     let meta = $derived(filesState.data.fileMeta) 
 
@@ -48,16 +50,13 @@
         if (isViewableFile && displayedFileCategory) {
             openAsFileType(displayedFileCategory)
         }
-
-        return () => {
-            if (player) {
-                player.dispose()
-            }
-        }
     })
 
     onDestroy(() => {
         textFileViewerState.reset()
+        if (player) {
+            player.dispose()
+        }
     })
 
     $effect(() => {
@@ -65,7 +64,10 @@
         if (filesState.data.content == null) return
         if (!isViewableFile || !displayedFileCategory) return
 
+        const blobPath = filesState.data.contentFilePath
         getBlobContent(filesState.data.content, displayedFileCategory).then((result) => {
+            if (blobPath !== filesState.path) return
+
             filesState.data.decodedContent = result
             if (isSymlink) {
                 openAsFileType("text")
@@ -117,6 +119,39 @@
         }
     })
 
+    /// Arrows hovering
+    let leftLongHovering: boolean = $state(false)
+    let rightLongHovering: boolean = $state(false)
+    let leftHovering: boolean = $state(false)
+    let rightHovering: boolean = $state(false)
+    let leftTimeout: ReturnType<typeof setTimeout>
+    let rightTimeout: ReturnType<typeof setTimeout>
+
+    function handleLeftHover(hovering: boolean): void {
+        leftHovering = hovering
+        if (hovering) {
+            leftTimeout = setTimeout(() => {
+                leftLongHovering = true
+            }, 500)
+        } else {
+            clearTimeout(leftTimeout)
+            leftLongHovering = false
+        }
+    }
+
+    function handleRightHover(hovering: boolean): void {
+        rightHovering = hovering
+        if (hovering) {
+            rightTimeout = setTimeout(() => {
+                rightLongHovering = true
+            }, 500)
+        } else {
+            clearTimeout(rightTimeout)
+            rightLongHovering = false
+        }
+    }
+    ///
+
     function createTextEditor() {
         textFileViewerState.destroyEditor()
 
@@ -162,7 +197,43 @@
 </script>
 
 
-<div on:click|stopPropagation class="size-full flex flex-col bg-bg overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
+<div class="relative size-full flex flex-col bg-bg overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
+    <!-- Left tap zone -->
+    <div 
+        class="absolute left-0 top-0 w-12 h-full z-10 transition-opacity flex items-center {leftHovering ? 'opacity-100' : 'opacity-0'}"
+        on:mouseenter={() => handleLeftHover(true)}
+        on:mouseleave={() => handleLeftHover(false)}
+    >
+        {#if leftHovering && !isEditable || leftLongHovering}
+            <button 
+                on:click={() => { selectSiblingFile('previous', true, true) }} 
+                class="flex items-center justify-center w-full h-2/3 bg-surface rounded-lg cursor-pointer"
+            >
+                <div class="w-full p-3 opacity-50">
+                    <ChevronLeftIcon />
+                </div>
+            </button>
+        {/if}
+    </div>
+
+    <!-- Right tap zone -->
+    <div 
+        class="absolute right-0 top-0 w-12 h-full z-10 transition-opacity flex items-center justify-end {rightHovering ? 'opacity-100' : 'opacity-0'}"
+        on:mouseenter={() => handleRightHover(true)}
+        on:mouseleave={() => handleRightHover(false)}
+    >
+        {#if rightHovering && !isEditable || rightLongHovering}
+            <button 
+                on:click={() => { selectSiblingFile('next', true, true) }} 
+                class="flex items-center justify-center w-full h-2/3 bg-surface rounded-lg cursor-pointer"
+            >
+                <div class="w-full p-3 opacity-50">
+                    <ChevronRightIcon />
+                </div>
+            </button>
+        {/if}
+    </div>
+
     {#if filesState.contentLoading || !meta}
         <div class="center">
             <Loader></Loader>
@@ -170,7 +241,6 @@
     {:else if isViewableFile && (!isText || filesState.data.decodedContent != null)}
         {@const type = displayedFileCategory}
 
-        <!-- Show "Open As" button if displayed file type doesnt match filename extension -->
         {#if displayedFileCategory !== fileCategory}
             <div class="w-full h-fit p-2 shrink-0 flex justify-end">
                 {@render openAsButton()}

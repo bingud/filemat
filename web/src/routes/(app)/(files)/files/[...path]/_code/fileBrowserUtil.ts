@@ -1,3 +1,7 @@
+import { goto } from "$app/navigation"
+import type { FullFileMetadata } from "$lib/code/auth/types"
+import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+
 export class ImageLoadQueue {
     private scrollContainer: HTMLElement | null = null
     private viewportObserver: IntersectionObserver | null = null
@@ -196,4 +200,85 @@ export class ImageLoadQueue {
         this.loading.clear()
         this.processing = false
     }
+}
+
+
+export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boolean = false, openFile: boolean = false) {
+    const entries = filesState.data.sortedEntries!
+    if (entries.length < 1) return
+
+    const currentPath = filesState.selectedEntries.singlePath
+
+    let currentIndex = -1
+    if (currentPath) {
+        currentIndex = entries.findIndex(e => e.path === currentPath)
+    }
+    
+    let newIndex: number = currentIndex
+    let newEntry: FullFileMetadata
+    
+    if (direction === 'previous') {
+        function decrease() {
+            newIndex = newIndex === -1 
+                ? entries.length - 1 
+                : (newIndex - 1 + entries.length) % entries.length
+        }
+        decrease()
+        newEntry = entries[newIndex]
+        let start = newIndex
+        let started = false
+
+        if (onlyFiles) {
+            while (newEntry.fileType !== "FILE" && newEntry.fileType !== "FILE_LINK") {
+                if (newIndex === start && started) break
+                started = true
+                decrease()
+                newEntry = entries[newIndex]
+            }
+        }
+    } else {
+        function increase() {
+            newIndex = newIndex === -1 
+                ? 0 
+                : (newIndex + 1) % entries.length
+        }
+        increase()
+        newEntry = entries[newIndex]
+        let start = newIndex
+        let started = false
+
+        if (onlyFiles) {
+            while (newEntry.fileType !== "FILE" && newEntry.fileType !== "FILE_LINK") {
+                if (newIndex === start && started) break
+                started = true
+                increase()
+                newEntry = entries[newIndex]
+            }
+        }
+    }
+    
+    filesState.selectedEntries.selectedPositions.set(newEntry.path, true)
+    filesState.selectedEntries.list = [newEntry.path]
+    
+    if (openFile) {
+        openEntry(newEntry.path)
+    }
+    
+    scrollSelectedEntryIntoView()
+}
+
+export function openEntry(path: string) {
+    goto(`${filesState.meta.pagePath}${encodeURI(path)}`)
+}
+
+export function scrollSelectedEntryIntoView() {
+    setTimeout(() => {
+        if (filesState.selectedEntries.singlePath) {
+            const selector = `[data-entry-path="${filesState.selectedEntries.singlePath.replace(/"/g, '\\"')}"]`
+            const element = document.querySelector(selector)
+            if (element) {
+                element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+            }
+        }
+    }, 10)
 }

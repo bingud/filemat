@@ -15,6 +15,7 @@
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte"
     import GridFileEntry from "./GridFileEntry.svelte"
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
+    import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -36,18 +37,6 @@
         }
     })
 
-    // Function to scroll selected entry into view
-    function scrollSelectedEntryIntoView() {
-        setTimeout(() => {
-            if (filesState.selectedEntries.singlePath) {
-                const selector = `[data-entry-path="${filesState.selectedEntries.singlePath.replace(/"/g, '\\"')}"]`
-                const element = document.querySelector(selector)
-                if (element) {
-                    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-                }
-            }
-        }, 10)
-    }
 
     function setSelectedEntryPath() {
         const selectedEntryPath = filesState.selectedEntries.selectedPositions.getChild(filesState.path)
@@ -91,56 +80,17 @@
             && !event.ctrlKey && !event.altKey && !event.metaKey 
             && filesState.data.sortedEntries?.length
         ) {
-            
             event.preventDefault()
-            const entries = filesState.data.sortedEntries
-            const currentPath = filesState.selectedEntries.singlePath
             
-            // Find the index of currently selected entry
-            let currentIndex = -1
-            if (currentPath) {
-                currentIndex = entries.findIndex(e => e.path === currentPath)
-            }
+            const direction = event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+                ? "previous"
+                : "next"
             
-            let newIndex: number = currentIndex
-            
-            function nextFile() {
-                if (currentIndex === -1) {
-                    // If no entry is selected, select the top entry
-                    newIndex = 0
-                } else {
-                    // Move down one entry, or wrap to top
-                    newIndex = (currentIndex + 1) % entries.length
-                }
-            }
-
-            function previousFile() {
-                if (currentIndex === -1) {
-                    // If no entry is selected, select the bottom entry
-                    newIndex = entries.length - 1
-                } else {
-                    // Move up one entry, or wrap to bottom
-                    newIndex = (currentIndex - 1 + entries.length) % entries.length
-                }
-            }
-
-            if (event.key === 'ArrowUp' || event.key === "ArrowLeft") {
-                previousFile()
-            } else { // ArrowDown
-                nextFile()
-            }
-
-            // Update selection
-            const newEntry = entries[newIndex]
-            filesState.selectedEntries.selectedPositions.set(newEntry.path, true)
-            filesState.selectedEntries.list = [newEntry.path]
-
             if (filesState.data.fileMeta) {
-                openEntry(newEntry.path)
+                selectSiblingFile(direction, true, true)
+            } else {
+                selectSiblingFile(direction)
             }
-            
-            // Scroll selected entry into view
-            scrollSelectedEntryIntoView()
         }
     }
 
@@ -166,10 +116,6 @@
         entryMenuButton = button
         menuEntry = entry
         filesState.ui.fileContextMenuPopoverOpen = true
-    }
-
-    function openEntry(path: string) {
-        goto(`${filesState.meta.pagePath}${encodeURI(path)}`)
     }
     
     function entryMenuPopoverOnOpenChange(open: boolean) {
