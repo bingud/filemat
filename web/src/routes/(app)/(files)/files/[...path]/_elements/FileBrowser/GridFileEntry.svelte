@@ -9,6 +9,7 @@
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
+    import type { FileEntryProps } from "../../_code/fileBrowserUtil";
 
     let {
         entry,
@@ -21,18 +22,7 @@
         entryOnContextMenu,
         onClickSelectCheckbox,
         entryMenuOnClick,
-    }: { 
-        entry: FullFileMetadata,
-        event_dragStart: (e: DragEvent, entry: FullFileMetadata) => void,
-        event_dragOver: (e: DragEvent, entry: FullFileMetadata) => void,
-        event_dragLeave: (e: DragEvent, entry: FullFileMetadata) => void,
-        event_drop: (e: DragEvent, entry: FullFileMetadata) => void,
-        event_dragEnd: (e: DragEvent, entry: FullFileMetadata) => void,
-        entryOnClick: (e: MouseEvent, entry: FullFileMetadata) => void,
-        entryOnContextMenu: (e: MouseEvent, entry: FullFileMetadata) => void,
-        onClickSelectCheckbox: (path: string) => void,
-        entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void,
-    } = $props()
+    }: FileEntryProps = $props()
 
     const loadFilePreview = filesState.ui.filePreviewLoader.getAction()
 

@@ -2,6 +2,33 @@ import { goto } from "$app/navigation"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 
+
+export type FileEntryProps = {
+    entry: FullFileMetadata,
+    event_dragStart: (e: DragEvent, entry: FullFileMetadata) => void,
+    event_dragOver: (e: DragEvent, entry: FullFileMetadata) => void,
+    event_dragLeave: (e: DragEvent, entry: FullFileMetadata) => void,
+    event_drop: (e: DragEvent, entry: FullFileMetadata) => void,
+    event_dragEnd: (e: DragEvent, entry: FullFileMetadata) => void,
+    entryOnClick: (e: MouseEvent, entry: FullFileMetadata) => void,
+    entryOnContextMenu: (e: MouseEvent, entry: FullFileMetadata) => void,
+    onClickSelectCheckbox: (path: string) => void,
+    entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void,
+}
+
+export function changeSortingMode(mode: typeof filesState.sortingMode) {
+    const current = filesState.sortingMode
+
+    if (mode === current) {
+        const currentDirection = filesState.sortingDirection
+        if (currentDirection === "asc") filesState.sortingDirection = "desc"
+        if (currentDirection === "desc") filesState.sortingDirection = "asc"
+    } else {
+        filesState.sortingDirection = "asc"
+        filesState.sortingMode = mode
+    }
+}
+
 export class ImageLoadQueue {
     private scrollContainer: HTMLElement | null = null
     private viewportObserver: IntersectionObserver | null = null
