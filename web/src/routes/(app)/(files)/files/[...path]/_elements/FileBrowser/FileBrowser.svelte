@@ -397,7 +397,7 @@
 
     <!-- Entry context menu floating element -->
     {#if menuEntry && entryMenuXPos != null && entryMenuYPos != null}
-        <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px left: {entryMenuXPos}px"></div>
+        <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px; left: {entryMenuXPos}px"></div>
     {/if}
 {:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
     <div class="center">
