@@ -5,6 +5,7 @@
     import { isFolder } from "$lib/code/util/codeUtil.svelte"
     import MenuIcon from "$lib/component/icons/MenuIcon.svelte"
     import FileDetailsButton from "../(files)/files/[...path]/_elements/button/FileDetailsButton.svelte";
+    import FileSearchButton from "../(files)/files/[...path]/_elements/button/FileSearchButton.svelte";
     import NewFileButton from "../(files)/files/[...path]/_elements/button/NewFileButton.svelte";
 
 </script>
@@ -26,6 +27,10 @@
     <!-- Right side -->
     <div class="h-full flex gap-2 p-2">
         {#if appState.filesStateNonce && !uiState.isDesktop}
+            {#if filesState.isFileListOpen}
+                <FileSearchButton></FileSearchButton>
+            {/if}
+            
             <FileDetailsButton></FileDetailsButton>
         {/if}
     </div>

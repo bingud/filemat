@@ -32,6 +32,7 @@
     import { sharedFilesPageState } from "../../shared-files/state.svelte";
     import { hasAnyPermission } from "$lib/code/module/permissions";
     import SharedFileScopeSwitchPopover from "./_elements/button/SharedFileScopeSwitchPopover.svelte";
+    import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
 
 
     let {
@@ -224,8 +225,13 @@
                             {/if}
 
                             {#if uiState.isDesktop && filesState.isFileListOpen && auth.authenticated}
-                                <NewFileButton></NewFileButton>
+                                <NewFileButton />
                             {/if}
+
+                            {#if uiState.isDesktop && filesState.isFileListOpen}
+                                <FileSearchButton />
+                            {/if}
+                            
 
                             {#if textFileViewerState.isFileSavable}
                                 <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
