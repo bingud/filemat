@@ -1,16 +1,18 @@
 package org.filemat.server.common.util
 
 import org.apache.tika.Tika
-import org.filemat.server.module.file.model.FileType
+import org.filemat.server.common.State
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.file.Paths
-import java.nio.file.attribute.BasicFileAttributes
+import kotlin.io.path.PathWalkOption
+import kotlin.io.path.walk
 
 val tika = Tika()
 
-
+fun getOptionalPathWalkOption(): Array<out PathWalkOption> {
+    return if (State.App.followSymlinks) arrayOf(PathWalkOption.FOLLOW_LINKS) else emptyArray()
+}
 
 object FileUtils {
     fun getInode(path: Path, followSymbolicLinks: Boolean): Long? {
@@ -30,5 +32,18 @@ object FileUtils {
         } catch (e: Exception) {
             false
         }
+    }
+}
+
+fun Path.safeWalk(vararg options: PathWalkOption): Sequence<Path> = sequence {
+    val it = walk(*options).iterator()
+    while (true) {
+        val next = try {
+            if (!it.hasNext()) break
+            it.next()
+        } catch (e: Exception) {
+            continue
+        }
+        yield(next)
     }
 }

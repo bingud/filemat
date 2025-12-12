@@ -43,6 +43,46 @@ class FileController(
     private val entityService: EntityService,
 ) : AController() {
 
+    @Unauthenticated
+    @PostMapping("/search", produces = [ "application/x-ndjson" ])
+    fun searchFilesMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+        @RequestParam("shareToken") shareToken: String?,
+        @RequestParam("text") text: String,
+    ): ResponseEntity<StreamingResponseBody> {
+        val user = request.getPrincipal()
+        val path = FilePath.of(rawPath)
+
+        val resolvedPath = fileService.resolvePathWithOptionalShare(path, shareToken).let {
+            if (it.notFound) return streamBad("This file was not found.")
+            if (it.rejected) return streamBad(it.error)
+            if (it.hasError) return streamInternal(it.error)
+            it.value
+        }
+
+        val sequence = fileService.searchFiles(
+            user = user,
+            canonicalPath = resolvedPath,
+            text = text,
+            userAction = UserAction.SEARCH_FILE
+        )
+
+        val body = StreamingResponseBody { out: OutputStream ->
+            out.bufferedWriter().use { writer ->
+                sequence.forEach {
+                    if (it.isNotSuccessful) return@forEach
+
+                    writer.write(Json.encodeToString(it.value))
+                    writer.newLine()
+                    writer.flush()
+                }
+            }
+        }
+
+        return streamOk(body)
+    }
+
     @PostMapping("/edit")
     fun editFileMapping(
         request: HttpServletRequest,

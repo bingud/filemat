@@ -25,10 +25,11 @@ abstract class AController {
     fun rateLimited(millisUntilRefill: Long): ResponseEntity<String> =
         ResponseEntity.status(429).body(ErrorResponse("Too many requests. Try again in ${formatMillisecondsToReadableTime(millisUntilRefill)}", "ratelimit").serialize())
 
-    fun streamBad(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 400)
+    fun streamBad(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 400)
     fun streamNotFound() = ResponseEntity.status(404).build<StreamingResponseBody>()
-    fun streamUnauthenticated(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 401)
-    fun streamInternal(body: String, error: String) = streamResponse(ErrorResponse(body, error).serialize(), 500)
+    fun streamUnauthenticated(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 401)
+    fun streamInternal(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 500)
+    fun streamOk(body: StreamingResponseBody): ResponseEntity<StreamingResponseBody> = ResponseEntity.ok().body(body)
 
     fun streamResponse(body: String, status: Int): ResponseEntity<StreamingResponseBody> {
         val streamBody = StreamingResponseBody { outputStream: OutputStream ->

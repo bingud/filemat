@@ -16,6 +16,7 @@ import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
@@ -30,6 +31,9 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.io.path.PathWalkOption
+import kotlin.io.path.pathString
+import kotlin.io.path.walk
 
 
 /**
@@ -554,21 +558,32 @@ class FileService(
             ?: return Result.notFound()
 
         val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(user, canonicalPath) } ?: setOf(FilePermission.READ)
-        val entityId: Ulid? = entityService.getEntityIdByPath(canonicalPath, action)
-            .let { it: Result<Ulid> ->
-                if (it.hasError) return it.cast()
-                if (it.isNotSuccessful) return@let null
-                it.value
-            }
-
-//        val shares: List<FileShare> = entityId?.let { fileShareService.getSharesByEntityId(it, action) }
-//            ?.let { it: Result<List<FileShare>> ->
-//                if (it.isNotSuccessful) return it.cast()
-//                it.value
-//            } ?: emptyList()
 
         val fullMeta = FullFileMetadata.from(meta, permissions)
         return fullMeta.toResult()
+    }
+
+    fun searchFiles(user: Principal?, canonicalPath: FilePath, text: String, isShared: Boolean = false, userAction: UserAction): Sequence<Result<FullFileMetadata>> {
+        val lowercaseText = text.lowercase()
+
+        // Symlinks permanently disabled to prevent loops
+        return canonicalPath.path.safeWalk(PathWalkOption.INCLUDE_DIRECTORIES)
+            .mapNotNull { path ->
+                try {
+                    // Check searched text
+                    if (path.fileName?.pathString?.lowercase()?.contains(lowercaseText) == true) {
+                        val filePath = FilePath.ofAlreadyNormalized(path)
+
+                        // Get metadata
+                        getFullMetadata(user, filePath, filePath, ignorePermissions = isShared, userAction).let {
+                            if (it.isNotSuccessful) return@mapNotNull null
+                            return@mapNotNull it
+                        }
+                    } else return@mapNotNull null
+                } catch (e: Exception) {
+                    return@mapNotNull null
+                }
+            }.take(10_000)
     }
 
     /**
