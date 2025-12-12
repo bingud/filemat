@@ -715,3 +715,85 @@ export function createLink(path: string): string {
     const url = window.location.origin
     return `${url}${path}`
 }
+
+
+export async function streamNDJSON<T>(
+    urlPath: string,
+    props: {
+        fetchProps: RequestInit
+        funs: {
+            onStart: (cancel: () => void) => void
+            onMessage: (json: T, cancel: () => void) => void | Promise<void>
+
+            // simple: server returned non-2xx
+            onError: (response: Response) => void | Promise<void>
+
+            // simple: unexpected throw (fetch/read/parse/etc)
+            onException: (e: any) => void | Promise<void>
+        }
+    }
+) {
+    const { fetchProps, funs } = props
+
+    const abortController = new AbortController()
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+    let isCanceled = false
+
+    function cancel() {
+        if (isCanceled) return
+        isCanceled = true
+        abortController.abort()
+        try {
+            reader?.cancel()
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    try {
+        const response = await fetch(urlPath, {
+            ...fetchProps,
+            signal: abortController.signal,
+        })
+
+        if (!response.ok) {
+            await funs.onError(response)
+            return
+        }
+
+        if (!response.body) throw new Error("No response body")
+
+        reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ""
+
+        funs.onStart(cancel)
+
+        while (!isCanceled) {
+            const { value, done } = await reader.read()
+            if (done) break
+            if (!value) continue
+
+            buffer += decoder.decode(value, { stream: true })
+
+            let newlineIndex = -1
+            while (!isCanceled && (newlineIndex = buffer.indexOf("\n")) !== -1) {
+                const line = buffer.slice(0, newlineIndex).trim()
+                buffer = buffer.slice(newlineIndex + 1)
+
+                if (line.length === 0) continue
+
+                const msg = parseJson(line) as T
+                await funs.onMessage(msg, cancel)
+            }
+        }
+    } catch (e) {
+        await funs.onException(e)
+    } finally {
+        try {
+            await reader?.cancel()
+        } catch (e) {
+            // ignore
+        }
+    }
+}

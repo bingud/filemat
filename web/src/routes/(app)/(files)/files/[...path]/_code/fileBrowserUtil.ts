@@ -1,19 +1,31 @@
 import { goto } from "$app/navigation"
-import type { FullFileMetadata } from "$lib/code/auth/types"
+import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 
 
-export type FileEntryProps = {
-    entry: FullFileMetadata,
-    event_dragStart: (e: DragEvent, entry: FullFileMetadata) => void,
-    event_dragOver: (e: DragEvent, entry: FullFileMetadata) => void,
-    event_dragLeave: (e: DragEvent, entry: FullFileMetadata) => void,
-    event_drop: (e: DragEvent, entry: FullFileMetadata) => void,
-    event_dragEnd: (e: DragEvent, entry: FullFileMetadata) => void,
-    entryOnClick: (e: MouseEvent, entry: FullFileMetadata) => void,
-    entryOnContextMenu: (e: MouseEvent, entry: FullFileMetadata) => void,
-    onClickSelectCheckbox: (path: string) => void,
-    entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void,
+export type FileEntryHandlerProps = {
+    event_dragStart: (e: DragEvent, entry: FullFileMetadata) => void
+    event_dragOver: (e: DragEvent, entry: FullFileMetadata) => void
+    event_dragLeave: (e: DragEvent, entry: FullFileMetadata) => void
+    event_drop: (e: DragEvent, entry: FullFileMetadata) => void
+    event_dragEnd: (e: DragEvent, entry: FullFileMetadata) => void
+    entryOnClick: (e: MouseEvent, entry: FullFileMetadata) => void
+    onClickSelectCheckbox: (path: string) => void
+    entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void
+}
+
+export type FileListProps = FileEntryHandlerProps & {
+    sortedEntries: typeof filesState.data.sortedEntries
+    option_rename: (entry: FileMetadata) => any
+    option_move: (entry: FileMetadata) => any
+    option_delete: (entry: FileMetadata) => any
+    option_details: (entry: FileMetadata) => any
+
+}
+
+export type FileEntryProps = FileEntryHandlerProps & {
+    entry: FullFileMetadata
+    entryOnContextMenu: (e: MouseEvent, entry: FullFileMetadata) => void
 }
 
 export function changeSortingMode(mode: typeof filesState.sortingMode) {

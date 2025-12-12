@@ -90,6 +90,7 @@
         
         if (newPath) {
             filesState.abort()
+            filesState.search.clear()
 
             const folderMeta = filesState.data.folderMeta
             const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false

@@ -58,6 +58,7 @@ class FilesState {
      */
     data = new FileDataStateClass()
     ui = new FileUiStateClasss()
+    search = new FileSearchStateClass()
 
     abortController = new AbortController()
     abort() {
@@ -109,11 +110,13 @@ class FilesState {
     clearAllState() {
         this.data.clear()
         this.ui.clear()
+        this.search.clear()
     }
 
     clearOpenState() {
         this.data.clearOpenContent()
         this.ui.clear()
+        this.search.clear()
     }
 
     unselect() {
@@ -323,6 +326,25 @@ class FileDataStateClass {
         this.content = null
         this.decodedContent = null
         this.contentFilePath = null
+    }
+}
+
+class FileSearchStateClass {
+    text = $state(null) as null | string
+    #_abortFunction: (() => any) | null = null
+
+    get abortFunction() {
+        return this.#_abortFunction
+    }
+    set abortFunction(value: (() => any) | null) {
+        if (this.#_abortFunction) this.#_abortFunction()
+        this.#_abortFunction = value
+    }
+
+    clear() {
+        this.text = null
+        if (this.#_abortFunction) this.#_abortFunction()
+        this.#_abortFunction = null
     }
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { changeSortingMode, type FileEntryProps } from "../../_code/fileBrowserUtil";
+    import { changeSortingMode, type FileListProps } from "../../_code/fileBrowserUtil";
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
     import GridFileEntry from "./GridFileEntry.svelte";
     import RowFileEntry from "./RowFileEntry.svelte";
@@ -14,20 +14,13 @@
         event_drop,
         event_dragEnd,
         entryOnClick,
-        entryOnContextMenu,
         onClickSelectCheckbox,
         entryMenuOnClick,
         option_rename,
         option_move,
         option_delete,
         option_details,
-    }: {
-        sortedEntries: typeof filesState.data.sortedEntries;
-        option_rename: (entry: FileMetadata) => any;
-        option_move: (entry: FileMetadata) => any;
-        option_delete: (entry: FileMetadata) => any;
-        option_details: (entry: FileMetadata) => any;
-    } & Omit<FileEntryProps, "entry"> = $props()
+    }: FileListProps = $props()
 
     let entryMenuButton: HTMLElement | null = $state(null)
     let menuEntry: FullFileMetadata | null = $state(null)
@@ -43,6 +36,21 @@
             entryMenuXPos = null
             entryMenuYPos = null
         }
+    }
+
+    function entryOnContextMenu(e: MouseEvent, entry: FullFileMetadata) {
+        e.preventDefault()
+
+        filesState.ui.fileContextMenuPopoverOpen = false
+        entryMenuXPos = null
+        entryMenuYPos = null
+
+        setTimeout(() => {
+            entryMenuXPos = e.clientX
+            entryMenuYPos = e.clientY
+            filesState.ui.fileContextMenuPopoverOpen = true
+            menuEntry = entry
+        })
     }
 </script>
 

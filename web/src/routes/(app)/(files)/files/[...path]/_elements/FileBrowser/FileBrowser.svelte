@@ -22,9 +22,6 @@
     let entryMenuButton: HTMLElement | null = $state(null)
     let menuEntry: FullFileMetadata | null = $state(null)
 
-    let entryMenuYPos: number | null = $state(null)
-    let entryMenuXPos: number | null = $state(null)
-
     onMount(() => {
         // Set the selected entry path
         setSelectedEntryPath()
@@ -194,20 +191,7 @@
         }
     }
 
-    function entryOnContextMenu(e: MouseEvent, entry: FullFileMetadata) {
-        e.preventDefault()
-
-        filesState.ui.fileContextMenuPopoverOpen = false
-        entryMenuXPos = null
-        entryMenuYPos = null
-
-        setTimeout(() => {
-            entryMenuXPos = e.clientX
-            entryMenuYPos = e.clientY
-            filesState.ui.fileContextMenuPopoverOpen = true
-            menuEntry = entry
-        })
-    }
+    
 
     /**
      * # Drag and dropping
@@ -287,7 +271,6 @@
         {event_drop}
         {event_dragEnd}
         {entryOnClick}
-        {entryOnContextMenu}
         {onClickSelectCheckbox}
         {entryMenuOnClick}
         {option_rename}
