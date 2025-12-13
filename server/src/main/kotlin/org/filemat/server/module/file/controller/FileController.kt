@@ -70,6 +70,8 @@ class FileController(
 
         val body = StreamingResponseBody { out: OutputStream ->
             out.bufferedWriter().use { writer ->
+                writer.write("")
+                writer.flush()
                 sequence.forEach {
                     if (it.isNotSuccessful) return@forEach
 

@@ -26,12 +26,11 @@
                     filesState.search.abortFunction = cancel
                 },
                 onMessage: (meta, cancel) => {
+                    if (!meta) return
                     if (filesState.path !== path) {
                         cancel()
                         return
                     }
-
-                    console.log(`GOT META:`, meta)
                 },
                 onError: async (response) => {
                     const text = await response.text()

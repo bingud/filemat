@@ -723,7 +723,7 @@ export async function streamNDJSON<T>(
         fetchProps: RequestInit
         funs: {
             onStart: (cancel: () => void) => void
-            onMessage: (json: T, cancel: () => void) => void | Promise<void>
+            onMessage: (json: T | null, cancel: () => void) => void | Promise<void>
 
             // simple: server returned non-2xx
             onError: (response: Response) => void | Promise<void>
@@ -761,7 +761,10 @@ export async function streamNDJSON<T>(
             return
         }
 
-        if (!response.body) throw new Error("No response body")
+        if (!response.body) {
+            funs.onException(new Error("No response body"))
+            return
+        }
 
         reader = response.body.getReader()
         const decoder = new TextDecoder()
@@ -783,7 +786,7 @@ export async function streamNDJSON<T>(
 
                 if (line.length === 0) continue
 
-                const msg = parseJson(line) as T
+                const msg = parseJson(line) as any
                 await funs.onMessage(msg, cancel)
             }
         }
