@@ -43,7 +43,7 @@
     }
 
     function option_details(segment: Segment) {
-        filesState.selectedEntries.list = (segment.path === "" ? [`/`] : [`/${segment.path}`])
+        filesState.selectedEntries.setSelected(segment.path === "" ? `/` : `/${segment.path}`)
         filesState.ui.detailsOpen = true
         closeContextMenu()
     }

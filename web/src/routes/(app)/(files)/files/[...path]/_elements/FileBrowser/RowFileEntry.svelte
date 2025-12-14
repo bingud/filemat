@@ -33,7 +33,7 @@
         }
     })
     
-    let isSelected = $derived(!!entry && filesState.selectedEntries.list.includes(entry.path))
+    let isSelected = $derived(!!entry && filesState.selectedEntries.currentList.includes(entry.path))
     
     let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
 </script>

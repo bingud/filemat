@@ -218,7 +218,6 @@
         </div>
     {:else if filesState.selectedEntries.singleMeta}
         {@const selectedMeta = filesState.selectedEntries.singleMeta}
-        {@const filename = filenameFromPath(selectedMeta.path) || "/"}
 
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
             <Tooltip text={displayFilename} align="start">

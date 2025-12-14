@@ -1,7 +1,9 @@
 import { toast } from "@jill64/svelte-toast"
 import { untrack } from "svelte"
-import type { FileMetadata, FileType } from "../auth/types"
+import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
+import type { FileSortingMode, SortingDirection } from "../types/fileTypes"
+import { filesState } from "../stateObjects/filesState.svelte"
 
 type ObjectKey = string | number | symbol
 
@@ -801,4 +803,44 @@ export async function streamNDJSON<T>(
             // ignore
         }
     }
+}
+
+
+export function sortFileMetadata(fileList: FullFileMetadata[], mode: FileSortingMode, direction: SortingDirection): FullFileMetadata[] {
+    const files = fileList.filter((v) => v.fileType === "FILE" || v.fileType === "FILE_LINK")
+    const folders = fileList.filter((v) => v.fileType === "FOLDER" || v.fileType === "FOLDER_LINK")
+
+    let sortedFiles: FullFileMetadata[] = []
+    let sortedFolders: FullFileMetadata[] = []
+
+    if (mode === "modified") {
+        if (direction === "asc") {
+            sortedFiles = sortArrayByNumber(files, f => f.modifiedDate)
+            sortedFolders = sortArrayByNumber(folders, f => f.modifiedDate)
+        } else {
+            sortedFiles = sortArrayByNumberDesc(files, f => f.modifiedDate)
+            sortedFolders = sortArrayByNumberDesc(folders, f => f.modifiedDate)
+        }
+    } else if (mode === "name") {
+        sortedFiles = sortArrayAlphabetically(files, f => f.filename!, direction)
+        sortedFolders = sortArrayAlphabetically(folders, f => f.filename!, direction)
+    } else if (mode === "created") {
+        if (direction === "asc") {
+            sortedFiles = sortArrayByNumber(files, f => f.createdDate)
+            sortedFolders = sortArrayByNumber(folders, f => f.createdDate)
+        } else {
+            sortedFiles = sortArrayByNumberDesc(files, f => f.createdDate)
+            sortedFolders = sortArrayByNumberDesc(folders, f => f.createdDate)
+        }
+    } else if (mode === "size") {
+        if (direction === "asc") {
+            sortedFiles = sortArrayByNumber(files, f => f.size)
+            sortedFolders = sortArrayByNumber(folders, f => f.size)
+        } else {
+            sortedFiles = sortArrayByNumberDesc(files, f => f.size)
+            sortedFolders = sortArrayByNumberDesc(folders, f => f.size)
+        }
+    }
+    
+    return [...sortedFolders, ...sortedFiles]
 }

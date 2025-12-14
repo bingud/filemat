@@ -2,7 +2,7 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import { inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import { formData, handleErr, handleException, isServerDown, parseJson, streamNDJSON } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formData, handleErr, handleException, isServerDown, parseJson, streamNDJSON } from "$lib/code/util/codeUtil.svelte";
     import MagnifyingGlassIcon from "$lib/component/icons/MagnifyingGlassIcon.svelte"
 
     async function search() {
@@ -16,6 +16,7 @@
 
         const path = filesState.path
         filesState.search.text = input
+        filesState.search.entries = []
 
         streamNDJSON<FullFileMetadata>(`/api/v1/file/search`, {
             fetchProps: {
@@ -31,6 +32,10 @@
                         cancel()
                         return
                     }
+
+                    if (!meta.filename) meta.filename = filenameFromPath(meta.path)
+
+                    filesState.search.entries!.push(meta)
                 },
                 onError: async (response) => {
                     const text = await response.text()

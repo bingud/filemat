@@ -1,7 +1,6 @@
 <script lang="ts">
-    import { goto } from "$app/navigation"
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
-    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte"
+    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder } from "$lib/code/util/codeUtil.svelte"
     import { onMount } from "svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
@@ -10,10 +9,7 @@
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte"
     import { appState } from '$lib/code/stateObjects/appState.svelte'
-    import RowFileEntry from "./RowFileEntry.svelte"
     import { isDialogOpen } from "$lib/code/util/stateUtils"
-    import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte"
-    import GridFileEntry from "./GridFileEntry.svelte"
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
     import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil";
     import FileList from "./FileList.svelte";
@@ -43,7 +39,7 @@
         const filename = filesState.path === "/" ? `${selectedEntryPath}` : `${filesState.path}/${selectedEntryPath}`
         
         if (filesState.data.entries?.some(v => v.path === filename)) {
-            filesState.selectedEntries.list = [filename]
+            filesState.selectedEntries.setSelected(filename)
             // Scroll to the selected entry after a small delay to ensure DOM is updated
             scrollSelectedEntryIntoView()
         }
@@ -139,6 +135,8 @@
     }
 
     async function option_move(entry: FileMetadata) {
+        if (filesState.isSearchOpen) return
+
         const newParentPath = await folderSelectorState.show!({
             title: "Choose the target folder.",
             initialSelection: parentFromPath(entry.path)
@@ -146,7 +144,7 @@
         if (!newParentPath) return
 
         // Move all selected entries if a selected entry was moved
-        const selected = filesState.selectedEntries.list
+        const selected = filesState.selectedEntries.currentList
         if (selected.length > 1 && selected.includes(entry.path)) {
             moveMultipleFiles(newParentPath, selected)
         } else {
@@ -173,7 +171,7 @@
     }
 
     function onClickSelectCheckbox(path: string) {
-        const isSelected = filesState.selectedEntries.list.includes(path)
+        const isSelected = filesState.selectedEntries.currentList.includes(path)
         if (isSelected) {
             filesState.selectedEntries.unselect(path)
 
@@ -234,6 +232,7 @@
     }
 
     function event_dragStart(e: DragEvent, entry: FullFileMetadata) {
+        if (filesState.isSearchOpen) return
         dragging = true
         const isEntrySelected = filesState.selectedEntries.list.includes(entry.path)
         if (!isEntrySelected) {
@@ -262,22 +261,50 @@
 </script>
 
 
+{#if filesState.search.sortedEntries}
+    {#if filesState.search.sortedEntries.length > 0}
+        <div class="w-full h-fit absolute top-0 left-0 z-10">
+            <FileList
+                sortedEntries={filesState.search.sortedEntries}
+                {event_dragStart}
+                {event_dragOver}
+                {event_dragLeave}
+                {event_drop}
+                {event_dragEnd}
+                {entryOnClick}
+                {onClickSelectCheckbox}
+                {entryMenuOnClick}
+                {option_rename}
+                {option_move}
+                {option_delete}
+                {option_details}
+            ></FileList>
+        </div>
+    {:else}
+        <div class="center absolute top-0 left-0 z-10">
+            <p>No files have been found.</p>
+        </div>
+    {/if}
+{/if}
+
 {#if filesState.data.sortedEntries && filesState.data.sortedEntries.length > 0}
-    <FileList
-        sortedEntries={filesState.data.sortedEntries}
-        {event_dragStart}
-        {event_dragOver}
-        {event_dragLeave}
-        {event_drop}
-        {event_dragEnd}
-        {entryOnClick}
-        {onClickSelectCheckbox}
-        {entryMenuOnClick}
-        {option_rename}
-        {option_move}
-        {option_delete}
-        {option_details}
-    ></FileList>
+    <div class:opacity-0={filesState.isSearchOpen}>
+        <FileList
+            sortedEntries={filesState.data.sortedEntries}
+            {event_dragStart}
+            {event_dragOver}
+            {event_dragLeave}
+            {event_drop}
+            {event_dragEnd}
+            {entryOnClick}
+            {onClickSelectCheckbox}
+            {entryMenuOnClick}
+            {option_rename}
+            {option_move}
+            {option_delete}
+            {option_details}
+        ></FileList>
+    </div>
 {:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
     {#if filesState.meta.type === "allShared"}
         <div class="center">

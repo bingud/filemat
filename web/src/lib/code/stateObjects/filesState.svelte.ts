@@ -1,7 +1,7 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
@@ -51,6 +51,9 @@ class FilesState {
         
         if (this.isFolderOpen || currentMeta == null && hasEntries) return true
         return false
+    })
+    isSearchOpen = $derived.by(() => {
+        return !!filesState.search.sortedEntries
     })
 
     /**
@@ -120,9 +123,7 @@ class FilesState {
     }
 
     unselect() {
-        if (this.selectedEntries) {
-            this.selectedEntries.list = []
-        }
+        this.selectedEntries.reset()
     }
 }
 
@@ -136,12 +137,16 @@ class SelectedEntryStateClass {
     selectedPositions = new SingleChildBooleanTree()
 
     list = $state([]) as string[]
+    searchList = $state([]) as string[]
+
+    currentList = $derived(filesState.isSearchOpen ? this.searchList : this.list)
+
     metadataMap = $derived.by(() => {
         const entriesMap = new Map(
             filesState.data.entries?.map(e => [e.path, e]) || []
         )
 
-        let obj: Record<string, FullFileMetadata | null> = Object.fromEntries(
+        return Object.fromEntries(
             this.list.map(path => [
                 path,
                 path === filesState.path 
@@ -149,49 +154,80 @@ class SelectedEntryStateClass {
                     : (entriesMap.get(path) || null)
             ])
         )
-
-        return obj
+    })
+    searchMetadataMap = $derived.by(() => {
+        const entriesMap = new Map(
+            filesState.search.entries?.map(e => [e.path, e]) || []
+        )
+        return Object.fromEntries(
+            this.searchList.map(path => [
+                path,
+                entriesMap.get(path) || null
+            ])
+        )
     })
 
-    singlePath = $derived(this.list.length === 1 ? this.list[0] : null)
+    singlePath = $derived.by(() => {
+        if (filesState.isSearchOpen) {
+            if (this.searchList.length === 1) {
+                return this.searchList[0]
+            }
+            return null
+        }
+        return this.list.length === 1 ? this.list[0] : null
+    })
     singleMeta = $derived.by(() => {
-        if (!this.metadataMap) return null
+        if (!this.metadataMap || (filesState.isSearchOpen && !this.searchMetadataMap)) return null
 
         // Only return if one entry is selected
-        const metaList = valuesOf(this.metadataMap)
+        const metaList = filesState.isSearchOpen ? valuesOf(this.searchMetadataMap) : valuesOf(this.metadataMap)
         if (metaList.length > 1) return null
 
         const value = metaList[0]
         return value
     })
 
-    hasMultiple = $derived(this.list.length > 1)
-    hasSelected = $derived(this.list.length > 0)
+    hasMultiple = $derived(filesState.isSearchOpen ? (this.searchList.length > 1) : (this.list.length > 1))
+    hasSelected = $derived(filesState.isSearchOpen ? (this.searchList.length > 0) : (this.list.length > 0))
     isCurrentPathSelected = $derived(filesState.path === this.singlePath)
-    count = $derived(this.list.length)
+    count = $derived(filesState.isSearchOpen ? this.searchList.length : this.list.length)
 
     setSelected(path: string, preventSave: boolean = false) {
-        this.list = [path]
-        if (!preventSave) {
-            this.selectedPositions.set(path, true)
+        if (filesState.isSearchOpen) {
+            this.searchList = [path]
+        } else {
+            this.list = [path]
+            if (!preventSave) {
+                this.selectedPositions.set(path, true)
+            }
         }
     }
 
     addSelected(path: string) {
-        if (this.list.includes(path)) return
-        this.list.push(path)
+        if (filesState.isSearchOpen) {
+            if (this.searchList.includes(path)) return
+            this.searchList.push(path)
+        } else {
+            if (this.list.includes(path)) return
+            this.list.push(path)
+        }
     }
 
     unselect(path: string) {
-        removeString(this.list, path)
+        if (filesState.isSearchOpen) {
+            removeString(this.searchList, path)
+        } else {
+            removeString(this.list, path)
+        }
     }
     unselectAll(paths: string[]) {
         paths.forEach(deletedPath => {
-            removeString(this.list, deletedPath)
+            this.unselect(deletedPath)
         })
     }
     reset() {
         this.list = []
+        this.searchList = []
     }
 }
 
@@ -270,46 +306,8 @@ class FileDataStateClass {
     sortedEntries = $derived.by(() => {
         if (!filesState.data || !filesState.data.entries) return null
         if (filesState.meta.type === "allShared") return this.entries
-        const files = filesState.data.entries.filter((v) => v.fileType === "FILE" || v.fileType === "FILE_LINK")
-        const folders = filesState.data.entries.filter((v) => v.fileType === "FOLDER" || v.fileType === "FOLDER_LINK")
-        
-        // Sort entries
-        const mode = filesState.sortingMode
-        const direction = filesState.sortingDirection
 
-        let sortedFiles: FullFileMetadata[] = []
-        let sortedFolders: FullFileMetadata[] = []
-
-        if (mode === "modified") {
-            if (direction === "asc") {
-                sortedFiles = sortArrayByNumber(files, f => f.modifiedDate)
-                sortedFolders = sortArrayByNumber(folders, f => f.modifiedDate)
-            } else {
-                sortedFiles = sortArrayByNumberDesc(files, f => f.modifiedDate)
-                sortedFolders = sortArrayByNumberDesc(folders, f => f.modifiedDate)
-            }
-        } else if (mode === "name") {
-            sortedFiles = sortArrayAlphabetically(files, f => f.filename!, direction)
-            sortedFolders = sortArrayAlphabetically(folders, f => f.filename!, direction)
-        } else if (mode === "created") {
-            if (direction === "asc") {
-                sortedFiles = sortArrayByNumber(files, f => f.createdDate)
-                sortedFolders = sortArrayByNumber(folders, f => f.createdDate)
-            } else {
-                sortedFiles = sortArrayByNumberDesc(files, f => f.createdDate)
-                sortedFolders = sortArrayByNumberDesc(folders, f => f.createdDate)
-            }
-        } else if (mode === "size") {
-            if (direction === "asc") {
-                sortedFiles = sortArrayByNumber(files, f => f.size)
-                sortedFolders = sortArrayByNumber(folders, f => f.size)
-            } else {
-                sortedFiles = sortArrayByNumberDesc(files, f => f.size)
-                sortedFolders = sortArrayByNumberDesc(folders, f => f.size)
-            }
-        }
-
-        return [...sortedFolders, ...sortedFiles]
+        return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection)
     })
 
     clear() {
@@ -333,6 +331,12 @@ class FileSearchStateClass {
     text = $state(null) as null | string
     #_abortFunction: (() => any) | null = null
 
+    entries = $state(null) as FullFileMetadata[] | null
+    sortedEntries = $derived.by(() => {
+        if (!this.entries) return null
+        return sortFileMetadata(this.entries, filesState.sortingMode, filesState.sortingDirection)
+    })
+
     get abortFunction() {
         return this.#_abortFunction
     }
@@ -342,9 +346,12 @@ class FileSearchStateClass {
     }
 
     clear() {
-        this.text = null
         if (this.#_abortFunction) this.#_abortFunction()
         this.#_abortFunction = null
+
+        this.text = null
+        this.entries = null
+        filesState.selectedEntries.searchList = []
     }
 }
 

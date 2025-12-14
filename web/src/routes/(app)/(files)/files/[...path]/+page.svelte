@@ -33,6 +33,7 @@
     import { hasAnyPermission } from "$lib/code/module/permissions";
     import SharedFileScopeSwitchPopover from "./_elements/button/SharedFileScopeSwitchPopover.svelte";
     import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
+    import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
 
 
     let {
@@ -190,15 +191,19 @@
                     <div class="w-full h-[2.5rem] flex items-center justify-between">
                         <!-- Left buttons -->
                         <div class="h-full flex items-center gap-2">
+                            {#if filesState.isSearchOpen}
+                                <button on:click={() => { filesState.search.clear() }} title="Close search" class="file-action-button"><CloseIcon /></button>
+                            {/if}
+                            
                             <!-- Parent folder options -->
                             {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                     (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
                             }
-                                {#if filesState.meta.type !== "shared"}
+                                {#if filesState.meta.type !== "shared" && !filesState.isSearchOpen}
                                     <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
                                     <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
                                 {/if}
-                                {#if filesState.path !== "/" || filesState.meta.type === "shared"}
+                                {#if (filesState.path !== "/" || filesState.meta.type === "shared") && !filesState.isSearchOpen}
                                     <button on:click={option_downloadSelectedFiles} title="Download this folder" class="file-action-button"><DownloadIcon /></button>
                                 {/if}
                             <!-- Selected child file options -->
@@ -207,7 +212,7 @@
                                 {#if filesState.meta.type === "files"} 
                                     <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
                                 {/if}
-                                {#if filesState.data.fileMeta == null && filesState.meta.type === "files"}
+                                {#if filesState.data.fileMeta == null && filesState.meta.type === "files" && !filesState.isSearchOpen}
                                     <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
                                 {/if}
                             {/if}
@@ -225,11 +230,11 @@
                                 <FileViewTypeButton></FileViewTypeButton>
                             {/if}
 
-                            {#if uiState.isDesktop && filesState.isFileListOpen && auth.authenticated}
+                            {#if uiState.isDesktop && filesState.isFileListOpen && auth.authenticated && !filesState.isSearchOpen}
                                 <NewFileButton />
                             {/if}
 
-                            {#if uiState.isDesktop && filesState.isFileListOpen}
+                            {#if uiState.isDesktop && filesState.isFileListOpen && !filesState.isSearchOpen}
                                 <FileSearchButton />
                             {/if}
                             
@@ -256,7 +261,7 @@
                 {#if filesState.data.entries != null && (filesState.data.folderMeta || stateMeta.isArrayOnly)}
                     <div 
                         bind:this={filesState.scroll.container} 
-                        class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both 
+                        class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both relative
                             {filesState.data.fileMeta || filesState.metaLoading ? '' : ''}
                         ">
                         <FileBrowser />

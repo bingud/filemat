@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { type FullFileMetadata } from "$lib/code/auth/types";
     import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { isFolder } from "$lib/code/util/codeUtil.svelte";
@@ -33,7 +32,7 @@
         }
     })
     
-    let isSelected = $derived(!!entry && filesState.selectedEntries.list.includes(entry.path))
+    let isSelected = $derived(!!entry && filesState.selectedEntries.currentList.includes(entry.path))
     
     let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
 </script>
