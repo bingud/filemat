@@ -35,15 +35,20 @@ object FileUtils {
     }
 }
 
-fun Path.safeWalk(vararg options: PathWalkOption): Sequence<Path> = sequence {
-    val it = walk(*options).iterator()
-    while (true) {
-        val next = try {
-            if (!it.hasNext()) break
-            it.next()
-        } catch (e: Exception) {
-            continue
-        }
-        yield(next)
+fun Path.safeWalk(): Sequence<Path> = sequence {
+    // Yield the current path itself
+    yield(this@safeWalk)
+
+    // Traverse children if directory
+    if (Files.isDirectory(this@safeWalk)) {
+        try {
+            // newDirectoryStream is lazy and allows catching access errors per directory
+            Files.newDirectoryStream(this@safeWalk).use { stream ->
+                for (path in stream) {
+                    // Recursively walk children
+                    yieldAll(path.safeWalk())
+                }
+            }
+        } catch (_: Exception) {}
     }
 }

@@ -791,7 +791,9 @@ export async function streamNDJSON<T>(
             }
         }
     } catch (e) {
-        await funs.onException(e)
+        if (!isCanceled) {
+            await funs.onException(e)
+        }
     } finally {
         try {
             await reader?.cancel()

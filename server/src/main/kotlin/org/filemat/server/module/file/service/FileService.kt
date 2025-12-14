@@ -567,7 +567,7 @@ class FileService(
         val lowercaseText = text.lowercase()
 
         // Symlinks permanently disabled to prevent loops
-        return canonicalPath.path.safeWalk(PathWalkOption.INCLUDE_DIRECTORIES)
+        return canonicalPath.path.safeWalk()
             .mapNotNull { path ->
                 try {
                     // Check searched text

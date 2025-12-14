@@ -15,3 +15,8 @@ server:
   error:
     whitelabel:
       enabled: false
+
+logging:
+  level:
+    org.springframework.web.servlet.mvc.support.DefaultHandlerExceptionResolver: ERROR
+    org.springframework.web.context.request.async: ERROR
