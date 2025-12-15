@@ -3,6 +3,7 @@ package org.filemat.server.module.file.controller
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
@@ -11,6 +12,7 @@ import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
@@ -27,11 +29,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
-import java.util.concurrent.locks.ReentrantLock
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import kotlin.concurrent.withLock
-import kotlin.coroutines.coroutineContext
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.pathString
@@ -65,44 +64,42 @@ class FileController(
             it.value
         }
 
-        val sequence = fileService.searchFiles(
+        val resultFlow: Flow<Result<FullFileMetadata>> = fileService.searchFiles(
             user = user,
             canonicalPath = resolvedPath,
             text = text,
             userAction = UserAction.SEARCH_FILE
         )
 
-        val body = StreamingResponseBody { out: OutputStream ->
+        val body = StreamingResponseBody { out ->
             out.bufferedWriter().use { writer ->
-                writer.flush()
-
-                val lock = ReentrantLock()
-                val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-                val heartbeat = scope.launch {
-                    runCatching {
-                        while (true) {
-                            delay(10_000)
-                            lock.withLock {
-                                writer.newLine()
+                runBlocking {
+                    // Start Heartbeat (runs concurrently)
+                    val heartbeatJob = launch(Dispatchers.IO) {
+                        while (isActive) { // Checks for cancellation
+                            delay(8_000)
+                            synchronized(writer) {
+                                writer.write("\n")
                                 writer.flush()
                             }
                         }
                     }
-                }
 
-                try {
-                    sequence.forEach {
-                        if (it.isNotSuccessful) return@forEach
-
-                        lock.withLock {
-                            writer.write(Json.encodeToString(it.value))
-                            writer.newLine()
-                            writer.flush()
+                    try {
+                        // Collect the Flow (blocks runBlocking until done)
+                        resultFlow.collect { result ->
+                            if (result.isSuccessful) {
+                                synchronized(writer) {
+                                    writer.write(Json.encodeToString(result.value))
+                                    writer.write("\n")
+                                    writer.flush()
+                                }
+                            }
                         }
+                    } finally {
+                        // Stop heartbeat when collection finishes
+                        heartbeatJob.cancelAndJoin()
                     }
-                } finally {
-                    heartbeat.cancel()
-                    scope.cancel()
                 }
             }
         }

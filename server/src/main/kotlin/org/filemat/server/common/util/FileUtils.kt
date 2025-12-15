@@ -1,5 +1,8 @@
 package org.filemat.server.common.util
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import org.apache.tika.Tika
 import org.filemat.server.common.State
 import java.nio.file.Files
@@ -35,9 +38,9 @@ object FileUtils {
     }
 }
 
-fun Path.safeWalk(): Sequence<Path> = sequence {
-    // Yield the current path itself
-    yield(this@safeWalk)
+fun Path.safeWalk(): Flow<Path> = flow {
+    // Emit the current path itself
+    emit(this@safeWalk)
 
     // Traverse children if directory
     if (Files.isDirectory(this@safeWalk)) {
@@ -46,7 +49,7 @@ fun Path.safeWalk(): Sequence<Path> = sequence {
             Files.newDirectoryStream(this@safeWalk).use { stream ->
                 for (path in stream) {
                     // Recursively walk children
-                    yieldAll(path.safeWalk())
+                    emitAll(path.safeWalk())
                 }
             }
         } catch (_: Exception) {}

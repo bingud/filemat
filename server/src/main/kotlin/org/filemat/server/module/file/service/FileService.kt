@@ -1,6 +1,11 @@
 package org.filemat.server.module.file.service
 
 import com.github.f4b6a3.ulid.Ulid
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.take
 import org.apache.commons.io.input.BoundedInputStream
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
@@ -563,7 +568,13 @@ class FileService(
         return fullMeta.toResult()
     }
 
-    fun searchFiles(user: Principal?, canonicalPath: FilePath, text: String, isShared: Boolean = false, userAction: UserAction): Sequence<Result<FullFileMetadata>> {
+    fun searchFiles(
+        user: Principal?,
+        canonicalPath: FilePath,
+        text: String,
+        isShared: Boolean = false,
+        userAction: UserAction
+    ): Flow<Result<FullFileMetadata>> {
         val lowercaseText = text.lowercase()
 
         // Symlinks permanently disabled to prevent loops
@@ -583,7 +594,9 @@ class FileService(
                 } catch (e: Exception) {
                     return@mapNotNull null
                 }
-            }.take(10_000)
+            }
+            .take(10_000)
+            .flowOn(Dispatchers.IO)
     }
 
     /**
