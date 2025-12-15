@@ -13,6 +13,7 @@
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
     import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil";
     import FileList from "./FileList.svelte";
+    import Loader from "$lib/component/Loader.svelte";
 
     // Entry menu popup
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -262,7 +263,7 @@
 
 
 {#if filesState.search.sortedEntries}
-    {#if filesState.search.sortedEntries.length > 0}
+    {#if filesState.search.sortedEntries.length > 0 || filesState.search.isLoading}
         <div class="w-full h-fit absolute top-0 left-0 z-10">
             <FileList
                 sortedEntries={filesState.search.sortedEntries}
@@ -283,6 +284,12 @@
     {:else}
         <div class="center absolute top-0 left-0 z-10">
             <p>No files have been found.</p>
+        </div>
+    {/if}
+
+    {#if filesState.search.isLoading}
+        <div class="center absolute top-0 left-0 z-20 pointer-events-none">
+            <Loader />
         </div>
     {/if}
 {/if}

@@ -336,6 +336,7 @@ class FileSearchStateClass {
         if (!this.entries) return null
         return sortFileMetadata(this.entries, filesState.sortingMode, filesState.sortingDirection)
     })
+    isLoading = $state(false)
 
     get abortFunction() {
         return this.#_abortFunction

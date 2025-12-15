@@ -732,6 +732,7 @@ export async function streamNDJSON<T>(
 
             // simple: unexpected throw (fetch/read/parse/etc)
             onException: (e: any) => void | Promise<void>
+            onFinish: (aborted: boolean) => any
         }
     }
 ) {
@@ -799,6 +800,7 @@ export async function streamNDJSON<T>(
     } finally {
         try {
             await reader?.cancel()
+            funs.onFinish(isCanceled)
         } catch (e) {
             // ignore
         }

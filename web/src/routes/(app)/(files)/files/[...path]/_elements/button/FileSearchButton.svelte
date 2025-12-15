@@ -17,6 +17,7 @@
         const path = filesState.path
         filesState.search.text = input
         filesState.search.entries = []
+        filesState.search.isLoading = true
 
         streamNDJSON<FullFileMetadata>(`/api/v1/file/search`, {
             fetchProps: {
@@ -48,6 +49,9 @@
                 },
                 onException: (e) => {
                     handleException(`Failed to stream file search results`, `Failed to load search results.`, e)
+                },
+                onFinish: (aborted: boolean) => {
+                    filesState.search.isLoading = false
                 }
             }
         })
