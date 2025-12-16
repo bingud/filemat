@@ -303,17 +303,19 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
         openEntry(newEntry.path)
     }
     
-    scrollSelectedEntryIntoView()
+    console.log(`before`, filesState.selectedEntries.singlePath)
+    scrollSelectedEntryIntoView(newEntry.path)
 }
 
 export function openEntry(path: string) {
     goto(`${filesState.meta.pagePath}${encodeURI(path)}`)
 }
 
-export function scrollSelectedEntryIntoView() {
+export function scrollSelectedEntryIntoView(path: string | null = null) {
     setTimeout(() => {
-        if (filesState.selectedEntries.singlePath) {
-            const selector = `[data-entry-path="${filesState.selectedEntries.singlePath.replace(/"/g, '\\"')}"]`
+        const targetPath = filesState.selectedEntries.singlePath || path
+        if (targetPath) {
+            const selector = `[data-entry-path="${targetPath.replace(/"/g, '\\"')}"]`
             const element = document.querySelector(selector)
             if (element) {
                 element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })

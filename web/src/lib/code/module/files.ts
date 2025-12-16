@@ -30,7 +30,7 @@ export async function getFileData(
     })
     if (response.failed) {
         handleErr({
-            description: `Failed to fetch file ata`,
+            description: `Failed to fetch file data`,
             notification: options.silent ? undefined : `Failed to open file.`,
         })
         return Result.error(`Failed to fetch folder entries`)
