@@ -243,7 +243,7 @@ export class ImageLoadQueue {
 
 
 export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boolean = false, openFile: boolean = false) {
-    const entries = filesState.data.sortedEntries!
+    const entries = (filesState.isSearchOpen ? filesState.search.sortedEntries : filesState.data.sortedEntries)!
     if (entries.length < 1) return
 
     const currentPath = filesState.selectedEntries.singlePath
@@ -297,7 +297,7 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
     }
     
     filesState.selectedEntries.selectedPositions.set(newEntry.path, true)
-    filesState.selectedEntries.list = [newEntry.path]
+    filesState.selectedEntries.setSelected(newEntry.path)
     
     if (openFile) {
         openEntry(newEntry.path)
