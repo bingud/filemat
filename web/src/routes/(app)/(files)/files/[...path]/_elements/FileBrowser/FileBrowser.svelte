@@ -296,7 +296,9 @@
 {/if}
 
 {#if filesState.data.sortedEntries && filesState.data.sortedEntries.length > 0}
-    <div class:opacity-0={filesState.isSearchOpen}>
+    <div class="
+        {filesState.isSearchOpen ? 'max-h-full overflow-y-hidden opacity-0' : ''}
+    ">
         <FileList
             sortedEntries={filesState.data.sortedEntries}
             {event_dragStart}
