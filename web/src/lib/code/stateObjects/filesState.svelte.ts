@@ -119,7 +119,6 @@ class FilesState {
     clearOpenState() {
         this.data.clearOpenContent()
         this.ui.clear()
-        this.search.clear()
     }
 
     unselect() {
@@ -328,7 +327,7 @@ class FileDataStateClass {
 }
 
 class FileSearchStateClass {
-    text = $state(null) as null | string
+    text = $state(null) as string | null
     #_abortFunction: (() => any) | null = null
 
     entries = $state(null) as FullFileMetadata[] | null
@@ -337,6 +336,8 @@ class FileSearchStateClass {
         return sortFileMetadata(this.entries, filesState.sortingMode, filesState.sortingDirection)
     })
     isLoading = $state(false)
+
+    searchPath = $state(null) as string | null
 
     get abortFunction() {
         return this.#_abortFunction
@@ -352,6 +353,7 @@ class FileSearchStateClass {
 
         this.text = null
         this.entries = null
+        this.searchPath = null
         filesState.selectedEntries.searchList = []
     }
 }

@@ -307,6 +307,7 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
 }
 
 export function openEntry(path: string) {
+    if (filesState.metaLoading) return
     goto(`${filesState.meta.pagePath}${encodeURI(path)}`)
 }
 

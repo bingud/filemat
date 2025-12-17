@@ -20,6 +20,11 @@ export function isFolder(meta: FileMetadata | null | undefined): boolean {
     return meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks === true)
 }
 
+export function isFile(meta: FileMetadata | null | undefined): boolean {
+    if (!meta) return false
+    return meta.fileType === "FILE" || (meta.fileType === "FILE_LINK" && appState.followSymlinks === true) || (meta.fileType === "ANY_LINK" && appState.followSymlinks === false)
+}
+
 /**
  * Returns a template for a page title.
  */

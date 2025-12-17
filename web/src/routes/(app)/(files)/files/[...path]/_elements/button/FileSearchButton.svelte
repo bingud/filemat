@@ -18,6 +18,7 @@
         filesState.search.text = input
         filesState.search.entries = []
         filesState.search.isLoading = true
+        filesState.search.searchPath = path
 
         streamNDJSON<FullFileMetadata>(`/api/v1/file/search`, {
             fetchProps: {

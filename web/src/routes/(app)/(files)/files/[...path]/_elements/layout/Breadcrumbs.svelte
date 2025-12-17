@@ -6,12 +6,9 @@
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
+    import { openEntry } from '../../_code/fileBrowserUtil';
 
     const meta = $derived(filesState.meta)
-
-    function openEntry(path: string) {
-        goto(`${meta.pagePath}${path}`)
-    }
 
     // Context menu for breadcrumb buttons
     let contextMenuButton: HTMLButtonElement | null = $state(null)
@@ -79,8 +76,11 @@
                 disabled={filesState.path === segment.path} 
                 title={segment.name} 
                 on:click={() => {
-                    if (o.isClickable) { openEntry(`/${segment.path}`) } }
-                } 
+                    if (o.isClickable) { 
+                        filesState.search.clear()
+                        openEntry(`/${segment.path}`)
+                    }
+                }} 
                 on:contextmenu={(e) => { if (o.withPopup) { onContextMenu(e, segment, e.currentTarget) } }}
                 class="py-1 px-2 whitespace-nowrap max-w-full truncate {o.classes}"
             >{segment.name}</button>

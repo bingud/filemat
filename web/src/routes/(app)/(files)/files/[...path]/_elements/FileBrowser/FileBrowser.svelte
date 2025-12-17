@@ -259,13 +259,15 @@
         dragging = false
     }
 
-    
 </script>
 
 
 {#if filesState.search.sortedEntries}
     {#if filesState.search.sortedEntries.length > 0 || filesState.search.isLoading}
-        <div class="w-full h-fit absolute top-0 left-0 z-10">
+        <div class="
+            w-full h-fit absolute top-0 left-0 z-10
+            {filesState.path !== filesState.search.searchPath ? 'max-h-full overflow-y-hidden opacity-0' : ''}
+        ">
             <FileList
                 sortedEntries={filesState.search.sortedEntries}
                 {event_dragStart}

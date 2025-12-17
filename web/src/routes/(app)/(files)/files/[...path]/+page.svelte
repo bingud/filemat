@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { beforeNavigate } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, isFolder, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { beforeNavigate, goto } from "$app/navigation"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, isFile, isFolder, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -34,6 +34,8 @@
     import SharedFileScopeSwitchPopover from "./_elements/button/SharedFileScopeSwitchPopover.svelte";
     import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
+    import { openEntry } from "./_code/fileBrowserUtil";
+    import { ArrowLeftIcon } from "@lucide/svelte";
 
 
     let {
@@ -87,17 +89,30 @@
     explicitEffect(() => [ 
         filesState.path,
     ], () => {
+        const effectResult = () => { pollingInterval?.cancel() }
+
         const newPath = filesState.path
+        if (!newPath) return effectResult
+
+        const newMeta = filesState.isSearchOpen 
+            ? filesState.search.entries?.find(m => m.path === newPath) || null
+            : null
         
-        if (newPath) {
-            filesState.abort()
-            filesState.search.clear()
+        // Mark as searched file only if new file is child
+        const isSearchedFile = filesState.isSearchOpen && newMeta && isFile(newMeta) && !filesState.data.fileMeta
+        // Mark as searched parent folder if the new path is the searched folder
+        const isSearchedParent = filesState.isSearchOpen && filesState.search.searchPath === newPath
 
-            const folderMeta = filesState.data.folderMeta
-            const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
-            const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
+        filesState.abort()
+        if (!isSearchedFile && !isSearchedParent) filesState.search.clear()
 
-            if (pathIsParentFolder) {
+        // Check relationship of the opened file
+        const folderMeta = filesState.data.folderMeta
+        const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
+        const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
+
+        if (!isSearchedFile) {
+            if (pathIsParentFolder || isSearchedParent) {
                 filesState.clearOpenState()
             } else if (pathIsChild && filesState.data.fileMeta != null) {
                 // Dont clear state of open file, if a file is currently open
@@ -105,30 +120,26 @@
             } else if (!pathIsChild && !pathIsParentFolder) {
                 filesState.clearAllState()
             }
-
-            if (newPath === "/") {
-                filesState.scroll.pathPositions = {}
-            }
-
-            const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
-
-            // Do not load page data if navigating back to current parent folder
-            // Use existing state
-            if (pathIsParentFolder === false) {
-                const bodyParams = stateMeta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
-
-                (newPath === "/" && (stateMeta.isArrayOnly) 
-                    ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array", shareToken: shareToken, bodyParams })
-                    : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: true, shareToken: shareToken })
-                ).then(() => {
-                    recoverScrollPosition()
-                })
-
-                if (!pathIsChild) pollingInterval?.reset()
-            } else { queueMicrotask(recoverScrollPosition) }
         }
 
-        return () => { pollingInterval?.cancel() }
+        const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
+
+        // Do not load page data if navigating back to current parent folder
+        // Use existing state
+        if (pathIsParentFolder === false && !isSearchedParent) {
+            const bodyParams = stateMeta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
+
+            (newPath === "/" && (stateMeta.isArrayOnly) 
+                ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array",  shareToken: shareToken,            bodyParams })
+                : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: !isSearchedFile, shareToken: shareToken })
+            ).then(() => {
+                recoverScrollPosition()
+            })
+
+            if (!pathIsChild) pollingInterval?.reset()
+        } else { queueMicrotask(recoverScrollPosition) }
+
+        return effectResult
     })
 
     // Run when user stops being idle
@@ -161,9 +172,26 @@
         }
     })
 
-    beforeNavigate(() => {
+    beforeNavigate((nav) => {
+        if (filesState.metaLoading) {
+            nav.cancel()
+            return
+        }
         saveScrollPosition()
     })
+
+    function cancelSearch() {
+        const searched = filesState.search.searchPath
+        if (searched && filesState.path !== searched) {
+            openEntry(searched)
+        }
+
+        filesState.search.clear()
+    }
+    function closeSearchedFile() {
+        if (!filesState.search.searchPath) return
+        openEntry(filesState.search.searchPath)
+    }
 </script>
 
 
@@ -191,8 +219,11 @@
                     <div class="w-full h-[2.5rem] flex items-center justify-between">
                         <!-- Left buttons -->
                         <div class="h-full flex items-center gap-2">
+                            {#if filesState.isSearchOpen && filesState.search.searchPath !== filesState.path}
+                                <button on:click={closeSearchedFile} title="Back to search" class="file-action-button"><ArrowLeftIcon /></button>
+                            {/if}
                             {#if filesState.isSearchOpen}
-                                <button on:click={() => { filesState.search.clear() }} title="Close search" class="file-action-button"><CloseIcon /></button>
+                                <button on:click={cancelSearch} title="Close search" class="file-action-button"><CloseIcon /></button>
                             {/if}
                             
                             <!-- Parent folder options -->
