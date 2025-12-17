@@ -49,6 +49,7 @@
     function handleKeyDown(event: KeyboardEvent) {
         if (isDialogOpen()) return
         if (textFileViewerState.isFocused) return
+        if (filesState.metaLoading) return
 
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {

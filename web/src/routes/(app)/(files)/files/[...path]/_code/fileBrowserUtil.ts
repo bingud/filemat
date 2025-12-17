@@ -303,7 +303,6 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
         openEntry(newEntry.path)
     }
     
-    console.log(`before`, filesState.selectedEntries.singlePath)
     scrollSelectedEntryIntoView(newEntry.path)
 }
 

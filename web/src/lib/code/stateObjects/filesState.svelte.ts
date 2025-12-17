@@ -123,7 +123,7 @@ class FilesState {
     }
 
     unselect() {
-        this.selectedEntries.reset()
+        if (this.selectedEntries) this.selectedEntries.reset()
     }
 }
 
