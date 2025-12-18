@@ -105,15 +105,6 @@
         }
     }
 
-    /**
-     * onClick for entry menu
-     */
-    function entryMenuOnClick(button: HTMLButtonElement, entry: FullFileMetadata) {
-        entryMenuButton = button
-        menuEntry = entry
-        filesState.ui.fileContextMenuPopoverOpen = true
-    }
-
     function option_details(entry: FileMetadata) {
         filesState.selectedEntries.setSelected(entry.path)
         filesState.ui.detailsOpen = true
@@ -264,10 +255,12 @@
 
 {#if filesState.search.sortedEntries}
     {#if filesState.search.sortedEntries.length > 0 || filesState.search.isLoading}
-        <div class="
-            w-full h-fit absolute top-0 left-0 z-10
-            {filesState.path !== filesState.search.searchPath ? 'max-h-full overflow-y-hidden opacity-0' : ''}
-        ">
+        <div 
+            class="
+                w-full h-fit absolute top-0 left-0 z-10
+                {filesState.path !== filesState.search.searchPath ? 'max-h-full overflow-y-hidden opacity-0' : ''}
+            "
+        >
             <FileList
                 sortedEntries={filesState.search.sortedEntries}
                 {event_dragStart}
@@ -277,7 +270,6 @@
                 {event_dragEnd}
                 {entryOnClick}
                 {onClickSelectCheckbox}
-                {entryMenuOnClick}
                 {option_rename}
                 {option_move}
                 {option_delete}
@@ -298,9 +290,11 @@
 {/if}
 
 {#if filesState.data.sortedEntries && filesState.data.sortedEntries.length > 0}
-    <div class="
-        {filesState.isSearchOpen ? 'max-h-full overflow-y-hidden opacity-0' : ''}
-    ">
+    <div 
+        class="
+            {filesState.isSearchOpen ? 'max-h-full overflow-y-hidden opacity-0' : ''}
+        "
+    >
         <FileList
             sortedEntries={filesState.data.sortedEntries}
             {event_dragStart}
@@ -310,7 +304,6 @@
             {event_dragEnd}
             {entryOnClick}
             {onClickSelectCheckbox}
-            {entryMenuOnClick}
             {option_rename}
             {option_move}
             {option_delete}

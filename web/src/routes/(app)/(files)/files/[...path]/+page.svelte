@@ -192,6 +192,10 @@
         if (!filesState.search.searchPath) return
         openEntry(filesState.search.searchPath)
     }
+
+    function onScroll(e: any) {
+        filesState.ui.fileContextMenuPopoverOpen = false
+    }
 </script>
 
 
@@ -292,6 +296,7 @@
                 {#if filesState.data.entries != null && (filesState.data.folderMeta || stateMeta.isArrayOnly)}
                     <div 
                         bind:this={filesState.scroll.container} 
+                        on:scroll|passive|self={onScroll}
                         class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both relative
                             {filesState.data.fileMeta || filesState.metaLoading ? '' : ''}
                         ">

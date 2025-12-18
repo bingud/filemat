@@ -9,7 +9,7 @@ const sw = self as unknown as ServiceWorkerGlobalScope
 
 // Cache names
 const CACHE_NAME = `app-cache-${version}`
-const THUMB_CACHE_NAME = `thumb-cache-${version}`
+const THUMB_CACHE_NAME = `thumb-cache`
 
 // Assets to cache immediately
 const STATIC_ASSETS = [...build, ...files]

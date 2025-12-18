@@ -11,7 +11,6 @@ export type FileEntryHandlerProps = {
     event_dragEnd: (e: DragEvent, entry: FullFileMetadata) => void
     entryOnClick: (e: MouseEvent, entry: FullFileMetadata) => void
     onClickSelectCheckbox: (path: string) => void
-    entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void
 }
 
 export type FileListProps = FileEntryHandlerProps & {
@@ -20,12 +19,12 @@ export type FileListProps = FileEntryHandlerProps & {
     option_move: (entry: FileMetadata) => any
     option_delete: (entry: FileMetadata) => any
     option_details: (entry: FileMetadata) => any
-
 }
 
 export type FileEntryProps = FileEntryHandlerProps & {
     entry: FullFileMetadata
     entryOnContextMenu: (e: MouseEvent, entry: FullFileMetadata) => void
+    entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void
 }
 
 export function changeSortingMode(mode: typeof filesState.sortingMode) {
