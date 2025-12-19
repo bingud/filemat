@@ -2,7 +2,7 @@ import { filePermissionMeta } from "$lib/code/data/permissions";
 import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles } from "$lib/code/module/files";
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-import { filenameFromPath, formData, handleErr, handleException, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
+import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { textFileViewerState } from "./textFileViewerState.svelte";
 import { getContentUrl } from "$lib/code/util/stateUtils";
@@ -20,7 +20,9 @@ export async function option_moveSelectedFiles() {
     if (filesState.selectedEntries.hasMultiple) {
         moveMultipleFiles(newParentPath, filesState.selectedEntries.list)
     } else {
-        const selected = filesState.selectedEntries.singlePath!
+        const selected = filesState.selectedEntries.singlePath
+        if (!selected || !filesState.data.entries) return
+
         const filename = filenameFromPath(selected)
         moveFile(selected, resolvePath(newParentPath, filename))
     }

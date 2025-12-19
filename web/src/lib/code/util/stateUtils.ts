@@ -107,6 +107,11 @@ export function isDialogOpen(): boolean {
         confirmDialogState.isOpen
         || folderSelectorState.isOpen
         || inputDialogState.isOpen
+        || filesState && (
+            filesState.ui.fileContextMenuPopoverOpen
+            || filesState.ui.fileSortingMenuPopoverOpen
+            || filesState.ui.newFilePopoverOpen
+        )
     ) {        
         return true
     } else { return false }

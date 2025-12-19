@@ -15,9 +15,6 @@
     import FileList from "./FileList.svelte";
     import Loader from "$lib/component/Loader.svelte";
 
-    // Entry menu popup
-    let entryMenuButton: HTMLElement | null = $state(null)
-    let menuEntry: FullFileMetadata | null = $state(null)
 
     onMount(() => {
         // Set the selected entry path
@@ -108,7 +105,7 @@
     function option_details(entry: FileMetadata) {
         filesState.selectedEntries.setSelected(entry.path)
         filesState.ui.detailsOpen = true
-        closeEntryPopover()
+        closeFileContextMenu()
     }
 
     function option_delete(entry: FileMetadata) {
@@ -124,7 +121,7 @@
             }
         })
         
-        closeEntryPopover()
+        closeFileContextMenu()
     }
 
     async function option_move(entry: FileMetadata) {
@@ -144,7 +141,7 @@
             const newPath = appendFilename(newParentPath, entry.filename!)
             moveFile(entry.path, newPath)
         }
-        closeEntryPopover()
+        closeFileContextMenu()
     }
 
     async function option_rename(entry: FileMetadata) {
@@ -158,9 +155,8 @@
         await moveFile(entry.path, newPath)
     }
 
-    function closeEntryPopover() {
-        entryMenuButton = null
-        menuEntry = null
+    function closeFileContextMenu() {
+        filesState.ui.fileContextMenuPopoverOpen = false
     }
 
     function onClickSelectCheckbox(path: string) {

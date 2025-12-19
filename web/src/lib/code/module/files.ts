@@ -600,7 +600,10 @@ function updateFileListAfterFileMove(oldPath: string, newPath: string) {
             }
         }
     }
+    
+    filesState.selectedEntries.unselect(oldPath)
 }
+
 export async function getFileLastModifiedDate(
     path: string, 
     {

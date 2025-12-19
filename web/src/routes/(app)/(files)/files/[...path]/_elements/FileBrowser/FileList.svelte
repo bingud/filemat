@@ -27,6 +27,18 @@
     let entryMenuYPos: number | null = $state(null)
     let entryMenuXPos: number | null = $state(null)
 
+    $effect(() => {
+        if (filesState.ui.fileContextMenuPopoverOpen === false) {
+            closeContextMenu()
+        }
+    })
+
+    function closeContextMenu() {
+        entryMenuButton = null
+        menuEntry = null
+        entryMenuYPos = null
+        entryMenuXPos = null
+    }
 
     function entryMenuPopoverOnOpenChange(open: boolean) {
         if (!open) {
