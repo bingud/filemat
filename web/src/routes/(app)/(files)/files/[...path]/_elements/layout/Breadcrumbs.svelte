@@ -131,7 +131,7 @@
 </div>
 
 <!-- Context menu for breadcrumb buttons -->
-{#if contextMenuButton && menuSegment}
+{#if contextMenuButton && menuSegment && !filesState.isSearchOpen}
     {#key contextMenuButton || menuSegment}
         <div class="z-50 relative">
             <Popover.Root bind:open={contextMenuOpen} onOpenChange={onContextMenuOpenChange}>

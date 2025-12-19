@@ -164,8 +164,8 @@
         if (isSelected) {
             filesState.selectedEntries.unselect(path)
 
-            // Select folder
-            if (filesState.selectedEntries.count === 0) {
+            // Select folder if 0 files are selected
+            if (filesState.selectedEntries.count === 0 && !filesState.isSearchOpen) {
                 if (filesState.data.folderMeta) {
                     filesState.selectedEntries.addSelected(filesState.data.folderMeta.path)
                 }

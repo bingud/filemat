@@ -52,7 +52,7 @@
                 <span>Open in new tab</span>
             </a>
 
-            {#if filesState.meta.type === "allShared"}
+            {#if filesState.meta.type === "allShared" || filesState.isSearchOpen}
                 <a 
                     href={`${filesState.meta.pagePath}${parentFromPath(menuEntry.path)}`}
                     on:click={close}
