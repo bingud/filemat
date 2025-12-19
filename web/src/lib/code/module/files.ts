@@ -402,7 +402,6 @@ export async function deleteFiles(entries: FileMetadata[]) {
     }
     
     const status = response.code
-    const text = response.content
     const json = response.json()
     
     if (status.failed) {
@@ -414,9 +413,10 @@ export async function deleteFiles(entries: FileMetadata[]) {
         return
     }
 
+    const successfullyDeleted = json as string[]
     // Remove the deleted entry from the current entries list
     if (filesState.data.entries && entries) {
-        filesState.data.entries = filesState.data.entries.filter(e => paths.includes(e.path) === false)
+        filesState.data.entries = filesState.data.entries.filter(e => successfullyDeleted.includes(e.path) === false)
     }
 
     // Navigate to parent folder if current file was deleted
@@ -434,17 +434,13 @@ export async function deleteFiles(entries: FileMetadata[]) {
     }
     
     // If deleted entry was selected, clear selection
-    filesState.selectedEntries.unselectAll(paths)
+    filesState.selectedEntries.unselectAll(successfullyDeleted)
 
-    const deletedEntries = parseInt(text)
-    if (deletedEntries != null) {
-        if (entries.length !== deletedEntries) {
-            const failedEntries = entries.length - deletedEntries
-            handleErr({
-                description: `Server did not delete all requested files. Deleted ${deletedEntries} of ${entries.length}.`,
-                notification: `Failed to delete ${failedEntries} file${failedEntries === 1 ? '' : 's'}.`
-            })
-        }
+    const unsuccessfulCount = paths.length - successfullyDeleted.length
+    if (unsuccessfulCount > 0) {
+        handleErr({
+            notification: `Failed to delete ${unsuccessfulCount} file${letterS(unsuccessfulCount)}.`
+        })
     }
 }
 

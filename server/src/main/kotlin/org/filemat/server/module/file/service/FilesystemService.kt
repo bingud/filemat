@@ -9,8 +9,10 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
-import java.io.File
 import java.lang.UnsupportedOperationException
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
@@ -22,7 +24,9 @@ import kotlin.io.path.*
  * For easier unit tests
  */
 @Service
-class FilesystemService {
+class FilesystemService(
+    private val logService: LogService,
+) {
 
     final var tusFileService: TusFileUploadService? = null
         private set
@@ -52,51 +56,25 @@ class FilesystemService {
         }
     }
 
-    fun deleteFile(path: FilePath): Result<Unit> {
-        val file = path.path.toFile()
-        if (!file.exists()) return Result.notFound()
+    private fun deleteChildrenManually(path: Path, excludedPath: String): Result<Unit> {
+        val children = runCatching {
+            path.listDirectoryEntries()
+        } .getOrElse { return Result.error("Failed to list folder entries.") }
 
-        val dataPath = Props.dataFolder
-
-        // 1) Deleting the data folder itself?
-        if (file.absolutePath.startsWith(dataPath)) {
-            return if (State.App.allowWriteDataFolder) {
-                if (file.deleteRecursively()) Result.ok()
-                else Result.error("Failed to delete data folder.")
-            } else {
-                Result.reject("Cannot edit ${Props.appName} data folder.")
-            }
-        }
-
-        // 2) Deleting a directory that contains the data folder, but write is disallowed?
-        if (!State.App.allowWriteDataFolder
-            && file.isDirectory
-            && dataPath.startsWith(file.absolutePath)
-        ) {
-            return deleteChildrenManually(file, dataPath)
-        }
-
-        // 3) Everything else: normal recursive delete
-        return if (file.deleteRecursively()) Result.ok()
-        else Result.error("File deletion failed.")
-    }
-
-    private fun deleteChildrenManually(directory: File, dataPath: String): Result<Unit> {
-        val children = directory.listFiles()
-            ?: return Result.error("Failed to list directory contents.")
         var failed = false
 
         for (child in children) {
             when {
                 // 3a) the data folder itself: dive in but never remove it
-                child.absolutePath == dataPath -> {
-                    val sub = deleteChildrenManually(child, dataPath)
+                child.pathString == excludedPath -> {
+                    val sub = deleteChildrenManually(child, excludedPath)
                     if (sub.hasError) failed = true
                 }
                 // 3b) anything else: drop the whole subtree
                 else -> {
-                    if (!child.deleteRecursively()) {
-                        System.err.println("Failed to delete: ${child.absolutePath}")
+                    val deletionResult = internal_deleteFile(child, recursive = true)
+                    if (deletionResult.isNotSuccessful) {
+                        System.err.println("Failed to delete: ${child.pathString}")
                         failed = true
                     }
                 }
@@ -106,7 +84,6 @@ class FilesystemService {
         return if (failed) Result.error("Some files could not be deleted.")
         else Result.ok()
     }
-
 
     /**
      * Returns whether file is in a supported filesystem
@@ -131,27 +108,72 @@ class FilesystemService {
             Result.reject("This directory cannot be replaced because it is not empty.")
         } catch (e: UnsupportedOperationException) {
             Result.error("This move operation failed because it is unsupported.")
+        } catch (e: AccessDeniedException) {
+            Result.error("Missing permission to move file.")
         } catch (e: Exception) {
             Result.error("Failed to move file.")
         }
     }
 
-    @OptIn(ExperimentalPathApi::class)
     fun deleteFile(target: FilePath, recursive: Boolean): Result<Unit> {
+        val targetIsProtectedFolder = target.path.startsWith(Props.dataFolder)
+        val containsProtectedFolder = Props.dataFolderPath.startsWith(target.path)
+        val isFolderProtected = State.App.allowWriteDataFolder == false
+
+        val affectsProtectedFolder = (targetIsProtectedFolder || containsProtectedFolder) && isFolderProtected
+
+        if (!target.path.exists()) return Result.notFound()
+
+        // Check if deleted file affects the Filemat data folder
+        // Delete recursively without deleting the protected folder
+        if (affectsProtectedFolder) {
+            if (targetIsProtectedFolder || !recursive) {
+                return Result.reject("Cannot delete ${Props.appName} data folder.")
+            }
+
+            if (containsProtectedFolder) {
+                if (!recursive) {
+                    return Result.reject("Folder cannot be deleted because it is not empty.")
+                }
+                return deleteChildrenManually(target.path, excludedPath = Props.dataFolder)
+            }
+        }
+
+        return internal_deleteFile(target.path, recursive)
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    private fun internal_deleteFile(path: Path, recursive: Boolean): Result<Unit> {
         return try {
             if (recursive) {
-                target.path.deleteRecursively()
+                path.deleteRecursively()
             } else {
-                target.path.deleteExisting()
+                path.deleteExisting()
             }
             Result.ok()
         } catch (e: NoSuchFileException) {
             Result.notFound()
+        } catch (e: DirectoryNotEmptyException) {
+            Result.reject("Folder cannot be deleted because it is not empty.")
+        } catch (e: FileSystemException) {
+            // This catches AccessDeniedException and generic recursive failures
+            val isPermissionError = e.suppressed.any { it is AccessDeniedException } || e is AccessDeniedException
+
+            if (isPermissionError) {
+                Result.error("Missing permission to delete file.")
+            } else {
+                Result.error("Failed to delete file due to filesystem error.")
+            }
         } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.DELETE_FILE,
+                description = "Error when deleting a file.",
+                message = e.stackTraceToString(),
+            )
             Result.error("Failed to delete file.")
         }
     }
-
 
     /**
      * Gets metadata for a file.
@@ -182,13 +204,6 @@ class FilesystemService {
             isExecutable = if (State.App.followSymlinks) Files.isExecutable(path.path) else true,
             isWritable = if (State.App.followSymlinks) Files.isExecutable(path.path) else false,
         )
-    }
-
-    /**
-     * Returns list of files for a folder
-     */
-    fun listFiles(file: File): List<File>? {
-        return file.listFiles()?.toList()
     }
 
     /**

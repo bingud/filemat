@@ -1,9 +1,9 @@
 package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.properties.NonDeletableSystemPaths
 import org.filemat.server.config.properties.SensitiveFolderPaths
+import java.nio.file.Path
 
 /**
  * Contains fixed configuration properties and other constants.
@@ -12,14 +12,14 @@ object Props {
 
     const val appName = "Filemat"
     const val dataFolder = "/var/lib/filemat"
+    val dataFolderPath = Path.of(dataFolder)
+
     const val setupCodeFile = "$dataFolder/setup-code.txt"
     const val authCodeFile = "$dataFolder/auth-code.txt"
     const val defaultUploadFolderPath = "/tmp/filemat"
 
     val sensitiveFolders = SensitiveFolderPaths
     val nonDeletableFolders = NonDeletableSystemPaths
-
-    val startupTime = unixNow()
 
     /**
      * Holds role-related values

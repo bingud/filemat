@@ -13,11 +13,9 @@ import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.TusService
-import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
@@ -42,8 +40,6 @@ class FileController(
     private val fileService: FileService,
     private val tusService: TusService,
     private val filesystemService: FilesystemService,
-    private val fileShareService: FileShareService,
-    private val entityService: EntityService,
 ) : AController() {
 
     @Unauthenticated
@@ -244,7 +240,8 @@ class FileController(
         val pathList = stringList.map { FilePath.of(it) }
 
         fileService.deleteFiles(user, pathList).let {
-            return ok("$it")
+            val serialized = Json.encodeToString(it.map { it.pathString })
+            return ok(serialized)
         }
     }
 

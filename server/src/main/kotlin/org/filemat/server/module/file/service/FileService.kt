@@ -1,6 +1,5 @@
 package org.filemat.server.module.file.service
 
-import com.github.f4b6a3.ulid.Ulid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -21,11 +20,9 @@ import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
-import org.filemat.server.module.sharedFiles.model.FileShare
 import org.filemat.server.module.sharedFiles.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
@@ -36,9 +33,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.io.path.PathWalkOption
 import kotlin.io.path.pathString
-import kotlin.io.path.walk
 
 
 /**
@@ -286,7 +281,7 @@ class FileService(
         }
 
         // Perform deletion
-        filesystem.deleteFile(canonicalPath).let {
+        filesystem.deleteFile(canonicalPath, recursive = true).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -302,16 +297,15 @@ class FileService(
 
     /**
      * Deletes a list of file paths.
-     * Returns the number of successfully deleted files.
+     * @return List of successfully deleted paths
      */
-    fun deleteFiles(user: Principal, rawPathList: List<FilePath>): Int {
-        var deleted = 0
-        var failed = 0
+    fun deleteFiles(user: Principal, rawPathList: List<FilePath>): List<FilePath> {
+        val successful = mutableListOf<FilePath>()
         rawPathList.forEach { path ->
             val result = deleteFile(user, path)
-            if (result.isNotSuccessful) failed++ else deleted++
+            if (result.isSuccessful) successful.add(path)
         }
-        return deleted
+        return successful
     }
 
     fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {
@@ -753,19 +747,6 @@ class FileService(
             // Check permissions for entry
             val hasPermission = permissions.contains(FilePermission.READ)
             if (!hasPermission) return@mapNotNull null
-
-            val entityId = entityService.getEntityIdByPath(entryPath, UserAction.READ_FOLDER)
-                .let {
-                    if (it.hasError) return it.cast()
-                    if (it.isNotSuccessful) return@let null
-                    it.value
-                }
-            val shares: List<FileShare> = entityId?.let { fileShareService.getSharesByEntityId(entityId, UserAction.READ_FOLDER) }
-                ?.let {
-                    if (it.hasError) return it.cast()
-                    if (it.isNotSuccessful) return@let null
-                    it.value
-                } ?: emptyList()
 
             val fullMeta = FullFileMetadata.from(meta, permissions)
 
