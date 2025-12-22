@@ -9,11 +9,12 @@ import { getContentUrl } from "../util/stateUtils"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
 
-
-export type StateMetadata = { type: "files",      fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
-                          | { type: "shared",     fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean, shareId: string, shareToken: string, shareTopLevelFilename: string,  }
-                          | { type: "accessible", fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
-                          | { type: "allShared",  fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
+type StateMetadataProps = { fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
+export type StateMetadata = { type: "files",                                                                            } & StateMetadataProps
+                          | { type: "shared",      shareId: string, shareToken: string, shareTopLevelFilename: string,  } & StateMetadataProps
+                          | { type: "accessible",                                                                       } & StateMetadataProps
+                          | { type: "allShared",                                                                        } & StateMetadataProps
+                          | { type: "saved",                                                                            } & StateMetadataProps
 
 
 class FilesState {

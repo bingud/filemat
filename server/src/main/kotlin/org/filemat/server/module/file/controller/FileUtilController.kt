@@ -7,7 +7,6 @@ import org.bytedeco.javacv.Java2DFrameConverter
 import org.filemat.server.common.State
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
 import org.springframework.http.ContentDisposition
@@ -30,7 +29,7 @@ import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.service.EntityService
-import org.filemat.server.module.sharedFiles.service.FileShareService
+import org.filemat.server.module.sharedFile.service.FileShareService
 import java.awt.geom.AffineTransform
 
 

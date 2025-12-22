@@ -1,7 +1,7 @@
-package org.filemat.server.module.sharedFiles.repository
+package org.filemat.server.module.sharedFile.repository
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.module.sharedFiles.model.FileShare
+import org.filemat.server.module.sharedFile.model.FileShare
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.CrudRepository

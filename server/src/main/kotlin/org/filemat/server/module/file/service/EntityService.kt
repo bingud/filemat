@@ -12,7 +12,7 @@ import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.service.EntityPermissionService
-import org.filemat.server.module.sharedFiles.service.FileShareService
+import org.filemat.server.module.sharedFile.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service

@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
-    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder } from "$lib/code/util/codeUtil.svelte"
+    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, safeFetch, formData, handleException, handleErr } from "$lib/code/util/codeUtil.svelte"
     import { onMount } from "svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
@@ -144,6 +144,50 @@
         closeFileContextMenu()
     }
 
+    async function option_save(entry: FileMetadata, action: "save" | "unsave") {
+        const isSave = action === "save"
+
+        const path = isSave ? `create` : `remove`
+        const response = await safeFetch(`/api/v1/saved-file/${path}`, {
+            body: formData({ path: entry.path })
+        })
+        if (response.failed) {
+            handleException(`Failed to ${action} file.`, `Failed to ${action} file.`, response.exception)
+            return
+        }
+
+        const json = response.json()
+        if (response.code.failed) {
+            handleErr({
+                description: `Failed to ${action} file`,
+                notification: json.message || `Failed to ${action} file.`,
+                isServerDown: response.code.serverDown
+            })
+            return
+        }
+
+        if (filesState.isSearchOpen && filesState.search.entries) {
+            const listEntry = filesState.search.entries.find(v => v.path === entry.path)
+            if (listEntry) listEntry.isSaved = isSave
+        }
+        
+        if (filesState.data.entries) {
+            const listEntry = filesState.data.entries.find(v => v.path === entry.path)
+
+            if (!isSave && filesState.meta.type === "saved" && listEntry) {
+                const index = filesState.data.entries.indexOf(listEntry)
+
+                if (index !== -1) {
+                    filesState.data.entries.splice(index, 1)
+                }
+            } else {
+                if (listEntry) listEntry.isSaved = isSave
+            }
+        }
+        
+        closeFileContextMenu()
+    }
+
     async function option_rename(entry: FileMetadata) {
         filesState.ui.fileContextMenuPopoverOpen = false
         const newFilename = await inputDialogState.show({title: "Rename file", message: "Enter the new filename:", confirmText: "Rename", cancelText: "Cancel"})
@@ -270,6 +314,7 @@
                 {option_move}
                 {option_delete}
                 {option_details}
+                {option_save}
             ></FileList>
         </div>
     {:else}
@@ -304,6 +349,7 @@
             {option_move}
             {option_delete}
             {option_details}
+            {option_save}
         ></FileList>
     </div>
 {:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
@@ -314,6 +360,10 @@
     {:else if filesState.meta.type === "accessible"}
         <div class="center">
             <p>You don't have access to any files.</p>
+        </div>
+    {:else if filesState.meta.type === "saved"}
+        <div class="center">
+            <p>No files have been saved.</p>
         </div>
     {:else}
         <div class="center">

@@ -19,6 +19,7 @@
         option_move,
         option_delete,
         option_details,
+        option_save
     }: FileListProps = $props()
 
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -120,16 +121,16 @@
         <!-- Each entry is a grid item -->
         {#each sortedEntries as entry (entry.path)}
             <RowFileEntry
-                entry={entry}
-                event_dragStart={event_dragStart}
-                event_dragOver={event_dragOver}
-                event_dragLeave={event_dragLeave}
-                event_drop={event_drop}
-                event_dragEnd={event_dragEnd}
-                entryOnClick={entryOnClick}
-                entryOnContextMenu={entryOnContextMenu}
-                onClickSelectCheckbox={onClickSelectCheckbox}
-                entryMenuOnClick={entryMenuOnClick}
+                {entry}
+                {event_dragStart}
+                {event_dragOver}
+                {event_dragLeave}
+                {event_drop}
+                {event_dragEnd}
+                {entryOnClick}
+                {entryOnContextMenu}
+                {onClickSelectCheckbox}
+                {entryMenuOnClick}
             />
         {/each}
     {:else if filesState.ui.fileViewType === "tiles"}
@@ -138,16 +139,16 @@
         >
             {#each sortedEntries as entry (entry.path)}
                 <GridFileEntry
-                    entry={entry}
-                    event_dragStart={event_dragStart}
-                    event_dragOver={event_dragOver}
-                    event_dragLeave={event_dragLeave}
-                    event_drop={event_drop}
-                    event_dragEnd={event_dragEnd}
-                    entryOnClick={entryOnClick}
-                    entryOnContextMenu={entryOnContextMenu}
-                    onClickSelectCheckbox={onClickSelectCheckbox}
-                    entryMenuOnClick={entryMenuOnClick}
+                    {entry}
+                    {event_dragStart}
+                    {event_dragOver}
+                    {event_dragLeave}
+                    {event_drop}
+                    {event_dragEnd}
+                    {entryOnClick}
+                    {entryOnContextMenu}
+                    {onClickSelectCheckbox}
+                    {entryMenuOnClick}
                 />
             {/each}
         </div>
@@ -160,13 +161,14 @@
     {#key entryMenuButton || menuEntry}
         <div class="z-50 relative">
             <FileContextMenuPopover
-                entryMenuButton={entryMenuButton}
-                entryMenuPopoverOnOpenChange={entryMenuPopoverOnOpenChange}
-                menuEntry={menuEntry}
-                option_rename={option_rename}
-                option_move={option_move}
-                option_delete={option_delete}
-                option_details={option_details}
+                {entryMenuButton}
+                {entryMenuPopoverOnOpenChange}
+                {menuEntry}
+                {option_rename}
+                {option_move}
+                {option_delete}
+                {option_details}
+                {option_save}
             ></FileContextMenuPopover>
         </div>
     {/key}

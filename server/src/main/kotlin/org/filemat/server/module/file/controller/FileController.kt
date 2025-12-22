@@ -86,7 +86,7 @@ class FileController(
                         resultFlow.collect { result ->
                             if (result.isSuccessful) {
                                 synchronized(writer) {
-                                    writer.write(Json.encodeToString(result.value))
+                                    writer.write(JsonNonNull.encodeToString(result.value))
                                     writer.write("\n")
                                     writer.flush()
                                 }
@@ -140,7 +140,7 @@ class FileController(
             if (it.rejected) return bad(it.error)
             it.value
         }
-        val serialized = Json.encodeToString(result)
+        val serialized = JsonNonNull.encodeToString(result)
 
         return ok(serialized)
     }
@@ -155,7 +155,7 @@ class FileController(
             if (it.hasError) return internal(it.error, "")
             it.value
         }
-        val serialized = Json.encodeToString(result)
+        val serialized = JsonNonNull.encodeToString(result)
 
         return ok(serialized)
     }

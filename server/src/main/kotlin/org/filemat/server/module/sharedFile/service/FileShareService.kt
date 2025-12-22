@@ -1,4 +1,4 @@
-package org.filemat.server.module.sharedFiles.service
+package org.filemat.server.module.sharedFile.service
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.f4b6a3.ulid.Ulid
@@ -20,9 +20,9 @@ import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
-import org.filemat.server.module.sharedFiles.model.FileShare
-import org.filemat.server.module.sharedFiles.model.isExpired
-import org.filemat.server.module.sharedFiles.repository.FileShareRepository
+import org.filemat.server.module.sharedFile.model.FileShare
+import org.filemat.server.module.sharedFile.model.isExpired
+import org.filemat.server.module.sharedFile.repository.FileShareRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.security.crypto.password.PasswordEncoder

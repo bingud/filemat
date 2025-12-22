@@ -1,7 +1,6 @@
-package org.filemat.server.module.sharedFiles.model
+package org.filemat.server.module.sharedFile.model
 
 import com.github.f4b6a3.ulid.Ulid
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.UlidSerializer

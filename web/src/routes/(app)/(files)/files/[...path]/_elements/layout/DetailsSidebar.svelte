@@ -19,7 +19,7 @@
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import Tooltip from "$lib/component/popover/Tooltip.svelte";
-    import FileSharingDialog from "../ui/FileSharingDialog.svelte";
+    import FileSharingDialog from "../ui/fileSharing/FileSharingDialog.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
 
     type PermissionData = {

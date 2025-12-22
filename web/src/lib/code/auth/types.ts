@@ -13,6 +13,7 @@ export type FileMetadata = {
 
 export type FullFileMetadata = FileMetadata & {
     permissions: FilePermission[],
+    isSaved?: boolean,
 }
 
 export type FileShare = {

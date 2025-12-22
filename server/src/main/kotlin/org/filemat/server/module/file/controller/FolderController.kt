@@ -1,8 +1,8 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
-import kotlinx.serialization.json.Json
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.util.JsonNonNull
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
@@ -67,7 +67,7 @@ class FolderController(private val fileService: FileService) : AController() {
         if (result.notFound) return notFound()
         val list = result.value
 
-        val serialized = Json.encodeToString(list)
+        val serialized = JsonNonNull.encodeToString(list)
         return ok(serialized)
     }
 

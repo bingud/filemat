@@ -118,3 +118,10 @@ CREATE TABLE IF NOT EXISTS folder_visibility (
     is_exposed INTEGER NOT NULL,
     created_date INTEGER NOT NULL
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS saved_files (
+   user_id TEXT NOT NULL,
+   path TEXT NOT NULL,
+   created_date INTEGER NOT NULL,
+   PRIMARY KEY (user_id, path)
+) STRICT;

@@ -4,6 +4,8 @@
     import { parentFromPath } from "$lib/code/util/codeUtil.svelte";
     import { getContentUrl } from "$lib/code/util/stateUtils";
     import { Popover } from "$lib/component/bits-ui-wrapper";
+    import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
+    import BookmarkXIcon from "$lib/component/icons/BookmarkXIcon.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -20,6 +22,7 @@
         option_move,
         option_delete,
         option_details,
+        option_save,
     }: {
         entryMenuButton: HTMLElement,
         entryMenuPopoverOnOpenChange: (value: boolean) => void,
@@ -28,6 +31,7 @@
         option_move: (entry: FileMetadata) => any,
         option_delete: (entry: FileMetadata) => any,
         option_details: (entry: FileMetadata) => any,
+        option_save: (entry: FileMetadata, action: "save" | "unsave") => any,
     } = $props()
 
     function close() {
@@ -105,12 +109,32 @@
                 </button>
             {/if}
 
+            {#if menuEntry.isSaved != null && filesState.meta.type !== "shared"}
+                <button on:click={() => { option_save(menuEntry!, menuEntry.isSaved ? "unsave" : "save") }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                    <div class="size-5 flex-shrink-0">
+                        {#if menuEntry.isSaved}
+                            <BookmarkXIcon />
+                        {:else}
+                            <BookmarkIcon />
+                        {/if}
+                    </div>
+                    <span>
+                        {#if menuEntry.isSaved}
+                            Unsave
+                        {:else}
+                            Save
+                        {/if}
+                    </span>
+                </button>
+            {/if}
+
             <button on:click={() => { option_details(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                 <div class="size-5 flex-shrink-0">
                     <InfoIcon />
                 </div>
                 <span>Details</span>
             </button>
+
             <hr class="basic-hr my-2">
             <p class="px-4 truncate opacity-70">File: {menuEntry.filename!}</p>
         </div>

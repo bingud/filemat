@@ -57,7 +57,11 @@ enum class UserAction(val index: Int) {
     READ_FILE(48),
     SHARED_FILE_LOGIN(49),
     GET_FILE_SHARE_METADATA(50),
-    SEARCH_FILE(51);
+    SEARCH_FILE(51),
+    GET_SAVED_FILE(52),
+    CREATE_SAVED_FILE(53),
+    GET_SAVED_FILE_LIST(54),
+    REMOVE_SAVED_FILE(55);
 
     companion object {
         init {

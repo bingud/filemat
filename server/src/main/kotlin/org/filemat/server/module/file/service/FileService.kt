@@ -23,7 +23,8 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
-import org.filemat.server.module.sharedFiles.service.FileShareService
+import org.filemat.server.module.savedFile.SavedFileService
+import org.filemat.server.module.sharedFile.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
@@ -47,6 +48,7 @@ class FileService(
     private val logService: LogService,
     private val filesystem: FilesystemService,
     private val fileShareService: FileShareService,
+    private val savedFileService: SavedFileService,
 ) {
 
     fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean): Pair<Result<FilePath>, Boolean> {
@@ -174,7 +176,16 @@ class FileService(
 
             // Get metadata
             val meta =  filesystem.getMetadata(FilePath.of(entity.path)) ?: return@mapNotNull null
-            val fullMeta = FullFileMetadata.from(meta, entityPermission.permissions)
+
+            // Get saved status
+            val isSaved = savedFileService.isSaved(user.userId, entity.path)
+
+            val fullMeta = FullFileMetadata.from(
+                meta,
+                permissions = entityPermission.permissions,
+                isSaved = isSaved
+            )
+
             return@mapNotNull fullMeta
         }
 
@@ -557,8 +568,9 @@ class FileService(
             ?: return Result.notFound()
 
         val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(user, canonicalPath) } ?: setOf(FilePermission.READ)
+        val isSaved = if (user != null) savedFileService.isSaved(user.userId, meta.path) else null
 
-        val fullMeta = FullFileMetadata.from(meta, permissions)
+        val fullMeta = FullFileMetadata.from(meta, permissions = permissions, isSaved = isSaved)
         return fullMeta.toResult()
     }
 
@@ -748,7 +760,9 @@ class FileService(
             val hasPermission = permissions.contains(FilePermission.READ)
             if (!hasPermission) return@mapNotNull null
 
-            val fullMeta = FullFileMetadata.from(meta, permissions)
+            val isSaved = if (user != null) savedFileService.isSaved(user.userId, meta.path) else null
+
+            val fullMeta = FullFileMetadata.from(meta, permissions = permissions, isSaved = isSaved)
 
             return@mapNotNull fullMeta
         }

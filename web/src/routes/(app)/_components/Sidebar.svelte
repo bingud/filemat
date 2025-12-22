@@ -17,10 +17,11 @@
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar lg:w-sidebar-desktop h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files}>All files</a>
+                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files}>All</a>
                 <a href="/home" on:click={hide} class="sidebar-button">Home folder</a>
+                <a href="/saved-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.savedFiles}>Saved</a>
                 <a href="/accessible-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.accessibleFiles}>Accessible to me</a>
-                <a href="/shared-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.allSharedFiles}>Shared files</a>
+                <a href="/shared-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.allSharedFiles}>Shared</a>
             </div>
 
 

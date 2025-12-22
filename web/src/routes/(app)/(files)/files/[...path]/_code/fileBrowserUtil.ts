@@ -19,6 +19,7 @@ export type FileListProps = FileEntryHandlerProps & {
     option_move: (entry: FileMetadata) => any
     option_delete: (entry: FileMetadata) => any
     option_details: (entry: FileMetadata) => any
+    option_save: (entry: FileMetadata, action: "save" | "unsave") => any
 }
 
 export type FileEntryProps = FileEntryHandlerProps & {

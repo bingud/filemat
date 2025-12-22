@@ -8,7 +8,8 @@ const sitePaths = {
     "/files": "files",
     "/settings": "settings",
     "/share": "sharedFiles",
-    "/shared-files": "allSharedFiles"
+    "/shared-files": "allSharedFiles",
+    "/saved-files": "savedFiles",
 } as const
 
 class AppState {

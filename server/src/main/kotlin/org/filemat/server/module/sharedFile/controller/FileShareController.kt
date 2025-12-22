@@ -1,4 +1,4 @@
-package org.filemat.server.module.sharedFiles.controller
+package org.filemat.server.module.sharedFile.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
@@ -10,7 +10,7 @@ import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.common.util.realIp
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.sharedFiles.service.FileShareService
+import org.filemat.server.module.sharedFile.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
