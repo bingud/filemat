@@ -7,7 +7,8 @@
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
-    import { settingSections } from "../settings";
+    
+    import { settingSections } from "$lib/code/module/settings";
     import { openSettingsSection } from "$lib/code/util/uiUtil";
 
     const title = "Roles"

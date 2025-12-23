@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { snippet } from "$lib/code/types/types"
+    import type { Snippet } from "svelte"
     import { Tooltip } from "bits-ui"
 
     let {
@@ -10,26 +10,34 @@
         side = "top",
         align = "center",
     }: {
-        children: snippet,
-        text: string,
-        delay?: number,
-        class?: string,
-        side?: "top" | "bottom",
+        children: Snippet
+        text: string
+        delay?: number
+        class?: string
+        side?: "top" | "bottom"
         align?: "start" | "center" | "end"
     } = $props()
+
+    let open = $state(false)
 </script>
 
-
-<Tooltip.Root delayDuration={delay}>
-    <Tooltip.Trigger>
-        {#snippet child({props})}
+<Tooltip.Root delayDuration={delay} bind:open>
+    <Tooltip.Trigger
+        onclick={() => (open = !open)}
+        onpointerleave={() => (open = false)}
+    >
+        {#snippet child({ props })}
             <span {...props} class={classes}>
                 {@render children()}
             </span>
         {/snippet}
     </Tooltip.Trigger>
     <Tooltip.Portal>
-        <Tooltip.Content {side} {align} class="surface-popover-container px-3 !max-w-screen overflow-hidden !break-words">
+        <Tooltip.Content
+            {side}
+            {align}
+            class="surface-popover-container px-3 !max-w-screen overflow-hidden !break-words"
+        >
             {text}
         </Tooltip.Content>
     </Tooltip.Portal>

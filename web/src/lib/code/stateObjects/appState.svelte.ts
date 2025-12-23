@@ -13,6 +13,8 @@ const sitePaths = {
 } as const
 
 class AppState {
+    settings = new SettingState()
+
     /**
      * Indicates whether application has been set up.
      */
@@ -80,6 +82,10 @@ class AppState {
         })
         return state as Record<ValuesOf<typeof sitePaths>, boolean>
     })
+}
+
+class SettingState {
+    loadAllPreviews = $state(false)
 }
 
 /**

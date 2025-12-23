@@ -1,7 +1,9 @@
 <script lang="ts">
     import { uiState, type SettingSectionId } from "$lib/code/stateObjects/uiState.svelte"
     import { goto } from "$app/navigation"
-    import { settingSections, type SettingsSection } from "../settings"
+    
+    import { type SettingsSection } from "$lib/code/module/settings";
+    import { settingSections } from "$lib/code/module/settings";
     import CustomSidebar from "$lib/component/CustomSidebar.svelte";
 
     let { classes }: { classes: string } = $props()

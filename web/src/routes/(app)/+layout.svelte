@@ -9,6 +9,7 @@
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
     import { filesState } from '$lib/code/stateObjects/filesState.svelte';
     import { page } from '$app/state';
+    import { loadPreferenceSettings } from '$lib/code/module/settings';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
@@ -31,6 +32,8 @@
                     return
                 }
             }
+
+            loadPreferenceSettings()
 
             mounted = true
             startStateAutoSync()

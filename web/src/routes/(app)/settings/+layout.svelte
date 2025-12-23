@@ -4,7 +4,8 @@
     import { onMount } from "svelte";
     import SettingsSidebar from "./_components/SettingsSidebar.svelte";
     import { page } from "$app/state";
-    import { settingSections } from "./settings";
+    
+    import { settingSections } from "$lib/code/module/settings";
     import { openSettingsSection } from "$lib/code/util/uiUtil";
     import { pageTitle } from "$lib/code/util/codeUtil.svelte";
 

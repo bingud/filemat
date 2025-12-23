@@ -1,5 +1,6 @@
 import { goto } from "$app/navigation"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
+import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 
 
@@ -42,19 +43,25 @@ export function changeSortingMode(mode: typeof filesState.sortingMode) {
 }
 
 export class ImageLoadQueue {
+    // Target element for IntersectionObserver root (defaults to viewport if null)
     private scrollContainer: HTMLElement | null = null
+    
+    // Observers for detecting visibility
     private viewportObserver: IntersectionObserver | null = null
     private nearbyObserver: IntersectionObserver | null = null
     
-    private pending: Set<HTMLImageElement> = new Set()
-    private highPriority: Set<HTMLImageElement> = new Set()
-    private lowPriority: Set<HTMLImageElement> = new Set()
-    private loading: Set<HTMLImageElement> = new Set()
+    // Queue management sets
+    private pending: Set<HTMLImageElement> = new Set() // Registered but not loaded
+    private highPriority: Set<HTMLImageElement> = new Set() // Currently in viewport
+    private lowPriority: Set<HTMLImageElement> = new Set() // Close to viewport
+    private loading: Set<HTMLImageElement> = new Set() // Currently fetching
     
     private processing = false
-    private concurrency = 2
-    private loadDistance = 500
+    private concurrency = 2 // Max simultaneous downloads
+    private loadDistance = 500 // Pixel margin for "nearby" detection
 
+
+    // Sets the scroll container and resets observers to use the new root
     setScrollContainer(container: HTMLElement | null) {
         this.scrollContainer = container
         this.reinitObservers()
@@ -65,6 +72,7 @@ export class ImageLoadQueue {
             root: this.scrollContainer
         }
 
+        // Detects images actually inside the visible area
         this.viewportObserver = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
@@ -81,10 +89,12 @@ export class ImageLoadQueue {
             { ...options, rootMargin: "0px" }
         )
 
+        // Detects images approaching the viewport (prefetching)
         this.nearbyObserver = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
                     const img = entry.target as HTMLImageElement
+                    // Only add to low priority if not already high priority
                     if (entry.isIntersecting && !this.highPriority.has(img)) {
                         this.lowPriority.add(img)
                     } else if (!entry.isIntersecting) {
@@ -97,6 +107,7 @@ export class ImageLoadQueue {
         )
     }
 
+    // Restarts observers (e.g., when container changes) and re-observes pending images
     private reinitObservers() {
         this.viewportObserver?.disconnect()
         this.nearbyObserver?.disconnect()
@@ -111,6 +122,7 @@ export class ImageLoadQueue {
         }
     }
 
+    // Registers an image to be managed by the queue
     register(img: HTMLImageElement) {
         if (!img.hasAttribute('data-src')) return
 
@@ -121,8 +133,12 @@ export class ImageLoadQueue {
         this.pending.add(img)
         this.viewportObserver!.observe(img)
         this.nearbyObserver!.observe(img)
+        
+        // Trigger process in case we are in loadAllPreviews mode or slots are open
+        this.process() 
     }
 
+    // Cleans up an image from all queues and observers
     unregister(img: HTMLImageElement) {
         this.pending.delete(img)
         this.highPriority.delete(img)
@@ -131,6 +147,7 @@ export class ImageLoadQueue {
         this.nearbyObserver?.unobserve(img)
     }
 
+    // Debounced trigger for the processing loop
     private process() {
         if (this.processing) return
         this.processing = true
@@ -144,6 +161,7 @@ export class ImageLoadQueue {
         })
     }
 
+    // Finds candidates to load based on priority and concurrency limits
     private runProcessLoop() {
         while (this.loading.size < this.concurrency) {
             const capacity = this.concurrency - this.loading.size
@@ -151,18 +169,31 @@ export class ImageLoadQueue {
 
             let candidate: HTMLImageElement | null = null
 
-            for (const img of this.highPriority) {
-                if (this.pending.has(img) && !this.loading.has(img)) {
-                    candidate = img
-                    break
+            if (appState.settings.loadAllPreviews) {
+                // If loading all, ignore priority sets and take the next pending image
+                // Set iteration follows insertion order
+                for (const img of this.pending) {
+                    if (!this.loading.has(img)) {
+                        candidate = img
+                        break
+                    }
                 }
-            }
-
-            if (!candidate) {
-                for (const img of this.lowPriority) {
+            } else {
+                // Priority mode: Check visible images first
+                for (const img of this.highPriority) {
                     if (this.pending.has(img) && !this.loading.has(img)) {
                         candidate = img
                         break
+                    }
+                }
+
+                // If no visible images, check nearby images
+                if (!candidate) {
+                    for (const img of this.lowPriority) {
+                        if (this.pending.has(img) && !this.loading.has(img)) {
+                            candidate = img
+                            break
+                        }
                     }
                 }
             }
@@ -173,6 +204,7 @@ export class ImageLoadQueue {
         }
     }
 
+    // Initiates the actual image load
     private startLoad(img: HTMLImageElement) {
         if (this.loading.has(img)) return
 
@@ -185,6 +217,7 @@ export class ImageLoadQueue {
         this.pending.delete(img)
         this.loading.add(img)
         
+        // Stop observing once loading starts
         this.viewportObserver?.unobserve(img)
         this.nearbyObserver?.unobserve(img)
         this.highPriority.delete(img)
@@ -194,7 +227,7 @@ export class ImageLoadQueue {
             img.onload = null
             img.onerror = null
             this.loading.delete(img)
-            this.process()
+            this.process() // Trigger next item in queue
         }
 
         img.onload = cleanup
@@ -206,6 +239,7 @@ export class ImageLoadQueue {
         img.src = src
     }
 
+    // Svelte Action to attach to <img> elements
     getAction() {
         return (node: HTMLImageElement) => {
             let lastSrc = node.getAttribute('data-src')
@@ -217,7 +251,7 @@ export class ImageLoadQueue {
                     if (currentSrc !== lastSrc) {
                         lastSrc = currentSrc
                         this.unregister(node)
-                        node.removeAttribute('src')
+                        node.removeAttribute('src') // Reset src so it can be lazy loaded again
                         this.register(node)
                     }
                 },
@@ -228,6 +262,7 @@ export class ImageLoadQueue {
         }
     }
 
+    // Cleanup method for component teardown
     destroy() {
         this.viewportObserver?.disconnect()
         this.nearbyObserver?.disconnect()

@@ -1,9 +1,7 @@
 <script lang="ts">
     import { autofocus, disabledFor } from "$lib/code/util/uiUtil";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { explicitEffect, formData, handleErr, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
-    import { onMount } from "svelte";
     import QRCode from 'qrcode'
     import CustomDialog from "$lib/component/popover/CustomDialog.svelte";
     import { Validator } from "$lib/code/util/validation";
@@ -11,7 +9,6 @@
     import MfaSetupDialog from "$lib/component/auth/MfaSetupDialog.svelte";
     import type { TotpMfaCredentials } from "$lib/code/auth/types";
 
-    const title = "Preferences"
     let credentials: TotpMfaCredentials | null = $state(null)
     let qrCodeBase64: string | null = $state(null) 
 
@@ -57,10 +54,6 @@
         }
     })
     
-    onMount(() => {
-        uiState.settings.title = title
-    })
-
     function toggleMfa() {
         if (auth.principal?.mfaTotpStatus == true) {
             disable_init()
@@ -179,11 +172,6 @@
     }
     
 </script>
-
-
-<svelte:head>
-    <title>{pageTitle("Preferences")}</title>
-</svelte:head>
 
 
 <div class="flex flex-col gap-4">
