@@ -107,7 +107,7 @@
 
 
 <div class="size-full max-h-[80svh] flex flex-col gap-4">
-    <div class="p-4 rounded-lg w-full bg-neutral-200 dark:bg-neutral-800 flex items-center gap-3">
+    <div class="p-4 rounded-lg w-full bg-surface flex items-center gap-3">
         <div class="aspect-square h-[1.2rem]">
             {#if perm.permissionType === "ROLE"}
                 <RoleIcon></RoleIcon>
@@ -125,15 +125,15 @@
         {#each valuesOf(filePermissionMeta) as permission}
             {@const id = `input-permission-${permission.id}`}
             <div class="flex gap-2 items-center">
-                <input bind:checked={selectedPermissions[permission.id]} id={id} type="checkbox">
+                <input bind:checked={selectedPermissions[permission.id]} id={id} type="checkbox" class="!size-5">
                 <label for={id}>{permission.name}</label>
             </div>
         {/each}
     </div>
 
-    <button disabled={loading} on:click={editPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !loading}Update permission{:else}Creating...{/if}</button>
+    <button disabled={loading} on:click={editPermission} class="w-full rounded-lg py-2 bg-surface-content-button disabled:opacity-50">{#if !loading}Update permission{:else}Creating...{/if}</button>
 
     <hr class="basic-hr">
     
-    <button disabled={deleting} on:click={deletePermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 hover:ring-2 hover:ring-red-500 disabled:opacity-50">{#if !deleting}Delete permission{:else}Deleting...{/if}</button>
+    <button disabled={deleting} on:click={deletePermission} class="w-full rounded-lg py-2 bg-surface-content-button hover:ring-2 hover:ring-red-500 disabled:opacity-50">{#if !deleting}Delete permission{:else}Deleting...{/if}</button>
 </div>

@@ -206,17 +206,17 @@
                 <div class="w-full flex-col">
                     <p>From</p>
                     <DatePicker bind:value={fromDate}></DatePicker>
-                    <button on:click={() => { fromDate = undefined }} class="text-sm basic-button !bg-surface-button">Reset</button>
+                    <button on:click={() => { fromDate = undefined }} class="text-sm basic-button !bg-surface-content-button">Reset</button>
                 </div>
 
                 <div class="w-full flex-col">
                     <p>To</p>
                     <DatePicker bind:value={toDate}></DatePicker>
-                    <button on:click={() => { toDate = undefined }} class="text-sm basic-button !bg-surface-button">Reset</button>
+                    <button on:click={() => { toDate = undefined }} class="text-sm basic-button !bg-surface-content-button">Reset</button>
                 </div>
 
                 <div class="w-full flex-col">
-                    <button disabled={loading} on:click={() => { loadData() }} class="basic-button !bg-surface-button rounded-md w-full text-center">Refresh</button>
+                    <button disabled={loading} on:click={() => { loadData() }} class="basic-button !bg-surface-content-button rounded-md w-full text-center">Refresh</button>
                 </div>
             </div>
         </CustomSidebar>

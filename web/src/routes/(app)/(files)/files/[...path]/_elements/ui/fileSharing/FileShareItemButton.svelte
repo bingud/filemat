@@ -26,7 +26,7 @@
 <ContextMenu.Root bind:open={contextMenuOpen}>
     <ContextMenu.Trigger>
         {#snippet child({props})}
-            <button {...props} on:click={() => { contextMenuOpen = true }} class="w-full p-3 rounded-md bg-surface hover:bg-surface-button text-left">
+            <button {...props} on:click={() => { contextMenuOpen = true }} class="w-full p-3 rounded-md bg-surface hover:bg-surface-content-button text-left">
                 <Tooltip text={share.shareId} align="start">
                     <h4 class="font-medium text-sm truncate mb-4">{share.shareId}</h4>
                 </Tooltip>

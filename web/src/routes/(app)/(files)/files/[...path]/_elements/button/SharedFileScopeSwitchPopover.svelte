@@ -14,7 +14,7 @@
 
 <Popover.Root bind:open={sharedFilesPageState.scopePopoverOpen}>
     <Popover.Trigger title="Toggle whether to show all shared files." class="h-full flex items-center justify-center">
-        <div class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
+        <div class="h-full flex items-center justify-center gap-2 bg-surface-content-button rounded-md px-4">
             <div class="h-[1.2rem]">
                 {#if sharedFilesPageState.showAll}
                     <CheckmarkIcon></CheckmarkIcon>

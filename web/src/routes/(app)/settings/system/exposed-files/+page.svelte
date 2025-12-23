@@ -261,7 +261,7 @@
             </thead> -->
             <tbody>
                 {#each entriesOf(visibilities) as [path, isExposed]}
-                    <tr class="border-b border-light">
+                    <tr class="border-b border-neutral-700">
                         <td class="p-2">{path}</td>
                         <td class="p-2 flex items-center gap-2">
                             {#if isExposed}

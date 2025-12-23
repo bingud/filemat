@@ -45,10 +45,10 @@
                 </div>
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
-                    <button on:click={onCancel} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
+                    <button on:click={onCancel} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-content-button">
                         Cancel
                     </button>
-                    <button on:click={one_next} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
+                    <button on:click={one_next} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-content-button">
                         Next
                         <ChevronRightIcon class="h-[1rem] my-auto" />
                     </button>
@@ -62,11 +62,11 @@
                 </div>
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
-                    <button on:click={goBack} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
+                    <button on:click={goBack} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-content-button">
                         <ChevronLeftIcon class="h-[1rem] my-auto" />
                         Back
                     </button>
-                    <button on:click={two_confirm} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-button">
+                    <button on:click={two_confirm} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 bg-surface-content-button">
                         Confirm
                         <ChevronRightIcon class="h-[1rem] my-auto" />
                     </button>
@@ -88,11 +88,11 @@
                 </div>
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
-                    <button on:click={goBack} class="rounded-lg bg-neutral-900 border px-6 py-3 flex gap-2 bg-surface-button">
+                    <button on:click={goBack} class="rounded-lg bg-neutral-900 border px-6 py-3 flex gap-2 bg-surface-content-button">
                         <ChevronLeftIcon class="h-[1rem] my-auto" />
                         Back
                     </button>
-                    <button use:disabledFor={6000} on:click={three_finish} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 disabled:opacity-50 bg-surface-button">
+                    <button use:disabledFor={6000} on:click={three_finish} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 disabled:opacity-50 bg-surface-content-button">
                         Continue
                         <ChevronRightIcon class="h-[1rem] my-auto" />
                     </button>

@@ -218,7 +218,7 @@
 <Dialog.Root bind:open={open}>
     <Dialog.Trigger>
         {#snippet child({props})}
-            <button {...props} title="File sharing" class="h-[2.5rem] w-fit px-3 rounded-md bg-surface-button disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 shadow-sm">
+            <button {...props} title="File sharing" class="h-[2.5rem] w-fit px-3 rounded-md bg-surface-content-button disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 shadow-sm">
                 File sharing
             </button>
         {/snippet}
@@ -241,7 +241,7 @@
 
                 <div class="flex flex-col gap-12">
                     {#if !creatingFormOpen}
-                        <button on:click={() => { creatingFormOpen = true }} class="basic-button !bg-surface-button flex gap-2">
+                        <button on:click={() => { creatingFormOpen = true }} class="basic-button !bg-surface-content-button flex gap-2">
                             <div class="size-[1.5rem]"><PlusIcon/></div>
                             Create a public link
                         </button>
@@ -286,8 +286,8 @@
                             </div>
                             
                             <div>
-                                <button on:click={createShare} disabled={isCreating} class="basic-button !bg-surface-button hover:ring-2 ring-green-500">{isCreating ? 'Creating...' : 'Create'}</button>
-                                <button on:click={cancelCreating} class="basic-button !bg-surface-button hover:ring-2 ring-red-500">Cancel</button>
+                                <button on:click={createShare} disabled={isCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-green-500">{isCreating ? 'Creating...' : 'Create'}</button>
+                                <button on:click={cancelCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-red-500">Cancel</button>
                             </div>
                         </form>
                     {/if}

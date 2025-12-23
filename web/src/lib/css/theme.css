@@ -2,46 +2,33 @@
 
 /* Design theme */
 @theme {
-    --color-bg-dark: #111111;
-    --color-surface-dark: var(--color-neutral-900);
-
-    --color-bg-light: #fafafa;
-    --color-surface-light: #e5e5e5;
-
-    /* Surface button */
-    --color-surface-button-light: var(--color-neutral-300);
-    --color-surface-button-light-hover: var(--color-neutral-350);
-    --color-surface-button-dark: var(--color-neutral-800);
-    --color-surface-button-dark-hover: var(--color-neutral-700);
-
-    /* Button */
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-surface-content: var(--surface-content);
+    --color-surface-content-hover: var(--surface-content-hover);
 }
 
-@utility bg-surface {
-    @apply bg-surface-light dark:bg-surface-dark;
+:root {
+    --bg: #fafafa;
+    --surface: #e5e5e5;
+    --surface-content: var(--color-neutral-300);
+    --surface-content-hover: var(--color-neutral-350);
 }
 
-@utility bg-bg {
-    @apply bg-bg-light dark:bg-bg-dark;
+[data-theme="dark"] {
+    --bg: #111111;
+    --surface: var(--color-neutral-900);
+    --surface-content: var(--color-neutral-800);
+    --surface-content-hover: var(--color-neutral-700);
 }
 
+
+/* Page background */
 @utility bg-surface-button {
-    @apply bg-surface-button-light dark:bg-surface-button-dark hover:bg-surface-button-light-hover hover:dark:bg-surface-button-dark-hover;
-}
-@utility bg-button {
-    @apply bg-surface hover:bg-surface-button-light dark:hover:bg-surface-button-dark;
+    @apply bg-surface hover:bg-surface-content;
 }
 
-
-
-@utility f-rounded {
-    @apply rounded-lg;
+@utility bg-surface-content-button {
+    @apply bg-surface-content hover:bg-surface-content-hover;
 }
 
-@utility f-bg-grey-light {
-    @apply dark:bg-neutral-850;
-}
-
-@utility border-light {
-    @apply border-neutral-700;
-}

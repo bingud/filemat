@@ -275,7 +275,7 @@
                             
 
                             {#if textFileViewerState.isFileSavable}
-                                <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-button rounded-md px-4">
+                                <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-content-button rounded-md px-4">
                                     <div class="h-[1.2rem]">
                                         <SaveIcon />
                                     </div>
@@ -349,6 +349,6 @@
 
 <style lang="postcss">
     :global(.file-action-button) {
-        @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-button;
+        @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-content-button;
     }
 </style>

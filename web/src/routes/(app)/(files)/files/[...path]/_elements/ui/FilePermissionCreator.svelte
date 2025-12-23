@@ -117,17 +117,17 @@
     <div class="flex items-center gap-6 select-none">
         <p>For: </p>
         <div class="flex h-[2rem] rounded-lg">
-            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-l-lg bg-neutral-300 dark:bg-neutral-800 {mode.user ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' : ''}" aria-pressed={mode.user} on:click={() => selectedMode = "USER"}>User</button>
-            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-r-lg bg-neutral-300 dark:bg-neutral-800 {mode.role ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' : ''}" aria-pressed={mode.role} on:click={() => selectedMode = "ROLE"}>Role</button>
+            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-l-lg bg-surface-content-button {mode.user ? 'inset-ring-2 inset-ring-blue-500' : ''}" aria-pressed={mode.user} on:click={() => selectedMode = "USER"}>User</button>
+            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-r-lg bg-surface-content-button {mode.role ? 'inset-ring-2 inset-ring-blue-500' : ''}" aria-pressed={mode.role} on:click={() => selectedMode = "ROLE"}>Role</button>
         </div>
     </div>
 
-    <div class="max-w-full rounded-lg py-3 overflow-y-auto max-h-[25rem] flex flex-col bg-neutral-300 dark:bg-neutral-800 w-fit min-w-[10rem]">
+    <div class="max-w-full rounded-lg py-3 overflow-y-auto max-h-[25rem] flex flex-col bg-surface-content w-fit min-w-[10rem]">
         {#if mode.user}
             <!-- Check for list of available users -->
             {#if miniList}
                 {#each miniList as mini}
-                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700/70">{mini.username}</button>
+                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-surface-content-light-hover dark:hover:bg-surface-content-dark-hover">{mini.username}</button>
                 <!-- No users available -->
                 {:else}
                     <p class="px-3 py-1">No users available.</p>
@@ -143,7 +143,7 @@
             {/if}
         {:else}
             {#each appState.roleList! as role}
-                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700/70">{role.name}</button>
+                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-surface-content-light-hover dark:hover:bg-surface-content-dark-hover">{role.name}</button>
             {/each}
         {/if}
     </div>
@@ -152,18 +152,18 @@
 
     <div class="flex flex-col gap-4 select-none">
 
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-2">
             {#each (valuesOf(filePermissionMeta)) as perm}
                 {@const id = `input-permission-${perm.id}`}
                 <div class="flex gap-2 items-center cursor-pointer">
-                    <input bind:checked={selectedPermissions[perm.id]} id={id} type="checkbox">
+                    <input bind:checked={selectedPermissions[perm.id]} id={id} type="checkbox" class="!size-5">
                     <label for={id}>{perm.name}</label>
                 </div>
             {/each}
         </div>
     </div>
 
-    <button disabled={!canCreatePermission || createPermissionLoading} on:click={createPermission} class="w-full rounded-lg py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
+    <button disabled={!canCreatePermission || createPermissionLoading} on:click={createPermission} class="w-full rounded-lg py-2 bg-surface-content-button disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
 </div>
 
 <style lang="postcss">

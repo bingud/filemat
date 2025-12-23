@@ -13,7 +13,7 @@
 
 html {
     /* Background */
-    @apply bg-bg-light dark:bg-bg-dark;
+    @apply bg-bg;
     /* Text */
     @apply text-neutral-950 dark:text-neutral-50;
     /* Icons */
@@ -69,7 +69,7 @@ h1 {
 @utility all-inherit {
     all: inherit;
     margin: 0px;
-    padding: 0px    
+    padding: 0px;
 }
 
 @utility max-size-full {

@@ -22,7 +22,7 @@
                         {:else}
                             <DatePicker.Segment
                                 {part}
-                                class="rounded-md hover:bg-muted focus:bg-surface-button focus:text-foreground aria-[valuetext=Empty]:text-muted-foreground focus-visible:outline-none px-1 py-1"
+                                class="rounded-md hover:bg-muted focus:bg-surface-content-button focus:text-foreground aria-[valuetext=Empty]:text-muted-foreground focus-visible:outline-none px-1 py-1"
                             >
                                 {value}
                             </DatePicker.Segment>
@@ -30,7 +30,7 @@
                     </div>
                 {/each}
                 <DatePicker.Trigger
-                    class="text-foreground/60 bg-surface-button ml-auto inline-flex size-8 items-center justify-center rounded-md active:scale-95"
+                    class="text-foreground/60 bg-surface-content-button ml-auto inline-flex size-8 items-center justify-center rounded-md active:scale-95"
                 >
                     <div class="size-6">
                         <CalendarIcon></CalendarIcon>
@@ -45,7 +45,7 @@
                 {#snippet children({ months, weekdays })}
                     <DatePicker.Header class="flex items-center justify-between">
                         <DatePicker.PrevButton
-                            class="rounded-md bg-surface-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
+                            class="rounded-md bg-surface-content-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
                         >
                             <div class="size-6">
                                 <ChevronLeftIcon />
@@ -53,7 +53,7 @@
                         </DatePicker.PrevButton>
                         <DatePicker.Heading class="text-[0.9375rem] font-medium" />
                         <DatePicker.NextButton
-                            class="rounded-md bg-surface-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
+                            class="rounded-md bg-surface-content-button inline-flex size-10 items-center justify-center transition-none active:scale-[0.98]"
                         >
                             <div class="size-6">
                                 <ChevronRightIcon />
@@ -88,7 +88,7 @@
                                                 class="p-0! relative size-10 text-center text-sm"
                                             >
                                                 <DatePicker.Day
-                                                    class="rounded-md text-foreground hover:bg-surface-button data-selected:bg-surface-button data-selected:border-2 data-selected:border-foreground data-selected:text-foreground data-selected:font-medium data-disabled:text-foreground/30 data-unavailable:text-muted-foreground data-disabled:pointer-events-none data-unavailable:line-through data-outside-month:opacity-40 data-outside-month:text-muted-foreground group relative inline-flex size-10 items-center justify-center whitespace-nowrap border border-neutral-100 dark:border-neutral-900 bg-transparent p-0 text-sm font-normal transition-none"
+                                                    class="rounded-md text-foreground hover:bg-surface-content-button data-selected:bg-surface-content-button data-selected:border-2 data-selected:border-foreground data-selected:text-foreground data-selected:font-medium data-disabled:text-foreground/30 data-unavailable:text-muted-foreground data-disabled:pointer-events-none data-unavailable:line-through data-outside-month:opacity-40 data-outside-month:text-muted-foreground group relative inline-flex size-10 items-center justify-center whitespace-nowrap border border-neutral-100 dark:border-neutral-900 bg-transparent p-0 text-sm font-normal transition-none"
                                                 >
                                                     <div
                                                         class="bg-foreground group-data-selected:bg-transparent group-data-today:block absolute top-[0.3125rem] hidden size-1 rounded-full transition-none"

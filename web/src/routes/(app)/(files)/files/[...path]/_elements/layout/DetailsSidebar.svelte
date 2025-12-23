@@ -266,7 +266,7 @@
                     <!-- Create permission button -->
                     <Dialog.Root bind:open={permissionCreatorOpen}>
                         <Dialog.Trigger>
-                            <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-2 rounded-md bg-surface-button disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 shadow-sm">
+                            <button disabled={!permissionData} title="Create a permission for this file" class="size-[2.5rem] p-2 rounded-md bg-surface-content-button disabled:opacity-50 disabled:cursor-not-allowed">
                                 <div class="size-full aspect-square">
                                     <PlusIcon></PlusIcon>
                                 </div>
@@ -278,7 +278,7 @@
                                 class="fixed inset-0 z-50 bg-black/50"
                             />
                             <Dialog.Content>
-                                <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
+                                <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
                                     <div class="flex items-center justify-between w-full">
                                         <h3>Create a file permission</h3>
                                         <Dialog.Close>
@@ -296,7 +296,7 @@
                     </Dialog.Root>
                 </div>
 
-                <div class="flex flex-col bg-neutral-400/50 dark:bg-neutral-900 rounded-md px-2 py-2 mx-2 overflow-y-auto min-h-[3rem] flex-auto custom-scrollbar">
+                <div class="flex flex-col bg-surface rounded-md px-2 py-2 mx-2 overflow-y-auto min-h-[3rem] flex-auto custom-scrollbar">
                     {#if showPermissions && permissionData && permissionData.permissions.length > 0}
                         <div in:fade={{duration: 75}} class="w-fill min-h-full h-fit flex flex-col gap-1">
                             <!-- User Permissions -->
@@ -312,7 +312,7 @@
                             {/each}
 
                             {#snippet permissionCard(meta: EntityPermissionMeta)}
-                                <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-2 rounded-md bg-neutral-200 dark:bg-neutral-800 hover:ring-2 ring-blue-500 w-full px-3 py-2 shadow-sm transition-colors duration-150">
+                                <button on:click={() => { onPermissionClicked(meta) }} class="flex flex-col gap-2 rounded-md bg-surface-content-button w-full px-3 py-2">
                                     <div class="flex items-center gap-1">
                                         <div class="aspect-square h-[1.2rem]">
                                             {#if meta.permission.permissionType === "ROLE"}
@@ -327,13 +327,13 @@
                                     </div>
                                     <div class="flex gap-2 flex-wrap">
                                         {#if meta.permission.permissions.length === filePermissionCount}
-                                            <span class="inline-flex items-center rounded-md bg-neutral-300/80 dark:bg-neutral-700/80 px-2.5 py-1 text-sm shadow-sm">All Permissions</span>
+                                            <span class="inline-flex items-center rounded-md bg-surface px-2.5 py-1">All Permissions</span>
                                         {:else if meta.permission.permissions.length === 0}
-                                            <span class="inline-flex items-center rounded-md bg-neutral-300/80 dark:bg-neutral-700/80 px-2.5 py-1 text-sm shadow-sm">No Permissions</span>
+                                            <span class="inline-flex items-center rounded-md bg-surface px-2.5 py-1">No Permissions</span>
                                         {:else}
                                             {#each meta.permission.permissions as perm}
                                                 {@const meta = filePermissionMeta[perm]}
-                                                <span class="inline-flex items-center rounded-md bg-neutral-300/80 dark:bg-neutral-700/80 px-2.5 py-1 text-sm shadow-sm">{meta.name}</span>
+                                                <span class="inline-flex items-center rounded-md bg-surface px-2.5 py-1">{meta.name}</span>
                                             {/each}
                                         {/if}
                                     </div>
@@ -348,7 +348,7 @@
                                         />
 
                                         <Dialog.Content>
-                                            <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
+                                            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
                                                 <div class="flex items-center justify-between w-full">
                                                     <h3>Edit file permission</h3>
                                                     <Dialog.Close>

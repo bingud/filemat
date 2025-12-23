@@ -112,7 +112,7 @@
                     {#if user?.roles}
                         {#each sortArrayByNumberDesc(user.roles.map(v => getRole(v)).filter(v => v != null), v => getMaxPermissionLevel(v.permissions)) as role}
                             {#if !selectingRoles}
-                                <a href="/settings/roles/{role.roleId}" class="detail-content !bg-surface-button !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
+                                <a href="/settings/roles/{role.roleId}" class="detail-content !bg-surface-content-button !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
                             {:else}
                                 <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-red-400 {pageState.selectedRoles.includes(role.roleId) ? 'ring-2 ring-red-400' : ''}">{role.name}</button>
                             {/if}
