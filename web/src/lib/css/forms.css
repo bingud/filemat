@@ -141,7 +141,7 @@ select,
 [type='radio'],
 .form-checkbox,
 .form-radio {
-    @apply appearance-none p-0 inline-block align-middle select-none flex-shrink-0 h-4 w-4 text-blue-600 bg-white border border-gray-500 enabled:cursor-pointer;
+    @apply appearance-none p-0 inline-block align-middle select-none flex-shrink-0 h-4 w-4 text-blue-600 bg-surface-button border border-neutral-400/50 dark:border-neutral-700/50 enabled:cursor-pointer;
     background-origin: border-box;
     print-color-adjust: exact;
     --tw-shadow: 0 0 #0000;
@@ -150,7 +150,7 @@ select,
 /* Block 11: Checkbox border radius */
 [type='checkbox'],
 .form-checkbox {
-    @apply rounded-none;
+    @apply rounded;
 }
 
 /* Block 12: Radio border radius */
@@ -191,61 +191,20 @@ select,
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
 }
 
-@media (forced-colors: active) {
-    [type='checkbox']:checked,
-    .form-checkbox:checked {
-        appearance: auto;
-    }
-}
-
 /* Block 16: Radio checked background image */
 [type='radio']:checked,
 .form-radio:checked {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='3'/%3E%3C/svg%3E");
 }
 
-@media (forced-colors: active) {
-    [type='radio']:checked,
-    .form-radio:checked {
-        appearance: auto;
-    }
-}
-
-/* Block 17: Checkbox and radio checked hover/focus */
-[type='checkbox']:checked:hover,
-[type='checkbox']:checked:focus,
-[type='radio']:checked:hover,
-[type='radio']:checked:focus,
-.form-checkbox:checked:hover,
-.form-checkbox:checked:focus,
-.form-radio:checked:hover,
-.form-radio:checked:focus {
-    @apply border-transparent bg-current;
-}
-
 /* Block 18: Checkbox indeterminate styles */
 [type='checkbox']:indeterminate,
 .form-checkbox:indeterminate {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3E%3Cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3E%3C/svg%3E");
     @apply border-transparent bg-current;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3E%3Cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3E%3C/svg%3E");
     background-size: 100% 100%;
     background-position: center;
     background-repeat: no-repeat;
-}
-
-@media (forced-colors: active) {
-    [type='checkbox']:indeterminate,
-    .form-checkbox:indeterminate {
-        appearance: auto;
-    }
-}
-
-/* Block 19: Checkbox indeterminate hover/focus */
-[type='checkbox']:indeterminate:hover,
-[type='checkbox']:indeterminate:focus,
-.form-checkbox:indeterminate:hover,
-.form-checkbox:indeterminate:focus {
-    @apply border-transparent bg-current;
 }
 
 /* Block 20: File input reset */

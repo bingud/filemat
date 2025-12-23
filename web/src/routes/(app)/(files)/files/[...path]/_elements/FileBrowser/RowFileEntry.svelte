@@ -66,7 +66,7 @@
     <div class="h-full flex items-center overflow-hidden">
         {#key isSelected}
             <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pl-2 pr-1">
-                <input checked={isSelected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
+                <input checked={isSelected} class="!size-5 opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
             </div>
         {/key}
 

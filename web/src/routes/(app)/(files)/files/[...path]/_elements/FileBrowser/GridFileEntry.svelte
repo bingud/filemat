@@ -89,8 +89,8 @@
 
         <!-- Selection Checkbox -->
         {#key isSelected}
-            <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="absolute top-0 left-0 flex items-center justify-center p-1">
-                <input checked={isSelected} class="opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
+            <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="absolute top-0 left-0 flex items-center justify-center">
+                <input checked={isSelected} class="!size-5 lg:opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
             </div>
         {/key}
     </div>
