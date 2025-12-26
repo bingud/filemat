@@ -1,10 +1,10 @@
 import type { SystemPermission } from "../auth/types";
-import { appState } from "../stateObjects/appState.svelte";
+import { appState, filePagePaths } from "../stateObjects/appState.svelte";
 import type { SettingSectionId } from "../stateObjects/uiState.svelte";
-import { valuesOf, includesList, run } from "../util/codeUtil.svelte";
+import { valuesOf, includesList, run, keysOf } from "../util/codeUtil.svelte";
 import { getCurrentPermissions } from "./permissions";
 
-export type PreferenceSetting = "load_all_previews"
+export type PreferenceSetting = "load_all_previews" | "default_page_path"
 
 export function loadPreferenceSettings() {
     const loadAllPreviewsStr = getPreferenceSetting("load_all_previews")
@@ -13,7 +13,12 @@ export function loadPreferenceSettings() {
         appState.settings.loadAllPreviews = bool
     }
 
-
+    const defaultPagePath = getPreferenceSetting("default_page_path")
+    if (defaultPagePath) {
+        if (keysOf(filePagePaths).includes(defaultPagePath as any)) { // :)
+            appState.settings.defaultPagePath = defaultPagePath as any
+        }
+    }
 }
 
 function getPreferenceSetting(id: PreferenceSetting): string | null {

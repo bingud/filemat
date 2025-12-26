@@ -3,13 +3,17 @@ import type { Principal, Role } from "../auth/types"
 import type { ulid, ValuesOf } from "../types/types"
 import { entriesOf, valuesOf } from "../util/codeUtil.svelte"
 
-const sitePaths = {
-    "/accessible-files": "accessibleFiles",
+export const filePagePaths = {
     "/files": "files",
-    "/settings": "settings",
+    "/saved-files": "savedFiles",
+    "/accessible-files": "accessibleFiles",
     "/share": "sharedFiles",
     "/shared-files": "allSharedFiles",
-    "/saved-files": "savedFiles",
+} as const
+
+const sitePaths = {
+    ...filePagePaths,
+    "/settings": "settings",
 } as const
 
 class AppState {
@@ -86,6 +90,7 @@ class AppState {
 
 class SettingState {
     loadAllPreviews = $state(false)
+	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
 }
 
 /**

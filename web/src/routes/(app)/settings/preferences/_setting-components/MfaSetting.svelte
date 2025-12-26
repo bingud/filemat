@@ -190,7 +190,7 @@
     
     <button
         on:click={toggleMfa} 
-        class="mt-2 w-fit px-4 py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 rounded-md">
+        class="mt-2 w-fit px-4 py-2 bg-surface-content rounded-md">
         {auth.principal?.mfaTotpStatus ? 'Disable' : 'Enable'} 2FA
     </button>
 </div>
@@ -222,10 +222,10 @@
                 </div>
 
                 <div class="flex gap-6 mt-auto">
-                    <button on:click={cancel} class="rounded-lg bg-neutral-900 border border-neutral-700 px-6 py-3 flex gap-2 hover:bg-neutral-800">
+                    <button on:click={cancel} class="rounded-lg bg-surface-content px-6 py-3 flex gap-2 ">
                         Cancel
                     </button>
-                    <button on:click={disable_one_submit} class="rounded-lg bg-neutral-900 border border-neutral-700 px-6 py-3 flex gap-2 hover:bg-neutral-800">
+                    <button on:click={disable_one_submit} class="rounded-lg bg-surface-content px-6 py-3 flex gap-2 ">
                         Disable 2FA
                     </button>
                 </div>
