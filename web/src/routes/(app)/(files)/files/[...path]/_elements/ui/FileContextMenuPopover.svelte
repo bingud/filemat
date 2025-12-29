@@ -61,7 +61,7 @@
                     href={`${filesState.meta.pagePath}${parentFromPath(menuEntry.path)}`}
                     on:click={close}
                     on:auxclick={close}
-                    target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
+                    class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
                 >
                     <div class="size-5 flex-shrink-0">
                         <FolderIcon />
@@ -91,13 +91,14 @@
                     </div>
                     <span>Rename</span>
                 </button>
-
-                <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                    <div class="size-5 flex-shrink-0">
-                        <MoveIcon />
-                    </div>
-                    <span>Move</span>
-                </button>
+                {#if filesState.meta.type === "files"}
+                    <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                        <div class="size-5 flex-shrink-0">
+                            <MoveIcon />
+                        </div>
+                        <span>Move</span>
+                    </button>
+                {/if}
             {/if}
 
             {#if menuEntry.permissions.includes("DELETE")}
