@@ -28,19 +28,21 @@ class SavedFileService(
     @Lazy private val fileService: FileService
 ) {
     private val fileMap = ConcurrentHashMap<Ulid, ConcurrentHashMap<String, SavedFile>>()
+    private val pathToUserIdMap = ConcurrentHashMap<String, MutableSet<Ulid>>()
     private var useMap = true
 
     @PostConstruct
     private fun loadSavedFilesFromDatabase(){
         try {
+            println("Loading saved files...")
             savedFileRepository.findAll()
                 .forEach {
-                    val map = fileMap.getOrPut(it.userId) { ConcurrentHashMap() }
-                    map.put(it.path, it)
+                    addToMap(it)
                 }
         } catch (e: Exception) {
             useMap = false
             fileMap.clear()
+            pathToUserIdMap.clear()
 
             logService.error(
                 type = LogType.SYSTEM,
@@ -51,10 +53,91 @@ class SavedFileService(
         }
     }
 
+    // Map helper functions
+    private fun addToMap(file: SavedFile) {
+        if (!useMap) return
+
+        val map = fileMap.getOrPut(file.userId) { ConcurrentHashMap() }
+        map.put(file.path, file)
+
+        addToReverseMap(file.path, file.userId)
+    }
+    private fun addToReverseMap(path: String, userId: Ulid) {
+        val usersWithPath = pathToUserIdMap.getOrPut(path) { ConcurrentHashMap.newKeySet() }
+        usersWithPath.add(userId)
+    }
+
+    private fun removeFromMap(path: String, userId: Ulid?) {
+        if (!useMap) return
+
+        if (userId != null) {
+            fileMap.get(userId)?.let { map ->
+                map.remove(path)
+                if (map.isEmpty()) {
+                    fileMap.remove(userId)
+                }
+            }
+            removeFromReverseMap(path, userId)
+        } else {
+            val userIds = pathToUserIdMap.get(path) ?: return
+            pathToUserIdMap.remove(path)
+
+            userIds.forEach { id ->
+                fileMap.get(id)?.remove(path)
+            }
+        }
+    }
+    private fun removeFromReverseMap(path: String, userId: Ulid) {
+        pathToUserIdMap.get(path)?.let {
+            it.remove(userId)
+            if (it.isEmpty()) {
+                pathToUserIdMap.remove(path)
+            }
+        }
+    }
+
+    fun changePathInMap(path: String, newPath: String) {
+        if (!useMap) return
+
+        // Atomically remove old path and get its users
+        val userIdsToMove = pathToUserIdMap.remove(path) ?: return
+
+        // Merge users into the new paths set
+        val targetSet = pathToUserIdMap.getOrPut(newPath) {
+            ConcurrentHashMap.newKeySet()
+        }
+        targetSet.addAll(userIdsToMove)
+
+        // Update file for each affected user
+        userIdsToMove.forEach { userId ->
+            fileMap[userId]?.let { userFiles ->
+                val file = userFiles.remove(path) ?: return@let
+                userFiles[newPath] = file.copy(path = newPath)
+            }
+        }
+    }
+
+    fun changePath(path: FilePath, newPath: FilePath): Result<Unit> {
+        try {
+            savedFileRepository.updatePath(path.pathString, newPath.pathString)
+            changePathInMap(path.pathString, newPath.pathString)
+
+            return Result.ok()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.UPDATE_SAVED_FILE,
+                description = "Failed to change path of saved files.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to update paths of saved files.")
+        }
+    }
+
     fun getAll(user: Principal): Result<List<FullFileMetadata>> {
         val entries =
             if (useMap) {
-                fileMap.get(user.userId)?.values ?: return Result.notFound()
+                fileMap.get(user.userId)?.values ?: return Result.ok(emptyList())
             } else {
                 getAllFromDatabase(user.userId).let {
                     if (it.isNotSuccessful) return it.cast()
@@ -66,7 +149,7 @@ class SavedFileService(
             val rawPath = FilePath.of(it.path)
 
             val (pathResult, pathHasSymlink) = resolvePath(rawPath)
-            if (pathResult.isNotSuccessful) return pathResult.cast()
+            if (pathResult.isNotSuccessful) return@mapNotNull null
             val canonicalPath = pathResult.value
 
             fileService.getFullMetadata(
@@ -74,9 +157,9 @@ class SavedFileService(
                 rawPath = rawPath,
                 canonicalPath = canonicalPath,
                 action = UserAction.GET_SAVED_FILE_LIST
-            ).let {
-                if (it.isNotSuccessful) return@mapNotNull null
-                return@mapNotNull it.value
+            ).let { result ->
+                if (result.isNotSuccessful) return@mapNotNull null
+                return@mapNotNull result.value
             }
         }
 
@@ -98,7 +181,6 @@ class SavedFileService(
         }
     }
 
-    @Transactional
     fun addSavedFile(user: Principal, path: FilePath): Result<SavedFile> {
         val file = SavedFile(user.userId, path.pathString, unixNow())
 
@@ -120,32 +202,28 @@ class SavedFileService(
             return Result.error("Failed to save file.")
         }
 
-        val map = fileMap.getOrPut(user.userId) { ConcurrentHashMap() }
-        map.put(file.path, file)
+        addToMap(file)
 
         return Result.ok(file)
     }
 
-    fun removeSavedFile(user: Principal, path: FilePath): Result<Unit> {
-        remove(user.userId, path.pathString).let {
+    fun removeSavedFile(path: FilePath, user: Principal? = null): Result<Unit> {
+        remove(path.pathString, user?.userId).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        if (useMap) {
-            fileMap.get(user.userId)?.let { map ->
-                map.remove(path.pathString)
-                if (map.isEmpty()) {
-                    fileMap.remove(user.userId)
-                }
-            }
-        }
+        removeFromMap(path.pathString, user?.userId)
 
         return Result.ok()
     }
 
-    private fun remove(userId: Ulid, path: String): Result<Unit> {
+    private fun remove(path: String, userId: Ulid?): Result<Unit> {
         return try {
-            savedFileRepository.remove(userId, path)
+            if (userId != null) {
+                savedFileRepository.removeByUserId(userId, path)
+            } else {
+                savedFileRepository.remove(path)
+            }
             return Result.ok()
         } catch (e: Exception) {
             logService.error(

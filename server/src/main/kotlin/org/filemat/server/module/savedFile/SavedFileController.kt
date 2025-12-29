@@ -56,7 +56,7 @@ class SavedFileController(
         val user = request.getPrincipal()!!
         val path = FilePath.of(rawPath)
 
-        savedFileService.removeSavedFile(user, path).let {
+        savedFileService.removeSavedFile(path, user).let {
             if (it.hasError) return internal(it.error)
             if (it.rejected) return bad(it.error)
             return ok("ok")

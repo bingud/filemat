@@ -266,6 +266,9 @@ class FileService(
             }
         }
 
+        // Update saved files
+        savedFileService.changePath(path = canonicalPath, newPath = newPath)
+
         return Result.ok()
     }
 
@@ -302,6 +305,9 @@ class FileService(
                 entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
             }
         }
+
+        // Update saved files
+        savedFileService.removeSavedFile(path = canonicalPath)
 
         return Result.ok()
     }

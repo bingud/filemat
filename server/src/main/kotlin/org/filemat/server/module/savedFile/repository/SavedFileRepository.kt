@@ -17,9 +17,17 @@ interface SavedFileRepository : CrudRepository<SavedFile, Ulid> {
     fun create(userId: Ulid, path: String, createdDate: Long)
 
     @Modifying
+    @Query("DELETE FROM saved_files WHERE path = :path")
+    fun remove(path: String): Int
+
+    @Modifying
     @Query("DELETE FROM saved_files WHERE user_id = :userId AND path = :path")
-    fun remove(userId: Ulid, path: String): Int
+    fun removeByUserId(userId: Ulid, path: String): Int
 
     @Query("SELECT * FROM saved_files WHERE user_id = :userId")
     fun getAll(userId: Ulid): List<SavedFile>
+
+    @Modifying
+    @Query("UPDATE saved_files SET path = :newPath WHERE path = :path")
+    fun updatePath(path: String, newPath: String): Int
 }
