@@ -14,6 +14,7 @@
     import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil";
     import FileList from "./FileList.svelte";
     import Loader from "$lib/component/Loader.svelte";
+    import { dev } from "$app/environment";
 
 
     onMount(() => {
@@ -377,7 +378,11 @@
 {/if}
 
 {#if uploadState.count > 0 && uploadState.panelOpen}
-    <div class="fixed z-10 h-full w-full top-0 left-0 pb-4 pr-[calc(1rem+var(--spacing-details-sidebar))] pointer-events-none  flex items-end justify-end">
+    <div class="
+        fixed z-10 h-full w-full top-0 left-0 pb-4 pointer-events-none  flex items-end justify-end
+        pr-[1rem] pl-[1rem]
+        {filesState.ui.detailsOpen ? "lg:pr-[calc(1rem+var(--spacing-details-sidebar))]" : ""}
+    ">
         <div class="w-[36rem] h-fit max-h-full max-w-full pointer-events-auto">
             <UploadPanel></UploadPanel>
         </div>
