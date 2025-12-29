@@ -4,7 +4,7 @@ import type { SettingSectionId } from "../stateObjects/uiState.svelte";
 import { valuesOf, includesList, run, keysOf } from "../util/codeUtil.svelte";
 import { getCurrentPermissions } from "./permissions";
 
-export type PreferenceSetting = "load_all_previews" | "default_page_path"
+export type PreferenceSetting = "load_all_previews" | "default_page_path" | "click_to_open_file"
 
 export function loadPreferenceSettings() {
     const loadAllPreviewsStr = getPreferenceSetting("load_all_previews")
@@ -18,6 +18,11 @@ export function loadPreferenceSettings() {
         if (keysOf(filePagePaths).includes(defaultPagePath as any)) { // :)
             appState.settings.defaultPagePath = defaultPagePath as any
         }
+    }
+
+    const clickToOpenFile = getPreferenceSetting("click_to_open_file")
+    if (clickToOpenFile === "true") {
+        appState.settings.clickToOpenFile = true
     }
 }
 

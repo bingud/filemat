@@ -6,6 +6,7 @@
     import { pageTitle } from "$lib/code/util/codeUtil.svelte";
     import LoadPreviewsSetting from "./_setting-components/LoadPreviewsSetting.svelte";
     import DefaultPageSetting from "./_setting-components/DefaultPageSetting.svelte";
+    import ClickToOpenFileSetting from "./_setting-components/ClickToOpenFileSetting.svelte";
 
     const title = "Preferences"
 
@@ -19,12 +20,13 @@
 </svelte:head>
 
 
-<div class="page settings-margin flex-col gap-8 overflow-y-auto">
+<div class="page !h-fit settings-margin flex-col gap-8 xoverflow-y-auto">
     <h2 class="text-lg font-medium">Account Settings</h2>
 
     {@render settingCell(MfaSetting)}
     {@render settingCell(LoadPreviewsSetting)}
     {@render settingCell(DefaultPageSetting)}
+    {@render settingCell(ClickToOpenFileSetting)}
     <LogoutSetting></LogoutSetting>
 </div>
 

@@ -91,6 +91,7 @@ class AppState {
 class SettingState {
     loadAllPreviews = $state(false)
 	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
+    clickToOpenFile = $state(false)
 }
 
 /**
