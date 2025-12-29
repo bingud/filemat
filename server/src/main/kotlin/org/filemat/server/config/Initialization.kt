@@ -45,7 +45,12 @@ class Initialization(
 
             // Load file permissions to memory
             filePermissionService.loadPermissionsFromDatabase()
-                .also { if (!it) shutdown(1) }.line()
+                .also {
+                    if (!it) {
+                        println("Failed to load permissions.")
+                        shutdown(1)
+                    }
+                }.line()
 
             filesystemService.initializeTusService()
         }

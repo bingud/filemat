@@ -1,10 +1,8 @@
 package org.filemat.server.module.log.service
 
 import com.github.f4b6a3.ulid.Ulid
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import jakarta.annotation.PreDestroy
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
@@ -62,6 +60,12 @@ class LogService(
 
     fun fatal(type: LogType, action: UserAction, description: String, message: String = "", initiatorId: Ulid? = null, initiatorIp: String? = null, targetId: Ulid? = null, meta: MutableMap<String, String>? = null,) { log(level = LogLevel.FATAL, type = type, action = action, description = description, message = message, initiatorId = initiatorId, initiatorIp = initiatorIp, targetId = targetId, meta = meta,) }
 
+    @PreDestroy
+    fun onShutdown() {
+        runBlocking {
+            scope.coroutineContext[Job]?.children?.forEach { it.join() }
+        }
+    }
 
     private fun log(
         level: LogLevel,

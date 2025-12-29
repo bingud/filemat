@@ -41,9 +41,7 @@ class EntityPermissionService(
      */
     private val pathTree = EntityPermissionTree()
 
-    /**
-     *
-     */
+
     fun getPermittedEntities(user: Principal): List<EntityPermission> {
         return pathTree.getAllAccessibleEntitiesForUser(user.userId, user.roles)
     }
@@ -347,7 +345,11 @@ class EntityPermissionService(
                     return@computeIfAbsent entity
                 }
             }
-        }.onFailure { return false }
+        }.onFailure {
+            println("Failed to load file entities for permissions..")
+            it.printStackTrace()
+            return false
+        }
 
         // Add permissions to tree
         permissions.forEach { permission ->

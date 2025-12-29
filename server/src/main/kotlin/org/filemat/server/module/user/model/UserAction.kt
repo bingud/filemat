@@ -61,19 +61,22 @@ enum class UserAction(val index: Int) {
     GET_SAVED_FILE(52),
     CREATE_SAVED_FILE(53),
     GET_SAVED_FILE_LIST(54),
-    REMOVE_SAVED_FILE(55);
+    REMOVE_SAVED_FILE(55),
+    UPDATE_SAVED_FILE(56);
 
     companion object {
         init {
             val codes = entries.map { it.index }
-            require(codes.distinct().size == codes.size) {
-                "Duplicate UserAction indexes found: $codes"
+            if (codes.distinct().size != codes.size) {
+                println("Duplicate UserAction indexes found: $codes")
+                throw IllegalStateException("Duplicate UserAction indexes found: $codes")
             }
 
             val sorted = codes.sorted()
             val expected = (sorted.first()..sorted.last()).toList()
-            require(sorted == expected) {
-                "UserAction indexes must be consecutive without gaps. Found: $sorted"
+            if (sorted != expected) {
+                println("UserAction indexes must be consecutive without gaps. Found: $sorted")
+                throw IllegalStateException("UserAction indexes must be consecutive without gaps. Found: $sorted")
             }
         }
     }
