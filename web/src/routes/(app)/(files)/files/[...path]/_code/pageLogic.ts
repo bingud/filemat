@@ -3,12 +3,11 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, filenameFromPath, isFolder, parentFromPath, printStack, Result } from "$lib/code/util/codeUtil.svelte"
+import { addSuffix, filenameFromPath, parentFromPath } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
 import { sharedFilesPageState } from "../../../shared-files/state.svelte"
-
 
 
 export function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
@@ -18,7 +17,6 @@ export function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
         startTusUpload(file)
     })
 }
-
 
 // Scrolling position
 export function saveScrollPosition() {
