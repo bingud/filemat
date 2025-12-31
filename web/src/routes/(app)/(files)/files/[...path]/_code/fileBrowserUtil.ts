@@ -3,6 +3,14 @@ import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 
+export type FileContextMenuProps = {
+    option_rename: (entry: FileMetadata) => any
+    option_move: (entry: FileMetadata) => any
+    option_delete: (entry: FileMetadata) => any
+    option_details: (entry: FileMetadata) => any
+    option_save: (entry: FileMetadata, action: "save" | "unsave") => any
+    closeFileContextMenuPopover: () => any
+}
 
 export type FileEntryHandlerProps = {
     event_dragStart: (e: DragEvent, entry: FullFileMetadata) => void
@@ -14,13 +22,8 @@ export type FileEntryHandlerProps = {
     onClickSelectCheckbox: (path: string) => void
 }
 
-export type FileListProps = FileEntryHandlerProps & {
+export type FileListProps = FileContextMenuProps & FileEntryHandlerProps & {
     sortedEntries: typeof filesState.data.sortedEntries
-    option_rename: (entry: FileMetadata) => any
-    option_move: (entry: FileMetadata) => any
-    option_delete: (entry: FileMetadata) => any
-    option_details: (entry: FileMetadata) => any
-    option_save: (entry: FileMetadata, action: "save" | "unsave") => any
 }
 
 export type FileEntryProps = FileEntryHandlerProps & {

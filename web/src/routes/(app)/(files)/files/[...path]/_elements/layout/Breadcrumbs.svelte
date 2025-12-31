@@ -8,6 +8,7 @@
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
     import { openEntry } from '../../_code/fileBrowserUtil';
     import CheckmarkIcon from '$lib/component/icons/CheckmarkIcon.svelte';
+    import CloseIcon from '$lib/component/icons/CloseIcon.svelte';
 
     const meta = $derived(filesState.meta)
 
@@ -49,6 +50,11 @@
     function option_selectAllFiles() {
         if (!filesState.data.entries) return
         filesState.selectedEntries.list = filesState.data.entries.map(v => v.path)
+        closeContextMenu()
+    }
+
+    function option_unselectAllFiles() {
+        filesState.selectedEntries.list = []
         closeContextMenu()
     }
 
@@ -150,15 +156,6 @@
                             </div>
                             <span>Details</span>
                         </button>
-
-                        {#if !filesState.data.fileMeta && !filesState.isSearchOpen}
-                            <button on:click={() => { option_selectAllFiles() }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                                <div class="size-5 flex-shrink-0">
-                                    <CheckmarkIcon />
-                                </div>
-                                <span>Select all files</span>
-                            </button>
-                        {/if}
                     </div>
                 </Popover.Content>
             </Popover.Root>

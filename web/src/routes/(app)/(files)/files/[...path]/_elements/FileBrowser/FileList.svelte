@@ -19,7 +19,8 @@
         option_move,
         option_delete,
         option_details,
-        option_save
+        option_save,
+        closeFileContextMenuPopover,
     }: FileListProps = $props()
 
     let entryMenuButton: HTMLElement | null = $state(null)
@@ -169,6 +170,7 @@
                 {option_delete}
                 {option_details}
                 {option_save}
+                {closeFileContextMenuPopover}
             ></FileContextMenuPopover>
         </div>
     {/key}

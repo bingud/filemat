@@ -14,7 +14,6 @@
     import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil";
     import FileList from "./FileList.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import { dev } from "$app/environment";
 
 
     onMount(() => {
@@ -317,6 +316,7 @@
                 {option_delete}
                 {option_details}
                 {option_save}
+                closeFileContextMenuPopover={closeFileContextMenu}
             ></FileList>
         </div>
     {:else}
@@ -352,6 +352,7 @@
             {option_delete}
             {option_details}
             {option_save}
+            closeFileContextMenuPopover={closeFileContextMenu}
         ></FileList>
     </div>
 {:else if filesState.data.sortedEntries && filesState.data.sortedEntries.length === 0}
