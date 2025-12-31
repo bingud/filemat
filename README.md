@@ -29,7 +29,7 @@ Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org.
 ## Requirements
 
 - Linux
-- Java 21
+- Java 17
 - (Or just Docker)
 
 
