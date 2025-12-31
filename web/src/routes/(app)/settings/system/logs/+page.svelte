@@ -1,17 +1,16 @@
 <script lang="ts">
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import CustomSidebar from "$lib/component/CustomSidebar.svelte";
-    import DatePicker from "$lib/component/DatePicker.svelte";
-    import type { DatePickerRootPropsWithoutHTML } from "bits-ui";
-    import { onMount } from "svelte";
-    import SeveritySelectionButton from "./_components/SeveritySelectionButton.svelte";
-    import type { Log, LogLevel, LogType } from "./_components/logs";
-    import LogTypeSelectionButton from "./_components/LogTypeSelectionButton.svelte";
-    import { explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
-    import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
-    import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
-    import CustomDialog from "$lib/component/popover/CustomDialog.svelte";
-    import LogDetailOverlay from "./_components/LogDetailOverlay.svelte";
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte"
+    import CustomSidebar from "$lib/component/CustomSidebar.svelte"
+    import DatePicker from "$lib/component/DatePicker.svelte"
+    import type { DatePickerRootPropsWithoutHTML } from "bits-ui"
+    import { onMount } from "svelte"
+    import SeveritySelectionButton from "./_components/SeveritySelectionButton.svelte"
+    import type { Log, LogLevel, LogType } from "./_components/logs"
+    import LogTypeSelectionButton from "./_components/LogTypeSelectionButton.svelte"
+    import { explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"
+    import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte"
+    import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte"
+    import LogDetailOverlay from "./_components/LogDetailOverlay.svelte"
 
     const title = "Logs"
     onMount(() => {
@@ -129,8 +128,9 @@
                 </button>
 
                 <input
+                    name="Page"
                     type="number"
-                    class="basic-input text-center w-fit!"
+                    class="basic-input text-center !mixn-w-fit !w-[5rem]"
                     bind:value={page}
                     min="0"
                 >

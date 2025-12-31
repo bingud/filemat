@@ -22,19 +22,6 @@ export default defineConfig({
 })
 
 
-// function injectGlobalCSS(cssToInject: string): Plugin {
-//     return {
-//         name: 'inject-global-css',
-//         enforce: 'pre',
-//         transform(code, id) {
-//             if (!id.endsWith('.svelte') || code.includes(cssToInject)) return null;
-//             return code.replace(
-//                 /<style(\s[^>]*)?>/g,
-//                 `<style$1>\n${cssToInject}\n`
-//             )
-//         }
-//     }
-// }
 
 function injectGlobalCSS(cssToInject: string): Plugin {
     return {
