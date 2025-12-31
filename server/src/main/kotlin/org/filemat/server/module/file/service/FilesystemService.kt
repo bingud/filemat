@@ -13,6 +13,7 @@ import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
+import java.io.IOException
 import java.lang.UnsupportedOperationException
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
@@ -92,7 +93,7 @@ class FilesystemService(
         return FileUtils.isSupportedFilesystem(path.path)
     }
 
-    fun moveFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean): Result<Unit> {
+    fun moveFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean = false): Result<Unit> {
         return try {
             Files.move(
                 source.path,
@@ -105,13 +106,71 @@ class FilesystemService(
         } catch (e: FileAlreadyExistsException) {
             Result.error("This file already exists.")
         } catch (e: DirectoryNotEmptyException) {
-            Result.reject("This directory cannot be replaced because it is not empty.")
+            moveRecursivelyIfDifferentPartition(source, destination, overwriteDestination, "Failed to move file because folder is not empty.")
         } catch (e: UnsupportedOperationException) {
             Result.error("This move operation failed because it is unsupported.")
         } catch (e: AccessDeniedException) {
             Result.error("Missing permission to move file.")
+        } catch (e: IOException) {
+            moveRecursivelyIfDifferentPartition(source, destination, overwriteDestination, "Failed to move file.")
         } catch (e: Exception) {
             Result.error("Failed to move file.")
+        }
+    }
+
+    private fun moveRecursivelyIfDifferentPartition(
+        source: FilePath,
+        destination: FilePath,
+        overwriteDestination: Boolean,
+        originalError: String,
+    ): Result<Unit> {
+        if (!Files.isDirectory(source.path, LinkOption.NOFOLLOW_LINKS)) return Result.error(originalError)
+
+        moveFolderRecursively(source, destination, overwriteDestination).let {
+            if (it.hasError) return Result.reject("Failed to move folder to a different partition (${it.error}).")
+            return it
+        }
+    }
+
+    private fun moveFolderRecursively(source: FilePath, destination: FilePath, overwriteDestination: Boolean): Result<Unit> {
+        var errors = 0
+        try {
+            if (Files.notExists(destination.path)) {
+                Files.createDirectories(destination.path)
+            }
+
+            Files.newDirectoryStream(source.path).use { stream ->
+                for (entry in stream) {
+                    try {
+                        val entrySource = FilePath(entry)
+                        val entryDestination = FilePath(destination.path.resolve(entry.fileName))
+
+                        val result = if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) {
+                            moveFolderRecursively(entrySource, entryDestination, overwriteDestination)
+                        } else {
+                            moveFile(entrySource, entryDestination, overwriteDestination)
+                        }
+
+                        if (!result.isSuccessful) {
+                            errors++
+                        }
+                    } catch (e: Exception) {
+                        errors++
+                    }
+                }
+            }
+
+            if (errors > 0) {
+                val w = if (errors > 1) "files" else "file"
+                return Result.error("$errors $w failed to move.")
+            } else {
+                Files.delete(source.path)
+            }
+
+
+            return Result.ok()
+        } catch (e: Exception) {
+            return Result.error("Failed to move folder recursively.")
         }
     }
 
