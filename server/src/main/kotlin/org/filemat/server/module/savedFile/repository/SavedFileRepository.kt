@@ -28,6 +28,12 @@ interface SavedFileRepository : CrudRepository<SavedFile, Ulid> {
     fun getAll(userId: Ulid): List<SavedFile>
 
     @Modifying
-    @Query("UPDATE saved_files SET path = :newPath WHERE path = :path")
+    @Query(
+        """
+        UPDATE saved_files 
+        SET path = CONCAT(:newPath, SUBSTRING(path, LENGTH(:path) + 1)) 
+        WHERE path = :path OR path LIKE CONCAT(:path, '/%')
+    """
+    )
     fun updatePath(path: String, newPath: String): Int
 }

@@ -1,8 +1,7 @@
 package org.filemat.server.module.savedFile
 
 import com.github.f4b6a3.ulid.Ulid
-import jakarta.annotation.PostConstruct /*
-import mrbean                           */
+import jakarta.annotation.PostConstruct
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
@@ -18,7 +17,6 @@ import org.filemat.server.module.sharedFile.repository.SavedFileRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -32,7 +30,7 @@ class SavedFileService(
     private var useMap = true
 
     @PostConstruct
-    private fun loadSavedFilesFromDatabase(){
+    private fun loadSavedFilesFromDatabase() {
         try {
             println("Loading saved files...")
             savedFileRepository.findAll()
@@ -62,6 +60,7 @@ class SavedFileService(
 
         addToReverseMap(file.path, file.userId)
     }
+
     private fun addToReverseMap(path: String, userId: Ulid) {
         val usersWithPath = pathToUserIdMap.getOrPut(path) { ConcurrentHashMap.newKeySet() }
         usersWithPath.add(userId)
@@ -87,6 +86,7 @@ class SavedFileService(
             }
         }
     }
+
     private fun removeFromReverseMap(path: String, userId: Ulid) {
         pathToUserIdMap.get(path)?.let {
             it.remove(userId)
@@ -96,23 +96,36 @@ class SavedFileService(
         }
     }
 
-    fun changePathInMap(path: String, newPath: String) {
+    fun changePathInMap(oldPath: String, newPath: String) {
         if (!useMap) return
 
-        // Atomically remove old path and get its users
-        val userIdsToMove = pathToUserIdMap.remove(path) ?: return
-
-        // Merge users into the new paths set
-        val targetSet = pathToUserIdMap.getOrPut(newPath) {
-            ConcurrentHashMap.newKeySet()
+        // Identify all keys that are either the exact path or a child of that path
+        val affectedPaths = pathToUserIdMap.keys.filter {
+            it == oldPath || it.startsWith("$oldPath/")
         }
-        targetSet.addAll(userIdsToMove)
 
-        // Update file for each affected user
-        userIdsToMove.forEach { userId ->
-            fileMap[userId]?.let { userFiles ->
-                val file = userFiles.remove(path) ?: return@let
-                userFiles[newPath] = file.copy(path = newPath)
+        affectedPaths.forEach { currentPath ->
+            // Calculate the new path for this specific entry
+            val targetPath = if (currentPath == oldPath) {
+                newPath
+            } else {
+                newPath + currentPath.substring(oldPath.length)
+            }
+
+            // Move users from old key to new key in reverse map
+            val userIdsToMove = pathToUserIdMap.remove(currentPath) ?: return@forEach
+
+            val targetSet = pathToUserIdMap.getOrPut(targetPath) {
+                ConcurrentHashMap.newKeySet()
+            }
+            targetSet.addAll(userIdsToMove)
+
+            // Update the file objects in the main map for each user
+            userIdsToMove.forEach { userId ->
+                fileMap[userId]?.let { userFiles ->
+                    val file = userFiles.remove(currentPath) ?: return@let
+                    userFiles[targetPath] = file.copy(path = targetPath)
+                }
             }
         }
     }
@@ -190,7 +203,11 @@ class SavedFileService(
         }
 
         try {
-            savedFileRepository.create(userId = file.userId, path = file.path, createdDate = file.createdDate)
+            savedFileRepository.create(
+                userId = file.userId,
+                path = file.path,
+                createdDate = file.createdDate
+            )
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
