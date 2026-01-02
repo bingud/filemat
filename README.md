@@ -12,7 +12,7 @@
 ## What is Filemat?
 
 Filemat is a web-based file manager.  
-It's self-hosted and allows you to mamage your local files from anywhere using a web UI.  
+It's self-hosted and allows you to manage your local files from anywhere using a web UI.  
 
 Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org.
 
