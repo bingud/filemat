@@ -45,7 +45,7 @@ Filemat is currently not available on `apt`.
 
 ### \- Running normally
 
-Make sure your machine has Linux and Java 21 installed.  
+Make sure your machine has Linux and Java 17 installed.  
 Download the JAR file from the releases section.  
   
 Use this command to run the file with Java (change the filename according to the JAR file you downloaded):  
