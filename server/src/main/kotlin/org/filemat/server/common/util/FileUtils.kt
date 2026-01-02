@@ -13,8 +13,8 @@ import kotlin.io.path.walk
 
 val tika = Tika()
 
-fun getOptionalPathWalkOption(): Array<out PathWalkOption> {
-    return if (State.App.followSymlinks) arrayOf(PathWalkOption.FOLLOW_LINKS) else emptyArray()
+fun getNoFollowLinksOption(): Array<out LinkOption> {
+    return if (State.App.followSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
 }
 
 object FileUtils {

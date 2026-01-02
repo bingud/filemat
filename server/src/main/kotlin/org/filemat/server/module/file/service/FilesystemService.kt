@@ -5,6 +5,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
+import org.filemat.server.common.util.getNoFollowLinksOption
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
@@ -57,7 +58,7 @@ class FilesystemService(
         }
     }
 
-    private fun deleteChildrenManually(path: Path, excludedPath: String): Result<Unit> {
+    private fun deleteChildrenManually(path: Path, excludedPath: Path): Result<Unit> {
         val children = runCatching {
             path.listDirectoryEntries()
         } .getOrElse { return Result.error("Failed to list folder entries.") }
@@ -66,12 +67,17 @@ class FilesystemService(
 
         for (child in children) {
             when {
-                // 3a) the data folder itself: dive in but never remove it
-                child.pathString == excludedPath -> {
+                // Ignore protected file
+                child == excludedPath -> {
+                    continue
+                }
+
+                excludedPath.startsWith(child) -> {
                     val sub = deleteChildrenManually(child, excludedPath)
                     if (sub.hasError) failed = true
                 }
-                // 3b) anything else: drop the whole subtree
+
+                // Delete file
                 else -> {
                     val deletionResult = internal_deleteFile(child, recursive = true)
                     if (deletionResult.isNotSuccessful) {
@@ -91,6 +97,70 @@ class FilesystemService(
      */
     fun isSupportedFilesystem(path: FilePath): Boolean? {
         return FileUtils.isSupportedFilesystem(path.path)
+    }
+
+    fun copyFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean = false): Result<Unit> {
+        return Result.error("todo")
+        return try {
+            val options = if (overwriteDestination) {
+                arrayOf(StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES)
+            } else {
+                arrayOf(StandardCopyOption.COPY_ATTRIBUTES)
+            }
+
+            if (Files.isDirectory(source.path, *getNoFollowLinksOption())) {
+                copyFolderRecursively(source, destination, overwriteDestination)
+            } else {
+                Files.copy(source.path, destination.path, *options)
+                Result.ok()
+            }
+        } catch (e: NoSuchFileException) {
+            Result.notFound()
+        } catch (e: FileAlreadyExistsException) {
+            Result.error("This file already exists.")
+        } catch (e: AccessDeniedException) {
+            Result.error("Missing permission to copy file.")
+        } catch (e: IOException) {
+            Result.error("Failed to copy file due to I/O error.")
+        } catch (e: Exception) {
+            Result.error("Failed to copy file.")
+        }
+    }
+
+    private fun copyFolderRecursively(
+        source: FilePath,
+        destination: FilePath,
+        overwriteDestination: Boolean
+    ): Result<Unit> {
+        return Result.error("todo")
+
+        var errors = 0
+        try {
+            if (Files.notExists(destination.path)) {
+                Files.createDirectories(destination.path)
+            }
+
+            Files.newDirectoryStream(source.path).use { stream ->
+                for (entry in stream) {
+                    val entrySource = FilePath(entry)
+                    val entryDestination = FilePath(destination.path.resolve(entry.fileName))
+
+                    val result = copyFile(entrySource, entryDestination, overwriteDestination)
+                    if (!result.isSuccessful) {
+                        errors++
+                    }
+                }
+            }
+
+            if (errors > 0) {
+                val w = if (errors > 1) "files" else "file"
+                return Result.error("$errors $w failed to copy.")
+            }
+
+            return Result.ok()
+        } catch (e: Exception) {
+            return Result.error("Failed to copy folder recursively.")
+        }
     }
 
     fun moveFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean = false): Result<Unit> {
@@ -194,7 +264,7 @@ class FilesystemService(
                 if (!recursive) {
                     return Result.reject("Folder cannot be deleted because it is not empty.")
                 }
-                return deleteChildrenManually(target.path, excludedPath = Props.dataFolder)
+                return deleteChildrenManually(target.path, excludedPath = Props.dataFolderPath)
             }
         }
 
@@ -261,7 +331,7 @@ class FilesystemService(
             fileType = type,
             size = attributes.size(),
             isExecutable = if (State.App.followSymlinks) Files.isExecutable(path.path) else true,
-            isWritable = if (State.App.followSymlinks) Files.isExecutable(path.path) else false,
+            isWritable = if (State.App.followSymlinks) Files.isWritable(path.path) else false,
         )
     }
 
