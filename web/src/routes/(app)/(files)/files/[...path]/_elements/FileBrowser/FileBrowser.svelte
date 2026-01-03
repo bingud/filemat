@@ -191,7 +191,13 @@
 
     async function option_rename(entry: FileMetadata) {
         filesState.ui.fileContextMenuPopoverOpen = false
-        const newFilename = await inputDialogState.show({title: "Rename file", message: "Enter the new filename:", confirmText: "Rename", cancelText: "Cancel"})
+        const newFilename = await inputDialogState.show({
+            title: "Rename file", 
+            message: "Enter the new filename:", 
+            confirmText: "Rename", 
+            cancelText: "Cancel",
+            defaultValue: entry.filename || "",
+        })
         if (!newFilename) return
         if (newFilename === entry.filename) return
 

@@ -36,6 +36,8 @@
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import { openEntry } from "./_code/fileBrowserUtil";
     import { ArrowLeftIcon } from "@lucide/svelte";
+    import OpenFileAsCategoryButton from "./_elements/button/OpenFileAsCategoryButton.svelte";
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
 
 
     let {
@@ -177,6 +179,30 @@
             nav.cancel()
             return
         }
+
+        if (textFileViewerState.isFileSavable) {
+            confirmDialogState.show({
+                title: "Unsaved changes",
+                message: "This file has unsaved changes. Are you sure you want to exit?",
+                cancelText: "Cancel",
+                confirmText: "Yes"
+            })?.then((r) => {
+                if (!r) return
+
+                if (r === true) {
+                    textFileViewerState.isFileSavable = false
+                    
+                    const destination = nav.to?.url.href
+                    if (destination) {
+                        goto(destination)
+                    }
+                }
+            })
+
+            nav.cancel()
+            return
+        }
+
         saveScrollPosition()
     })
 
@@ -281,6 +307,10 @@
                                     </div>
                                     <p>Save</p>
                                 </button>
+                            {/if}
+
+                            {#if filesState.data.displayedFileCategory}
+                                <OpenFileAsCategoryButton location="bar" />
                             {/if}
 
                             {#if uiState.isDesktop}

@@ -127,6 +127,14 @@ export async function saveEditedFile() {
     if (!textFileViewerState.isFileSavable) return console.log(`File is not savable.`)
     if (!textFileViewerState.textEditor) return console.log(`Editor is null.`)
 
+    const confirmation = await confirmDialogState.show({ 
+        title: "Save file",
+        message: "Are you sure you want to save this file?",
+        confirmText: "Yes",
+        cancelText: "Cancel"
+    })
+    if (!confirmation) return console.log(`Save canceled.`)
+
     const filePath = textFileViewerState.filePath
     if (!filePath) return console.log(`Edited file path is null.`)
 

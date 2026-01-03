@@ -23,6 +23,7 @@
     import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { selectSiblingFile } from "../../_code/fileBrowserUtil";
+    import OpenFileAsCategoryButton from "../button/OpenFileAsCategoryButton.svelte";
     
     let meta = $derived(filesState.data.fileMeta) 
 
@@ -37,9 +38,9 @@
 
         return getFileCategoryFromFilename(meta.filename!)
     })
-    let isEditable = $derived(fileCategory === "text" && auth.authenticated && (meta && meta.permissions.includes("WRITE")))
+    let displayedFileCategory = $derived(filesState.data.displayedFileCategory || fileCategory)
 
-    let displayedFileCategory = $derived(fileCategory)
+    let isEditable = $derived(displayedFileCategory === "text" && auth.authenticated && (meta && meta.permissions.includes("WRITE")) && !isSymlink)
     let isViewableFile = $derived(isFileCategory(displayedFileCategory))
     let isText = $derived(isTextFileCategory(displayedFileCategory))
 
@@ -174,8 +175,12 @@
         })
     }
 
+    explicitEffect(() => [ filesState.data.displayedFileCategory ], () => {
+        if (!filesState.data.displayedFileCategory) return
+        openAsFileType(filesState.data.displayedFileCategory)
+    })
+
     async function openAsFileType(type: FileCategory) {
-        displayedFileCategory = type
         // Do not manually download file if not text
         if (!isTextFileCategory(type)) return
 
@@ -241,11 +246,11 @@
     {:else if isViewableFile && (!isText || filesState.data.decodedContent != null)}
         {@const type = displayedFileCategory}
 
-        {#if displayedFileCategory !== fileCategory}
+        <!-- {#if displayedFileCategory !== fileCategory}
             <div class="w-full h-fit p-2 shrink-0 flex justify-end">
-                {@render openAsButton()}
+                <OpenFileAsCategoryButton location="file-viewer" />
             </div>
-        {/if}
+        {/if} -->
         
         <div class="w-full flex-grow min-h-0 flex items-center justify-center">
             {#if isSymlink === false}
@@ -287,30 +292,8 @@
             <p class="">This file type doesn't have a preview.</p>
             <div class="flex items-center gap-4">
                 <a download href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
-                {@render openAsButton()}
+                <OpenFileAsCategoryButton location="file-viewer" />
             </div>
         </div>
     {/if}
 </div>
-
-
-{#snippet openAsButton()}
-    <div class="size-fit z-10">
-        <Popover.Root>
-            <Popover.Trigger>
-                <button class="basic-button flex items-center gap-2">
-                    <p>Open as</p>
-                    <span class="h-6 py-1 block"><ChevronDownIcon /></span>
-                </button>
-            </Popover.Trigger>
-            <Popover.Content align="start" sideOffset={8}>
-                <div class="rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col w-[10rem]">
-                    <button on:click={() => { openAsFileType("text") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Text</button>
-                    <button on:click={() => { openAsFileType("image") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Image</button>
-                    <button on:click={() => { openAsFileType("video") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Video</button>
-                    <button on:click={() => { openAsFileType("audio") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Audio</button>
-                </div>
-            </Popover.Content>
-        </Popover.Root>
-    </div>
-{/snippet}

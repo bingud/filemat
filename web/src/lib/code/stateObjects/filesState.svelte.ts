@@ -4,6 +4,7 @@ import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
+import type { FileCategory } from "../data/files"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
 import { getContentUrl } from "../util/stateUtils"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
@@ -310,6 +311,8 @@ class FileDataStateClass {
         return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection)
     })
 
+    displayedFileCategory = $derived(null) as FileCategory | null
+
     clear() {
         this.fileMeta = null
         this.folderMeta = null
@@ -317,6 +320,7 @@ class FileDataStateClass {
         this.decodedContent = null
         this.entries = null
         this.contentFilePath = null
+        this.displayedFileCategory = null
     }
 
     clearOpenContent() {
@@ -324,6 +328,7 @@ class FileDataStateClass {
         this.content = null
         this.decodedContent = null
         this.contentFilePath = null
+        this.displayedFileCategory = null
     }
 }
 

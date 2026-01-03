@@ -8,6 +8,8 @@ class TextFileViewerState {
     isFocused = $state(false)
     filePath: string | null = $state(null)
 
+    wasEdited = $state(false)
+
     destroyEditor() { 
         try { this?.textEditor?.destroy() } catch (e) { console.log(e) }
     }
@@ -15,6 +17,7 @@ class TextFileViewerState {
         this.destroyEditor()
         this.isFileSavable = false
         this.filePath = null
+        this.wasEdited = false
     }
 }
 
