@@ -20,7 +20,7 @@
     import FileBrowser from './_elements/FileBrowser/FileBrowser.svelte'
     import FileViewer from './_elements/layout/FileViewer.svelte'
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic'
-    import { handleNewFolder, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles, saveEditedFile } from './_code/fileActions'
+    import { handleNewFolder, option_cancelFileEdit, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles, saveEditedFile } from './_code/fileActions'
     import NewFileButton from './_elements/button/NewFileButton.svelte'
     import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil"
     import FileSortingButton from "./_elements/button/FileSortingButton.svelte"
@@ -35,9 +35,10 @@
     import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import { openEntry } from "./_code/fileBrowserUtil";
-    import { ArrowLeftIcon } from "@lucide/svelte";
     import OpenFileAsCategoryButton from "./_elements/button/OpenFileAsCategoryButton.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
+    import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
+    import UndoIcon from "$lib/component/icons/UndoIcon.svelte";
 
 
     let {
@@ -301,6 +302,8 @@
                             
 
                             {#if textFileViewerState.isFileSavable}
+                                <button on:click={option_cancelFileEdit} title="Cancel file editing" class="file-action-button"><UndoIcon /></button>
+                            
                                 <button on:click={() => { saveEditedFile() }} class="h-full flex items-center justify-center gap-2 bg-surface-content-button rounded-md px-4">
                                     <div class="h-[1.2rem]">
                                         <SaveIcon />
@@ -309,7 +312,7 @@
                                 </button>
                             {/if}
 
-                            {#if filesState.data.displayedFileCategory}
+                            {#if filesState.currentFile.displayedFileCategory}
                                 <OpenFileAsCategoryButton location="bar" />
                             {/if}
 

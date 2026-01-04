@@ -1,10 +1,10 @@
 <script lang="ts">
     import type { FileShare } from "$lib/code/auth/types"
     import { ContextMenu } from "$lib/component/bits-ui-wrapper"
-    import { CopyIcon } from "@lucide/svelte"
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte"
     import Tooltip from "$lib/component/popover/Tooltip.svelte"
     import { createLink } from "$lib/code/util/codeUtil.svelte"
+    import CopyIcon from "$lib/component/icons/CopyIcon.svelte";
 
 
     let {

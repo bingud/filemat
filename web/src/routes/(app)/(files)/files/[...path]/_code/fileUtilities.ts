@@ -7,6 +7,8 @@ export type EntityPermissionMeta = { permission: EntityPermission & { permission
 
 
 export async function loadFileContent(filePath: string) {
+    if (filesState.data.contentFilePath === filePath && filesState.data.content) return
+
     const blob = await streamFileContent(filePath,  { signal: filesState.abortController.signal, shareToken: filesState.getShareToken() })
     if (filesState.data.fileMeta?.path !== filePath) return console.log(`Loaded blob of file that is not open anymore.`)
     if (!blob) return console.log(`Loaded blob is null.`)

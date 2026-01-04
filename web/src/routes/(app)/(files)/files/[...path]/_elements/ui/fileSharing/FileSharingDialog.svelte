@@ -1,15 +1,11 @@
 <script lang="ts">
     import type { FileShare } from "$lib/code/auth/types";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import { createLink, explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { useReplaceChars } from "$lib/code/util/uiUtil";
-    import { ContextMenu } from "$lib/component/bits-ui-wrapper";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
-    import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import Tooltip from "$lib/component/popover/Tooltip.svelte";
-    import { CopyIcon } from "@lucide/svelte";
     import { Dialog } from "bits-ui";
     import FileShareItemButton from "./FileShareItemButton.svelte";
 
@@ -33,9 +29,6 @@
     let passwordInput = $state('')
 
     let isCreating = $state(false)
-
-    // Context menu
-    let contextMenuOpen = $state(false)
 
     explicitEffect(() => [open], () => {
         if (open) {

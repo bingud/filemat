@@ -2,7 +2,7 @@
     import type { FileCategory } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
-    import { ChevronDownIcon } from "@lucide/svelte";
+    import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
 
     let {
         location
@@ -14,7 +14,7 @@
     let isLocationBar = $derived(location === "bar")
 
     function openAsFileType(type: FileCategory) {
-        filesState.data.displayedFileCategory = type
+        filesState.currentFile.displayedFileCategory = type
         isOpen = false
     }
 
@@ -32,7 +32,7 @@
                     }
                 ">
                     <p>Open as</p>
-                    <span class="h-6 block"><ChevronDownIcon /></span>
+                    <span class="h-4 block"><ChevronDownIcon /></span>
                 </button>
             {/snippet}
         </Popover.Trigger>

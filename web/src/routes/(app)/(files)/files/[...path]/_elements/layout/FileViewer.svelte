@@ -7,8 +7,6 @@
     import { barf, ayuLight } from 'thememirror';
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import { Popover } from "$lib/component/bits-ui-wrapper";
-    import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { loadFileContent } from "../../_code/fileUtilities";
     import { onDestroy, onMount } from "svelte";
@@ -26,30 +24,17 @@
     import OpenFileAsCategoryButton from "../button/OpenFileAsCategoryButton.svelte";
     
     let meta = $derived(filesState.data.fileMeta) 
+    let fileCategory = $derived(filesState.currentFile.displayedFileCategory)
 
-    const isSymlink = $derived(meta?.fileType.includes("LINK") && !appState.followSymlinks)
-    const fileCategory: FileCategory | null = $derived.by(() => {
-        if (!meta) return null
-        if (isSymlink) return "text" as FileCategory
-
-        if (filesState.meta.type === "shared" && filesState.path === "/") {
-            return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
-        }
-
-        return getFileCategoryFromFilename(meta.filename!)
-    })
-    let displayedFileCategory = $derived(filesState.data.displayedFileCategory || fileCategory)
-
-    let isEditable = $derived(displayedFileCategory === "text" && auth.authenticated && (meta && meta.permissions.includes("WRITE")) && !isSymlink)
-    let isViewableFile = $derived(isFileCategory(displayedFileCategory))
-    let isText = $derived(isTextFileCategory(displayedFileCategory))
+    let isViewableFile = $derived(isFileCategory(fileCategory))
+    let isText = $derived(isTextFileCategory(fileCategory))
 
     let videoElement: HTMLVideoElement | undefined = $state(undefined)
     let player: Player | undefined = $state(undefined)
 
     onMount(() => {
-        if (isViewableFile && displayedFileCategory) {
-            openAsFileType(displayedFileCategory)
+        if (isViewableFile && fileCategory) {
+            openAsFileType(fileCategory)
         }
     })
 
@@ -63,14 +48,14 @@
     $effect(() => {
         if (filesState.data.decodedContent != null && filesState.data.contentFilePath === filesState.path) return
         if (filesState.data.content == null) return
-        if (!isViewableFile || !displayedFileCategory) return
+        if (!isViewableFile || !fileCategory) return
 
         const blobPath = filesState.data.contentFilePath
-        getBlobContent(filesState.data.content, displayedFileCategory).then((result) => {
+        getBlobContent(filesState.data.content, fileCategory).then((result) => {
             if (blobPath !== filesState.path) return
 
             filesState.data.decodedContent = result
-            if (isSymlink) {
+            if (filesState.data.isFileSymlink) {
                 openAsFileType("text")
             }
         })
@@ -84,7 +69,7 @@
         isText
     ], () => {
         if (isText) {
-            createTextEditor()
+            textFileViewerState.createTextEditor()
         }
     })
 
@@ -153,31 +138,9 @@
     }
     ///
 
-    function createTextEditor() {
-        textFileViewerState.destroyEditor()
-
-        if (filesState.data.decodedContent == null || !textFileViewerState.textEditorContainer) return
-
-        textFileViewerState.filePath = filesState.data.fileMeta!.path
-
-        const theme = uiState.isDark ? barf : ayuLight
-        textFileViewerState.textEditor = new EditorView({
-            doc: filesState.data.decodedContent,
-            parent: textFileViewerState.textEditorContainer,
-            extensions: [
-                basicSetup, theme,
-                EditorView.updateListener.of((update) => {
-                    if (update.docChanged && isEditable) {
-                        textFileViewerState.isFileSavable = true
-                    }
-                })
-            ]
-        })
-    }
-
-    explicitEffect(() => [ filesState.data.displayedFileCategory ], () => {
-        if (!filesState.data.displayedFileCategory) return
-        openAsFileType(filesState.data.displayedFileCategory)
+    explicitEffect(() => [ fileCategory ], () => {
+        if (!fileCategory) return
+        openAsFileType(fileCategory)
     })
 
     async function openAsFileType(type: FileCategory) {
@@ -209,7 +172,7 @@
         on:mouseenter={() => handleLeftHover(true)}
         on:mouseleave={() => handleLeftHover(false)}
     >
-        {#if leftHovering && !isEditable || leftLongHovering}
+        {#if leftHovering && !filesState.currentFile.isEditable || leftLongHovering}
             <button 
                 on:click={() => { selectSiblingFile('previous', true, true) }} 
                 class="flex items-center justify-center w-full h-2/3 bg-surface rounded-lg cursor-pointer"
@@ -227,7 +190,7 @@
         on:mouseenter={() => handleRightHover(true)}
         on:mouseleave={() => handleRightHover(false)}
     >
-        {#if rightHovering && !isEditable || rightLongHovering}
+        {#if rightHovering && !filesState.currentFile.isEditable || rightLongHovering}
             <button 
                 on:click={() => { selectSiblingFile('next', true, true) }} 
                 class="flex items-center justify-center w-full h-2/3 bg-surface rounded-lg cursor-pointer"
@@ -244,38 +207,30 @@
             <Loader></Loader>
         </div>
     {:else if isViewableFile && (!isText || filesState.data.decodedContent != null)}
-        {@const type = displayedFileCategory}
-
-        <!-- {#if displayedFileCategory !== fileCategory}
-            <div class="w-full h-fit p-2 shrink-0 flex justify-end">
-                <OpenFileAsCategoryButton location="file-viewer" />
-            </div>
-        {/if} -->
-        
         <div class="w-full flex-grow min-h-0 flex items-center justify-center">
-            {#if isSymlink === false}
+            {#if filesState.data.isFileSymlink === false}
                 {#if isText}
                     <div class="w-full h-full custom-scrollbar overflow-y-auto" 
                         on:focusin={() => { textFileViewerState.isFocused = true }} 
                         on:focusout={() => { textFileViewerState.isFocused = false }}
                         bind:this={textFileViewerState.textEditorContainer}>
                     </div>
-                {:else if type === "image"}
+                {:else if fileCategory === "image"}
                     <img 
                         src={filesState.data.contentUrl}
                         alt={meta.path} 
                         class="max-w-full max-h-full size-auto"
                         on:dragstart={(e) => { if (e.dataTransfer?.effectAllowed) { e.dataTransfer.dropEffect = 'link'; e.dataTransfer.setData('isFromPage', 'true') } }}
                     >
-                {:else if type === "video"}
+                {:else if fileCategory === "video"}
                     <div class="size-full overflow-hidden">
                         <video bind:this={videoElement} class="video-js h-full w-full">
                             <track kind="captions" srclang="en" label="No captions" />
                         </video>
                     </div>
-                {:else if type === "audio"}
+                {:else if fileCategory === "audio"}
                     <audio src={filesState.data.contentUrl} controls></audio>
-                {:else if type === "pdf"}
+                {:else if fileCategory === "pdf"}
                     <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
                 {/if}
             {:else}

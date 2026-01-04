@@ -187,3 +187,15 @@ export async function saveEditedFile() {
 
     toast.success(`File saved.`)
 }
+
+export async function option_cancelFileEdit() {
+    const c = await confirmDialogState.show({
+        title: "Unsaved changes",
+        message: "Do you want to cancel unsaved changes to this file?",
+        confirmText: "Yes",
+        cancelText: "No"
+    })
+    if (!c) return
+
+    textFileViewerState.createTextEditor()
+}

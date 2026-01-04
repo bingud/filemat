@@ -4,11 +4,12 @@ import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
-import type { FileCategory } from "../data/files"
+import { getFileCategoryFromFilename, type FileCategory } from "../data/files"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
 import { getContentUrl } from "../util/stateUtils"
 import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
+import { auth } from "./authState.svelte"
 
 type StateMetadataProps = { fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
 export type StateMetadata = { type: "files",                                                                            } & StateMetadataProps
@@ -64,6 +65,7 @@ class FilesState {
     data = new FileDataStateClass()
     ui = new FileUiStateClasss()
     search = new FileSearchStateClass()
+    currentFile = new FileStateClass()
 
     abortController = new AbortController()
     abort() {
@@ -311,7 +313,10 @@ class FileDataStateClass {
         return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection)
     })
 
-    displayedFileCategory = $derived(null) as FileCategory | null
+    isFileSymlink = $derived.by(() => {
+        if (!this.fileMeta) return false
+        return this.fileMeta.fileType.includes("LINK") && !appState.followSymlinks
+    })
 
     clear() {
         this.fileMeta = null
@@ -320,7 +325,8 @@ class FileDataStateClass {
         this.decodedContent = null
         this.entries = null
         this.contentFilePath = null
-        this.displayedFileCategory = null
+
+        filesState.currentFile.clear()
     }
 
     clearOpenContent() {
@@ -328,7 +334,8 @@ class FileDataStateClass {
         this.content = null
         this.decodedContent = null
         this.contentFilePath = null
-        this.displayedFileCategory = null
+
+        filesState.currentFile.clear()
     }
 }
 
@@ -361,6 +368,32 @@ class FileSearchStateClass {
         this.entries = null
         this.searchPath = null
         filesState.selectedEntries.searchList = []
+    }
+}
+
+class FileStateClass { 
+    originalFileCategory: FileCategory | null = $derived.by(() => {
+        if (!filesState.data.fileMeta) return null
+        if (filesState.data.isFileSymlink) return "text" as FileCategory
+
+        if (filesState.meta.type === "shared" && filesState.path === "/") {
+            return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
+        }
+
+        return getFileCategoryFromFilename(filesState.data.fileMeta.filename!)
+    })
+
+    displayedFileCategory = $derived(this.originalFileCategory) as FileCategory | null
+
+    isEditable = $derived(
+        this.displayedFileCategory === "text" 
+        && auth.authenticated 
+        && (filesState.data.fileMeta && filesState.data.fileMeta.permissions.includes("WRITE")) 
+        && !filesState.data.isFileSymlink
+    )
+
+    clear() {
+        this.displayedFileCategory = null
     }
 }
 
