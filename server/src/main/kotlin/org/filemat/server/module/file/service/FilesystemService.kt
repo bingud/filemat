@@ -3,9 +3,11 @@ package org.filemat.server.module.file.service
 import me.desair.tus.server.TusFileUploadService
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
 import org.filemat.server.common.util.getNoFollowLinksOption
+import org.filemat.server.common.util.resolvePath
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
@@ -58,38 +60,39 @@ class FilesystemService(
         }
     }
 
-    private fun deleteChildrenManually(path: Path, excludedPath: Path): Result<Unit> {
+    private fun deleteChildrenManually(path: Path, excludedPath: Path, recursive: Boolean = false): Result<Int> {
         val children = runCatching {
             path.listDirectoryEntries()
-        } .getOrElse { return Result.error("Failed to list folder entries.") }
+        }.getOrElse { return Result.error("Failed to list folder entries.") }
 
-        var failed = false
+        var failedCount = 0
 
         for (child in children) {
             when {
-                // Ignore protected file
                 child == excludedPath -> {
                     continue
                 }
 
                 excludedPath.startsWith(child) -> {
-                    val sub = deleteChildrenManually(child, excludedPath)
-                    if (sub.hasError) failed = true
+                    val sub = deleteChildrenManually(child, excludedPath, true)
+                    failedCount += sub.value
                 }
 
-                // Delete file
                 else -> {
                     val deletionResult = internal_deleteFile(child, recursive = true)
                     if (deletionResult.isNotSuccessful) {
-                        System.err.println("Failed to delete: ${child.pathString}")
-                        failed = true
+                        failedCount++
                     }
                 }
             }
         }
 
-        return if (failed) Result.error("Some files could not be deleted.")
-        else Result.ok()
+        if (!recursive && failedCount > 0) {
+            val letter = if (failedCount > 1) "s" else ""
+            return Result.error("$failedCount file$letter could not be deleted.")
+        }
+
+        return Result.ok(failedCount)
     }
 
     /**
@@ -99,19 +102,37 @@ class FilesystemService(
         return FileUtils.isSupportedFilesystem(path.path)
     }
 
-    fun copyFile(source: FilePath, destination: FilePath, overwriteDestination: Boolean = false): Result<Unit> {
-        return Result.error("todo")
+    fun copyFile(source: FilePath, destination: FilePath): Result<Unit> {
         return try {
-            val options = if (overwriteDestination) {
-                arrayOf(StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES)
-            } else {
-                arrayOf(StandardCopyOption.COPY_ATTRIBUTES)
+            if (destination.startsWith(source)) return Result.reject("File cannot be copied into itself.")
+            if (destination.path.exists(LinkOption.NOFOLLOW_LINKS)) return Result.reject("This file already exists.")
+
+            val isSymlink = source.path.isSymbolicLink()
+
+            // Check if symlink points to a parent of itself
+            if (isSymlink) {
+                val resolvedSource = resolvePath(source).let {
+                    val result = it.first
+                    if (result.isNotSuccessful) return result.cast()
+                    result.value
+                }
+
+                if (source.path.startsWith(resolvedSource.path)) return Result.ok()
             }
 
-            if (Files.isDirectory(source.path, *getNoFollowLinksOption())) {
-                copyFolderRecursively(source, destination, overwriteDestination)
+            val symlinkCopyOption = getNoFollowLinksOption()
+
+            if (Files.isDirectory(source.path, *symlinkCopyOption)) {
+                copyFolderRecursively(
+                    source = source,
+                    destination = destination,
+                )
             } else {
-                Files.copy(source.path, destination.path, *options)
+                Files.copy(
+                    source.path,
+                    destination.path,
+                    *symlinkCopyOption,
+                )
                 Result.ok()
             }
         } catch (e: NoSuchFileException) {
@@ -130,10 +151,7 @@ class FilesystemService(
     private fun copyFolderRecursively(
         source: FilePath,
         destination: FilePath,
-        overwriteDestination: Boolean
     ): Result<Unit> {
-        return Result.error("todo")
-
         var errors = 0
         try {
             if (Files.notExists(destination.path)) {
@@ -145,7 +163,10 @@ class FilesystemService(
                     val entrySource = FilePath(entry)
                     val entryDestination = FilePath(destination.path.resolve(entry.fileName))
 
-                    val result = copyFile(entrySource, entryDestination, overwriteDestination)
+                    val result = copyFile(
+                        source = entrySource,
+                        destination = entryDestination,
+                    )
                     if (!result.isSuccessful) {
                         errors++
                     }
@@ -159,7 +180,7 @@ class FilesystemService(
 
             return Result.ok()
         } catch (e: Exception) {
-            return Result.error("Failed to copy folder recursively.")
+            return Result.error("Failed to copy folder.")
         }
     }
 
@@ -264,7 +285,7 @@ class FilesystemService(
                 if (!recursive) {
                     return Result.reject("Folder cannot be deleted because it is not empty.")
                 }
-                return deleteChildrenManually(target.path, excludedPath = Props.dataFolderPath)
+                return deleteChildrenManually(target.path, excludedPath = Props.dataFolderPath).cast()
             }
         }
 
