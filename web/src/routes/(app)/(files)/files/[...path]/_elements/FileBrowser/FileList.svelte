@@ -17,6 +17,7 @@
         onClickSelectCheckbox,
         option_rename,
         option_move,
+        option_copy,
         option_delete,
         option_details,
         option_save,
@@ -120,7 +121,7 @@
         </div>
 
         <!-- Each entry is a grid item -->
-        {#each sortedEntries as entry (entry.path)}
+        {#each sortedEntries as entry}
             <RowFileEntry
                 {entry}
                 {event_dragStart}
@@ -138,7 +139,7 @@
         <div class="w-full h-fit grid gap-2
                 grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]"
         >
-            {#each sortedEntries as entry (entry.path)}
+            {#each sortedEntries as entry}
                 <GridFileEntry
                     {entry}
                     {event_dragStart}
@@ -167,6 +168,7 @@
                 {menuEntry}
                 {option_rename}
                 {option_move}
+                {option_copy}
                 {option_delete}
                 {option_details}
                 {option_save}

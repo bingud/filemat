@@ -1,9 +1,8 @@
 import { toast } from "@jill64/svelte-toast"
 import { untrack } from "svelte"
-import type { FileMetadata, FileType, FullFileMetadata } from "../auth/types"
+import type { FileMetadata, FullFileMetadata } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 import type { FileSortingMode, SortingDirection } from "../types/fileTypes"
-import { filesState } from "../stateObjects/filesState.svelte"
 
 type ObjectKey = string | number | symbol
 
@@ -77,7 +76,7 @@ export function removeSpaces(str: string): string {
 }
 
 
-type SafeFetchResult = Omit<Response, 'json'> & { failed: boolean, exception: any | null, code: httpStatus, content: string, json: () => any | null }
+type SafeFetchResult = Omit<Response, 'json'> & { failed: boolean, exception: any | null, code: httpStatus, content: string, json: () => (any | null) }
 
 /**
  * Fetches without throwing an exception.

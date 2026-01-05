@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
@@ -527,13 +527,17 @@ export async function moveFile(path: string, newPath: string) {
     const response = await safeFetch(`/api/v1/file/move`, {
         body: formData({ path: path, newPath: newPath })
     })
+    if (response.failed) {
+        handleException(`Failed to move file.`, `Failed to move file.`, response.exception)
+        return
+    }
+
     const status = response.code
     const json = response.json()
 
     if (status.notFound) {
         handleErr({
-            description: `file not found when moving`,
-            notification: `This file was not found.`
+            notification: `Moved file was not found.`
         })
         return
     } else if (status.failed) {
@@ -546,6 +550,61 @@ export async function moveFile(path: string, newPath: string) {
     }
 
     updateFileListAfterFileMove(path, newPath)
+}
+
+export async function copyFile(path: string, newPath: string) {
+    const response = await safeFetch(`/api/v1/file/copy`, {
+        body: formData({ path, newPath })
+    })
+    if (response.failed) {
+        handleException(`Failed to copy file.`, `Failed to copy file.`, response.exception)
+        return
+    }
+    
+    const status = response.code
+    const json = response.json()
+
+    if (status.notFound) {
+        handleErr({
+            notification: `Copied file was not found.`
+        })
+        return
+    } else if (status.failed) {
+        handleErr({
+            description: `Failed to copy file.`,
+            notification: json.message || `Failed to copy file.`,
+            isServerDown: status.serverDown
+        })
+        return
+    }
+
+    if (json) {
+        const meta = json as FullFileMetadata
+        meta.filename = filenameFromPath(meta.path)
+
+        // Add copied file to entries of current folder
+        if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, newPath)) {
+            filesState.data.entries?.push(meta)
+        }
+    } else {
+        // Is destination file in current folder
+        if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, newPath)) {
+            // Is original file in current folder
+            if (isPathDirectChild(filesState.data.folderMeta.path, path)) {
+                const originalEntry = filesState.data.entries!.find(v => v.path === path)
+                
+                if (originalEntry) {
+                    const newEntry = structuredClone(originalEntry)
+                    const now = unixNowMillis()
+                    newEntry.path = newPath
+                    newEntry.modifiedDate = now
+                    newEntry.createdDate = now
+                    
+                    filesState.data.entries!.push(newEntry)
+                }
+            }
+        }
+    }
 }
 
 export async function moveMultipleFiles(newParentPath: string, paths: string[]) {

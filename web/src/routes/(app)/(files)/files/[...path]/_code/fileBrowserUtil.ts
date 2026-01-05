@@ -6,6 +6,7 @@ import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 export type FileContextMenuProps = {
     option_rename: (entry: FileMetadata) => any
     option_move: (entry: FileMetadata) => any
+    option_copy: (entry: FileMetadata) => any
     option_delete: (entry: FileMetadata) => any
     option_details: (entry: FileMetadata) => any
     option_save: (entry: FileMetadata, action: "save" | "unsave") => any

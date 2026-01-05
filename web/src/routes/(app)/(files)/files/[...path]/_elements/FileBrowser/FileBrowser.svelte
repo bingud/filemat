@@ -5,7 +5,7 @@
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte"
-    import { deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files"
+    import { copyFile, deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files"
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte"
     import { appState } from '$lib/code/stateObjects/appState.svelte'
@@ -129,19 +129,29 @@
         if (filesState.isSearchOpen) return
 
         const newParentPath = await folderSelectorState.show!({
-            title: "Choose the target folder.",
+            title: "Choose the new location:",
             initialSelection: parentFromPath(entry.path)
         })
         if (!newParentPath) return
 
-        // Move all selected entries if a selected entry was moved
-        const selected = filesState.selectedEntries.currentList
-        if (selected.length > 1 && selected.includes(entry.path)) {
-            moveMultipleFiles(newParentPath, selected)
-        } else {
-            const newPath = appendFilename(newParentPath, entry.filename!)
-            moveFile(entry.path, newPath)
-        }
+        const newPath = appendFilename(newParentPath, entry.filename!)
+        moveFile(entry.path, newPath)
+
+        closeFileContextMenu()
+    }
+
+    async function option_copy(entry: FileMetadata) {
+        const newPath = await folderSelectorState.show!({
+            title: "Choose the new location:",
+            initialSelection: parentFromPath(entry.path),
+            isFilenameChangable: true,
+            defaultFilename: entry.filename,
+            resultType: "destination"
+        })
+        if (!newPath) return
+
+        copyFile(entry.path, newPath)
+
         closeFileContextMenu()
     }
 
@@ -229,7 +239,6 @@
         }
     }
 
-    
 
     /**
      * # Drag and dropping
@@ -319,6 +328,7 @@
                 {onClickSelectCheckbox}
                 {option_rename}
                 {option_move}
+                {option_copy}
                 {option_delete}
                 {option_details}
                 {option_save}
@@ -355,6 +365,7 @@
             {onClickSelectCheckbox}
             {option_rename}
             {option_move}
+            {option_copy}
             {option_delete}
             {option_details}
             {option_save}

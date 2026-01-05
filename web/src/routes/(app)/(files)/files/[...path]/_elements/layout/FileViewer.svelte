@@ -1,23 +1,18 @@
 <script lang="ts">
-    import { getFileCategoryFromFilename, isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
+    import { isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
     import { getBlobContent } from "$lib/code/module/files";
     import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
-    import {basicSetup} from "codemirror"
-    import {EditorView} from "@codemirror/view"
-    import { barf, ayuLight } from 'thememirror';
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { loadFileContent } from "../../_code/fileUtilities";
     import { onDestroy, onMount } from "svelte";
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
     import videojs from 'video.js'
     import 'video.js/dist/video-js.min.css'
     import type Player from "video.js/dist/types/player";
     import mime from 'mime'
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
-    import { auth } from "$lib/code/stateObjects/authState.svelte";
     import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { selectSiblingFile } from "../../_code/fileBrowserUtil";

@@ -189,6 +189,28 @@ class FileController(
         }
     }
 
+    @PostMapping("/copy")
+    fun copyFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+        @RequestParam("newPath") rawNewPath: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+        val newPath = FilePath.of(rawNewPath)
+
+        fileService.copyFile(
+            user = user,
+            rawPath = path,
+            rawDestinationPath = newPath
+        ).let {
+            if (it.notFound) return notFound()
+            if (it.rejected) return bad(it.error, "")
+            if (it.hasError) return internal(it.error, "")
+            return ok(JsonNonNull.encodeToString(it.value))
+        }
+    }
+
     @PostMapping("/move")
     fun moveFileMapping(
         request: HttpServletRequest,

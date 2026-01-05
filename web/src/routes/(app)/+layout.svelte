@@ -7,7 +7,6 @@
     import Sidebar from './_components/Sidebar.svelte';
     import { fetchState, startStateAutoSync } from '$lib/code/state/stateFetcher';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
-    import { filesState } from '$lib/code/stateObjects/filesState.svelte';
     import { page } from '$app/state';
     import { loadPreferenceSettings } from '$lib/code/module/settings';
 

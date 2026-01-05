@@ -102,8 +102,9 @@ class FilesystemService(
         return FileUtils.isSupportedFilesystem(path.path)
     }
 
-    fun copyFile(source: FilePath, destination: FilePath): Result<Unit> {
+    fun copyFile(source: FilePath, canonicalSource: FilePath? = null, destination: FilePath): Result<Unit> {
         return try {
+            if (destination == source) return Result.reject("Copied file cannot have the same filename.")
             if (destination.startsWith(source)) return Result.reject("File cannot be copied into itself.")
             if (destination.path.exists(LinkOption.NOFOLLOW_LINKS)) return Result.reject("This file already exists.")
 
@@ -111,7 +112,7 @@ class FilesystemService(
 
             // Check if symlink points to a parent of itself
             if (isSymlink) {
-                val resolvedSource = resolvePath(source).let {
+                val resolvedSource = canonicalSource ?: resolvePath(source).let {
                     val result = it.first
                     if (result.isNotSuccessful) return result.cast()
                     result.value

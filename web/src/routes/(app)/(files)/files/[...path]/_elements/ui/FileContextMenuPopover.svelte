@@ -7,6 +7,7 @@
     import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
     import BookmarkXIcon from "$lib/component/icons/BookmarkXIcon.svelte";
     import CheckboxIcon from "$lib/component/icons/CheckboxIcon.svelte";
+    import CopyIcon from "$lib/component/icons/CopyIcon.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
@@ -23,6 +24,7 @@
         menuEntry,
         option_rename,
         option_move,
+        option_copy,
         option_delete,
         option_details,
         option_save,
@@ -113,6 +115,13 @@
                 {/if}
             {/if}
 
+            <button on:click={() => { option_copy(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                <div class="size-5 flex-shrink-0">
+                    <CopyIcon />
+                </div>
+                <span>Copy</span>
+            </button>
+
             {#if menuEntry.permissions.includes("DELETE")}
                 <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                     <div class="size-5 flex-shrink-0">
@@ -172,7 +181,7 @@
             <!-- Divider -->
             <hr class="basic-hr my-2">
 
-            <p class="px-4 truncate opacity-70">File: {menuEntry.filename!}</p>
+            <p class="px-4 truncate opacity-70">{menuEntry.filename!}</p>
         </div>
     </Popover.Content>
 </Popover.Root>

@@ -62,7 +62,8 @@ enum class UserAction(val index: Int) {
     CREATE_SAVED_FILE(53),
     GET_SAVED_FILE_LIST(54),
     REMOVE_SAVED_FILE(55),
-    UPDATE_SAVED_FILE(56);
+    UPDATE_SAVED_FILE(56),
+    COPY_FILE(57);
 
     companion object {
         init {

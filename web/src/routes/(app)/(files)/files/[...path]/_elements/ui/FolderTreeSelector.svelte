@@ -21,6 +21,21 @@
     let dialogTitle = $state('Select a folder')
     let folderTree: FolderNode | null = $state(null)
     let selectedFolderPath: string | null = $state(null)
+    let isFilenameChangable: boolean | null = $state(null)
+    let defaultFilename: string | null = $state(null)
+
+    let filenameInput: string = $state("")
+
+    let selectedPath = $derived.by(() => {
+        if (!isFilenameChangable) {
+            return selectedFolderPath
+        }
+
+        if (!filenameInput || !selectedFolderPath) return null
+        
+        const divider = selectedFolderPath === "/" ? "" : "/"
+        return selectedFolderPath + divider + filenameInput.replaceAll("/", "")
+    })
 
     let initialSelection: string | null = $state(null)
     let hasScrolledToInitial: boolean = $state(false)
@@ -28,14 +43,22 @@
     // Promise resolver functions
     let resolvePromise: ((value: string | null) => void) | null = $state(null)
     
+    type FilenameProps = { isFilenameChangable?: undefined, defaultFilename?: undefined, resultType?: undefined } 
+        | { isFilenameChangable: boolean, defaultFilename: string | null, resultType: "destination" }
+
     // Public API - returns a Promise that resolves to a selected folder path, or null.
-    export function show(options: {
+    export function show(options: FilenameProps & {
         title?: string,
-        initialSelection?: string
+        initialSelection?: string,
     } = {}) {
         if (options.title) dialogTitle = options.title
         if (options.initialSelection) initialSelection = options.initialSelection
-        
+        if (options.isFilenameChangable) isFilenameChangable = options.isFilenameChangable
+        if (options.defaultFilename) {
+            defaultFilename = options.defaultFilename
+            filenameInput = defaultFilename
+        }
+
         folderSelectorState.isOpen = true
         
         return new Promise<string | null>((resolve) => {
@@ -69,6 +92,10 @@
             folderTree = null
             initialSelection = null
             hasScrolledToInitial = false
+            isFilenameChangable = null
+            defaultFilename = null
+
+            filenameInput = ""
         }
     })
 
@@ -150,11 +177,11 @@
 
     // Confirm selection and resolve promise
     function confirmSelection() {
-        if (resolvePromise) {
-            resolvePromise(selectedFolderPath)
-            resolvePromise = null
-        }
         folderSelectorState.isOpen = false
+        if (!resolvePromise) return
+        
+        
+        resolvePromise(selectedPath)
     }
 
     /** 
@@ -202,12 +229,12 @@
             {dialogTitle}
         </Dialog.Title>
 
-        <div class="flex flex-col flex-1 w-full min-h-0">
+        <div class="flex flex-col flex-1 w-full min-h-0 gap-4">
             <div class="flex flex-col flex-1 min-h-0 border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 overflow-hidden">
                 <div class="p-2 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
                     <div class="flex items-center text-sm gap-1">
                         <span class="mr-1 opacity-50">Selected:</span>
-                        <span class="font-medium">{selectedFolderPath || "/"}</span>
+                        <span class="font-medium">{selectedPath || "-"}</span>
                     </div>
                 </div>
                 
@@ -221,6 +248,13 @@
                     {/if}
                 </div>  
             </div>
+
+            {#if isFilenameChangable}
+                <div class="flex gap-4 items-center">
+                    <label for="selected-filename-input !w-fit">Filename:</label>
+                    <input id="selected-filename-input" bind:value={filenameInput} class="basic-input !max-w-full !flex-grow">
+                </div>
+            {/if}
             
             <div class="flex justify-end gap-2 mt-4">
                 <button 
@@ -232,7 +266,7 @@
                 <button 
                     class="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     on:click={confirmSelection}
-                    disabled={!selectedFolderPath}
+                    disabled={!selectedPath}
                 >
                     Select
                 </button>

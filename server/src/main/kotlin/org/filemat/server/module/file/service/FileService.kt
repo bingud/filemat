@@ -50,6 +50,71 @@ class FileService(
     private val fileShareService: FileShareService,
     private val savedFileService: SavedFileService,
 ) {
+    fun copyFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<FullFileMetadata> {
+        // Resolve the copied path
+        val canonicalPath: FilePath = resolvePath(rawPath)
+            .let { (result: Result<FilePath>, pathHasSymlink: Boolean) ->
+                if (result.notFound) return Result.reject("Copied file was not found.")
+                if (result.isNotSuccessful) return result.cast()
+                result.value
+            }
+
+        if (canonicalPath.pathString == "/") return Result.reject("Cannot copy root folder.")
+
+        // Check if user is permitted to copy the file
+        isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val rawParentDestinationPath = FilePath.of(rawDestinationPath.path.parent.pathString)
+
+        // Resolve parent of destination path
+        val canonicalParentDestinationPath: FilePath = resolvePath(rawParentDestinationPath)
+            .let { (result: Result<FilePath>, pathHasSymlink: Boolean) ->
+                if (result.notFound) return Result.reject("Destination folder was not found.")
+                if (result.isNotSuccessful) return result.cast()
+                result.value
+            }
+
+        // Check if user is permitted to write to destination folder
+        isAllowedToEditFile(user = user, canonicalPath = canonicalParentDestinationPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Get destination path
+        val canonicalDestinationPath = FilePath.ofAlreadyNormalized(
+            canonicalParentDestinationPath.path.resolve(rawDestinationPath.path.fileName)
+        )
+
+        // Move the file
+        filesystem.copyFile(
+            source = canonicalPath,
+            canonicalSource = canonicalPath,
+            destination = canonicalDestinationPath
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        // Create entity
+        entityService.create(
+            canonicalPath = canonicalDestinationPath,
+            ownerId = user.userId,
+            userAction = UserAction.COPY_FILE,
+            followSymLinks = false
+        )
+
+        val fileMeta = getFullMetadata(
+            user = user,
+            rawPath = rawDestinationPath,
+            canonicalPath = canonicalDestinationPath,
+            action = UserAction.COPY_FILE
+        ).let {
+            if (it.isNotSuccessful) return Result.error("File was copied. Server failed to provide file metadata.")
+            it.value
+        }
+
+        return Result.ok(fileMeta)
+    }
 
     fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean): Pair<Result<FilePath>, Boolean> {
         val sharedPath = if (shareToken != null) {
@@ -238,8 +303,6 @@ class FileService(
         val (newPathParentResult, newPathHasSymlink) = resolvePath(rawNewPathParent)
         if (newPathParentResult.isNotSuccessful) return newPathParentResult.cast()
         val newPathParent = newPathParentResult.value
-
-        if (newPathParent.pathString == "/") return Result.reject("Cannot change file path to root.")
 
         // Get the target path
         val newPath = FilePath.ofAlreadyNormalized(newPathParent.path.resolve(rawNewPath.path.fileName))
