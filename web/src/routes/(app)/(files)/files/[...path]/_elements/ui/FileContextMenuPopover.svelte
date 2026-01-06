@@ -115,12 +115,14 @@
                 {/if}
             {/if}
 
-            <button on:click={() => { option_copy(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
-                <div class="size-5 flex-shrink-0">
-                    <CopyIcon />
-                </div>
-                <span>Copy</span>
-            </button>
+            {#if filesState.meta.type !== "shared"}
+                <button on:click={() => { option_copy(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                    <div class="size-5 flex-shrink-0">
+                        <CopyIcon />
+                    </div>
+                    <span>Copy</span>
+                </button>
+            {/if}
 
             {#if menuEntry.permissions.includes("DELETE")}
                 <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
