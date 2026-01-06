@@ -3,8 +3,7 @@ package org.filemat.server.module.file.model
 import kotlinx.serialization.Serializable
 import org.filemat.server.module.permission.model.FilePermission
 
-
-abstract class AFileMetadata {
+abstract class AbstractFileMetadata {
     abstract val path: String
     abstract val modifiedDate: Long
     abstract val createdDate: Long
@@ -13,6 +12,12 @@ abstract class AFileMetadata {
     abstract val isExecutable: Boolean
     abstract val isWritable: Boolean
 }
+
+abstract class AbstractFullFileMetadata : AbstractFileMetadata() {
+    abstract val permissions: Collection<FilePermission>
+    abstract val isSaved: Boolean?
+}
+
 
 @Serializable
 data class FileMetadata(
@@ -23,7 +28,8 @@ data class FileMetadata(
     override val size: Long,
     override val isExecutable: Boolean,
     override val isWritable: Boolean,
-) : AFileMetadata()
+) : AbstractFileMetadata()
+
 
 @Serializable
 data class FullFileMetadata(
@@ -34,11 +40,11 @@ data class FullFileMetadata(
     override val size: Long,
     override val isExecutable: Boolean,
     override val isWritable: Boolean,
-    val permissions: Collection<FilePermission>,
-    val isSaved: Boolean?,
-) : AFileMetadata() {
+    override val permissions: Collection<FilePermission>,
+    override val isSaved: Boolean?,
+) : AbstractFullFileMetadata() {
     companion object {
-        fun from(m: FileMetadata, permissions: Collection<FilePermission>, isSaved: Boolean?): FullFileMetadata {
+        fun from(m: FileMetadata, isSaved: Boolean?, permissions: Collection<FilePermission>): FullFileMetadata {
             return FullFileMetadata(
                 path = m.path,
                 modifiedDate = m.modifiedDate,

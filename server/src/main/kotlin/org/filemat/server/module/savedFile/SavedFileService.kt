@@ -169,7 +169,6 @@ class SavedFileService(
                 user = user,
                 rawPath = rawPath,
                 canonicalPath = canonicalPath,
-                action = UserAction.GET_SAVED_FILE_LIST
             ).let { result ->
                 if (result.isNotSuccessful) return@mapNotNull null
                 return@mapNotNull result.value

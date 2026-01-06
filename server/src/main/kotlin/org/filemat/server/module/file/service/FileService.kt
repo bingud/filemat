@@ -107,7 +107,6 @@ class FileService(
             user = user,
             rawPath = rawDestinationPath,
             canonicalPath = canonicalDestinationPath,
-            action = UserAction.COPY_FILE
         ).let {
             if (it.isNotSuccessful) return Result.error("File was copied. Server failed to provide file metadata.")
             it.value
@@ -221,7 +220,6 @@ class FileService(
                 user = user,
                 rawPath = path,
                 canonicalPath = path,
-                action = userAction
             ).valueOrNull
         }
 
@@ -247,8 +245,8 @@ class FileService(
 
             val fullMeta = FullFileMetadata.from(
                 meta,
-                permissions = entityPermission.permissions,
-                isSaved = isSaved
+                isSaved = isSaved,
+                permissions = entityPermission.permissions
             )
 
             return@mapNotNull fullMeta
@@ -516,7 +514,7 @@ class FileService(
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
-        val metadata: FullFileMetadata = getFullMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath, action = UserAction.READ_FOLDER).let {
+        val metadata: FullFileMetadata = getFullMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -546,7 +544,7 @@ class FileService(
      *
      * if file is a folder, also returns entries
      */
-    fun getSharedFileOrFolderEntries(rawPath: FilePath, foldersOnly: Boolean = false, shareToken: String): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
+    fun getSharedFileOrFolderEntries(rawPath: FilePath, foldersOnly: Boolean = false, shareToken: String): Result<Pair<FileMetadata, List<FileMetadata>?>> {
         val entity = entityService.getByShareToken(shareToken = shareToken, UserAction.GET_SHARED_FILE)
             .let {
                 if (it.isNotSuccessful) return it.cast()
@@ -567,10 +565,8 @@ class FileService(
         )
 
         // Get file metadata, change its path to be relative
-        val rawMetadata: FullFileMetadata = getFullMetadata(null, rawPath = canonicalPath, canonicalPath = canonicalPath, ignorePermissions = true, action = UserAction.GET_SHARED_FILE).let {
-            if (it.isNotSuccessful) return it.cast()
-            it.value
-        }
+        val rawMetadata: FileMetadata = filesystem.getMetadata(canonicalPath) ?: return Result.notFound()
+
         val metadata = rawMetadata.copy(path = rawPath.pathString)
         val type = metadata.fileType
 
@@ -581,6 +577,7 @@ class FileService(
                 canonicalPath = canonicalPath,
                 foldersOnly = foldersOnly,
                 ignorePermissions = true,
+                metaMapper = { meta: FileMetadata, _ -> meta }
             ).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
@@ -626,7 +623,28 @@ class FileService(
     /**
      * Returns file metadata along with applied file permissions. Authenticates user
      */
-    fun getFullMetadata(user: Principal?, rawPath: FilePath, canonicalPath: FilePath, ignorePermissions: Boolean = false, action: UserAction): Result<FullFileMetadata> {
+    fun getFullMetadata(user: Principal?, rawPath: FilePath, canonicalPath: FilePath, ignorePermissions: Boolean = false): Result<FullFileMetadata> {
+        return getFullMetadata(
+            user = user,
+            rawPath = rawPath,
+            canonicalPath = canonicalPath,
+            ignorePermissions = ignorePermissions,
+            metadataMapper = FullFileMetadata::from
+        )
+    }
+
+    /**
+     * Returns file metadata along with applied file permissions. Authenticates user
+     *
+     * Allows to specify what metadata class to return
+     */
+    fun <T : AbstractFileMetadata> getFullMetadata(
+        user: Principal?,
+        rawPath: FilePath,
+        canonicalPath: FilePath,
+        ignorePermissions: Boolean = false,
+        metadataMapper: (meta: FileMetadata, isSaved: Boolean?, permissions: Set<FilePermission>) -> T
+    ): Result<T> {
         if (!ignorePermissions) {
             isAllowedToAccessFile(user, canonicalPath).let { it: Result<Unit> ->
                 if (it.isNotSuccessful) return it.cast()
@@ -639,7 +657,7 @@ class FileService(
         val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(user, canonicalPath) } ?: setOf(FilePermission.READ)
         val isSaved = if (user != null) savedFileService.isSaved(user.userId, meta.path) else null
 
-        val fullMeta = FullFileMetadata.from(meta, permissions = permissions, isSaved = isSaved)
+        val fullMeta = metadataMapper(meta, isSaved, permissions)
         return fullMeta.toResult()
     }
 
@@ -661,7 +679,7 @@ class FileService(
                         val filePath = FilePath.ofAlreadyNormalized(path)
 
                         // Get metadata
-                        getFullMetadata(user, filePath, filePath, ignorePermissions = isShared, userAction).let {
+                        getFullMetadata(user, filePath, filePath, ignorePermissions = isShared).let {
                             if (it.isNotSuccessful) return@mapNotNull null
                             return@mapNotNull it
                         }
@@ -799,7 +817,37 @@ class FileService(
      *
      * Verifies user permissions.
      */
-    fun getFolderEntries(user: Principal?, canonicalPath: FilePath, foldersOnly: Boolean = false, ignorePermissions: Boolean = false): Result<List<FullFileMetadata>> {
+    fun getFolderEntries(
+        user: Principal?,
+        canonicalPath: FilePath,
+        foldersOnly: Boolean = false,
+        ignorePermissions: Boolean = false,
+    ): Result<List<FullFileMetadata>> {
+        val mapper = { meta: FileMetadata, getFull: (meta: FileMetadata) -> FullFileMetadata? ->
+            getFull(meta)
+        }
+
+        return getFolderEntries(
+            user = user,
+            canonicalPath = canonicalPath,
+            foldersOnly = foldersOnly,
+            ignorePermissions = ignorePermissions,
+            metaMapper = mapper
+        )
+    }
+
+        /**
+     * Returns list of entries in a folder.
+     *
+     * Verifies user permissions.
+     */
+    fun <T : AbstractFileMetadata> getFolderEntries(
+        user: Principal?,
+        canonicalPath: FilePath,
+        foldersOnly: Boolean = false,
+        ignorePermissions: Boolean = false,
+        metaMapper: (meta: FileMetadata, getFull: (meta: FileMetadata) -> FullFileMetadata?) -> T?
+    ): Result<List<T>> {
         val hasAdminAccess = user?.let { hasAdminAccess(user) } ?: false
         if (!ignorePermissions) {
             val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
@@ -817,21 +865,23 @@ class FileService(
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
-        val entries: List<FullFileMetadata> = rawEntries.mapNotNull { meta: FileMetadata ->
+        val entries: List<T> = rawEntries.mapNotNull { meta: FileMetadata ->
             val entryPath = FilePath.of(meta.path)
 
             val isPathAllowed = fileVisibilityService.isPathAllowed(entryPath) == null
             if (!isPathAllowed) return@mapNotNull null
 
-            val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(canonicalPath = entryPath, user = user) } ?: setOf(FilePermission.READ)
+            val fullMeta: T? = metaMapper(meta) { mappedMeta ->
+                val permissions: Set<FilePermission> = user?.let { getActualFilePermissions(canonicalPath = entryPath, user = user) } ?: setOf(FilePermission.READ)
 
-            // Check permissions for entry
-            val hasPermission = permissions.contains(FilePermission.READ)
-            if (!hasPermission) return@mapNotNull null
+                // Check permissions for entry
+                val hasPermission = permissions.contains(FilePermission.READ)
+                if (!hasPermission) return@metaMapper null
 
-            val isSaved = if (user != null) savedFileService.isSaved(user.userId, meta.path) else null
+                val isSaved = if (user != null) savedFileService.isSaved(user.userId, mappedMeta.path) else null
 
-            val fullMeta = FullFileMetadata.from(meta, permissions = permissions, isSaved = isSaved)
+                return@metaMapper FullFileMetadata.from(mappedMeta, isSaved = isSaved, permissions = permissions)
+            }
 
             return@mapNotNull fullMeta
         }

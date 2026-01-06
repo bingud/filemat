@@ -332,7 +332,7 @@ class JsonBuilder {
     }
 
     inline fun <reified T> putNonNull(key: String, value: T) {
-        content[key] = JsonNonNull.encodeToJsonElement(value)
+        content[key] = JsonNonNull.encodeToJsonElement<T>(value)
     }
 
     fun build() = JsonObject(content)
