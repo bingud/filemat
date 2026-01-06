@@ -21,6 +21,7 @@ data class FilePath(
     }
 
     fun startsWith(other: FilePath) = this.path.startsWith(other.path)
+    fun startsWith(other: Path) = this.path.startsWith(other)
 
     companion object {
         fun of(rawPath: String) = FilePath(Paths.get(rawPath))

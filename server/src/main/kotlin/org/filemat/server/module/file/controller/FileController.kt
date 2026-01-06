@@ -15,7 +15,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.FileService
 import org.filemat.server.module.file.service.FilesystemService
-import org.filemat.server.module.file.service.TusService
+import org.filemat.server.module.file.service.component.TusService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.*
 import org.springframework.web.bind.annotation.*
