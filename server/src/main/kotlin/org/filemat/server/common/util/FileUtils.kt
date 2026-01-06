@@ -9,9 +9,7 @@ import org.filemat.server.common.model.Result
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import kotlin.io.path.PathWalkOption
 import kotlin.io.path.listDirectoryEntries
-import kotlin.io.path.walk
 
 val tika = Tika()
 
@@ -45,13 +43,15 @@ object FileUtils {
  *
  * Always processes the highest possible top-level folder - which doesnt contain the protected file.
  */
-fun walkAroundProtectedFile(
+fun walkFilesWithExcludedFile(
     path: Path,
     excludedPath: Path,
     recursive: Boolean = false,
     failedResult: (count: Int) -> Result<Int>,
     action: (file: Path) -> Boolean,
 ): Result<Int> {
+    if (!path.isAbsolute || !excludedPath.isAbsolute) return Result.error("Input file path is not absolute.")
+
     val children = runCatching {
         path.listDirectoryEntries()
     }.getOrElse { return Result.error("Failed to list folder entries.") }
@@ -65,7 +65,7 @@ fun walkAroundProtectedFile(
             }
 
             excludedPath.startsWith(child) -> {
-                val sub = walkAroundProtectedFile(child, excludedPath, true, failedResult, action)
+                val sub = walkFilesWithExcludedFile(child, excludedPath, true, failedResult, action)
                 failedCount += sub.value
             }
 
@@ -100,4 +100,20 @@ fun Path.safeWalk(): Flow<Path> = flow {
             }
         } catch (_: Exception) {}
     }
+}
+
+data class PathRelationship(
+    val isInsideTarget: Boolean,
+    val containsTarget: Boolean,
+    val isEqual: Boolean
+)
+
+fun getPathRelationship(path: Path, target: Path): PathRelationship {
+    val isInside = path.startsWith(target)
+    val contains = target.startsWith(path)
+    return PathRelationship(
+        isInsideTarget = isInside,
+        containsTarget = contains,
+        isEqual = isInside && contains
+    )
 }

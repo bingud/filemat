@@ -3,7 +3,8 @@ package org.filemat.server.module.file.service.component
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
-import org.filemat.server.common.util.walkAroundProtectedFile
+import org.filemat.server.common.util.getPathRelationship
+import org.filemat.server.common.util.walkFilesWithExcludedFile
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.model.LogType
@@ -24,22 +25,21 @@ class FileDeletionService(
 ) {
 
     fun deleteFile(target: FilePath, recursive: Boolean): Result<Unit> {
-        val targetIsProtectedFolder = target.path.startsWith(Props.dataFolder)
-        val containsProtectedFolder = Props.dataFolderPath.startsWith(target.path)
+        val relation = getPathRelationship(path = target.path, target = Props.dataFolderPath)
         val isFolderProtected = State.App.allowWriteDataFolder == false
 
-        val affectsProtectedFolder = (targetIsProtectedFolder || containsProtectedFolder) && isFolderProtected
+        val affectsProtectedFolder = (relation.containsTarget || relation.isInsideTarget) && isFolderProtected
 
         if (!target.path.exists()) return Result.notFound()
 
         // Check if deleted file affects the Filemat data folder
         // Delete recursively without deleting the protected folder
         if (affectsProtectedFolder) {
-            if (targetIsProtectedFolder || !recursive) {
+            if (relation.isInsideTarget || !recursive) {
                 return Result.reject("Cannot delete ${Props.appName} data folder.")
             }
 
-            if (containsProtectedFolder) {
+            if (relation.containsTarget) {
                 if (!recursive) {
                     return Result.reject("Folder cannot be deleted because it is not empty.")
                 }
@@ -88,14 +88,14 @@ class FileDeletionService(
         excludedPath: Path,
         recursive: Boolean = false
     ): Result<Int> {
-        return walkAroundProtectedFile(
+        return walkFilesWithExcludedFile(
             path = path,
             excludedPath = excludedPath,
             recursive = recursive,
             failedResult = { count -> Result.error("$count files could not be deleted.") },
         ) { child ->
             internal_deleteFile(path = child, recursive = true).let {
-                if (it.isNotSuccessful) return@walkAroundProtectedFile false
+                if (it.isNotSuccessful) return@walkFilesWithExcludedFile false
                 true
             }
         }
