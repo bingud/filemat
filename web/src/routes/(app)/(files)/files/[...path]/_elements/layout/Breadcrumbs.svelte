@@ -1,16 +1,11 @@
 <script lang="ts">
     import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte'
     import { Popover } from 'bits-ui'
-    import { goto } from '$app/navigation'
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
     import { openEntry } from '../../_code/fileBrowserUtil';
-    import CheckmarkIcon from '$lib/component/icons/CheckmarkIcon.svelte';
-    import CloseIcon from '$lib/component/icons/CloseIcon.svelte';
-
-    const meta = $derived(filesState.meta)
 
     // Context menu for breadcrumb buttons
     let contextMenuButton: HTMLButtonElement | null = $state(null)
@@ -18,12 +13,12 @@
     let contextMenuOpen = $state(false)
 
     let topLevelButtonText = $derived.by(() => {
-        if (meta.type === "shared") {
-            const filename = meta.shareTopLevelFilename
+        if (filesState.getIsShared()) {
+            const filename = filesState.meta.shareTopLevelFilename
             if (filename) return filename
         }
 
-        return meta.pageTitle
+        return filesState.meta.pageTitle
     })
 
     function onContextMenu(event: MouseEvent, segment: Segment, button: HTMLButtonElement) {
@@ -67,11 +62,11 @@
 
 <!-- Breadcrumbs -->
 <div class="w-full flex items-center h-[2rem] max-h-full overflow-hidden">
-    {#if filesState.path === "/" || meta.type === "accessible"}
+    {#if filesState.path === "/" || filesState.meta.type === "accessible"}
         <button 
             title={topLevelButtonText}
             on:click={() => {
-                if (meta.type === "accessible") {
+                if (filesState.meta.type === "accessible") {
                     openEntry(`/`)
                 }
             }}

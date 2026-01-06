@@ -41,7 +41,7 @@
 <a
     on:click|preventDefault={(e) => entryOnClick(e, entry)}
     on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
-    draggable={entry.permissions.includes("MOVE")}
+    draggable={entry.permissions?.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
     class="
         grid-file-entry w-full min-w-0 flex flex-col items-center select-none group rounded-lg
@@ -67,7 +67,7 @@
         <div class="h-full fill-neutral-500 stroke-neutral-500 shrink-0 flex items-center justify-center pointer-events-none">
             {#if entry.filename}
                 {@const format = getFileCategoryFromFilename(entry.filename)}
-                {@const shareTokenParam = filesState.meta.type === "shared" ? `&shareToken=${filesState.meta.shareToken}` : ``}
+                {@const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``}
 
                 {#if format === "image"}
                     <img use:loadFilePreview alt="" src="" data-src="/api/v1/file/image-thumbnail?size=256&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>

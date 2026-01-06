@@ -71,7 +71,7 @@ export async function loadPageData(
             toast.error("This file was not found.")
         }
 
-        const pagePath = filesState.meta.type === "shared" ? filesState.meta.pagePath : "/files"
+        const pagePath = filesState.isShared ? filesState.meta.pagePath : "/files"
         await navigateToFilePath(parentFromPath(filesState.path), pagePath)
     }
     if (result.isUnsuccessful) return
@@ -144,7 +144,7 @@ export async function reloadCurrentFolder() {
     if (!filesState.path) return
     const meta = filesState.data.folderMeta
 
-    const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
+    const shareToken = filesState.getIsShared() ? filesState.meta.shareToken : undefined
     const bodyParams = filesState.meta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
 
     if (meta) {

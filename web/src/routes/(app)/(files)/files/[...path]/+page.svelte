@@ -85,7 +85,7 @@
         destroyBreadcrumbState(breadcrumbStateNonce)
     })
 
-    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || (filesState.meta.type === "shared" ? filesState.meta.shareTopLevelFilename : undefined) || stateMeta.pageTitle))
+    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || (filesState.getIsShared() ? filesState.meta.shareTopLevelFilename : undefined) || stateMeta.pageTitle))
     let lastDataLoadDate: number = unixNow()
 
     // Load page data when path changes
@@ -125,7 +125,7 @@
             }
         }
 
-        const shareToken = filesState.meta.type === "shared" ? filesState.meta.shareToken : undefined
+        const shareToken = filesState.getIsShared() ? filesState.meta.shareToken : undefined
 
         // Do not load page data if navigating back to current parent folder
         // Use existing state
@@ -265,7 +265,7 @@
                                     <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
                                     <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
                                 {/if}
-                                {#if (filesState.path !== "/" || filesState.meta.type === "shared") && !filesState.isSearchOpen}
+                                {#if (filesState.path !== "/" || filesState.isShared) && !filesState.isSearchOpen}
                                     <button on:click={option_downloadSelectedFiles} title="Download this folder" class="file-action-button"><DownloadIcon /></button>
                                 {/if}
                             <!-- Selected child file options -->
@@ -296,7 +296,7 @@
                                 <NewFileButton />
                             {/if}
 
-                            {#if uiState.isDesktop && filesState.isFileListOpen && !filesState.isSearchOpen && (filesState.meta.type === "files" || filesState.meta.type === "shared")}
+                            {#if uiState.isDesktop && filesState.isFileListOpen && !filesState.isSearchOpen && (filesState.meta.type === "files" || filesState.isShared)}
                                 <FileSearchButton />
                             {/if}
                             

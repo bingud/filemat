@@ -21,7 +21,7 @@ class BreadcrumbState {
         })
 
         // Add parent folder to breadcrumbs when shared file is open
-        if (filesState.meta.type === "shared") {
+        if (filesState.getIsShared()) {
             const width = calculateTextWidth(filesState.meta.shareTopLevelFilename)
             breadcrumbs.unshift({ name: filesState.meta.shareTopLevelFilename, path: "/", width: width })
         }

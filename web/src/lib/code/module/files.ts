@@ -430,7 +430,7 @@ export async function deleteFiles(entries: FileMetadata[]) {
             }
         })
 
-        const pagePath = filesState.meta.type === "shared" ? filesState.meta.pagePath : "/files"
+        const pagePath = filesState.isShared ? filesState.meta.pagePath : "/files"
         if (closestParent) navigateToFilePath(closestParent, pagePath)
     }
     

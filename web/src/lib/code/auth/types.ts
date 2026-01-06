@@ -12,7 +12,7 @@ export type FileMetadata = {
 }
 
 export type FullFileMetadata = FileMetadata & {
-    permissions: FilePermission[],
+    permissions: FilePermission[] | null,
     isSaved?: boolean,
 }
 

@@ -21,7 +21,7 @@ export type StateMetadata = { type: "files",                                    
 
 class FilesState {
     meta: StateMetadata = $state(undefined!)
-    getShareToken(): string | undefined { return this.meta.type === "shared" ? this.meta.shareToken : undefined }
+    getShareToken(): string | undefined { return this.getIsShared() ? this.meta.shareToken : undefined }
 
     /**
      * The current file path opened
@@ -58,6 +58,8 @@ class FilesState {
     isSearchOpen = $derived.by(() => {
         return !!filesState.search.sortedEntries
     })
+    isShared = $derived(this.meta?.type === "shared")
+    getIsShared = (): this is { meta: { type: "shared"; shareToken: string } } => this.isShared
 
     /**
      * File data
@@ -376,7 +378,7 @@ class FileStateClass {
         if (!filesState.data.fileMeta) return null
         if (filesState.data.isFileSymlink) return "text" as FileCategory
 
-        if (filesState.meta.type === "shared" && filesState.path === "/") {
+        if (filesState.getIsShared() && filesState.path === "/") {
             return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
         }
 
@@ -387,8 +389,9 @@ class FileStateClass {
 
     isEditable = $derived(
         this.displayedFileCategory === "text" 
+        && !filesState.isShared
         && auth.authenticated 
-        && (filesState.data.fileMeta && filesState.data.fileMeta.permissions.includes("WRITE")) 
+        && (filesState.data.fileMeta && filesState.data.fileMeta.permissions!.includes("WRITE")) 
         && !filesState.data.isFileSymlink
     )
 

@@ -39,8 +39,6 @@
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
 
-    let isShared = $derived(filesState.meta.type === "shared")
-
     // Role and user IDs that already have a file permission
     let existing = $derived.by(() => {
         if (!permissionData) return null
@@ -71,7 +69,7 @@
         if (!meta) return ""
 
         if (meta.path === "/") {
-            if (filesState.meta.type === "shared") {
+            if (filesState.getIsShared()) {
                 return filesState.meta.shareTopLevelFilename || "/"
             }
             return "/"
@@ -86,7 +84,7 @@
         filesState.selectedEntries.singlePath,
         filesState.ui.detailsOpen,
     ], () => {
-        if (isShared) return
+        if (filesState.isShared) return
         const selectedPath = filesState.selectedEntries.singlePath
 
         if (!selectedPath) return
@@ -249,7 +247,7 @@
             </div>
         </div>
         
-        {#if auth.authenticated && !isShared}
+        {#if auth.authenticated && !filesState.isShared}
             <div class="px-6">
                 <FileSharingDialog path={selectedMeta.path} bind:open={sharingDialogOpen} />
             </div>

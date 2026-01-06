@@ -98,7 +98,7 @@
                 <span>Download</span>
             </a>
 
-            {#if menuEntry.permissions.includes("MOVE")}
+            {#if !filesState.isShared && menuEntry.permissions?.includes("MOVE")}
                 <button on:click={() => { option_rename(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                     <div class="size-5 flex-shrink-0">
                         <EditIcon />
@@ -115,7 +115,7 @@
                 {/if}
             {/if}
 
-            {#if filesState.meta.type !== "shared"}
+            {#if !filesState.isShared}
                 <button on:click={() => { option_copy(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                     <div class="size-5 flex-shrink-0">
                         <CopyIcon />
@@ -124,7 +124,7 @@
                 </button>
             {/if}
 
-            {#if menuEntry.permissions.includes("DELETE")}
+            {#if !filesState.isShared && menuEntry.permissions?.includes("DELETE")}
                 <button on:click={() => { option_delete(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                     <div class="size-5 flex-shrink-0">
                         <TrashIcon />
@@ -133,7 +133,7 @@
                 </button>
             {/if}
 
-            {#if menuEntry.isSaved != null && filesState.meta.type !== "shared"}
+            {#if !filesState.isShared && menuEntry.isSaved != null}
                 <button on:click={() => { option_save(menuEntry!, menuEntry.isSaved ? "unsave" : "save") }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                     <div class="size-5 flex-shrink-0">
                         {#if menuEntry.isSaved}

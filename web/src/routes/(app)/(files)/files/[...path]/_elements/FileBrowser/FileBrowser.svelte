@@ -266,7 +266,7 @@
 
     function event_drop(e: DragEvent, entry: FullFileMetadata) {
         if (entry.fileType === "FOLDER_LINK" && !appState.followSymlinks || entry.fileType !== "FOLDER") return
-        if (!entry.permissions.includes("WRITE")) return
+        if (!entry.permissions?.includes("WRITE")) return
         if (draggedPaths == null || draggedPaths.length < 1) return
 
         if (draggedPaths.includes(entry.path)) return
