@@ -215,7 +215,7 @@ class EntityPermissionService(
                 targetId = permission.userId ?: permission.roleId,
                 meta = meta("permissionType" to permission.permissionType.toString())
             )
-            return Result.error("Failed to create file permission.", source = "entityPermService.db_create-exception")
+            return Result.error("Failed to create file permission.")
         }
     }
 

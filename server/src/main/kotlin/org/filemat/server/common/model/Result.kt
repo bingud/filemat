@@ -7,15 +7,19 @@ data class Result<T>(
     private val inputError: String? = null,
     private val inputNotFound: Boolean = false,
     private val rejectInput: String? = null,
-    var source: String? = null,
+//    var source: String? = null,
 ) {
 
     companion object {
         fun <T> ok(value: T): Result<T> = Result(inputValue = value)
         fun ok(): Result<Unit> = Result()
-        fun <T> error(message: String, source: String? = null): Result<T> = Result(inputError = message, source = source)
-        fun <T> notFound(source: String? = null): Result<T> = Result(inputNotFound = true, source = source)
-        fun <T> reject(message: String, source: String? = null): Result<T> = Result(rejectInput = message, source = source)
+        fun <T> error(message: String): Result<T> = Result(inputError = message)
+        fun <T> notFound(): Result<T> = Result(inputNotFound = true)
+        fun <T> reject(message: String): Result<T> = Result(rejectInput = message)
+
+//        fun <T> error(message: String, source: String? = null): Result<T> = Result(inputError = message, source = source)
+//        fun <T> notFound(source: String? = null): Result<T> = Result(inputNotFound = true, source = source)
+//        fun <T> reject(message: String, source: String? = null): Result<T> = Result(rejectInput = message, source = source)
     }
 
     val hasError
@@ -61,8 +65,8 @@ fun <T> T.toResult(): Result<T> {
 @Suppress("UNCHECKED_CAST")
 fun <T, P> Result<P>.cast(): Result<T> = this as Result<T>
 
-@Suppress("UNCHECKED_CAST")
-fun <T, P> Result<P>.cast(source: String?): Result<T> = (this as Result<T>).also { this.source = source }
+//@Suppress("UNCHECKED_CAST")
+//fun <T, P> Result<P>.cast(source: String?): Result<T> = (this as Result<T>).also { this.source = source }
 
 inline fun <T, R> Result<T>.onFailure(block: (Result<T>) -> R) {
     if (this.isNotSuccessful) block(this)
