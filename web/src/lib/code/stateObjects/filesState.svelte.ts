@@ -1,7 +1,7 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
 import { getFileCategoryFromFilename, type FileCategory } from "../data/files"
@@ -382,7 +382,8 @@ class FileStateClass {
             return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
         }
 
-        return getFileCategoryFromFilename(filesState.data.fileMeta.filename!)
+        const filename = filesState.data.fileMeta.filename || filenameFromPath(filesState.data.fileMeta.path)
+        return getFileCategoryFromFilename(filename)
     })
 
     displayedFileCategory = $derived(this.originalFileCategory) as FileCategory | null
