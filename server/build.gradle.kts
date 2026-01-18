@@ -20,33 +20,29 @@ repositories {
 }
 
 dependencies {
-	val jakartaMail = "2.1.3"
-	val springCrypto = "6.4.4"
-	val coroutinesCore = "1.10.1"
-	///
+	//	implementation("commons-io:commons-io:2.21.0")
 
-	implementation("com.atlassian:onetime:2.1.1")
-	implementation("org.apache.tika:tika-core:3.1.0")
-//	implementation("commons-io:commons-io:2.21.0")
+	implementation("com.atlassian:onetime:2.2.0")
+	implementation("org.apache.tika:tika-core:3.2.3")
 	implementation("me.desair.tus:tus-java-server:1.0.0-3.0")
 	implementation("com.github.ben-manes.caffeine:caffeine:3.2.2")
 
-	implementation("jakarta.mail:jakarta.mail-api:$jakartaMail")
+	implementation("jakarta.mail:jakarta.mail-api:2.1.3")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
-	implementation("org.komamitsu:spring-data-sqlite:1.0.0")
+	implementation("org.komamitsu:spring-data-sqlite:1.4.0")
 	implementation("org.flywaydb:flyway-core:11.15.0")
 	implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0")
 
-	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesCore")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
 
 	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.0")
 	implementation("com.github.f4b6a3:ulid-creator:5.2.3")
-	implementation("org.springframework.security:spring-security-crypto:$springCrypto")
+	implementation("org.springframework.security:spring-security-crypto:6.5.7")
 	implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-	testImplementation("org.springframework.boot:spring-boot-starter-test:3.5.6") {
+	testImplementation("org.springframework.boot:spring-boot-starter-test:3.5.9") {
 		exclude(module = "junit")
 		exclude(module = "mockito-core")
 	}
