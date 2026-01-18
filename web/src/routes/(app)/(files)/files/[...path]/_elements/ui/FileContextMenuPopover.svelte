@@ -1,8 +1,8 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { parentFromPath } from "$lib/code/util/codeUtil.svelte";
-    import { getContentUrl } from "$lib/code/util/stateUtils";
+    import { isFolder, parentFromPath } from "$lib/code/util/codeUtil.svelte";
+    import { getContentUrl, getZipContentUrl } from "$lib/code/util/stateUtils";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
     import BookmarkXIcon from "$lib/component/icons/BookmarkXIcon.svelte";
@@ -16,6 +16,7 @@
     import MoveIcon from "$lib/component/icons/MoveIcon.svelte";
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
+    import { option_downloadSelectedFiles } from "../../_code/fileActions";
     import type { FileContextMenuProps } from "../../_code/fileBrowserUtil";
 
     let {
@@ -84,19 +85,15 @@
                 </a>
             {/if}
 
-            <a 
-                download 
-                href={getContentUrl(menuEntry.path, false)} 
-                target="_blank" 
+            <button 
+                on:click={(e) => { option_downloadSelectedFiles(e, [menuEntry.path]); closeFileContextMenuPopover() }} 
                 class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2"
-                on:click={close}
-                on:auxclick={close}
             >
                 <div class="size-5 flex-shrink-0">
                     <DownloadIcon />
                 </div>
                 <span>Download</span>
-            </a>
+            </button>
 
             {#if !filesState.isShared && menuEntry.permissions?.includes("MOVE")}
                 <button on:click={() => { option_rename(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">

@@ -63,18 +63,19 @@ export async function loadPageData(
     )
     filesState.metaLoading = false
 
-    if (result.notFound) {
-        if (filesState.path === "/") return
-        if (options.isRefresh) {
-            toast.plain("This file is not available anymore.")
-        } else {
-            toast.error("This file was not found.")
+    if (result.isUnsuccessful) {
+        if (result.notFound) {
+            if (filesState.path === "/") return
+            if (options.isRefresh) {
+                toast.plain("This file is not available anymore.")
+            } else {
+                toast.error("This file was not found.")
+            }
         }
 
         const pagePath = filesState.isShared ? filesState.meta.pagePath : "/files"
         await navigateToFilePath(parentFromPath(filesState.path), pagePath)
     }
-    if (result.isUnsuccessful) return
     const dataResult = result.value
 
     if (filesState.lastFilePathLoaded !== filePath) return

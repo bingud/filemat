@@ -250,7 +250,7 @@ export function startTusUpload(file: File) {
         endpoint: "/api/v1/file/upload",
         retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
         metadata: {
-            filename: targetPath,
+            path: targetPath,
         },
         chunkSize: 5 * 1024 * 1024,
         onAfterResponse: (response) => {

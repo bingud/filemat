@@ -48,8 +48,8 @@ export function option_deleteSelectedFiles() {
 }
 
 
-export function option_downloadSelectedFiles() {
-    const selected = filesState.selectedEntries.list
+export function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] | null = null) {
+    const selected = inputList || filesState.selectedEntries.list
     if (!selected || !selected.length) return
 
     if (selected.length > 1 || isFolder(filesState.selectedEntries.singleMeta)) {

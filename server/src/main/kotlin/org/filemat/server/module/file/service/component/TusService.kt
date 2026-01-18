@@ -107,15 +107,15 @@ class TusService(
         val meta = parseTusHttpHeader(rawMeta)
 
         // Get user inputted upload destination
-        val rawFilename = meta["filename"]?.toFilePath()
-        if (rawFilename == null) {
-            response.respond(400, "Invalid filename")
+        val rawPath = meta["path"]?.toFilePath()
+        if (rawPath == null) {
+            response.respond(400, "Invalid path")
             return false
         }
 
         // Resolve the upload destination path
         val destinationParentPath = let {
-            val parent = rawFilename.path.parent.toString()
+            val parent = rawPath.path.parent.toString()
 
             resolvePath(FilePath.of(parent)).let { (result, hasSymlink) ->
                 if (result.notFound) {
@@ -189,7 +189,7 @@ class TusService(
         val uploadLocation = "$sourceFolder/data".toFilePath()
 
         // Get destination paths
-        val rawDestinationPath = info.metadata["filename"]?.toFilePath() ?: return Result.error("Destination filename is not in upload metadata.")
+        val rawDestinationPath = info.metadata["path"]?.toFilePath() ?: return Result.error("Destination path is not in upload metadata.")
         val rawDestinationParent = getParentFromPath(rawDestinationPath)
         val filename = getFilenameFromPath(rawDestinationPath.path)
 
@@ -234,11 +234,11 @@ class TusService(
         }
 
         // Move the file to the target folder
-        val fileMoved = filesystem.moveFile(source = uploadLocation, destination = destinationPath, overwriteDestination = false)
-        if (fileMoved.isNotSuccessful) return Result.error("Failed to move the file from the uploads folder.")
+        val fileMoved = filesystem.moveFile(user = user, source = uploadLocation, destination = destinationPath)
+        if (fileMoved.isNotSuccessful) return Result.error("Failed to move the file from the uploads folder. ${fileMoved.errorOrNull ?: ""}")
 
         // Delete the TUS upload folder
-        filesystem.deleteFile(sourceFolder.toFilePath(), recursive = true)
+        filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
 
         // Create an entity
         entityService.create(

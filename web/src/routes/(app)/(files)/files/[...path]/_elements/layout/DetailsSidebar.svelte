@@ -144,10 +144,12 @@
         const status = response.code
 
         if (status.notFound) {
-            handleErr({
-                description: `File not found when getting permission data`,
-                notification: `This file was not found.`
-            })
+            if (filesState.selectedEntries.singleMeta?.fileType.includes("LINK") == false) {
+                handleErr({
+                    description: `File not found when getting permission data`,
+                    notification: `Failed to load permissions. File was not found.`
+                })
+            }
             return
         } else if (status.failed) {
             // Silence error if user doesnt have admin permissions
@@ -374,9 +376,15 @@
                     {:else if permissionDataDebounced}
                         <!-- Waiting for debounce timer -->
                     {:else}
-                        <div in:fade={{duration: 75}} class="center">
-                            <p class="text-neutral-600 dark:text-neutral-400 py-2">Failed to load permissions.</p>
-                        </div>
+                        {#if filesState.selectedEntries.singleMeta.fileType.includes("LINK")}
+                            <div in:fade={{duration: 75}} class="center">
+                                <p class="text-neutral-600 dark:text-neutral-400 py-2">Failed to load permissions of linked file.</p>
+                            </div>
+                        {:else}
+                            <div in:fade={{duration: 75}} class="center">
+                                <p class="text-neutral-600 dark:text-neutral-400 py-2">Failed to load permissions.</p>
+                            </div>
+                        {/if}
                     {/if}
                 </div>
             </div>
