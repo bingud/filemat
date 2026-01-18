@@ -1,8 +1,10 @@
 package org.filemat.server.module.file.model
 
 import org.filemat.server.common.util.getNormalizedPath
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.io.path.exists
 
 data class FilePath(
     val originalInputPath: Path,
@@ -22,6 +24,8 @@ data class FilePath(
 
     fun startsWith(other: FilePath) = this.path.startsWith(other.path)
     fun startsWith(other: Path) = this.path.startsWith(other)
+
+    fun exists(vararg options: LinkOption) = this.path.exists(*options)
 
     companion object {
         fun of(rawPath: String) = FilePath(Paths.get(rawPath))

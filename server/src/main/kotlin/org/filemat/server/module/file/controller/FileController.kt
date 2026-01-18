@@ -397,7 +397,7 @@ class FileController(
             ZipOutputStream(out).use { zip: ZipOutputStream ->
                 paths.forEach { path ->
                     val zipRootName: Path? = path.path.fileName
-                    addToZip(zip, path, zipRootName, principal, shareToken)
+                    fileService.addFileToZip(zip, path, zipRootName, principal, shareToken)
                 }
             }
         }
@@ -408,85 +408,6 @@ class FileController(
             .body(responseBody)
     }
 
-    private fun addToZip(
-        zip: ZipOutputStream,
-        rawPath: FilePath,
-        existingBaseZipPath: Path?,
-        principal: Principal?,
-        shareToken: String?
-    ) {
-        val isShared = shareToken != null
-        val (
-            canonicalPathResult,
-            pathContainsSymlink
-        ) = fileService.resolvePathWithOptionalShare(
-            path = rawPath,
-            shareToken = shareToken,
-            withPathContainsSymlink = true
-        )
-
-        val canonicalPath = canonicalPathResult.let {
-            if (it.isNotSuccessful) return
-            it.value
-        }
-
-        val baseZipPath: Path? = existingBaseZipPath ?: canonicalPath.path.fileName
-
-        // 1. Try to process as a single File
-        fileService.getFileContent(
-            user = principal,
-            rawPath = if (isShared) canonicalPath else rawPath,
-            existingCanonicalPath = canonicalPath,
-            existingPathContainsSymlink = pathContainsSymlink,
-            ignorePermissions = isShared
-        ).let { result ->
-            if (result.isSuccessful) {
-                val entryName = baseZipPath.toString()
-                zip.putNextEntry(ZipEntry(entryName))
-                BufferedInputStream(result.value).use { stream -> stream.copyTo(zip) }
-                zip.closeEntry()
-                return
-            }
-        }
-
-        // 2. Treat as Directory if not a file
-        if (Files.isDirectory(canonicalPath.path)) {
-            Files.walk(canonicalPath.path).use { walk ->
-                val files = walk.filter { !Files.isSymbolicLink(it) }
-
-                files.forEach { realPath ->
-                    val relativeRealPath = canonicalPath.path.relativize(realPath)
-                    val filePath = FilePath.ofAlreadyNormalized(realPath)
-
-                    val entryName = baseZipPath?.resolve(relativeRealPath)?.toString() ?: relativeRealPath.toString()
-
-                    if (realPath.isRegularFile()) {
-                        zip.putNextEntry(ZipEntry(entryName))
-
-                        fileService.getFileContent(
-                            user = principal,
-                            rawPath = filePath,
-                            existingCanonicalPath = filePath,
-                            ignorePermissions = isShared
-                        ).let { result ->
-                            if (result.isSuccessful) {
-                                result.value.use { inputStream ->
-                                    BufferedInputStream(inputStream).copyTo(zip)
-                                }
-                            }
-                        }
-                    } else if (realPath.isDirectory()) {
-                        if (isShared || fileService.isAllowedToAccessFile(principal, filePath).isSuccessful) {
-                            val dirEntryName = entryName + "/"
-                            zip.putNextEntry(ZipEntry(dirEntryName))
-                        }
-                    }
-
-                    zip.closeEntry()
-                }
-            }
-        }
-    }
 }
 
 

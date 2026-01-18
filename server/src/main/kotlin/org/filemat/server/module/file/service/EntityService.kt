@@ -37,7 +37,7 @@ class EntityService(
     private val entityRepository: EntityRepository,
     private val logService: LogService,
     @Lazy private val entityPermissionService: EntityPermissionService,
-    private val filesystemService: FilesystemService,
+    @Lazy private val filesystemService: FilesystemService,
     private val platformTransactionManager: PlatformTransactionManager,
     @Lazy private val fileShareService: FileShareService
 ) {

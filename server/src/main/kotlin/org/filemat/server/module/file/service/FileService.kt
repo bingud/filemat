@@ -18,6 +18,7 @@ import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.*
+import org.filemat.server.module.file.service.component.FileContentService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.FilePermission
@@ -34,6 +35,8 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
+import java.util.zip.ZipOutputStream
+import kotlin.io.path.isSymbolicLink
 import kotlin.io.path.pathString
 
 
@@ -46,11 +49,42 @@ class FileService(
     @Lazy private val entityPermissionService: EntityPermissionService,
     private val entityService: EntityService,
     private val logService: LogService,
-    private val filesystem: FilesystemService,
+    @Lazy private val filesystem: FilesystemService,
     private val fileShareService: FileShareService,
     private val savedFileService: SavedFileService,
+    @Lazy private val fileContentService: FileContentService,
 ) {
+    fun isFileStoreMatching(
+        one: Path,
+        two: Path
+    ): Boolean? {
+        try {
+            val oneStore = Files.getFileStore(one)
+            val twoStore = Files.getFileStore(two)
+
+            return oneStore == twoStore
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    fun addFileToZip(
+        zip: ZipOutputStream,
+        rawPath: FilePath,
+        existingBaseZipPath: Path?,
+        principal: Principal?,
+        shareToken: String?
+    ) = fileContentService.addFileToZip(
+        zip = zip,
+        rawPath = rawPath,
+        existingBaseZipPath = existingBaseZipPath,
+        principal = principal,
+        shareToken = shareToken
+    )
+
     fun copyFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<FullFileMetadata> {
+        val isSymlink = rawPath.path.isSymbolicLink()
+
         // Resolve the copied path
         val canonicalPath: FilePath = resolvePath(rawPath)
             .let { (result: Result<FilePath>, pathHasSymlink: Boolean) ->
@@ -61,11 +95,6 @@ class FileService(
 
         if (canonicalPath.pathString == "/") return Result.reject("Cannot copy root folder.")
 
-        // Check if user is permitted to copy the file
-        isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
-
         val rawParentDestinationPath = FilePath.of(rawDestinationPath.path.parent.pathString)
 
         // Resolve parent of destination path
@@ -75,6 +104,24 @@ class FileService(
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }
+
+        val isFileStoreMatching = if (State.App.followSymlinks) {
+            isFileStoreMatching(canonicalPath.path, canonicalParentDestinationPath.path)
+                ?: return Result.error("Failed to check if copied file path is on the same filesystem.")
+        } else null
+
+        val copyResolvedSymlinks = State.App.followSymlinks && isSymlink && isFileStoreMatching == false
+
+        val actualCanonicalPath = if (copyResolvedSymlinks) {
+            canonicalPath
+        } else {
+            rawPath
+        }
+
+        // Check if user is permitted to copy the file
+        isAllowedToAccessFile(user = user, canonicalPath = actualCanonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
         // Check if user is permitted to write to destination folder
         isAllowedToEditFile(user = user, canonicalPath = canonicalParentDestinationPath).let {
@@ -88,9 +135,10 @@ class FileService(
 
         // Move the file
         filesystem.copyFile(
-            source = canonicalPath,
-            canonicalSource = canonicalPath,
-            destination = canonicalDestinationPath
+            user = user,
+            canonicalSource = actualCanonicalPath,
+            canonicalDestination = canonicalDestinationPath,
+            copyResolvedSymlinks = copyResolvedSymlinks
         ).let {
             if (it.isNotSuccessful) return it.cast()
         }
@@ -204,7 +252,7 @@ class FileService(
                     isAllowedToAccessFile(
                         user = user,
                         canonicalPath = FilePath.of(entity.path),
-                        hasAdminAccess = null,
+                        ignorePermissions = null,
                     ).let { permissionResult ->
                         return@filter permissionResult.isSuccessful
                     }
@@ -264,17 +312,13 @@ class FileService(
         val newParentPath = canonicalResult.value
 
         val movedFiles: MutableList<FilePath> = mutableListOf()
-        rawPaths.forEach {
-            val (currentPathResult, pathHasSymlink) = resolvePath(it)
-            if (currentPathResult.isNotSuccessful) return@forEach
-            val currentPath = currentPathResult.value
-
-            val newPath = FilePath.ofAlreadyNormalized(newParentPath.path.resolve(currentPath.path.fileName))
+        rawPaths.forEach { rawPath ->
+            val newPath = FilePath.ofAlreadyNormalized(newParentPath.path.resolve(rawPath.path.fileName))
             if (newPath == newParentPath) return@forEach
 
-            val op = moveFile(user, it, newPath)
+            val op = moveFile(user, rawPath, newPath)
             if (op.isSuccessful) {
-                movedFiles.add(it)
+                movedFiles.add(rawPath)
             }
         }
 
@@ -282,10 +326,14 @@ class FileService(
     }
 
     fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit> {
+        val isSymlink = rawPath.path.isSymbolicLink()
+
         // Resolve the target path
-        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
-        if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
-        val canonicalPath = canonicalResult.value
+        val canonicalPath = if (isSymlink) rawPath else resolvePath(rawPath)
+            .let { (canonicalResult, pathHasSymlink) ->
+                canonicalResult.isNotSuccessful
+                canonicalResult.value
+            }
 
         if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
 
@@ -314,7 +362,7 @@ class FileService(
         }
 
         // Move the file in filesystem
-        filesystem.moveFile(source = canonicalPath, destination = newPath, overwriteDestination = false).let {
+        filesystem.moveFile(user = user, source = canonicalPath, destination = newPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -322,7 +370,7 @@ class FileService(
         entityService.move(path = canonicalPath, newPath = newPath, userAction = UserAction.MOVE_FILE).let {
             if (it.isNotSuccessful) {
                 // Revert file move
-                filesystem.moveFile(source = newPath, destination = canonicalPath, overwriteDestination = false)
+                filesystem.moveFile(user = user, source = newPath, destination = canonicalPath)
                 return it.cast()
             }
         }
@@ -334,10 +382,19 @@ class FileService(
     }
 
     fun deleteFile(user: Principal, rawPath: FilePath): Result<Unit> {
+        val isSymlink = rawPath.path.isSymbolicLink()
+
         // Resolve the target path
-        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
-        if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
-        val canonicalPath = canonicalResult.value
+        val canonicalPath = if (isSymlink) {
+            rawPath
+        } else {
+            resolvePath(rawPath).let { (canonicalResult, pathHasSymlink) ->
+                if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
+                canonicalResult.value
+            }
+        }
+        println("raw: ${rawPath.path}")
+        println("canonical: $canonicalPath")
 
         if (canonicalPath.pathString == "/") return Result.reject("Cannot delete root folder.")
 
@@ -356,7 +413,7 @@ class FileService(
         }
 
         // Perform deletion
-        filesystem.deleteFile(canonicalPath, recursive = true).let {
+        filesystem.deleteFile(user, canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -706,20 +763,24 @@ class FileService(
     /**
      * Fully verifies if a user is allowed to read a file
      */
-    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, hasAdminAccess: Boolean? = null): Result<Unit> {
+    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, checkPermissionOnly: Boolean = false, ignorePermissions: Boolean? = null): Result<Unit> {
         user ?: return Result.reject("Unauthenticated")
-        // Deny blocked folder
-        isPathAllowed(canonicalPath = canonicalPath).let {
-            if (it.isNotSuccessful) return it.cast()
+
+        if (!checkPermissionOnly) {
+            // Deny blocked folder
+            isPathAllowed(canonicalPath = canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
         }
 
-        // Verify the file location and handle conflicts
-        val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
-        if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
+        // Check if user can read all files
+        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
-        // Check if user can read any files
-        val isAdmin = hasAdminAccess ?: hasAdminAccess(user)
-        if (isAdmin == false) {
+        if (ignorePerms == false) {
+            // Verify the file location and handle conflicts
+            val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
+            if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
+
             val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = user, permission = FilePermission.READ)
             if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
         }
@@ -730,15 +791,18 @@ class FileService(
     /**
      * Fully verifies if a user is allowed to write to a folder.
      */
-    fun isAllowedToEditFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        val isAdmin = hasAdminAccess(user)
+    fun isAllowedToEditFile(user: Principal, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
+        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
-        if (isAdmin == false) {
-            // Check access permissions
-            isAllowedToAccessFile(user, canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
+        // Check access permissions
+        isAllowedToAccessFile(user, canonicalPath, ignorePerms).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
+        val editable = isPathEditable(canonicalPath)
+        if (editable != null) return Result.reject(editable)
+
+        if (ignorePerms == false) {
             // Check write permissions
             hasFilePermission(canonicalPath, user, false, FilePermission.WRITE).let {
                 if (it == false) return Result.reject("You do not have permission to edit this file.")
@@ -748,15 +812,15 @@ class FileService(
         return Result.ok()
     }
 
-    fun isAllowedToShareFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        val isAdmin = hasAdminAccess(user)
+    fun isAllowedToShareFile(user: Principal, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
+        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
-        if (isAdmin == false) {
-            // Check access permissions
-            isAllowedToAccessFile(user, canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
+        // Check access permissions
+        isAllowedToAccessFile(user, canonicalPath, ignorePerms).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
+        if (ignorePerms == false) {
             // Check write permissions
             hasFilePermission(canonicalPath, user, false, FilePermission.SHARE).let {
                 if (it == false) return Result.reject("You do not have permission to share this file.")
@@ -769,24 +833,24 @@ class FileService(
     /**
      * Fully verifies if a user is allowed to read and delete a file.
      */
-    fun isAllowedToDeleteFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        val isAdmin = hasAdminAccess(user)
+    fun isAllowedToDeleteFile(user: Principal, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
+        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
-        if (isAdmin == false) {
-            // Check access permissions
-            isAllowedToAccessFile(user, canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
-
-            // Check delete permissions
-            hasFilePermission(canonicalPath, user, false, FilePermission.DELETE).let {
-                if (it == false) return Result.reject("You do not have permission to delete this file.")
-            }
+        // Check access permissions
+        isAllowedToAccessFile(user, canonicalPath, ignorePerms).let {
+            if (it.isNotSuccessful) return it.cast()
         }
 
         // Check is path is blocked from being deleted
         isPathDeletable(canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
+        }
+
+        if (ignorePerms == false) {
+            // Check delete permissions
+            hasFilePermission(canonicalPath, user, false, FilePermission.DELETE).let {
+                if (it == false) return Result.reject("You do not have permission to delete this file.")
+            }
         }
 
         return Result.ok()
@@ -795,18 +859,22 @@ class FileService(
     /**
      * Fully verifies if a user is allowed to read and delete a file.
      */
-    fun isAllowedToMoveFile(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        val isAdmin = hasAdminAccess(user)
-        if (isAdmin) return Result.ok()
+    fun isAllowedToMoveFile(user: Principal, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
+        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
         // Check access permissions
-        isAllowedToAccessFile(user, canonicalPath).let {
+        isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePerms).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        // Check delete permissions
-        hasFilePermission(canonicalPath, user, false, FilePermission.MOVE).let {
-            if (it == false) return Result.reject("You do not have permission to move this file.")
+        val editable = isPathEditable(canonicalPath)
+        if (editable != null) return Result.reject(editable)
+
+        if (!ignorePerms) {
+            // Check delete permissions
+            hasFilePermission(canonicalPath, user, false, FilePermission.MOVE).let {
+                if (it == false) return Result.reject("You do not have permission to move this file.")
+            }
         }
 
         return Result.ok()
@@ -850,7 +918,7 @@ class FileService(
     ): Result<List<T>> {
         val hasAdminAccess = user?.let { hasAdminAccess(user) } ?: false
         if (!ignorePermissions) {
-            val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, hasAdminAccess = hasAdminAccess)
+            val isAllowed = isAllowedToAccessFile(user, canonicalPath = canonicalPath, ignorePermissions = hasAdminAccess)
             if (isAllowed.isNotSuccessful) return isAllowed.cast()
         }
 
@@ -912,10 +980,20 @@ class FileService(
      */
     fun isPathAllowed(canonicalPath: FilePath): Result<Unit> {
         val result = fileVisibilityService.isPathAllowed(canonicalPath = canonicalPath)
-        return if (result == null) Result.ok() else Result.reject(result, source = "isPathAllowed")
+        return if (result == null) Result.ok() else Result.reject(result)
+    }
+
+    fun isPathEditable(canonicalPath: FilePath): String? {
+        if (!State.App.allowWriteDataFolder) {
+            if (canonicalPath.path.startsWith(Props.dataFolderPath)) return "Cannot edit ${Props.appName} data folder."
+        }
+        return null
     }
 
     fun isPathDeletable(canonicalPath: FilePath): Result<Unit> {
+        val editable = isPathEditable(canonicalPath)
+        if (editable != null) return Result.reject(editable)
+
         // Is path a system folder
         val isProtected = Props.nonDeletableFolders.isProtected(canonicalPath.pathString, true)
         // Was path made deletable
@@ -980,15 +1058,14 @@ class FileService(
             val entityResult = entityService.getByPath(path.pathString, UserAction.NONE)
             if (entityResult.hasError) return entityResult.cast()
             val entity = entityResult.valueOrNull
-            val followSymlinks = entity?.followSymlinks
 
             // Do not do inode check on unsupported filesystem.
             if (entity != null && (!entity.isFilesystemSupported || entity.inode == null)) {
-                val exists = filesystem.exists(path.path, followSymbolicLinks = followSymlinks ?: State.App.followSymlinks)
-                return if (exists) Result.ok() else Result.reject("Path does not exist.", source = "verifyEntityByInode-notSupported-notFound")
+                val exists = filesystem.exists(path.path, followSymbolicLinks = false)
+                return if (exists) Result.ok() else Result.reject("Path does not exist.")
             }
 
-            val newInode = filesystem.getInode(path.path, followSymbolicLinks = followSymlinks ?: State.App.followSymlinks)
+            val newInode = filesystem.getInode(path.path, followSymbolicLinks = false)
             // Inode matches normally
             if (entity?.inode == newInode) return Result.ok()
 
