@@ -1,7 +1,6 @@
 package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.common.State
 import org.filemat.server.config.properties.NonDeletableSystemPaths
 import org.filemat.server.config.properties.SensitiveFolderPaths
 import java.nio.file.Path

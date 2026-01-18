@@ -38,7 +38,7 @@ class EntityService(
     private val logService: LogService,
     @Lazy private val entityPermissionService: EntityPermissionService,
     @Lazy private val filesystemService: FilesystemService,
-    private val platformTransactionManager: PlatformTransactionManager,
+    platformTransactionManager: PlatformTransactionManager,
     @Lazy private val fileShareService: FileShareService
 ) {
     private val transactionTemplate = TransactionTemplate(platformTransactionManager).apply {

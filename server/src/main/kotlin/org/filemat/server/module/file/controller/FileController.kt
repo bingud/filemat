@@ -10,7 +10,6 @@ import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Unauthenticated
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.FileService
@@ -24,13 +23,9 @@ import java.io.BufferedInputStream
 import java.io.OutputStream
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
-import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import kotlin.io.path.isDirectory
-import kotlin.io.path.isRegularFile
 import kotlin.io.path.pathString
 
 
