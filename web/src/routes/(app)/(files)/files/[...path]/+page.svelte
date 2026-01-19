@@ -1,6 +1,6 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, isFile, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -39,6 +39,9 @@
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
     import UndoIcon from "$lib/component/icons/UndoIcon.svelte";
+    import { dev } from "$app/environment";
+    import RetryIcon from "$lib/component/icons/RetryIcon.svelte";
+    import { toast } from "@jill64/svelte-toast";
 
 
     let {
@@ -256,7 +259,7 @@
                             {#if filesState.isSearchOpen}
                                 <button on:click={cancelSearch} title="Close search" class="file-action-button"><CloseIcon /></button>
                             {/if}
-                            
+
                             <!-- Parent folder options -->
                             {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                     (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)

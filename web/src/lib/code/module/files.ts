@@ -2,10 +2,11 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
+import { persistentToast_loading } from "../util/uiUtil";
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
@@ -388,11 +389,13 @@ export async function deleteFiles(entries: FileMetadata[]) {
     const paths = entries.map(v => v.path)
     const serialized = JSON.stringify(paths)
     
+    const removeToast = persistentToast_loading(`Deleting file${letterS(entries.length)}...`)
     const response = await safeFetch(`/api/v1/file/delete-list`, {
         method: "POST",
         body: formData({ pathList: serialized }),
         credentials: "same-origin"
     })
+    removeToast()
     
     if (response.failed) {
         handleErr({
@@ -524,9 +527,13 @@ export async function downloadFiles(
 
 
 export async function moveFile(path: string, newPath: string) {
+    const removeToast = persistentToast_loading("Moving file...")
+
     const response = await safeFetch(`/api/v1/file/move`, {
         body: formData({ path: path, newPath: newPath })
     })
+    removeToast()
+
     if (response.failed) {
         handleException(`Failed to move file.`, `Failed to move file.`, response.exception)
         return
@@ -553,9 +560,13 @@ export async function moveFile(path: string, newPath: string) {
 }
 
 export async function copyFile(path: string, newPath: string) {
+    const removeToast = persistentToast_loading("Copying file...")
+
     const response = await safeFetch(`/api/v1/file/copy`, {
         body: formData({ path, newPath })
     })
+    removeToast()
+
     if (response.failed) {
         handleException(`Failed to copy file.`, `Failed to copy file.`, response.exception)
         return
@@ -608,9 +619,13 @@ export async function copyFile(path: string, newPath: string) {
 }
 
 export async function moveMultipleFiles(newParentPath: string, paths: string[]) {
+    const removeToast = persistentToast_loading("Moving files...")
+    
     const response = await safeFetch(`/api/v1/file/move-multiple`, { 
         body: formData({ newParent: newParentPath, paths: JSON.stringify(paths) })
     })
+    removeToast()
+    
     const status = response.code
     const json = response.json()
 

@@ -705,6 +705,14 @@ export async function doRequest(
 export function generateRandomNumber() {
     return crypto.getRandomValues(new Uint32Array(1))[0]
 }
+export function generateRandomString(length: number = 16): string {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let result = ''
+    for (let i = 0; i < length; i++) {
+        result += charset.charAt(Math.floor(Math.random() * charset.length))
+    }
+    return result
+}
 
 export function printStack() {
     console.log(new Error().stack)

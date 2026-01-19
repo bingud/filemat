@@ -1,7 +1,9 @@
 import { goto } from "$app/navigation"
+import { toast } from "@jill64/svelte-toast"
 import { config } from "../config/values"
 import type { filesState } from "../stateObjects/filesState.svelte"
 import { uiState, type SettingSectionId } from "../stateObjects/uiState.svelte"
+import { generateRandomString } from "./codeUtil.svelte"
 
 
 /**
@@ -186,4 +188,10 @@ export function useReplaceChars(node: HTMLInputElement, replaceFn: (char: string
             node.removeEventListener('input', handleInput)
         }
     }
+}
+
+export function persistentToast_loading(text: string): () => any {
+    const id = generateRandomString()
+    toast.loading(text, { duration: 99999000, id: id })
+    return () => { toast.remove(id) }
 }
