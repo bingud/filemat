@@ -1,7 +1,6 @@
 package org.filemat.server.module.savedFile
 
 import com.github.f4b6a3.ulid.Ulid
-import jakarta.annotation.PostConstruct
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
@@ -29,10 +28,9 @@ class SavedFileService(
     private val pathToUserIdMap = ConcurrentHashMap<String, MutableSet<Ulid>>()
     private var useMap = true
 
-    @PostConstruct
-    private fun loadSavedFilesFromDatabase() {
+    fun initialize_loadSavedFilesFromDatabase() {
         try {
-            println("Loading saved files...")
+            println("Loading saved files from database...")
             savedFileRepository.findAll()
                 .forEach {
                     addToMap(it)

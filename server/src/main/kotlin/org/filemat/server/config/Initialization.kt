@@ -2,16 +2,11 @@ package org.filemat.server.config
 
 import jakarta.annotation.PostConstruct
 import org.filemat.server.common.State
-import org.filemat.server.common.util.formatMillisecondsToReadableTime
-import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.database.DatabaseSetup
 import org.filemat.server.module.file.service.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.permission.service.EntityPermissionService
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.event.EventListener
-import org.springframework.core.Ordered
-import org.springframework.core.annotation.Order
+import org.filemat.server.module.savedFile.SavedFileService
 import org.springframework.stereotype.Component
 import kotlin.system.exitProcess
 
@@ -21,12 +16,13 @@ class Initialization(
     private val fileVisibilityService: FileVisibilityService,
     private val filePermissionService: EntityPermissionService,
     private val filesystemService: FilesystemService,
+    private val savedFileService: SavedFileService,
 ) {
 
     /**
      * #### Initializes the application.
      */
-    @PostConstruct //(ApplicationReadyEvent::class)
+    @PostConstruct
     fun initialize() {
         databaseSetup.initialize_setUpSchema().line()
         databaseSetup.runFlywayMigrations().line()
@@ -38,6 +34,8 @@ class Initialization(
 
         // Load settings to memory
         databaseSetup.initialize_loadSettings().line()
+
+        savedFileService.initialize_loadSavedFilesFromDatabase().line()
 
         if (State.App.isSetup) {
             // Load exposed folders to memory
