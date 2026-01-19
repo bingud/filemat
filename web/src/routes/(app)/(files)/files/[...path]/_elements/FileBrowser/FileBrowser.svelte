@@ -15,10 +15,11 @@
     import FileList from "./FileList.svelte";
     import Loader from "$lib/component/Loader.svelte";
 
-    $inspect(filesState.currentFile.originalFileCategory, filesState.currentFile.displayedFileCategory).with((type, orig, displayed) => {
-        console.log(`===`)
-        console.log(`original`, orig)
-        console.log(`displayed`, displayed)
+    // TODO - Temporary fix
+    // Svelte doesnt feel like being reactive
+    $effect(() => {
+        filesState.currentFile.originalFileCategory
+        filesState.currentFile.displayedFileCategory
     })
 
     onMount(() => {

@@ -39,10 +39,6 @@
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
     import UndoIcon from "$lib/component/icons/UndoIcon.svelte";
-    import { dev } from "$app/environment";
-    import RetryIcon from "$lib/component/icons/RetryIcon.svelte";
-    import { toast } from "@jill64/svelte-toast";
-
 
     let {
         meta,

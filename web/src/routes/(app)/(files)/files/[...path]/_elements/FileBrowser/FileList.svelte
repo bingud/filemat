@@ -121,7 +121,7 @@
         </div>
 
         <!-- Each entry is a grid item -->
-        {#each sortedEntries as entry}
+        {#each sortedEntries as entry (entry.filename)}
             <RowFileEntry
                 {entry}
                 {event_dragStart}
@@ -139,7 +139,7 @@
         <div class="w-full h-fit grid gap-2
                 grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]"
         >
-            {#each sortedEntries as entry}
+            {#each sortedEntries as entry (entry.filename)}
                 <GridFileEntry
                     {entry}
                     {event_dragStart}
