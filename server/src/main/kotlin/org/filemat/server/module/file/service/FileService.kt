@@ -19,6 +19,8 @@ import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.file.service.component.FileContentService
+import org.filemat.server.module.file.service.component.FileLockService
+import org.filemat.server.module.file.service.component.LockType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.FilePermission
@@ -53,6 +55,7 @@ class FileService(
     private val fileShareService: FileShareService,
     private val savedFileService: SavedFileService,
     @Lazy private val fileContentService: FileContentService,
+    private val fileLockService: FileLockService,
 ) {
     fun isFileStoreMatching(
         one: Path,
@@ -204,21 +207,27 @@ class FileService(
             return Result.notFound()
         }
 
+        val lock = fileLockService.getLock(canonicalPath.path, LockType.WRITE)
+        if (!lock.successful) return Result.reject("This file is currently being modified.")
         try {
-            file.writeText(newContent)
-        } catch (e: Exception) {
-            return Result.error("An error occurred while saving file.")
-        }
+            try {
+                file.writeText(newContent)
+            } catch (e: Exception) {
+                return Result.error("An error occurred while saving file.")
+            }
 
-        val modifiedDate = runCatching { file.lastModified() }.getOrElse { System.currentTimeMillis() }
-        val size = filesystem.getSize(canonicalPath).let {
-            if (it.isNotSuccessful) return@let StringUtils.measureByteSize(newContent)
-            it.value
-        }
+            val modifiedDate = runCatching { file.lastModified() }.getOrElse { System.currentTimeMillis() }
+            val size = filesystem.getSize(canonicalPath).let {
+                if (it.isNotSuccessful) return@let StringUtils.measureByteSize(newContent)
+                it.value
+            }
 
-        return Result.ok(
-            EditFileResult(modifiedDate = modifiedDate, size = size)
-        )
+            return Result.ok(
+                EditFileResult(modifiedDate = modifiedDate, size = size)
+            )
+        } finally {
+            lock.unlock()
+        }
     }
 
     /**
@@ -326,21 +335,19 @@ class FileService(
     }
 
     fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit> {
-        val isSymlink = rawPath.path.isSymbolicLink()
-
         // Resolve the target path
-        val canonicalPath = if (isSymlink) rawPath else resolvePath(rawPath)
-            .let { (canonicalResult, pathHasSymlink) ->
-                canonicalResult.isNotSuccessful
+        val rawParent = FilePath.ofAlreadyNormalized(rawPath.path.parent)
+
+        val sourceParent = resolvePath(rawParent)
+            .let { (canonicalResult, _) ->
+                if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
                 canonicalResult.value
             }
 
-        if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
+        val canonicalPath = FilePath.ofAlreadyNormalized(sourceParent.path.resolve(rawPath.path.fileName))
 
-        // Check if user is permitted to move the file
-        isAllowedToMoveFile(user = user, canonicalPath = canonicalPath).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
+        // Safety checks
+        if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
 
         // Get the target parent folder
         val rawNewPathParent = FilePath.ofAlreadyNormalized(rawNewPath.path.parent)
@@ -355,6 +362,19 @@ class FileService(
 
         // Check if file is being moved into itself
         if (canonicalPath == newPath || newPath.startsWith(canonicalPath)) return Result.reject("File cannot be moved into itself.")
+
+        // Check source permissions
+        if (canonicalPath.path.parent == newPathParent.path) {
+            // Check if user is permitted to move the file
+            isAllowedToRenameFile(user = user, canonicalPath = canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+        } else {
+            // Check if user is permitted to move the file
+            isAllowedToMoveFile(user = user, canonicalPath = canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+        }
 
         // Check target parent folder `WRITE` permission
         isAllowedToEditFile(user = user, canonicalPath = newPathParent).let {
@@ -393,8 +413,6 @@ class FileService(
                 canonicalResult.value
             }
         }
-        println("raw: ${rawPath.path}")
-        println("canonical: $canonicalPath")
 
         if (canonicalPath.pathString == "/") return Result.reject("Cannot delete root folder.")
 
@@ -452,39 +470,36 @@ class FileService(
         val canonicalParent = canonicalParentResult.value
 
         // Check permissions
-        isAllowedToAccessFile(user = user, canonicalPath = canonicalParent).let {
+        isAllowedToEditFile(user, canonicalParent).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        hasFilePermission(
-            canonicalPath = canonicalParent,
-            principal = user,
-            permission = FilePermission.WRITE
-        ).let {
-            if (it == false) return Result.reject("You do not have permission to modify this folder.")
-        }
+        val lock = fileLockService.getLock(canonicalParent.path, LockType.READ)
+        if (!lock.successful) return Result.reject("This folder is currently being modified.")
 
-        // Get folder canonical path
-        val folderName = rawPath.path.fileName
-        val canonicalPath = FilePath.ofAlreadyNormalized(canonicalParent.path.resolve(folderName))
+        try {
+            // Get folder canonical path
+            val folderName = rawPath.path.fileName
+            val canonicalPath = FilePath.ofAlreadyNormalized(canonicalParent.path.resolve(folderName))
 
-        // Check if folder already exists
-        val alreadyExists = filesystem.exists(canonicalPath.path, false)
-        if (alreadyExists) return Result.reject("This folder already exists.")
+            // Check if folder already exists
+            val alreadyExists = filesystem.exists(canonicalPath.path, false)
+            if (alreadyExists) return Result.reject("This folder already exists.")
 
-        // Create folder
-        filesystem.createFolder(canonicalPath).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
+            // Create folder
+            filesystem.createFolder(canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
 
-        entityService.create(
-            canonicalPath = canonicalPath,
-            ownerId = user.userId,
-            userAction = UserAction.CREATE_FOLDER,
-            followSymLinks = false
-        )
+            entityService.create(
+                canonicalPath = canonicalPath,
+                ownerId = user.userId,
+                userAction = UserAction.CREATE_FOLDER,
+                followSymLinks = false
+            )
 
-        return Result.ok()
+            return Result.ok()
+        } finally { lock.unlock() }
     }
 
     /**
@@ -542,7 +557,10 @@ class FileService(
 
         if (!Files.isRegularFile(canonicalPath.path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
 
-        return try {
+        val lock = fileLockService.getLock(canonicalPath.path, LockType.READ)
+        if (!lock.successful) return Result.reject("This file is currently being modified.")
+
+        try {
             val fileInputStream = Files.newInputStream(canonicalPath.path)
             if (range == null) return fileInputStream.toResult()
 
@@ -556,7 +574,9 @@ class FileService(
 
             return bounded.toResult()
         } catch (e: Exception) {
-            Result.error("Failed to stream file.")
+            return Result.error("Failed to stream file.")
+        } finally {
+            lock.unlock()
         }
     }
 
@@ -571,27 +591,34 @@ class FileService(
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
-        val metadata: FullFileMetadata = getFullMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath).let {
-            if (it.isNotSuccessful) return it.cast()
-            it.value
-        }
-        val type = metadata.fileType
+        val lock = fileLockService.getLock(canonicalPath.path, LockType.READ)
+        if (!lock.successful) return Result.reject("This file is currently being modified.")
 
-        if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
-            val entries = getFolderEntries(
-                user = user,
-                canonicalPath = canonicalPath,
-                foldersOnly = foldersOnly
-            ).let {
+        return try {
+            val metadata: FullFileMetadata = getFullMetadata(user, rawPath = rawPath, canonicalPath = canonicalPath).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
+            val type = metadata.fileType
 
-            return Result.ok(metadata to entries)
-        } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
-            return Result.ok(metadata to null)
-        } else {
-            return Result.error("Requested path is not a file or folder.")
+            if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
+                val entries = getFolderEntries(
+                    user = user,
+                    canonicalPath = canonicalPath,
+                    foldersOnly = foldersOnly
+                ).let {
+                    if (it.isNotSuccessful) return it.cast()
+                    it.value
+                }
+
+                Result.ok(metadata to entries)
+            } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
+                Result.ok(metadata to null)
+            } else {
+                Result.error("Requested path is not a file or folder.")
+            }
+        } finally {
+            lock.unlock()
         }
     }
 
@@ -621,35 +648,42 @@ class FileService(
             canonicalSharePath.path.resolve(rawPath.path.toString().removePrefix("/"))
         )
 
-        // Get file metadata, change its path to be relative
-        val rawMetadata: FileMetadata = filesystem.getMetadata(canonicalPath) ?: return Result.notFound()
+        val lock = fileLockService.getLock(canonicalPath.path, LockType.READ)
+        if (!lock.successful) return Result.reject("This file is currently being modified.")
 
-        val metadata = rawMetadata.copy(path = rawPath.pathString)
-        val type = metadata.fileType
+        try {
+            // Get file metadata, change its path to be relative
+            val rawMetadata: FileMetadata = filesystem.getMetadata(canonicalPath) ?: return Result.notFound()
 
-        if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
-            // Get folder entries, change paths back to relative
-            val entries = getFolderEntries(
-                user = null,
-                canonicalPath = canonicalPath,
-                foldersOnly = foldersOnly,
-                ignorePermissions = true,
-                metaMapper = { meta: FileMetadata, _ -> meta }
-            ).let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }.map { entry ->
-                val relativePath = canonicalPath.path.relativize(Path.of(entry.path))
-                val newPath = rawPath.path.resolve(relativePath)
+            val metadata = rawMetadata.copy(path = rawPath.pathString)
+            val type = metadata.fileType
 
-                entry.copy(path = newPath.toString())
+            if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
+                // Get folder entries, change paths back to relative
+                val entries = getFolderEntries(
+                    user = null,
+                    canonicalPath = canonicalPath,
+                    foldersOnly = foldersOnly,
+                    ignorePermissions = true,
+                    metaMapper = { meta: FileMetadata, _ -> meta }
+                ).let {
+                    if (it.isNotSuccessful) return it.cast()
+                    it.value
+                }.map { entry ->
+                    val relativePath = canonicalPath.path.relativize(Path.of(entry.path))
+                    val newPath = rawPath.path.resolve(relativePath)
+
+                    entry.copy(path = newPath.toString())
+                }
+
+                return Result.ok(metadata to entries)
+            } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
+                return Result.ok(metadata to null)
+            } else {
+                return Result.error("Requested path is not a file or folder.")
             }
-
-            return Result.ok(metadata to entries)
-        } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
-            return Result.ok(metadata to null)
-        } else {
-            return Result.error("Requested path is not a file or folder.")
+        } finally {
+            lock.unlock()
         }
     }
 
@@ -728,7 +762,7 @@ class FileService(
         val lowercaseText = text.lowercase()
 
         // Symlinks permanently disabled to prevent loops
-        return canonicalPath.path.safeWalk()
+        return canonicalPath.path.safeWalk(with = fileLockService)
             .mapNotNull { path ->
                 try {
                     // Check searched text
@@ -874,6 +908,30 @@ class FileService(
             // Check delete permissions
             hasFilePermission(canonicalPath, user, false, FilePermission.MOVE).let {
                 if (it == false) return Result.reject("You do not have permission to move this file.")
+            }
+        }
+
+        return Result.ok()
+    }
+
+    /**
+     * Fully verifies if a user is allowed to read and delete a file.
+     */
+    fun isAllowedToRenameFile(user: Principal, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
+        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
+
+        // Check access permissions
+        isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePerms).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val editable = isPathEditable(canonicalPath)
+        if (editable != null) return Result.reject(editable)
+
+        if (!ignorePerms) {
+            // Check delete permissions
+            hasFilePermission(canonicalPath, user, false, FilePermission.RENAME).let {
+                if (it == false) return Result.reject("You do not have permission to rename this file.")
             }
         }
 

@@ -7,6 +7,8 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.component.FileLockService
+import org.filemat.server.module.file.service.component.LockType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -19,6 +21,7 @@ import kotlin.io.path.exists
 class FileMoveService(
     private val logService: LogService,
     private val fileService: FileService,
+    private val fileLockService: FileLockService,
 ) {
 
     fun moveFile(
@@ -26,24 +29,27 @@ class FileMoveService(
         destination: FilePath,
         user: Principal,
         ignorePermissions: Boolean? = null
-    ): Result<Unit> {
+    ): Result<Unit> = fileLockService.tryWithLock(
+        listOf(source.path, destination.path), LockType.WRITE,
+        checkChildren = true
+    ) {
         val isDataFolderProtected = State.App.allowWriteDataFolder == false
 
-        if (!source.path.exists()) return Result.notFound()
-        if (destination.path.startsWith(source.path)) return Result.reject("Cannot move folder into itself.")
-        if (destination.path.exists(LinkOption.NOFOLLOW_LINKS)) return Result.reject("A file or folder already exists at the destination.")
+        if (!source.path.exists()) return@tryWithLock Result.notFound()
+        if (destination.path.startsWith(source.path)) return@tryWithLock Result.reject("Cannot move folder into itself.")
+        if (destination.path.exists(LinkOption.NOFOLLOW_LINKS)) return@tryWithLock Result.reject("A file or folder already exists at the destination.")
 
         // Cannot move INTO the protected data folder
         val destRelation = getPathRelationship(path = destination.path, target = Props.dataFolderPath)
         if (destRelation.isInsideTarget && isDataFolderProtected) {
-            return Result.reject("Cannot move files into ${Props.appName} data folder.")
+            return@tryWithLock Result.reject("Cannot move files into ${Props.appName} data folder.")
         }
 
         // Cannot move protected data folder itself or files inside it if protected
         if (isDataFolderProtected) {
             val sourceRelation = getPathRelationship(path = source.path, target = Props.dataFolderPath)
             if (sourceRelation.isInsideTarget) {
-                return Result.reject("Cannot move ${Props.appName} data folder contents.")
+                return@tryWithLock Result.reject("Cannot move ${Props.appName} data folder contents.")
             }
         }
 
@@ -55,8 +61,8 @@ class FileMoveService(
             ignorePermissions = ignorePermissions
         )
 
-        return if (failedCount == 0) Result.ok() else Result.error("$failedCount items could not be moved.")
-    }
+        return@tryWithLock if (failedCount == 0) Result.ok() else Result.error("$failedCount items could not be moved.")
+    }.onFailure { Result.reject("Could not move. The file is currently being modified.") }
 
     private fun moveRecursiveSafe(
         currentSource: Path,

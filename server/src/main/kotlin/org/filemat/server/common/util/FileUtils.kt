@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import org.apache.tika.Tika
+import org.filemat.server.module.file.service.component.FileLockService
+import org.filemat.server.module.file.service.component.LockType
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -34,21 +36,29 @@ object FileUtils {
 
 
 
-fun Path.safeWalk(): Flow<Path> = flow {
-    // Emit the current path itself
-    emit(this@safeWalk)
+fun Path.safeWalk(with: FileLockService? = null): Flow<Path> = flow {
+    val lock = with?.getLock(this@safeWalk, LockType.READ)
+    if (lock?.successful == false) return@flow
 
-    // Traverse children if directory
-    if (Files.isDirectory(this@safeWalk)) {
-        try {
-            // newDirectoryStream is lazy and allows catching access errors per directory
-            Files.newDirectoryStream(this@safeWalk).use { stream ->
-                for (path in stream) {
-                    // Recursively walk children
-                    emitAll(path.safeWalk())
+    try {
+        // Emit the current path itself
+        emit(this@safeWalk)
+
+        // Traverse children if directory
+        if (Files.isDirectory(this@safeWalk)) {
+            try {
+                // newDirectoryStream is lazy and allows catching access errors per directory
+                Files.newDirectoryStream(this@safeWalk).use { stream ->
+                    for (path in stream) {
+                        // Recursively walk children
+                        emitAll(path.safeWalk(with))
+                    }
                 }
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {}
+        }
+    } finally {
+        if (lock != null) lock.unlock()
     }
 }
 

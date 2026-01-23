@@ -17,7 +17,8 @@ import java.util.zip.ZipOutputStream
 
 @Service
 class FileContentService(
-    private val fileService: FileService
+    private val fileService: FileService,
+    private val fileLockService: FileLockService
 ) {
 
     fun addFileToZip(
@@ -103,70 +104,75 @@ class FileContentService(
             }
         } else null
 
-        // 3. Handle Directory Recursion
-        if (isDirectory) {
-            try {
-                // Add directory entry to Zip (must end in /)
-                if (currentZipPath != null) {
-                    val dirEntryName = currentZipPath.toString().let { if (it.endsWith("/")) it else "$it/" }
-                    zip.putNextEntry(ZipEntry(dirEntryName))
-                    zip.closeEntry()
-                }
-
-                Files.newDirectoryStream(currentSource).use { stream ->
-                    for (child in stream) {
-                        failedCount += zipRecursiveSafe(
-                            currentSource = child,
-                            currentZipPath = currentZipPath?.resolve(child.fileName) ?: child.fileName,
-                            zip = zip,
-                            user = user,
-                            protectedPath = protectedPath,
-                            ignorePermissions = ignorePermissions,
-                            copyResolvedSymlinks = copyResolvedSymlinks
-                        )
+        return fileLockService.tryWithLock(
+            currentSource to LockType.READ,
+            resolvedPath?.path to LockType.READ,
+        ) {
+            // 3. Handle Directory Recursion
+            if (isDirectory) {
+                try {
+                    // Add directory entry to Zip (must end in /)
+                    if (currentZipPath != null) {
+                        val dirEntryName = currentZipPath.toString().let { if (it.endsWith("/")) it else "$it/" }
+                        zip.putNextEntry(ZipEntry(dirEntryName))
+                        zip.closeEntry()
                     }
+
+                    Files.newDirectoryStream(currentSource).use { stream ->
+                        for (child in stream) {
+                            failedCount += zipRecursiveSafe(
+                                currentSource = child,
+                                currentZipPath = currentZipPath?.resolve(child.fileName) ?: child.fileName,
+                                zip = zip,
+                                user = user,
+                                protectedPath = protectedPath,
+                                ignorePermissions = ignorePermissions,
+                                copyResolvedSymlinks = copyResolvedSymlinks
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    return@tryWithLock failedCount + 1
                 }
+                return@tryWithLock failedCount
+            }
+
+            // 4. Permission Checks
+            if (isSymlink == true) {
+                if (resolvedPath == null) return@tryWithLock failedCount + 1
+
+                fileService.isAllowedToAccessFile(
+                    user = user,
+                    canonicalPath = resolvedPath,
+                    ignorePermissions = ignorePermissions
+                ).let { if (it.isNotSuccessful) return@tryWithLock failedCount + 1 }
+
+            } else {
+                fileService.isAllowedToAccessFile(
+                    user = user,
+                    canonicalPath = sourceFilePath,
+                    ignorePermissions = ignorePermissions
+                ).let { if (it.isNotSuccessful) return@tryWithLock failedCount + 1 }
+            }
+
+            // 5. Write File to Zip
+            try {
+                val entryName = currentZipPath?.toString() ?: currentSource.fileName.toString()
+                zip.putNextEntry(ZipEntry(entryName))
+
+                val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
+
+                // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
+                Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
+                    BufferedInputStream(inputStream).copyTo(zip)
+                }
+                zip.closeEntry()
             } catch (e: Exception) {
-                return failedCount + 1
+                return@tryWithLock failedCount + 1
             }
-            return failedCount
-        }
 
-        // 4. Permission Checks (File level)
-        if (isSymlink == true) {
-            if (resolvedPath == null) return failedCount + 1
-
-            fileService.isAllowedToAccessFile(
-                user = user,
-                canonicalPath = resolvedPath,
-                ignorePermissions = ignorePermissions
-            ).let { if (it.isNotSuccessful) return failedCount + 1 }
-
-        } else {
-            fileService.isAllowedToAccessFile(
-                user = user,
-                canonicalPath = sourceFilePath,
-                ignorePermissions = ignorePermissions
-            ).let { if (it.isNotSuccessful) return failedCount + 1 }
-        }
-
-        // 5. Action: Write File to Zip
-        try {
-            val entryName = currentZipPath?.toString() ?: currentSource.fileName.toString()
-            zip.putNextEntry(ZipEntry(entryName))
-
-            val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
-
-            // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
-            Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
-                BufferedInputStream(inputStream).copyTo(zip)
-            }
-            zip.closeEntry()
-        } catch (e: Exception) {
-            return failedCount + 1
-        }
-
-        return failedCount
+            return@tryWithLock failedCount
+        }.onFailure { failedCount + 1 }
     }
 
 }

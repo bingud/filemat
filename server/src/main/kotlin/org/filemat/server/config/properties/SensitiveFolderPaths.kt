@@ -34,17 +34,17 @@ object SensitiveFolderPaths {
         .also { if (!State.App.allowReadDataFolder) it.add(Props.dataFolder) }
 
 
-    private val wildcardList = fullList.filter { it.contains("*") }.map { (if (it.startsWith("/")) it else "/$it").split("*") }.map { it[0] to it[1] }
-    private val list = fullList.filterNot { it.contains("*") }.toHashSet()
+    private val regexList: List<Regex> by lazy {
+        fullList.map { pattern ->
+            val segments = pattern.split("*")
+            val escapedPattern = segments.joinToString("[^/]*") { Regex.escape(it) }
+            Regex("^$escapedPattern($|/.*)")
+        }
+    }
 
     fun contains(rawPath: String, isPathNormalized: Boolean): Boolean {
         val path = if (isPathNormalized) rawPath else rawPath.normalizePath()
-        if (list.any { path.startsWith(it) }) return true
-
-        wildcardList.forEach { pair ->
-            if (path.startsWith(pair.first) && path.endsWith(pair.second)) return true
-        }
-        return false
+        return regexList.any { it.matches(path) }
     }
 
     private val serializedList: String by lazy { Json.encodeToString(fullList) }
@@ -56,15 +56,3 @@ object SensitiveFolderPaths {
         println("\n")
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-

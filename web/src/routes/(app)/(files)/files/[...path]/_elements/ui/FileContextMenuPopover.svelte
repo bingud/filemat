@@ -1,8 +1,7 @@
 <script lang="ts">
-    import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
+    import type { FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { isFolder, parentFromPath } from "$lib/code/util/codeUtil.svelte";
-    import { getContentUrl, getZipContentUrl } from "$lib/code/util/stateUtils";
+    import { parentFromPath } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
     import BookmarkXIcon from "$lib/component/icons/BookmarkXIcon.svelte";

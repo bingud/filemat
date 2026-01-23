@@ -7,6 +7,8 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.component.FileLockService
+import org.filemat.server.module.file.service.component.LockType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -18,6 +20,7 @@ import kotlin.io.path.exists
 class FileCopyService(
     private val logService: LogService,
     private val fileService: FileService,
+    private val fileLockService: FileLockService,
 ) {
 
     fun copyFile(
@@ -26,13 +29,17 @@ class FileCopyService(
         user: Principal,
         ignorePermissions: Boolean? = null,
         copyResolvedSymlinks: Boolean? = null,
-    ): Result<Unit> {
+    ): Result<Unit> = fileLockService.tryWithLock(
+        canonicalSource.path to LockType.READ,
+        canonicalDestination.path to LockType.WRITE,
+        checkChildren = true
+    ) {
         val resolveSymlinks = if (copyResolvedSymlinks != null) {
             copyResolvedSymlinks
         } else {
             if (State.App.followSymlinks) {
                 val isMatching = fileService.isFileStoreMatching(canonicalSource.path, canonicalDestination.path.parent ?: canonicalDestination.path)
-                    ?: return Result.error("Failed to check if copied file path is on the same filesystem.")
+                    ?: return@tryWithLock Result.error("Failed to check if copied file path is on the same filesystem.")
 
                 isMatching == false
             } else {
@@ -40,15 +47,14 @@ class FileCopyService(
             }
         }
 
-        return copyFile(
+        copyFile(
             canonicalSource = canonicalSource,
             canonicalDestination = canonicalDestination,
             user = user,
             ignorePermissions = ignorePermissions,
             copyResolvedSymlinks = resolveSymlinks
         )
-    }
-
+    }.onFailure { Result.reject("Could not copy. The file is currently being modified.") }
 
     private fun copyFile(
         canonicalSource: FilePath,

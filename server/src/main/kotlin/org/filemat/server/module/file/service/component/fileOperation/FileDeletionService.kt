@@ -7,6 +7,8 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.component.FileLockService
+import org.filemat.server.module.file.service.component.LockType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -19,23 +21,24 @@ import kotlin.io.path.*
 class FileDeletionService(
     private val logService: LogService,
     private val fileService: FileService,
+    private val fileLockService: FileLockService,
 ) {
 
     fun deleteFile(
         target: FilePath,
         user: Principal,
         ignorePermissions: Boolean? = null
-    ): Result<Unit> {
+    ): Result<Unit> = fileLockService.tryWithLock(target.path, LockType.WRITE) {
         val isDataFolderProtected = State.App.allowWriteDataFolder == false
-        if (!target.path.exists()) return Result.notFound()
+        if (!target.path.exists()) return@tryWithLock Result.notFound()
 
         if (isDataFolderProtected) {
             val relation = getPathRelationship(path = target.path, target = Props.dataFolderPath)
             if (relation.isInsideTarget) {
-                return Result.reject("Cannot delete ${Props.appName} data folder.")
+                return@tryWithLock Result.reject("Cannot delete ${Props.appName} data folder.")
             }
             if (relation.containsTarget) {
-                return Result.reject("Folder cannot be deleted because it is not empty.")
+                return@tryWithLock Result.reject("Folder cannot be deleted because it is not empty.")
             }
         }
 
@@ -46,8 +49,8 @@ class FileDeletionService(
             ignorePermissions = ignorePermissions
         )
 
-        return if (failedCount == 0) Result.ok() else Result.error("$failedCount items could not be deleted.")
-    }
+        return@tryWithLock if (failedCount == 0) Result.ok() else Result.error("$failedCount items could not be deleted.")
+    }.onFailure { Result.reject("This file is currently being modified.") }
 
     private fun deleteRecursiveSafe(
         currentPath: Path,
