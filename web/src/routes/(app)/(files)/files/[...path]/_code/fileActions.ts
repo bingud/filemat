@@ -51,8 +51,13 @@ export function option_deleteSelectedFiles() {
 export function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] | null = null) {
     const selected = inputList || filesState.selectedEntries.list
     if (!selected || !selected.length) return
+    
+    const selectedFile = filesState.selectedEntries.singleMeta
 
-    if (selected.length > 1 || isFolder(filesState.selectedEntries.singleMeta)) {
+    if (
+        selected.length > 1 
+        || selectedFile && isFolder(selectedFile) && selected.includes(selectedFile.path)
+    ) {
         downloadFilesAsZip(selected, filesState.getShareToken())
     } else {
         const path = selected[0]

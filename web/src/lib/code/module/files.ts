@@ -527,7 +527,9 @@ export async function downloadFiles(
 
 
 export async function moveFile(path: string, newPath: string) {
-    const removeToast = persistentToast_loading("Moving file...")
+    const isRename = parentFromPath(path) === parentFromPath(newPath)
+
+    const removeToast = isRename === false ? persistentToast_loading("Moving file...") : () => {}
 
     const response = await safeFetch(`/api/v1/file/move`, {
         body: formData({ path: path, newPath: newPath })
