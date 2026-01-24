@@ -9,41 +9,20 @@ import kotlin.concurrent.write
 
 
 /**
- * #### Entity permission tree
- *
- * EntityPermissionTree data layout:
- *
- * Represents a hierarchical file‐path permission structure.
- *
- * ┌─────────────────────────────────────────────────────────────────┐
- * │ root (segment="")                                               │
- * │  ├─ "folderA" (Node)                                            │
- * │  │     ├─ "subfolder" (Node)                                    │
- * │  │     │     ├─ userPermissions: Map<userId, EntityPermission>  │
- * │  │     │     └─ rolePermissions: Map<roleId, EntityPermission>  │
- * │  │     └─ children …                                            │
- * │  └─ "folderB" …                                                 │
- * └─────────────────────────────────────────────────────────────────┘
- *
- * Node:
- *  • segment         – the single path piece at this level
- *  • parent          – link to the parent Node (or null for root)
- *  • children        – ConcurrentHashMap<segment, Node>
- *  • userPermissions – ConcurrentHashMap<Ulid (userId), EntityPermission>
- *  • rolePermissions – ConcurrentHashMap<Ulid (roleId), EntityPermission>
- *
- * Inverted indexes (for fast removal/lookup by entity):
- *  • userPermissionsIndex – Map<userId, Set<EntityPermission>>
- *  • rolePermissionsIndex – Map<roleId, Set<EntityPermission>>
- *
- * Concurrency:
- *  • treeLock             – guards all tree (Node) reads and writes
- *  • permissionsIndexLock – guards inverted‐index updates
- *
- * Traversal & lookup:
- *  • findNode(path)       – walks down segments from root
- *  • getClosestPermission – climbs parent links to inherit permissions
- */
+* A concurrent prefix tree (Trie) for efficient file permission storage and retrieval.
+*
+* Structure:
+* - Each node represents a path segment.
+* - Nodes store direct User and Role permissions.
+*
+* Key Operations:
+* - resolveEffectivePermissions: Traverses leaf-to-root to find the most specific permission.
+* - getAllAccessibleEntitiesForUser: Traverses root-to-leaf to find accessible entry points.
+*
+* Thread Safety:
+* - Uses a ReentrantReadWriteLock (`treeLock`) for all tree modifications.
+* - Uses `permissionsIndexLock` for maintaining inverted indexes.
+*/
 class EntityPermissionTree() {
 
     /**
@@ -155,44 +134,6 @@ class EntityPermissionTree() {
 
                 permissionIndex_put(permission)
             }
-        }
-    }
-
-    /**
-     * Gets the closest inherited permission for an input path, for user ID.
-     *
-     * Returns permission either for path or for closest parent.
-     */
-    fun getClosestPermissionForUser(path: String, userId: Ulid): EntityPermission? {
-        treeLock.read {
-            val node = findNode(path, true) ?: return null
-            var current: Node? = node
-            while (current != null) {
-                current.userPermissions[userId]?.let { return it }
-                current = current.parent // move up
-            }
-            return null
-        }
-    }
-
-
-    /**
-     * Gets the closest inherited permission for an input path, for list of role IDs.
-     *
-     * Returns permission either for path or for closest parent.
-     */
-    fun getClosestPermissionForAnyRole(path: String, roleIds: List<Ulid>): EntityPermission? {
-        treeLock.read {
-            val node = findNode(path, true) ?: return null
-            var current: Node? = node
-
-            while (current != null) {
-                for (roleId in roleIds) {
-                    current.rolePermissions[roleId]?.let { return it }
-                }
-                current = current.parent
-            }
-            return null
         }
     }
 
@@ -457,7 +398,6 @@ class EntityPermissionTree() {
 
         // Always recurse into children to find deeper accessible entities
         for (child in node.children.values) {
-            // CAUSES INFINITE LOOP
             traverseAndCollectTopLevelAccessible(child, userId, roleIds, result)
         }
     }
@@ -475,5 +415,41 @@ class EntityPermissionTree() {
         val parentHasRolePermission = roleIds.any { roleId -> parent.rolePermissions[roleId]?.permissions?.contains(FilePermission.READ) ?: false }
 
         return !parentHasUserPermission && !parentHasRolePermission
+    }
+
+    /**
+     * Resolves the effective permissions for a user at a specific path.
+     *
+     * Specificity Rules:
+     * 1. Traverses from the target node upwards (Specificity by Depth).
+     * 2. At each level, User permissions take precedence over Role permissions (Specificity by Type).
+     * 3. Multiple Role permissions at the same level are merged (Union).
+     */
+    fun resolveEffectivePermissions(path: String, userId: Ulid, roleIds: List<Ulid>): Set<FilePermission> {
+        return treeLock.read {
+            var current: Node? = findNode(path, getClosestNode = true)
+            while (current != null) {
+                val node = current // Captured stable reference for closure/lambda
+
+                // Check for User permission at this specific level
+                val userPerm = node.userPermissions[userId]
+                if (userPerm != null) {
+                    return@read userPerm.permissions.toSet()
+                }
+
+                // If no User permission, check for Role permissions at this level
+                val applicableRolePerms = roleIds.mapNotNull { roleId ->
+                    node.rolePermissions[roleId]
+                }
+                if (applicableRolePerms.isNotEmpty()) {
+                    // Merge permissions from all matching roles at this level
+                    return@read applicableRolePerms.flatMap { it.permissions }.toSet()
+                }
+
+                // Move to parent to find inherited permissions
+                current = node.parent
+            }
+            emptySet()
+        }
     }
 }

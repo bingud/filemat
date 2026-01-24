@@ -294,16 +294,10 @@ class EntityPermissionService(
     fun memory_movePath(oldPath: String, newPath: String, entityId: Ulid) = pathTree.movePath(oldPath, newPath)
 
     /**
-     * Get the closest (inherited) file permission for a user.
+     * Get the effective (inherited & merged) file permissions for a user.
      */
-    fun getUserPermission(canonicalPath: FilePath, userId: Ulid, roles: List<Ulid>): EntityPermission? {
-        pathTree.getClosestPermissionForUser(canonicalPath.pathString, userId)
-            ?.let { return it }
-
-        pathTree.getClosestPermissionForAnyRole(canonicalPath.pathString, roles)
-            ?.let { return it }
-
-        return null
+    fun getEffectivePermissions(canonicalPath: FilePath, userId: Ulid, roles: List<Ulid>): Set<FilePermission> {
+        return pathTree.resolveEffectivePermissions(canonicalPath.pathString, userId, roles)
     }
 
     /**

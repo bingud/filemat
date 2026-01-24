@@ -24,17 +24,6 @@ import java.util.concurrent.locks.ReentrantLock
 class FileSecurityService(private val fileVisibilityService: FileVisibilityService, private val entityPermissionService: EntityPermissionService, private val entityService: EntityService, private val filesystemService: FilesystemService) {
 
     /**
-     * Returns the total list of file permissions currently available for a user on a file
-     */
-    fun getActualFilePermissions(user: Principal, canonicalPath: FilePath): Set<FilePermission> {
-        val globalPermissions = user.getEffectiveFilePermissions()
-        val permissions = entityPermissionService.getUserPermission(canonicalPath = canonicalPath, userId = user.userId, roles = user.roles)
-            ?.permissions ?: emptyList()
-
-        return globalPermissions + permissions
-    }
-
-    /**
      * Fully verifies if a user is allowed to read a file
      */
     fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, checkPermissionOnly: Boolean = false, ignorePermissions: Boolean? = null): Result<Unit> {
@@ -180,6 +169,16 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
 
     fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
 
+    /**
+     * Returns the total list of file permissions currently available for a user on a file
+     */
+    fun getActualFilePermissions(user: Principal, canonicalPath: FilePath): Set<FilePermission> {
+        val globalPermissions = user.getEffectiveFilePermissions()
+        // Now returns a merged set from the tree, respecting inheritance depth and type priority
+        val permissions = entityPermissionService.getEffectivePermissions(canonicalPath = canonicalPath, userId = user.userId, roles = user.roles)
+        return globalPermissions + permissions
+    }
+
     fun hasFilePermission(canonicalPath: FilePath, principal: Principal, hasAdminAccess: Boolean? = null, permission: FilePermission): Boolean {
         if (hasAdminAccess == true) return true
         if (hasAdminAccess == null) {
@@ -189,10 +188,8 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             }
         }
 
-        val permissions = entityPermissionService.getUserPermission(canonicalPath = canonicalPath, userId = principal.userId, roles = principal.roles)
-            ?: return false
-
-        return permissions.permissions.contains(permission)
+        val permissions = entityPermissionService.getEffectivePermissions(canonicalPath = canonicalPath, userId = principal.userId, roles = principal.roles)
+        return permissions.contains(permission)
     }
 
     /**
