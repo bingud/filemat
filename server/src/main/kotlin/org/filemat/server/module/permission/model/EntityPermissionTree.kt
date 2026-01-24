@@ -428,6 +428,7 @@ class EntityPermissionTree() {
     fun resolveEffectivePermissions(path: String, userId: Ulid, roleIds: List<Ulid>): Set<FilePermission> {
         return treeLock.read {
             var current: Node? = findNode(path, getClosestNode = true)
+
             while (current != null) {
                 val node = current // Captured stable reference for closure/lambda
 

@@ -47,12 +47,12 @@ enum class SystemPermission(override val index: Int, val level: Int) : Permissio
  * # File permissions
  */
 enum class FilePermission(override val index: Int) : Permission {
-    READ(0),
-    DELETE(1),
-    WRITE(2),
-    SHARE(3),
-    RENAME(4),
-    MOVE(5);
+    READ    (index = 0),
+    DELETE  (index = 1),
+    WRITE   (index = 2),
+    SHARE   (index = 3),
+    RENAME  (index = 4),
+    MOVE    (index = 5);
 
     companion object {
         fun fromInt(int: Int) = Permission.fromInt(int, entries)
