@@ -1,4 +1,4 @@
-package org.filemat.server.module.file.service.component
+package org.filemat.server.module.file.service
 
 import  jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -12,9 +12,8 @@ import org.filemat.server.common.util.classes.wrappers.BufferedResponseWrapper
 import org.filemat.server.common.util.classes.wrappers.RequestPathOverrideWrapper
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.EntityService
-import org.filemat.server.module.file.service.FileService
-import org.filemat.server.module.file.service.FilesystemService
+import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.nio.file.LinkOption

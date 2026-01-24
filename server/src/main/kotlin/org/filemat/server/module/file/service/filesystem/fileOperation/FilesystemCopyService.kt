@@ -1,4 +1,4 @@
-package org.filemat.server.module.file.service.component.fileOperation
+package org.filemat.server.module.file.service.filesystem.fileOperation
 
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
@@ -6,9 +6,9 @@ import org.filemat.server.common.util.*
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.FileService
-import org.filemat.server.module.file.service.component.FileLockService
-import org.filemat.server.module.file.service.component.LockType
+import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.FileLockService
+import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -17,7 +17,7 @@ import java.nio.file.*
 import kotlin.io.path.exists
 
 @Service
-class FileCopyService(
+class FilesystemCopyService(
     private val logService: LogService,
     private val fileService: FileService,
     private val fileLockService: FileLockService,
@@ -38,7 +38,7 @@ class FileCopyService(
             copyResolvedSymlinks
         } else {
             if (State.App.followSymlinks) {
-                val isMatching = fileService.isFileStoreMatching(canonicalSource.path, canonicalDestination.path.parent ?: canonicalDestination.path)
+                val isMatching = isFileStoreMatching(canonicalSource.path, canonicalDestination.path.parent ?: canonicalDestination.path)
                     ?: return@tryWithLock Result.error("Failed to check if copied file path is on the same filesystem.")
 
                 isMatching == false

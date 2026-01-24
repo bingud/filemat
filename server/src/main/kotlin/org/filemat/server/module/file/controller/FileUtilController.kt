@@ -8,7 +8,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.file.FileService
 import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType

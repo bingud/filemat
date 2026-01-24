@@ -3,7 +3,7 @@ package org.filemat.server.config
 import jakarta.annotation.PostConstruct
 import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
-import org.filemat.server.module.file.service.FilesystemService
+import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.savedFile.SavedFileService

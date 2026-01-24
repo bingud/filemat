@@ -1,4 +1,4 @@
-package org.filemat.server.module.file.service.component
+package org.filemat.server.module.file.service
 
 import org.springframework.stereotype.Service
 import java.nio.file.Path

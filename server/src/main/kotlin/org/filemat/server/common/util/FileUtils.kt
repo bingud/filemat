@@ -4,8 +4,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import org.apache.tika.Tika
-import org.filemat.server.module.file.service.component.FileLockService
-import org.filemat.server.module.file.service.component.LockType
+import org.filemat.server.module.file.service.FileLockService
+import org.filemat.server.module.file.service.LockType
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -76,4 +76,18 @@ fun getPathRelationship(path: Path, target: Path): PathRelationship {
         containsTarget = contains,
         isEqual = isInside && contains
     )
+}
+
+fun isFileStoreMatching(
+    one: Path,
+    two: Path
+): Boolean? {
+    try {
+        val oneStore = Files.getFileStore(one)
+        val twoStore = Files.getFileStore(two)
+
+        return oneStore == twoStore
+    } catch (e: Exception) {
+        return null
+    }
 }

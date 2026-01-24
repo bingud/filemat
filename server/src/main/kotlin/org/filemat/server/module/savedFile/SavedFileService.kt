@@ -9,7 +9,7 @@ import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
-import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.sharedFile.repository.SavedFileRepository

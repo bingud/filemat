@@ -1,7 +1,7 @@
 package org.filemat.server.module.file.service.commponent
 
-import org.filemat.server.module.file.service.component.FileLockService
-import org.filemat.server.module.file.service.component.LockType
+import org.filemat.server.module.file.service.FileLockService
+import org.filemat.server.module.file.service.LockType
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

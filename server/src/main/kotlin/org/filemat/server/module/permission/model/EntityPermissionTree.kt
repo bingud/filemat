@@ -145,12 +145,10 @@ class EntityPermissionTree() {
                 when (permission.permissionType) {
                     PermissionType.USER -> {
                         check(permission.userId != null) { "User permission must have a non-null userId." }
-//                        check(!node.userPermissions.containsKey(permission.userId)) { "A permission for this user already exists on this file." }
                         node.userPermissions[permission.userId] = permission
                     }
                     PermissionType.ROLE -> {
                         check(permission.roleId != null) { "Role permission must have a non-null roleId." }
-//                        check(!node.rolePermissions.containsKey(permission.roleId)) { "A permission for this role already exists on this file." }
                         node.rolePermissions[permission.roleId] = permission
                     }
                 }
@@ -172,23 +170,6 @@ class EntityPermissionTree() {
             while (current != null) {
                 current.userPermissions[userId]?.let { return it }
                 current = current.parent // move up
-            }
-            return null
-        }
-    }
-
-    /**
-     * Gets the closest inherited permission for an input path, for role ID.
-     *
-     * Returns permission either for path or for closest parent.
-     */
-    fun getClosestPermissionForRole(path: String, roleId: Ulid): EntityPermission? {
-        treeLock.read {
-            val node = findNode(path, true) ?: return null
-            var current: Node? = node
-            while (current != null) {
-                current.rolePermissions[roleId]?.let { return it }
-                current = current.parent
             }
             return null
         }

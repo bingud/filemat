@@ -13,7 +13,7 @@ import org.filemat.server.module.file.model.AbstractFileMetadata
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
-import org.filemat.server.module.file.service.FileService
+import org.filemat.server.module.file.service.file.FileService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping

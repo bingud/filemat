@@ -15,7 +15,7 @@ import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.PlainFolderVisibility
-import org.filemat.server.module.file.service.FilesystemService
+import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
