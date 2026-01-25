@@ -3,32 +3,57 @@ package org.filemat.server.module.file.service.filesystem.fileOperation
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.getPathRelationship
+import org.filemat.server.common.util.plural
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
+import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.io.IOException
 import java.nio.file.*
 import kotlin.io.path.exists
+
+
+interface FilesystemMoveOperations {
+    /**
+     * Moves a file (recursively)
+     *
+     * Checks all permissions (MOVE or RENAME)
+     *
+     * Changes the entity path in DB
+     */
+    fun moveFile(
+        source: FilePath,
+        destination: FilePath,
+        user: Principal,
+        ignorePermissions: Boolean? = null,
+        isRename: Boolean? = null
+    ): Result<Unit>
+}
 
 @Service
 class FilesystemMoveService(
     private val logService: LogService,
     private val fileService: FileService,
     private val fileLockService: FileLockService,
-) {
+    private val entityService: EntityService,
+    @Lazy private val filesystemService: FilesystemService,
+) : FilesystemMoveOperations {
 
-    fun moveFile(
+    override fun moveFile(
         source: FilePath,
         destination: FilePath,
         user: Principal,
-        ignorePermissions: Boolean? = null
+        ignorePermissions: Boolean?,
+        isRename: Boolean?
     ): Result<Unit> = fileLockService.tryWithLock(
         listOf(source.path, destination.path), LockType.WRITE,
         checkChildren = true
@@ -58,10 +83,23 @@ class FilesystemMoveService(
             currentDest = destination.path,
             user = user,
             protectedPath = if (isDataFolderProtected) Props.dataFolderPath else null,
-            ignorePermissions = ignorePermissions
+            ignorePermissions = ignorePermissions,
+            isRename = isRename ?: (source.path.parent == destination.path.parent)
         )
 
-        return@tryWithLock if (failedCount == 0) Result.ok() else Result.error("$failedCount items could not be moved.")
+        return@tryWithLock if (failedCount == 0) {
+            Result.ok()
+        } else {
+            if (isRename == true) {
+                if (failedCount == 1) {
+                    Result.error("Failed to rename file.")
+                } else {
+                    Result.error("Failed to rename $failedCount ${plural("files", failedCount)}.")
+                }
+            } else {
+                Result.error("Failed to move  $failedCount ${plural("file", failedCount)}.")
+            }
+        }
     }.onFailure { Result.reject("Could not move. The file is currently being modified.") }
 
     private fun moveRecursiveSafe(
@@ -69,7 +107,8 @@ class FilesystemMoveService(
         currentDest: Path,
         user: Principal,
         protectedPath: Path?,
-        ignorePermissions: Boolean?
+        ignorePermissions: Boolean?,
+        isRename: Boolean = false
     ): Int {
         var failedCount = 0
         val sourceFilePath = FilePath.ofAlreadyNormalized(currentSource)
@@ -93,7 +132,8 @@ class FilesystemMoveService(
                             currentDest = currentDest.resolve(child.fileName),
                             user = user,
                             protectedPath = protectedPath,
-                            ignorePermissions = ignorePermissions
+                            ignorePermissions = ignorePermissions,
+                            isRename = isRename
                         )
                     }
                 }
@@ -102,18 +142,36 @@ class FilesystemMoveService(
             }
         }
 
-        // Check delete permission on source (effectively move permission)
-        fileService.isAllowedToMoveFile(
-            user = user,
-            canonicalPath = sourceFilePath,
-            ignorePermissions = ignorePermissions
-        ).let {
-            if (it.isNotSuccessful) return failedCount + 1
+        // Check permissions (MOVE or RENAME)
+        if (isRename) {
+            fileService.isAllowedToRenameFile(user = user, canonicalPath = sourceFilePath, ignorePermissions = ignorePermissions)
+                .let { if (it.isNotSuccessful) return failedCount + 1 }
+        } else {
+            fileService.isAllowedToMoveFile(user = user, canonicalPath = sourceFilePath, ignorePermissions = ignorePermissions)
+                .let { if (it.isNotSuccessful) return failedCount + 1 }
         }
 
-        // Action: Move file OR Delete empty source folder
+        // Move file OR Delete empty source folder
         // If we had failures in children, we cannot delete this folder, so we count this folder as failed
         if (isDirectory && failedCount > 0) {
+            val sourcePath = FilePath.ofAlreadyNormalized(currentSource)
+            val destinationPath = FilePath.ofAlreadyNormalized(currentDest)
+
+            // Duplicate DB entity for the destination folder that was copied partially
+            entityService.duplicateEntity(
+                canonicalPath = sourcePath,
+                canonicalDestinationPath = destinationPath,
+                UserAction.DUPLICATE_ENTITY
+            ).let {
+                if (it.isNotSuccessful) {
+                    filesystemService.deleteFile(
+                        target = destinationPath,
+                        user = user,
+                        ignorePermissions = true
+                    )
+                }
+            }
+
             return failedCount // Don't increment, just return existing failures
         }
 
@@ -122,6 +180,25 @@ class FilesystemMoveService(
             dest = currentDest,
             isDirectory = isDirectory
         )
+
+        // Move the entity path
+        if (moveResult.isSuccessful) {
+            val sourcePath = FilePath.ofAlreadyNormalized(currentSource)
+            val destinationPath = FilePath.ofAlreadyNormalized(currentDest)
+
+            entityService.move(path = sourcePath, newPath = destinationPath, userAction = UserAction.MOVE_FILE).let {
+                if (it.isNotSuccessful) {
+                    internal_moveOrCleanup(
+                        source = currentDest,
+                        dest = currentSource,
+                        isDirectory = isDirectory
+                    )
+                    return failedCount + 1
+                }
+            }
+        } else {
+            failedCount++
+        }
 
         if (moveResult.isNotSuccessful) failedCount++
 

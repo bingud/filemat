@@ -16,19 +16,30 @@ import org.springframework.stereotype.Service
 import java.nio.file.*
 import kotlin.io.path.exists
 
-@Service
-class FilesystemCopyService(
-    private val logService: LogService,
-    private val fileService: FileService,
-    private val fileLockService: FileLockService,
-) {
 
+interface FilesystemCopyOperations {
     fun copyFile(
         canonicalSource: FilePath,
         canonicalDestination: FilePath,
         user: Principal,
         ignorePermissions: Boolean? = null,
-        copyResolvedSymlinks: Boolean? = null,
+        copyResolvedSymlinks: Boolean? = null
+    ): Result<Unit>
+}
+
+@Service
+class FilesystemCopyService(
+    private val logService: LogService,
+    private val fileService: FileService,
+    private val fileLockService: FileLockService,
+) : FilesystemCopyOperations {
+
+    override fun copyFile(
+        canonicalSource: FilePath,
+        canonicalDestination: FilePath,
+        user: Principal,
+        ignorePermissions: Boolean?,
+        copyResolvedSymlinks: Boolean?,
     ): Result<Unit> = fileLockService.tryWithLock(
         canonicalSource.path to LockType.READ,
         canonicalDestination.path to LockType.WRITE,

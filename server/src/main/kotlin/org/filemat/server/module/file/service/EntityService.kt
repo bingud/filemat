@@ -117,6 +117,37 @@ class EntityService(
         }
     }
 
+    fun duplicateEntity(canonicalPath: FilePath, canonicalDestinationPath: FilePath, userAction: UserAction = UserAction.DUPLICATE_ENTITY): Result<FilesystemEntity> {
+        val sourceEntity = getByPath(canonicalPath.pathString, userAction)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val newEntity = create(canonicalPath = canonicalDestinationPath, ownerId = sourceEntity.ownerId, userAction = userAction, followSymLinks = sourceEntity.followSymlinks)
+            .let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+        val permissions = entityPermissionService.getAllEntityPermissions(canonicalPath)
+
+        permissions.forEach {
+            entityPermissionService.createPermission(
+                user = null,
+                rawPath = canonicalDestinationPath,
+                targetId = it.userId ?: it.roleId ?: throw IllegalStateException("UserID and RoleID are null for file permission."),
+                mode = it.permissionType,
+                permissions = it.permissions,
+                existingCanonicalPath = canonicalDestinationPath,
+                userId = sourceEntity.ownerId,
+                ignorePermissions = true,
+            )
+        }
+
+        return Result.ok(newEntity)
+    }
+
     fun create(canonicalPath: FilePath, ownerId: Ulid?, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
         val isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
             ?: return Result.notFound()

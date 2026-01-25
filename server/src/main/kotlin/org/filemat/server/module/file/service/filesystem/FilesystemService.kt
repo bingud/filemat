@@ -5,13 +5,10 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
-import org.filemat.server.module.file.service.filesystem.fileOperation.FilesystemCopyService
-import org.filemat.server.module.file.service.filesystem.fileOperation.FilesystemDeletionService
-import org.filemat.server.module.file.service.filesystem.fileOperation.FilesystemMoveService
+import org.filemat.server.module.file.service.filesystem.fileOperation.*
 import org.springframework.stereotype.Service
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
@@ -27,7 +24,9 @@ class FilesystemService(
     private val filesystemDeletionService: FilesystemDeletionService,
     private val filesystemMoveService: FilesystemMoveService,
     private val filesystemCopyService: FilesystemCopyService,
-) {
+) : FilesystemDeletionOperations by filesystemDeletionService,
+    FilesystemMoveOperations by filesystemMoveService,
+    FilesystemCopyOperations by filesystemCopyService {
 
     final var tusFileService: TusFileUploadService? = null
         private set
@@ -63,16 +62,6 @@ class FilesystemService(
     fun isSupportedFilesystem(path: FilePath): Boolean? {
         return FileUtils.isSupportedFilesystem(path.path)
     }
-
-    fun deleteFile(user: Principal, target: FilePath, ignorePermissions: Boolean? = null): Result<Unit>
-        = filesystemDeletionService.deleteFile(target = target, user = user, ignorePermissions = ignorePermissions)
-
-    fun moveFile(user: Principal, source: FilePath, destination: FilePath, ignorePermissions: Boolean? = null): Result<Unit>
-        = filesystemMoveService.moveFile(source = source, destination = destination, user = user, ignorePermissions = ignorePermissions)
-
-    fun copyFile(user: Principal, canonicalSource: FilePath, canonicalDestination: FilePath, copyResolvedSymlinks: Boolean? = null,): Result<Unit>
-        = filesystemCopyService.copyFile(canonicalSource = canonicalSource, canonicalDestination = canonicalDestination, user = user, copyResolvedSymlinks = copyResolvedSymlinks)
-
 
         /**
      * Gets metadata for a file.

@@ -53,7 +53,7 @@ class FileDeletionService(
         }
 
         // Perform deletion
-        filesystemService.deleteFile(user, canonicalPath).let {
+        filesystemService.deleteFile(target = canonicalPath, user = user).let {
             if (it.isNotSuccessful) return it.cast()
         }
 

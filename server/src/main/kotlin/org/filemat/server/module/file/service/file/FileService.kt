@@ -3,22 +3,13 @@ package org.filemat.server.module.file.service.file
 import kotlinx.coroutines.flow.Flow
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
-import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.*
 import org.filemat.server.module.auth.model.Principal
-import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.file.service.EntityService
-import org.filemat.server.module.file.service.FileLockService
-import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.component.*
 import org.filemat.server.module.file.service.file.component.FileContentService.EditFileResult
-import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.permission.model.FilePermission
-import org.filemat.server.module.permission.model.SystemPermission
-import org.filemat.server.module.permission.service.EntityPermissionService
-import org.filemat.server.module.savedFile.SavedFileService
-import org.filemat.server.module.sharedFile.service.FileShareService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
@@ -81,7 +72,7 @@ class FileService(
     // --- File Operations ---
 
     fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit>
-            = fileMoveService.moveFile(user = user, rawPath = rawPath, rawNewPath = rawNewPath)
+            = fileMoveService.moveFile(user = user, rawPath = rawPath, rawDestinationPath = rawNewPath)
 
     fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>>
             = fileMoveService.moveMultipleFiles(user = user, rawPaths = rawPaths, rawNewParentPath = rawNewParentPath)

@@ -9,13 +9,12 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.savedFile.SavedFileService
-import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 
 @Service
 class FileMoveService(private val fileService: FileService, private val entityService: EntityService, private val savedFileService: SavedFileService, private val filesystemService: FilesystemService) {
 
-    fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit> {
+    fun moveFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<Unit> {
         // Resolve the target path
         val rawParent = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
@@ -31,53 +30,39 @@ class FileMoveService(private val fileService: FileService, private val entitySe
         if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
 
         // Get the target parent folder
-        val rawNewPathParent = FilePath.ofAlreadyNormalized(rawNewPath.path.parent)
+        val rawDestinationParentPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent)
 
         // Resolve the target path
-        val (newPathParentResult, newPathHasSymlink) = resolvePath(rawNewPathParent)
-        if (newPathParentResult.isNotSuccessful) return newPathParentResult.cast()
-        val newPathParent = newPathParentResult.value
+        val destinationParentPath = resolvePath(rawDestinationParentPath)
+            .let { (destinationParentPathResult, containsSymLink) ->
+                if (destinationParentPathResult.isNotSuccessful) return destinationParentPathResult.cast()
+                destinationParentPathResult.value
+            }
 
         // Get the target path
-        val newPath = FilePath.ofAlreadyNormalized(newPathParent.path.resolve(rawNewPath.path.fileName))
+        val canonicalDestinationPath = FilePath.ofAlreadyNormalized(destinationParentPath.path.resolve(rawDestinationPath.path.fileName))
 
         // Check if file is being moved into itself
-        if (canonicalPath == newPath || newPath.startsWith(canonicalPath)) return Result.reject("File cannot be moved into itself.")
+        if (canonicalPath == canonicalDestinationPath || canonicalDestinationPath.startsWith(canonicalPath)) return Result.reject("File cannot be moved into itself.")
 
-        // Check source permissions
-        if (canonicalPath.path.parent == newPathParent.path) {
-            // Check if user is permitted to move the file
-            fileService.isAllowedToRenameFile(user = user, canonicalPath = canonicalPath).let {
+        val isRename = destinationParentPath.path == sourceParent.path
+
+        if (!isRename) {
+            // Check target parent folder `WRITE` permission
+            fileService.isAllowedToEditFile(user = user, canonicalPath = destinationParentPath).let {
                 if (it.isNotSuccessful) return it.cast()
             }
-        } else {
-            // Check if user is permitted to move the file
-            fileService.isAllowedToMoveFile(user = user, canonicalPath = canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
-        }
-
-        // Check target parent folder `WRITE` permission
-        fileService.isAllowedToEditFile(user = user, canonicalPath = newPathParent).let {
-            if (it.isNotSuccessful) return it.cast()
         }
 
         // Move the file in filesystem
-        filesystemService.moveFile(user = user, source = canonicalPath, destination = newPath).let {
+        // Checks file permissions
+        // Updates the entity paths
+        filesystemService.moveFile(user = user, source = canonicalPath, destination = canonicalDestinationPath, isRename = isRename).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
-        // Update the entity
-        entityService.move(path = canonicalPath, newPath = newPath, userAction = UserAction.MOVE_FILE).let {
-            if (it.isNotSuccessful) {
-                // Revert file move
-                filesystemService.moveFile(user = user, source = newPath, destination = canonicalPath)
-                return it.cast()
-            }
-        }
-
         // Update saved files
-        savedFileService.changePath(path = canonicalPath, newPath = newPath)
+        savedFileService.changePath(path = canonicalPath, newPath = canonicalDestinationPath)
 
         return Result.ok()
     }

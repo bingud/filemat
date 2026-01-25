@@ -17,17 +17,25 @@ import java.nio.file.*
 import kotlin.io.path.*
 
 
+interface FilesystemDeletionOperations {
+    fun deleteFile(
+        target: FilePath,
+        user: Principal,
+        ignorePermissions: Boolean? = null
+    ): Result<Unit>
+}
+
 @Service
 class FilesystemDeletionService(
     private val logService: LogService,
     private val fileService: FileService,
     private val fileLockService: FileLockService,
-) {
+) : FilesystemDeletionOperations {
 
-    fun deleteFile(
+    override fun deleteFile(
         target: FilePath,
         user: Principal,
-        ignorePermissions: Boolean? = null
+        ignorePermissions: Boolean?
     ): Result<Unit> = fileLockService.tryWithLock(target.path, LockType.WRITE) {
         val isDataFolderProtected = State.App.allowWriteDataFolder == false
         if (!target.path.exists()) return@tryWithLock Result.notFound()
