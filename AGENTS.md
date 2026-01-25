@@ -49,6 +49,7 @@ Working Directory: `./web`
 - **Nullability**: Leverage Kotlin's null safety. Avoid `!!`.
 - **Migration**: Flyway migrations in `db.migration`. Java-based migrations extend `BaseJavaMigration`.
 - **Data**: Spring Data JDBC / SQLite.
+- **Convention**: Stored indexes of files that permissions are tied to are called "entities"
 
 ## Error Handling
 - **Frontend**:

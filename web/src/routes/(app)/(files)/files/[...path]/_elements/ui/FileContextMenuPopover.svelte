@@ -94,13 +94,16 @@
                 <span>Download</span>
             </button>
 
-            {#if !filesState.isShared && menuEntry.permissions?.includes("MOVE")}
+            {#if !filesState.isShared && menuEntry.permissions?.includes("RENAME")}
                 <button on:click={() => { option_rename(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                     <div class="size-5 flex-shrink-0">
                         <EditIcon />
                     </div>
                     <span>Rename</span>
                 </button>
+            {/if}
+
+            {#if !filesState.isShared && menuEntry.permissions?.includes("MOVE")}
                 {#if filesState.meta.type === "files"}
                     <button on:click={() => { option_move(menuEntry!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                         <div class="size-5 flex-shrink-0">
