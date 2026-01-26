@@ -32,9 +32,9 @@
 
 
 {#if format === "image" && !imageLoadFailed}
-    <img on:error={onImageError} use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size={size}&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
+    <img on:error={onImageError} use:loadFilePreview={entry.path} alt="" data-src="/api/v1/file/image-thumbnail?size={size}&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
 {:else if format === "video" && !imageLoadFailed}
-    <img on:error={onImageError} use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size={size}&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
+    <img on:error={onImageError} use:loadFilePreview={entry.path} alt="" data-src="/api/v1/file/video-preview?size={size}&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
 {:else}
     {#if entry.fileType === "FILE"}
         <FileIcon />

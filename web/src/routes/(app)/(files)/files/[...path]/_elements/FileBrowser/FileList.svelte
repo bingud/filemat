@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { changeSortingMode, type FileListProps } from "../../_code/fileBrowserUtil";
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
     import GridFileEntry from "./GridFileEntry.svelte";
@@ -34,6 +35,13 @@
         if (filesState.ui.fileContextMenuPopoverOpen === false) {
             closeContextMenu()
         }
+    })
+
+    // Reorder the image loading queue whenever the sort order changes
+    explicitEffect(() => [sortedEntries], () => {
+        const paths = sortedEntries?.map(e => e.path) || []
+        
+        filesState.ui.filePreviewLoader.reorderQueue(paths)
     })
 
     function closeContextMenu() {

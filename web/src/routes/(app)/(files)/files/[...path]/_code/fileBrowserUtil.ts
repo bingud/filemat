@@ -60,6 +60,10 @@ export class ImageLoadQueue {
     private lowPriority: Set<HTMLImageElement> = new Set() // Close to viewport
     private loading: Set<HTMLImageElement> = new Set() // Currently fetching
     
+    // Map to link file paths to image elements for data-driven sorting
+    private imageMap = new Map<string, HTMLImageElement>()
+    private nodeToPath = new WeakMap<HTMLImageElement, string>()
+
     private processing = false
     private concurrency = 2 // Max simultaneous downloads
     private loadDistance = 500 // Pixel margin for "nearby" detection
@@ -127,7 +131,7 @@ export class ImageLoadQueue {
     }
 
     // Registers an image to be managed by the queue
-    register(img: HTMLImageElement) {
+    register(img: HTMLImageElement, path?: string) {
         if (!img.hasAttribute('data-src')) return
 
         if (!this.viewportObserver) {
@@ -135,11 +139,39 @@ export class ImageLoadQueue {
         }
 
         this.pending.add(img)
+        if (path) {
+            this.imageMap.set(path, img)
+            this.nodeToPath.set(img, path)
+        }
+
         this.viewportObserver!.observe(img)
         this.nearbyObserver!.observe(img)
         
         // Trigger process in case we are in loadAllPreviews mode or slots are open
         this.process() 
+    }
+
+    // Sorts the pending queue to match the given list of file paths
+    // This is called by an effect whenever the sort order changes
+    reorderQueue(sortedPaths: string[]) {
+        const newPending = new Set<HTMLImageElement>()
+
+        // 1. Add images in the new sort order
+        for (const path of sortedPaths) {
+            const img = this.imageMap.get(path)
+            if (img && this.pending.has(img)) {
+                newPending.add(img)
+                this.pending.delete(img)
+            }
+        }
+
+        // 2. Add any remaining images (e.g. not in current list or no path)
+        for (const img of this.pending) {
+            newPending.add(img)
+        }
+
+        this.pending = newPending
+        // No need to trigger process() here as the queue size didn't change
     }
 
     // Cleans up an image from all queues and observers
@@ -149,6 +181,12 @@ export class ImageLoadQueue {
         this.lowPriority.delete(img)
         this.viewportObserver?.unobserve(img)
         this.nearbyObserver?.unobserve(img)
+        
+        const path = this.nodeToPath.get(img)
+        if (path) {
+            this.imageMap.delete(path)
+            this.nodeToPath.delete(img)
+        }
     }
 
     // Debounced trigger for the processing loop
@@ -167,37 +205,45 @@ export class ImageLoadQueue {
 
     // Finds candidates to load based on priority and concurrency limits
     private runProcessLoop() {
+        // Helper to find best candidate from a set based on screen position (Top to Bottom)
+        const getSortedCandidate = (set: Set<HTMLImageElement>) => {
+            const candidates: HTMLImageElement[] = []
+            for (const img of set) {
+                if (this.pending.has(img) && !this.loading.has(img)) {
+                    candidates.push(img)
+                }
+            }
+
+            if (candidates.length === 0) return null
+            if (candidates.length === 1) return candidates[0]
+
+            // Sort by vertical position
+            return candidates.sort((a, b) => {
+                return a.getBoundingClientRect().top - b.getBoundingClientRect().top
+            })[0]
+        }
+
         while (this.loading.size < this.concurrency) {
             const capacity = this.concurrency - this.loading.size
             if (capacity <= 0) break
 
             let candidate: HTMLImageElement | null = null
 
-            if (appState.settings.loadAllPreviews) {
-                // If loading all, ignore priority sets and take the next pending image
-                // Set iteration follows insertion order
+            // 1. ALWAYS check High Priority (Visible) first
+            candidate = getSortedCandidate(this.highPriority)
+
+            // 2. Check Low Priority (Nearby)
+            if (!candidate) {
+                candidate = getSortedCandidate(this.lowPriority)
+            }
+
+            // 3. Fallback: Load All (Remaining Pending)
+            if (!candidate && appState.settings.loadAllPreviews) {
+                // Pending is already sorted by reorderQueue, so just take the first one
                 for (const img of this.pending) {
                     if (!this.loading.has(img)) {
                         candidate = img
                         break
-                    }
-                }
-            } else {
-                // Priority mode: Check visible images first
-                for (const img of this.highPriority) {
-                    if (this.pending.has(img) && !this.loading.has(img)) {
-                        candidate = img
-                        break
-                    }
-                }
-
-                // If no visible images, check nearby images
-                if (!candidate) {
-                    for (const img of this.lowPriority) {
-                        if (this.pending.has(img) && !this.loading.has(img)) {
-                            candidate = img
-                            break
-                        }
                     }
                 }
             }
@@ -245,18 +291,18 @@ export class ImageLoadQueue {
 
     // Svelte Action to attach to <img> elements
     getAction() {
-        return (node: HTMLImageElement) => {
+        return (node: HTMLImageElement, path?: string) => {
             let lastSrc = node.getAttribute('data-src')
-            this.register(node)
+            this.register(node, path)
 
             return {
-                update: () => {
+                update: (newPath?: string) => {
                     const currentSrc = node.getAttribute('data-src')
                     if (currentSrc !== lastSrc) {
                         lastSrc = currentSrc
                         this.unregister(node)
                         node.removeAttribute('src') // Reset src so it can be lazy loaded again
-                        this.register(node)
+                        this.register(node, newPath)
                     }
                 },
                 destroy: () => {
@@ -277,6 +323,7 @@ export class ImageLoadQueue {
         this.lowPriority.clear()
         this.loading.clear()
         this.processing = false
+        this.imageMap.clear()
     }
 }
 
