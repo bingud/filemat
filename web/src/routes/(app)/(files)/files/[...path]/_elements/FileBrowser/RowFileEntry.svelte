@@ -10,6 +10,7 @@
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
+    import FileThumbnail from "./FileThumbnail.svelte";
 
     let {
         entry,
@@ -73,24 +74,7 @@
         <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
             <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem] pointer-events-none">
                 {#if entry.filename}
-                    {@const format = getFileCategoryFromFilename(entry.filename)}
-                    {@const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``}
-
-                    {#if format === "image"}
-                        <img use:loadFilePreview alt="" data-src="/api/v1/file/image-thumbnail?size=48&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
-                    {:else if format === "video"}
-                        <img use:loadFilePreview alt="" data-src="/api/v1/file/video-preview?size=48&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
-                    {:else}
-                        {#if entry.fileType === "FILE"}
-                            <FileIcon />
-                        {:else if entry.fileType === "FILE_LINK"}
-                            <FileArrow />
-                        {:else if entry.fileType === "FOLDER"}
-                            <FolderIcon />
-                        {:else if entry.fileType === "FOLDER_LINK"}
-                            <FolderArrow />
-                        {/if}
-                    {/if}
+                    <FileThumbnail {entry} size={48}></FileThumbnail>
                 {/if}
             </div>
             <p class="truncate py-1">

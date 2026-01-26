@@ -9,6 +9,7 @@
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
+    import FileThumbnail from "./FileThumbnail.svelte";
 
     let {
         entry,
@@ -22,8 +23,6 @@
         onClickSelectCheckbox,
         entryMenuOnClick,
     }: FileEntryProps = $props()
-
-    const loadFilePreview = filesState.ui.filePreviewLoader.getAction()
 
     onMount(() => {
         if (!entry) {
@@ -66,24 +65,7 @@
         <!-- Preview image -->
         <div class="h-full fill-neutral-500 stroke-neutral-500 shrink-0 flex items-center justify-center pointer-events-none">
             {#if entry.filename}
-                {@const format = getFileCategoryFromFilename(entry.filename)}
-                {@const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``}
-
-                {#if format === "image"}
-                    <img use:loadFilePreview alt="" src="" data-src="/api/v1/file/image-thumbnail?size=256&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
-                {:else if format === "video"}
-                    <img use:loadFilePreview alt="" src="" data-src="/api/v1/file/video-preview?size=256&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" class="h-full w-full object-contain opacity-0" on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}>
-                {:else}
-                    {#if entry.fileType === "FILE"}
-                        <FileIcon />
-                    {:else if entry.fileType === "FILE_LINK"}
-                        <FileArrow />
-                    {:else if entry.fileType === "FOLDER"}
-                        <FolderIcon />
-                    {:else if entry.fileType === "FOLDER_LINK"}
-                        <FolderArrow />
-                    {/if}
-                {/if}
+                <FileThumbnail {entry} size={256}></FileThumbnail>
             {/if}
         </div>
 
