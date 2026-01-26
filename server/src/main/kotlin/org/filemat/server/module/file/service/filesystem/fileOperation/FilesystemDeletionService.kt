@@ -2,7 +2,6 @@ package org.filemat.server.module.file.service.filesystem.fileOperation
 
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
-import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.getPathRelationship
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal

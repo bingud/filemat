@@ -257,6 +257,12 @@
 
         <hr class="basic-hr flex-none">
 
+        {#if selectedMeta.fileType.endsWith("LINK")}
+            <p class="px-6 text-sm">This file is a symbolic link.</p>
+
+            <hr class="basic-hr flex-none">
+        {/if}
+
         <!-- Permissions -->
         {#if auth.authenticated && canManageFilePermissions}
             <div class="w-full flex flex-col gap-6 flex-auto min-h-0 max-h-fit">
