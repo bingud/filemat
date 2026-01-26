@@ -22,9 +22,6 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
     @Query("SELECT * FROM files WHERE path = :prefix OR path LIKE CONCAT(:prefix, '/%')")
     fun getAllByPathPrefix(prefix: String): List<FilesystemEntity>
 
-    @Query("SELECT * FROM files WHERE inode = :inode AND path IS NULL")
-    fun getByInodeWithNullPath(inode: Long): FilesystemEntity?
-
     @Query("SELECT * FROM files WHERE inode = :inode")
     fun getByInode(inode: Long): FilesystemEntity?
 

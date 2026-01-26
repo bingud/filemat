@@ -100,10 +100,15 @@ class EntityService(
         }
     }
 
-    fun delete(entityId: Ulid, userAction: UserAction): Result<Unit> {
+    fun delete(entity: FilesystemEntity, userAction: UserAction): Result<Unit> {
         return try {
-            map_remove(entityId)
-            entityRepository.delete(entityId)
+            entityRepository.delete(entity.entityId)
+            map_remove(entity.entityId)
+
+            if (entity.path != null) {
+                entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
+            }
+
             Result.ok()
         } catch (e: Exception) {
             logService.error(
@@ -111,7 +116,7 @@ class EntityService(
                 action = userAction,
                 description = "Failed to delete file entity from database",
                 message = e.stackTraceToString(),
-                targetId = entityId
+                targetId = entity.entityId
             )
             Result.error("Failed to delete file from database.")
         }

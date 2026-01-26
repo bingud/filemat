@@ -2,10 +2,12 @@ package org.filemat.server.module.file.service.filesystem.fileOperation
 
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.getPathRelationship
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
@@ -18,6 +20,13 @@ import kotlin.io.path.*
 
 
 interface FilesystemDeletionOperations {
+    /**
+     * Recursively deletes files
+     *
+     * Verifies permissions
+     *
+     * Deletes entities from DB
+     */
     fun deleteFile(
         target: FilePath,
         user: Principal,
@@ -30,6 +39,7 @@ class FilesystemDeletionService(
     private val logService: LogService,
     private val fileService: FileService,
     private val fileLockService: FileLockService,
+    private val entityService: EntityService,
 ) : FilesystemDeletionOperations {
 
     override fun deleteFile(
@@ -104,7 +114,18 @@ class FilesystemDeletionService(
         // Delete file
         // Delete folder if empty
         val deleteResult = internal_deleteFile(currentPath, recursive = false)
-        if (deleteResult.isNotSuccessful) failedCount++
+        if (deleteResult.isSuccessful) {
+            val entity = entityService.getByPath(filePath.pathString, UserAction.DELETE_FILE).let {
+                if (it.hasError) return failedCount
+                it.valueOrNull
+            }
+
+            if (entity != null) {
+                entityService.delete(entity, UserAction.DELETE_FILE)
+            }
+        } else {
+            failedCount++
+        }
 
         return failedCount
     }
