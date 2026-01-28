@@ -195,3 +195,37 @@ export function persistentToast_loading(text: string): () => any {
     toast.loading(text, { duration: 99999000, id: id })
     return () => { toast.remove(id) }
 }
+
+/**
+ * onClick listener that triggers only when element is actually clicked
+ */
+export function onActualClick(node: HTMLElement, callback: () => void) {
+    let startX: number
+    let startY: number
+    const threshold = 5
+
+    function handleMouseDown(e: MouseEvent) {
+        startX = e.clientX
+        startY = e.clientY
+    }
+
+    function handleMouseUp(e: MouseEvent) {
+        const diffX = Math.abs(e.clientX - startX)
+        const diffY = Math.abs(e.clientY - startY)
+        const hasSelection = window.getSelection()?.toString().length ?? 0 > 0
+
+        if (diffX < threshold && diffY < threshold && !hasSelection) {
+            callback()
+        }
+    }
+
+    node.addEventListener("mousedown", handleMouseDown)
+    node.addEventListener("mouseup", handleMouseUp)
+
+    return {
+        destroy() {
+            node.removeEventListener("mousedown", handleMouseDown)
+            node.removeEventListener("mouseup", handleMouseUp)
+        }
+    }
+}

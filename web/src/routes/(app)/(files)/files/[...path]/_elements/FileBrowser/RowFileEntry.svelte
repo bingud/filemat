@@ -77,7 +77,7 @@
                     <FileThumbnail {entry} size={48} isLarge={false}></FileThumbnail>
                 {/if}
             </div>
-            <p class="truncate py-1">
+            <p class="truncate py-1" title={entry.filename}>
                 {entry.filename!}
             </p>
         </div>

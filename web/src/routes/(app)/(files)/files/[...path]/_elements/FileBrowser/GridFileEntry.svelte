@@ -80,7 +80,7 @@
     <!-- Filename + Icon -->
     <div class="entry-bar w-full flex items-end justify-between overflow-hidden">
         <div class="flex gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
-            <p class="truncate">
+            <p title={entry.filename} class="truncate">
                 {entry.filename!}
             </p>
         </div>

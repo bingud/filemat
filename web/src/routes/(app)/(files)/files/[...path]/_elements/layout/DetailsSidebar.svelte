@@ -21,6 +21,7 @@
     import Tooltip from "$lib/component/popover/Tooltip.svelte";
     import FileSharingDialog from "../ui/fileSharing/FileSharingDialog.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
+    import { onActualClick } from "$lib/code/util/uiUtil";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -35,9 +36,11 @@
     let permissionDataDebounced = $state(false)
     let permissionCreatorOpen = $state(false)
 
+    let filenameWrapped = $state(true)
     let sharingDialogOpen = $state(false)
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
+    
 
     // Role and user IDs that already have a file permission
     let existing = $derived.by(() => {
@@ -219,10 +222,8 @@
     {:else if filesState.selectedEntries.singleMeta}
         {@const selectedMeta = filesState.selectedEntries.singleMeta}
 
-        <div class="w-full flex flex-col px-6 shrink-0 flex-none">
-            <Tooltip text={displayFilename} align="start">
-                <h3 class="truncate text-lg">{displayFilename}</h3>
-            </Tooltip>
+        <div use:onActualClick={() => { filenameWrapped = !filenameWrapped }} class="w-full flex flex-col px-6 shrink-0 flex-none">
+            <h3 class:truncate={!filenameWrapped} class="text-lg break-all">{displayFilename}</h3>
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
