@@ -23,7 +23,7 @@
     let linkInput = $state('')
     let maxAgeInput: number | undefined = $state()
     let maxAgeUnit: string = $state('hours')
-    let maxAgeEnabled = $state(true)
+    let maxAgeEnabled = $state(false)
 
     let passwordEnabled = $state(false)
     let passwordInput = $state('')
@@ -201,7 +201,7 @@
         }
 
         if (shares) {
-            const index = shares.findIndex((v) => { v === share })
+            const index = shares.findIndex((v) => v === share )
             shares.splice(index, 1)
         }
     }
@@ -222,8 +222,8 @@
             class="fixed inset-0 z-50 bg-black/50"
         />
         <Dialog.Content interactOutsideBehavior="ignore">
-            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-12">
-                <div class="flex items-center justify-between w-full">
+            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] max-h-[calc(100svh-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-12">
+                <div class="flex items-center justify-between w-full shrink-0">
                     <h3>File sharing</h3>
                     <Dialog.Close>
                         <div class="rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] aspect-square p-2">
@@ -232,74 +232,72 @@
                     </Dialog.Close>
                 </div>
 
-                <div class="flex flex-col gap-12">
-                    {#if !creatingFormOpen}
-                        <button on:click={() => { creatingFormOpen = true }} class="basic-button !bg-surface-content-button flex gap-2">
-                            <div class="size-[1.5rem]"><PlusIcon/></div>
-                            Create a public link
-                        </button>
-                    {:else}
-                        <form class="flex flex-col gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label for="id-input">Public file link</label>
-                                <input use:useReplaceChars={replaceUrlChar} bind:value={linkInput} id="id-input" class="basic-input">
-                            </div>
+                {#if !creatingFormOpen}
+                    <button on:click={() => { creatingFormOpen = true }} class="basic-button !bg-surface-content-button flex gap-2 shrink-0">
+                        <div class="size-[1.5rem]"><PlusIcon/></div>
+                        Create a public link
+                    </button>
+                {:else}
+                    <form class="flex flex-col gap-4 shrink-0">
+                        <div class="flex flex-col gap-1">
+                            <label for="id-input">Public file link</label>
+                            <input use:useReplaceChars={replaceUrlChar} bind:value={linkInput} id="id-input" class="basic-input">
+                        </div>
 
-                            <!-- Expiration -->
-                            <div class="flex flex-col gap-1">
-                                <div class="flex gap-1 items-center">
-                                    <input bind:checked={maxAgeEnabled} type="checkbox" class="!opacity-100">
-                                    <label for="duration-input">Expiration time</label>
+                        <!-- Expiration -->
+                        <div class="flex flex-col gap-1">
+                            <div class="flex gap-1 items-center">
+                                <input bind:checked={maxAgeEnabled} type="checkbox" class="!opacity-100">
+                                <label for="duration-input">Expiration time</label>
+                            </div>
+                            {#if maxAgeEnabled}
+                                <div class="flex gap-2">
+                                    <input bind:value={maxAgeInput} id="duration-input" type="number" class="basic-input flex-1" min="1">
+                                    <select bind:value={maxAgeUnit} class="basic-input bg-bg">
+                                        <option value="minutes">Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days">Days</option>
+                                        <option value="weeks">Weeks</option>
+                                        <option value="months">Months</option>
+                                    </select>
                                 </div>
-                                {#if maxAgeEnabled}
-                                    <div class="flex gap-2">
-                                        <input bind:value={maxAgeInput} id="duration-input" type="number" class="basic-input flex-1" min="1">
-                                        <select bind:value={maxAgeUnit} class="basic-input bg-bg">
-                                            <option value="minutes">Minutes</option>
-                                            <option value="hours">Hours</option>
-                                            <option value="days">Days</option>
-                                            <option value="weeks">Weeks</option>
-                                            <option value="months">Months</option>
-                                        </select>
-                                    </div>
-                                {/if}
-                            </div>
+                            {/if}
+                        </div>
 
-                            <!-- Password -->
-                            <div class="flex flex-col gap-1">
-                                <div class="flex gap-1 items-center">
-                                    <input bind:checked={passwordEnabled} type="checkbox" class="!opacity-100">
-                                    <label for="password-input">Password</label>
+                        <!-- Password -->
+                        <div class="flex flex-col gap-1">
+                            <div class="flex gap-1 items-center">
+                                <input bind:checked={passwordEnabled} type="checkbox" class="!opacity-100">
+                                <label for="password-input">Password</label>
+                            </div>
+                            {#if passwordEnabled}
+                                <div class="flex gap-2">
+                                    <input bind:value={passwordInput} id="password-input" type="password" class="basic-input flex-1">
                                 </div>
-                                {#if passwordEnabled}
-                                    <div class="flex gap-2">
-                                        <input bind:value={passwordInput} id="password-input" type="password" class="basic-input flex-1">
-                                    </div>
-                                {/if}
-                            </div>
-                            
-                            <div>
-                                <button on:click={createShare} disabled={isCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-green-500">{isCreating ? 'Creating...' : 'Create'}</button>
-                                <button on:click={cancelCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-red-500">Cancel</button>
-                            </div>
-                        </form>
-                    {/if}
+                            {/if}
+                        </div>
+                        
+                        <div>
+                            <button on:click={createShare} disabled={isCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-green-500">{isCreating ? 'Creating...' : 'Create'}</button>
+                            <button on:click={cancelCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-red-500">Cancel</button>
+                        </div>
+                    </form>
+                {/if}
 
-                    <div class="flex flex-col rounded-lg bg-bg w-full h-fit p-2 gap-2">
-                        {#if shares}
-                            {#each shares as share}
-                                <FileShareItemButton
-                                    {share} 
-                                    {deleteShare} 
-                                    {getTimeRemaining} 
-                                />
-                            {:else}
-                                <p class="text-center">You haven't shared this file.</p>
-                            {/each}
+                <div class="flex flex-col rounded-lg bg-bg w-full p-2 gap-2 overflow-y-auto flex-1 custom-scrollbar">
+                    {#if shares}
+                        {#each shares as share}
+                            <FileShareItemButton
+                                {share} 
+                                {deleteShare} 
+                                {getTimeRemaining} 
+                            />
                         {:else}
-                            <Loader class="m-auto"></Loader>
-                        {/if}
-                    </div>
+                            <p class="text-center">You haven't shared this file.</p>
+                        {/each}
+                    {:else}
+                        <Loader class="m-auto"></Loader>
+                    {/if}
                 </div>
             </div>
         </Dialog.Content>

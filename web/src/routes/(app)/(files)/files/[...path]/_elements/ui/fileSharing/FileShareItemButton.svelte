@@ -1,10 +1,10 @@
 <script lang="ts">
     import type { FileShare } from "$lib/code/auth/types"
-    import { ContextMenu } from "$lib/component/bits-ui-wrapper"
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte"
     import Tooltip from "$lib/component/popover/Tooltip.svelte"
     import { createLink } from "$lib/code/util/codeUtil.svelte"
     import CopyIcon from "$lib/component/icons/CopyIcon.svelte";
+    import { DropdownMenu } from "bits-ui";
 
 
     let {
@@ -17,16 +17,16 @@
         getTimeRemaining: (expiryTime: number) => string
     } = $props()
 
-    let contextMenuOpen = $state(false)
+    let dropdownOpen = $state(false)
     let expirationDate = $derived(share.maxAge ? share.createdDate + share.maxAge : null)
 </script>
 
 
 
-<ContextMenu.Root bind:open={contextMenuOpen}>
-    <ContextMenu.Trigger>
+<DropdownMenu.Root bind:open={dropdownOpen}>
+    <DropdownMenu.Trigger>
         {#snippet child({props})}
-            <button {...props} on:click={() => { contextMenuOpen = true }} class="w-full p-3 rounded-md bg-surface hover:bg-surface-content-button text-left">
+            <button {...props} class="w-full p-3 rounded-md bg-surface hover:bg-surface-content-button text-left">
                 <Tooltip text={share.shareId} align="start">
                     <h4 class="font-medium text-sm truncate mb-4">{share.shareId}</h4>
                 </Tooltip>
@@ -84,11 +84,11 @@
                 </div>
             </button>
         {/snippet}
-    </ContextMenu.Trigger>
+    </DropdownMenu.Trigger>
 
-    <ContextMenu.Content>
+    <DropdownMenu.Content>
         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
-            <button on:click={() => { navigator.clipboard.writeText(createLink(`/share/${share.shareId}`)); contextMenuOpen = false }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+            <button on:click={() => { navigator.clipboard.writeText(createLink(`/share/${share.shareId}`)); dropdownOpen = false }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                 <div class="size-5 flex-shrink-0">
                     <CopyIcon />
                 </div>
@@ -103,5 +103,5 @@
             <hr class="basic-hr my-2">
             <p class="px-4 truncate opacity-70">Share: {share.shareId}</p>
         </div>
-    </ContextMenu.Content>
-</ContextMenu.Root>
+    </DropdownMenu.Content>
+</DropdownMenu.Root>
