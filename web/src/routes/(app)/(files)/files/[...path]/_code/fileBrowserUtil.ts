@@ -50,9 +50,8 @@ export class ImageLoadQueue {
     // Target element for IntersectionObserver root (defaults to viewport if null)
     private scrollContainer: HTMLElement | null = null
     
-    // Observers for detecting visibility
-    private viewportObserver: IntersectionObserver | null = null
-    private nearbyObserver: IntersectionObserver | null = null
+    // Single unified observer for detecting visibility
+    private observer: IntersectionObserver | null = null
     
     // Queue management sets
     private pending: Set<HTMLImageElement> = new Set() // Registered but not loaded
@@ -64,78 +63,80 @@ export class ImageLoadQueue {
     private imageMap = new Map<string, HTMLImageElement>()
     private nodeToPath = new WeakMap<HTMLImageElement, string>()
 
-    private processing = false
+    // RAF-based debouncing (replaces queueMicrotask for frame-aligned processing)
+    private rafId: number | null = null
+    
     private concurrency = 2 // Max simultaneous downloads
     private loadDistance = 500 // Pixel margin for "nearby" detection
+    
+    // Threshold to distinguish "in viewport" from "nearby" based on intersection ratio
+    // Elements with ratio >= this value are considered high priority (visible)
+    private visibilityThreshold = 0.01
 
 
     // Sets the scroll container and resets observers to use the new root
     setScrollContainer(container: HTMLElement | null) {
         this.scrollContainer = container
-        this.reinitObservers()
+        this.reinitObserver()
     }
 
-    private initObservers() {
-        const options = {
-            root: this.scrollContainer
-        }
-
-        // Detects images actually inside the visible area
-        this.viewportObserver = new IntersectionObserver(
+    private initObserver() {
+        // Single observer with extended rootMargin and multiple thresholds
+        // This replaces the previous two-observer approach
+        this.observer = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
                     const img = entry.target as HTMLImageElement
+                    
                     if (entry.isIntersecting) {
-                        this.highPriority.add(img)
-                        this.lowPriority.delete(img)
+                        // Determine priority based on intersection ratio
+                        // High ratio = actually visible in viewport
+                        // Low ratio = just entering the extended margin
+                        if (entry.intersectionRatio >= this.visibilityThreshold) {
+                            this.highPriority.add(img)
+                            this.lowPriority.delete(img)
+                        } else {
+                            // Only add to low priority if not already high priority
+                            if (!this.highPriority.has(img)) {
+                                this.lowPriority.add(img)
+                            }
+                        }
                     } else {
+                        // Element left the extended margin entirely
                         this.highPriority.delete(img)
-                    }
-                }
-                this.process()
-            },
-            { ...options, rootMargin: "0px" }
-        )
-
-        // Detects images approaching the viewport (prefetching)
-        this.nearbyObserver = new IntersectionObserver(
-            (entries) => {
-                for (const entry of entries) {
-                    const img = entry.target as HTMLImageElement
-                    // Only add to low priority if not already high priority
-                    if (entry.isIntersecting && !this.highPriority.has(img)) {
-                        this.lowPriority.add(img)
-                    } else if (!entry.isIntersecting) {
                         this.lowPriority.delete(img)
                     }
                 }
-                this.process()
+                this.scheduleProcess()
             },
-            { ...options, rootMargin: `${this.loadDistance}px` }
+            { 
+                root: this.scrollContainer,
+                rootMargin: `${this.loadDistance}px`,
+                // Multiple thresholds: 0 for entering margin, visibilityThreshold for actual viewport
+                threshold: [0, this.visibilityThreshold, 0.5, 1.0]
+            }
         )
     }
 
-    // Restarts observers (e.g., when container changes) and re-observes pending images
-    private reinitObservers() {
-        this.viewportObserver?.disconnect()
-        this.nearbyObserver?.disconnect()
+    // Restarts observer (e.g., when container changes) and re-observes pending images
+    private reinitObserver() {
+        this.observer?.disconnect()
         this.highPriority.clear()
         this.lowPriority.clear()
         
-        this.initObservers()
+        this.initObserver()
         
         for (const img of this.pending) {
-            this.viewportObserver?.observe(img)
-            this.nearbyObserver?.observe(img)
+            this.observer?.observe(img)
         }
     }
 
     // Registers an image to be managed by the queue
     register(img: HTMLImageElement, path?: string) {
-        if (!img.hasAttribute('data-src')) return
+        if (!img.hasAttribute(`data-src`)) return
 
-        if (!this.viewportObserver) {
-            this.initObservers()
+        if (!this.observer) {
+            this.initObserver()
         }
 
         this.pending.add(img)
@@ -144,11 +145,10 @@ export class ImageLoadQueue {
             this.nodeToPath.set(img, path)
         }
 
-        this.viewportObserver!.observe(img)
-        this.nearbyObserver!.observe(img)
+        this.observer!.observe(img)
         
         // Trigger process in case we are in loadAllPreviews mode or slots are open
-        this.process() 
+        this.scheduleProcess() 
     }
 
     // Sorts the pending queue to match the given list of file paths
@@ -179,8 +179,7 @@ export class ImageLoadQueue {
         this.pending.delete(img)
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
-        this.viewportObserver?.unobserve(img)
-        this.nearbyObserver?.unobserve(img)
+        this.observer?.unobserve(img)
         
         const path = this.nodeToPath.get(img)
         if (path) {
@@ -189,63 +188,52 @@ export class ImageLoadQueue {
         }
     }
 
-    // Debounced trigger for the processing loop
-    private process() {
-        if (this.processing) return
-        this.processing = true
-
-        queueMicrotask(() => {
-            try {
-                this.runProcessLoop()
-            } finally {
-                this.processing = false
-            }
+    // RAF-based debounced trigger for the processing loop
+    // Using requestAnimationFrame instead of queueMicrotask prevents forced reflows
+    // by ensuring processing happens at the optimal time in the frame lifecycle
+    private scheduleProcess() {
+        if (this.rafId !== null) return
+        
+        this.rafId = requestAnimationFrame(() => {
+            this.rafId = null
+            this.runProcessLoop()
         })
     }
 
-    // Finds candidates to load based on priority and concurrency limits
-    private runProcessLoop() {
-        // Helper to find best candidate from a set based on screen position (Top to Bottom)
-        const getSortedCandidate = (set: Set<HTMLImageElement>) => {
-            const candidates: HTMLImageElement[] = []
-            for (const img of set) {
-                if (this.pending.has(img) && !this.loading.has(img)) {
-                    candidates.push(img)
-                }
-            }
-
-            if (candidates.length === 0) return null
-            if (candidates.length === 1) return candidates[0]
-
-            // Sort by vertical position
-            return candidates.sort((a, b) => {
-                return a.getBoundingClientRect().top - b.getBoundingClientRect().top
-            })[0]
+    // Gets the next candidate to load, respecting the sorted order from reorderQueue
+    // Iterates through `pending` (which maintains visual/sorted order) and finds
+    // the first image that matches the desired priority level
+    // This avoids getBoundingClientRect calls while still loading top-to-bottom
+    private getNextCandidateFromPending(priorityFilter?: Set<HTMLImageElement>): HTMLImageElement | null {
+        for (const img of this.pending) {
+            if (this.loading.has(img)) continue
+            
+            // If a priority filter is specified, only return images in that set
+            if (priorityFilter && !priorityFilter.has(img)) continue
+            
+            return img
         }
+        return null
+    }
 
+    // Finds candidates to load based on priority and concurrency limits
+    // Uses pending set iteration order (maintained by reorderQueue) to ensure
+    // images load sequentially from top to bottom in visual order
+    private runProcessLoop() {
         while (this.loading.size < this.concurrency) {
-            const capacity = this.concurrency - this.loading.size
-            if (capacity <= 0) break
-
             let candidate: HTMLImageElement | null = null
 
-            // 1. ALWAYS check High Priority (Visible) first
-            candidate = getSortedCandidate(this.highPriority)
+            // 1. ALWAYS check High Priority (Visible) first - but in sorted order
+            candidate = this.getNextCandidateFromPending(this.highPriority)
 
-            // 2. Check Low Priority (Nearby)
+            // 2. Check Low Priority (Nearby) - but in sorted order
             if (!candidate) {
-                candidate = getSortedCandidate(this.lowPriority)
+                candidate = this.getNextCandidateFromPending(this.lowPriority)
             }
 
-            // 3. Fallback: Load All (Remaining Pending)
+            // 3. Fallback: Load All (Remaining Pending) - already in sorted order
             if (!candidate && appState.settings.loadAllPreviews) {
-                // Pending is already sorted by reorderQueue, so just take the first one
-                for (const img of this.pending) {
-                    if (!this.loading.has(img)) {
-                        candidate = img
-                        break
-                    }
-                }
+                candidate = this.getNextCandidateFromPending()
             }
 
             if (!candidate) break
@@ -258,7 +246,7 @@ export class ImageLoadQueue {
     private startLoad(img: HTMLImageElement) {
         if (this.loading.has(img)) return
 
-        const src = img.getAttribute('data-src')
+        const src = img.getAttribute(`data-src`)
         if (!src) {
             this.unregister(img)
             return
@@ -268,8 +256,7 @@ export class ImageLoadQueue {
         this.loading.add(img)
         
         // Stop observing once loading starts
-        this.viewportObserver?.unobserve(img)
-        this.nearbyObserver?.unobserve(img)
+        this.observer?.unobserve(img)
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
 
@@ -277,12 +264,12 @@ export class ImageLoadQueue {
             img.onload = null
             img.onerror = null
             this.loading.delete(img)
-            this.process() // Trigger next item in queue
+            this.scheduleProcess() // Trigger next item in queue
         }
 
         img.onload = cleanup
         img.onerror = () => {
-            console.error('Image load failed:', src)
+            console.error(`Image load failed:`, src)
             cleanup()
         }
         
@@ -292,16 +279,16 @@ export class ImageLoadQueue {
     // Svelte Action to attach to <img> elements
     getAction() {
         return (node: HTMLImageElement, path?: string) => {
-            let lastSrc = node.getAttribute('data-src')
+            let lastSrc = node.getAttribute(`data-src`)
             this.register(node, path)
 
             return {
                 update: (newPath?: string) => {
-                    const currentSrc = node.getAttribute('data-src')
+                    const currentSrc = node.getAttribute(`data-src`)
                     if (currentSrc !== lastSrc) {
                         lastSrc = currentSrc
                         this.unregister(node)
-                        node.removeAttribute('src') // Reset src so it can be lazy loaded again
+                        node.removeAttribute(`src`) // Reset src so it can be lazy loaded again
                         this.register(node, newPath)
                     }
                 },
@@ -314,15 +301,18 @@ export class ImageLoadQueue {
 
     // Cleanup method for component teardown
     destroy() {
-        this.viewportObserver?.disconnect()
-        this.nearbyObserver?.disconnect()
-        this.viewportObserver = null
-        this.nearbyObserver = null
+        // Cancel any pending RAF to prevent orphaned callbacks
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId)
+            this.rafId = null
+        }
+        
+        this.observer?.disconnect()
+        this.observer = null
         this.pending.clear()
         this.highPriority.clear()
         this.lowPriority.clear()
         this.loading.clear()
-        this.processing = false
         this.imageMap.clear()
     }
 }
