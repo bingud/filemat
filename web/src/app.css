@@ -39,7 +39,11 @@ html {
 
     --spacing-details-sidebar: 20rem;
 
-    --breakpoint-xs: 25.75rem
+    --breakpoint-xs: 25.75rem;
+
+    --z-index-sidebar: 30;
+    --z-index-sidebar-bg: 20;
+    --z-index-popover: 10; 
 }
 
 

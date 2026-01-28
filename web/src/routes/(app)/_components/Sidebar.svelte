@@ -11,7 +11,7 @@
 </script>
 
 
-<div class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none lg:contents">
+<div class="fixed z-sidebar top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none lg:contents">
     <!-- Navbar -->
     {#if uiState.menuOpen || uiState.isDesktop}
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar lg:w-sidebar-desktop h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0">

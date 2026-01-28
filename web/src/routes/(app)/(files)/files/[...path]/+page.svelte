@@ -360,7 +360,7 @@
         <div class="contents">
             <!-- File info sidebar -->
             {#if filesState.ui.detailsOpen}
-                <div on:click={filesState.unselect} class="fixed z-10 top-0 left-0 w-full h-full overflow-hidden flex justify-end pointer-events-none lg:contents min-h-0">
+                <div on:click={filesState.unselect} class="fixed z-sidebar top-0 left-0 w-full h-full overflow-hidden flex justify-end pointer-events-none lg:contents min-h-0">
                     <div transition:fly={{ duration: 150, x: 400, opacity: 1 }} class="flex flex-col h-full max-w-full w-details-sidebar shrink-0 pointer-events-auto min-h-0">
                         <DetailsSidebar />
                     </div>
@@ -369,7 +369,7 @@
 
             <!-- Close sidebar background button -->
             {#if !uiState.isDesktop && filesState.ui.detailsOpen}
-                <button aria-label="Close details sidebar" on:click={() => { filesState.ui.detailsOpen = false }} transition:fade={{ duration: 150, easing: linear }} class="absolute top-0 left-0 size-full bg-black/40 !cursor-default pointer-events-auto"></button>
+                <button aria-label="Close details sidebar" on:click={() => { filesState.ui.detailsOpen = false }} transition:fade={{ duration: 150, easing: linear }} class="absolute z-sidebar-bg top-0 left-0 size-full bg-black/40 !cursor-default pointer-events-auto"></button>
             {/if}
         </div>
     </div>
