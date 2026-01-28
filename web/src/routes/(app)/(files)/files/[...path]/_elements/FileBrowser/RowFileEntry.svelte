@@ -74,7 +74,7 @@
         <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
             <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem] pointer-events-none">
                 {#if entry.filename}
-                    <FileThumbnail {entry} size={48}></FileThumbnail>
+                    <FileThumbnail {entry} size={48} isLarge={false}></FileThumbnail>
                 {/if}
             </div>
             <p class="truncate py-1">

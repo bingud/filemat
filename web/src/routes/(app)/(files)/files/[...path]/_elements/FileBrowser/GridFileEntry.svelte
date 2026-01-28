@@ -65,7 +65,7 @@
         <!-- Preview image -->
         <div class="h-full fill-neutral-500 stroke-neutral-500 shrink-0 flex items-center justify-center pointer-events-none">
             {#if entry.filename}
-                <FileThumbnail {entry} size={256}></FileThumbnail>
+                <FileThumbnail {entry} size={256} isLarge={true}></FileThumbnail>
             {/if}
         </div>
 
