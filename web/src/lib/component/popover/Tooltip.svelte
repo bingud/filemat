@@ -22,10 +22,7 @@
 </script>
 
 <Tooltip.Root delayDuration={delay} bind:open>
-    <Tooltip.Trigger
-        onclick={() => (open = !open)}
-        onpointerleave={() => (open = false)}
-    >
+    <Tooltip.Trigger onclick={() => (open = !open)}>
         {#snippet child({ props })}
             <span {...props} class={classes}>
                 {@render children()}
