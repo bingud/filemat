@@ -392,9 +392,10 @@ export function scrollSelectedEntryIntoView(path: string | null = null) {
         const targetPath = filesState.selectedEntries.singlePath || path
         if (targetPath) {
             const selector = `[data-entry-path="${targetPath.replace(/"/g, '\\"')}"]`
-            const element = document.querySelector(selector)
+            const element = document.querySelector(selector) as HTMLAnchorElement
             if (element) {
                 element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+                element.focus()
             }
         }
     }, 10)

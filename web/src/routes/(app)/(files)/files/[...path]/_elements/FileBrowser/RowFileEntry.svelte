@@ -38,7 +38,7 @@
     draggable={entry.permissions?.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
     class="
-        file-row-grid h-[2.5rem] gap-x-2 items-center select-none group 
+        file-row-grid h-[2.5rem] gap-x-2 items-center select-none group outline-0
         {isUnopenable 
             ? 'cursor-default' 
             : 'cursor-pointer'

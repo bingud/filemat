@@ -66,12 +66,6 @@
                 }
             }
         } 
-
-        if (event.key === "Enter") {
-            if (filesState.selectedEntries.singleMeta) {
-                entryOnClick(event, filesState.selectedEntries.singleMeta)
-            }
-        }
         
         // Handle Up and Down arrow keys for entry navigation
         if (

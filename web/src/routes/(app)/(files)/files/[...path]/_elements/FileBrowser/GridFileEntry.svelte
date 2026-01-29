@@ -38,7 +38,7 @@
     draggable={entry.permissions?.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
     class="
-        grid-file-entry w-full min-w-0 flex flex-col items-center select-none group rounded-lg
+        grid-file-entry w-full min-w-0 flex flex-col items-center select-none group rounded-lg outline-0
         {isUnopenable 
             ? 'cursor-default' 
             : 'cursor-pointer'
