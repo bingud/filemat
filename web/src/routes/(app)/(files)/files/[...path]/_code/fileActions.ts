@@ -13,7 +13,8 @@ export async function option_moveSelectedFiles() {
 
     const newParentPath = await folderSelectorState.show!({
         title: "Choose the target folder.",
-        initialSelection: filesState.path
+        initialSelection: filesState.path,
+        hideFilenameInput: true,
     })
     if (!newParentPath) return
 

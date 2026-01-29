@@ -22,38 +22,62 @@
     let dialogTitle = $state('Select a folder')
     let folderTree: FolderNode | null = $state(null)
     let selectedFolderPath: string | null = $state(null)
-    let isFilenameChangable: boolean | null = $state(null)
     let defaultFilename: string | null = $state(null)
     let filenameInput: string = $state("")
+    let addressBarValue = $state("")
+    let hideFilenameInput = $state(false)
+
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined = undefined
 
     let selectedPath = $derived.by(() => {
-        if (!isFilenameChangable) {
-            return selectedFolderPath
+        if (hideFilenameInput) {
+            return selectedFolderPath || ""
         }
 
-        if (!filenameInput || !selectedFolderPath) return null
+        if (!selectedFolderPath && !filenameInput) return null
         
-        const divider = selectedFolderPath === "/" ? "" : "/"
-        return selectedFolderPath + divider + filenameInput.replaceAll("/", "")
+        const folder = selectedFolderPath || ""
+        const divider = folder === "/" ? "" : "/" 
+        return folder + divider + filenameInput.replaceAll("/", "")
     })
 
-    let initialSelection: string | null = $state(null)
+    let initialFolder: string | null = $state(null)
     let hasScrolledToInitial: boolean = $state(false)
     let resolvePromise: ((value: string | null) => void) | null = $state(null)
     
-    // Logic for visual indicator of the starting folder
-    let parentPath = $derived(initialSelection)
-    
-    type FilenameProps = { isFilenameChangable?: undefined, defaultFilename?: undefined, resultType?: undefined } 
-        | { isFilenameChangable: boolean, defaultFilename: string | null, resultType: "destination" }
+    type FilenameProps = { defaultFilename?: undefined, resultType?: undefined } 
+        | { defaultFilename: string | null, resultType: "destination" }
 
     export function show(options: FilenameProps & {
         title?: string,
         initialSelection?: string,
+        hideFilenameInput?: boolean
     } = {}) {
         if (options.title) dialogTitle = options.title
-        if (options.initialSelection) initialSelection = options.initialSelection
-        if (options.isFilenameChangable) isFilenameChangable = options.isFilenameChangable
+        if (options.hideFilenameInput) hideFilenameInput = true
+        
+        // Parse initialSelection
+        if (options.initialSelection) {
+            if (hideFilenameInput || options.defaultFilename) {
+                // Filename hidden or provided separately - initialSelection is the folder
+                initialFolder = options.initialSelection
+            } else {
+                // No filename provided - parse it from initialSelection
+                const lastSlash = options.initialSelection.lastIndexOf(`/`)
+                if (lastSlash === 0) {
+                    initialFolder = `/`
+                    filenameInput = options.initialSelection.substring(1)
+                } else if (lastSlash > 0) {
+                    initialFolder = options.initialSelection.substring(0, lastSlash)
+                    filenameInput = options.initialSelection.substring(lastSlash + 1)
+                } else {
+                    initialFolder = `/`
+                    filenameInput = options.initialSelection
+                }
+            }
+        }
+        
+        // Set filename from defaultFilename
         if (options.defaultFilename) {
             defaultFilename = options.defaultFilename
             filenameInput = defaultFilename
@@ -90,13 +114,91 @@
             }
 
             folderTree = null
-            initialSelection = null
+            initialFolder = null
             hasScrolledToInitial = false
-            isFilenameChangable = null
             defaultFilename = null
             filenameInput = ""
+            addressBarValue = ""
+            hideFilenameInput = false
         }
     })
+
+    explicitEffect(() => [selectedPath], () => {
+        const inputEl = document.getElementById('address-bar-input')
+        if (document.activeElement !== inputEl) {
+            addressBarValue = selectedPath || ""
+        }
+    })
+
+    function handleAddressInput(e: Event) {
+        const val = (e.target as HTMLInputElement).value
+        addressBarValue = val
+        
+        if (debounceTimer) clearTimeout(debounceTimer)
+        
+        debounceTimer = setTimeout(() => {
+            syncFromAddressBar(val)
+        }, 300)
+    }
+
+    function syncFromAddressBar(fullPath: string) {
+        let folder = "/"
+        let file = ""
+
+        if (hideFilenameInput) {
+            folder = fullPath || "/"
+            file = ""
+        } else {
+            const lastSlashIndex = fullPath.lastIndexOf('/')
+            
+            if (lastSlashIndex !== -1) {
+                if (lastSlashIndex === 0) {
+                    folder = "/"
+                    file = fullPath.substring(1)
+                } else {
+                    folder = fullPath.substring(0, lastSlashIndex)
+                    file = fullPath.substring(lastSlashIndex + 1)
+                }
+            } else {
+                file = fullPath
+            }
+        }
+
+        selectedFolderPath = folder
+        filenameInput = file
+
+        if (folderTree) {
+            selectFolderByPath(folder)
+        }
+    }
+
+    function selectFolderByPath(path: string) {
+        if (!folderTree) return
+        deselectAllNodes(folderTree)
+
+        if (path === "/" || path === "") {
+            folderTree.isSelected = true
+            return
+        }
+
+        const segments = path.split('/').filter(s => s.length > 0)
+        let currentNode = folderTree
+
+        for (const segment of segments) {
+            if (!currentNode.children) return
+            const next = currentNode.children.find(c => c.name === segment)
+            if (!next) return
+            currentNode = next
+        }
+
+        currentNode.isSelected = true
+    }
+
+    function getParentPath(path: string): string {
+        const segments = path.split(`/`).filter(s => s.length > 0)
+        const parentSegments = segments.slice(0, -1)
+        return parentSegments.length === 0 ? `/` : `/` + parentSegments.join(`/`)
+    }
 
     async function initializeTree() {
         folderTree = {
@@ -110,31 +212,42 @@
             isHierarchy: true
         }
 
-        if (initialSelection) {
-            buildSkeleton(initialSelection)
-            
-            // Calculate parent path to load siblings
-            const segments = initialSelection.split('/').filter(s => s.length > 0)
-            const parentSegments = segments.slice(0, -1)
-            const parentPath = parentSegments.length === 0 ? "/" : "/" + parentSegments.join("/")
-            
-            // Expand the direct parent so the selection is visible
-            let parentNode: FolderNode | null = folderTree
-            for (const segment of parentSegments) {
-                if (!parentNode || !parentNode.children) break
-                const next: FolderNode | undefined = parentNode.children.find(c => c.name === segment)
-                if (next) parentNode = next
-            }
-            
-            if (parentNode) {
-                parentNode.isExpanded = true
-            }
+        // Determine folder and parent to expand
+        // If no initialFolder, default to root
+        const folder = initialFolder || `/`
+        const parent = getParentPath(folder)
+        
+        // Build skeleton and select the folder
+        buildSkeleton(folder)
+        
+        // Expand folder and parent
+        const folderNode = findNodeByPath(folder)
+        const parentNode = findNodeByPath(parent)
+        
+        if (folderNode) folderNode.isExpanded = true
+        if (parentNode) parentNode.isExpanded = true
+        
+        // Load data for folder and parent in parallel
+        await Promise.all([
+            loadPathData(folder),
+            loadPathData(parent)
+        ])
+    }
 
-            await loadPathData(parentPath)
-        } else {
-            if (folderTree) folderTree.isExpanded = true
-            await loadPathData("/")
+    function findNodeByPath(path: string): FolderNode | null {
+        if (!folderTree) return null
+        if (path === "/") return folderTree
+
+        const segments = path.split('/').filter(s => s.length > 0)
+        let currentNode = folderTree
+
+        for (const segment of segments) {
+            if (!currentNode.children) return null
+            const next = currentNode.children.find(c => c.name === segment)
+            if (!next) return null
+            currentNode = next
         }
+        return currentNode
     }
 
     function buildSkeleton(path: string) {
@@ -155,12 +268,11 @@
 
             let child = currentNode.children.find(c => c.name === segment)
             
-            // Create phantom node if it doesn't exist to ensure path connectivity
             if (!child) {
-                const parentPath = currentNode.fullPath === "/" ? "" : currentNode.fullPath
+                const parentPathPrefix = currentNode.fullPath === "/" ? "" : currentNode.fullPath
                 child = {
                     name: segment,
-                    fullPath: `${parentPath}/${segment}`,
+                    fullPath: `${parentPathPrefix}/${segment}`,
                     children: null,
                     isSelected: false,
                     isLoading: false,
@@ -180,19 +292,7 @@
     }
 
     async function loadPathData(path: string) {
-        const segments = path.split('/').filter(s => s.length > 0)
-        let node: FolderNode | null = folderTree
-        
-        if (path !== "/") {
-            for (const segment of segments) {
-                if (!node || !node.children) {
-                    node = null
-                    break
-                }
-                node = node.children.find(v => v.name === segment) || null
-            }
-        }
-
+        const node = findNodeByPath(path)
         if (!node) return
 
         node.isLoading = true
@@ -216,7 +316,6 @@
 
         const finalChildren: FolderNode[] = []
 
-        // Merge API results with existing skeleton nodes
         if (node.children) {
             node.children.forEach(existing => {
                 const matchIndex = apiChildren.findIndex(api => api.name === existing.name)
@@ -239,6 +338,10 @@
     async function toggleFolder(node: FolderNode) {
         if (!node.isLoaded) {
             await loadPathData(node.fullPath)
+            
+            if (selectedFolderPath) {
+                selectFolderByPath(selectedFolderPath)
+            }
         }
         node.isExpanded = !node.isExpanded
     }
@@ -288,11 +391,17 @@
 
         <div class="flex flex-col flex-1 w-full min-h-0 gap-4">
             <div class="flex flex-col flex-1 min-h-0 border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 overflow-hidden">
-                <div class="p-2 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-                    <div class="flex items-center text-sm gap-1">
-                        <span class="mr-1 opacity-50">Selected:</span>
-                        <span class="font-medium">{selectedPath || "-"}</span>
-                    </div>
+                <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 h-10 px-3">
+                    <span class="mr-1 opacity-50 text-sm whitespace-nowrap">Selected:</span>
+                    <input 
+                        id="address-bar-input"
+                        type="text" 
+                        class="w-full bg-transparent !border-none !outline-none !ring-0 font-medium text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400"
+                        value={addressBarValue}
+                        on:input={handleAddressInput}
+                        spellcheck="false"
+                        autocomplete="off"
+                    />
                 </div>
                 
                 <div class="flex-1 p-1 overflow-y-auto custom-scrollbar min-h-0">
@@ -306,7 +415,7 @@
                 </div>  
             </div>
 
-            {#if isFilenameChangable}
+            {#if !hideFilenameInput}
                 <div class="flex gap-4 items-center">
                     <label for="selected-filename-input" class="!w-fit">Filename:</label>
                     <input id="selected-filename-input" bind:value={filenameInput} class="basic-input !max-w-full !flex-grow">
@@ -341,6 +450,7 @@
         <div class="flex items-center py-1 {node.isSelected ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'} rounded cursor-pointer"
             style="padding-left: {level}rem"
             on:click={() => selectFolder(node)}
+            on:dblclick={(e) => { e.stopPropagation(); toggleFolder(node); }}
         >
             <button class="mr-1 text-neutral-500 cursor-pointer aspect-square h-[1.5rem]" on:click|stopPropagation={() => toggleFolder(node)}>
                 <div class="h-[0.8rem] my-auto">
@@ -356,9 +466,9 @@
                 </div>
             </button>
 
-            <span class="mr-2 {node.fullPath === parentPath ? 'font-bold text-blue-600 dark:text-blue-400' : ''}">
+            <span class="mr-2 {node.fullPath === initialFolder ? 'font-bold text-blue-600 dark:text-blue-400' : ''}">
                 {node.name === "" ? "Root" : node.name}
-                {#if node.fullPath === parentPath}
+                {#if node.fullPath === initialFolder}
                     <span class="text-[10px] ml-1 opacity-70">(Current Folder)</span>
                 {/if}
             </span>
@@ -371,7 +481,6 @@
         {#if node.children && node.children.length > 0}
             <div class="w-full">
                 {#each node.children as child}
-                    <!-- Render if expanded or if the child is part of the persistent hierarchy path -->
                     {#if node.isExpanded || child.isHierarchy}
                         {@render treeNode(child, level + 1)}
                     {/if}
