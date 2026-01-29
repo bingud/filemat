@@ -44,12 +44,7 @@
 
     function option_selectAllFiles() {
         if (!filesState.data.entries) return
-        filesState.selectedEntries.list = filesState.data.entries.map(v => v.path)
-        closeContextMenu()
-    }
-
-    function option_unselectAllFiles() {
-        filesState.selectedEntries.list = []
+        filesState.selectedEntries.setSelected(filesState.data.entries.map(v => v.path))
         closeContextMenu()
     }
 

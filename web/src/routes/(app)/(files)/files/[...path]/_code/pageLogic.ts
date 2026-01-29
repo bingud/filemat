@@ -128,7 +128,7 @@ export async function loadPageData(
 
         // If no entry is selected and this is a folder, select the current folder
         if (filesState.selectedEntries.singlePath === null) {
-            filesState.selectedEntries.list = [data.meta.path]
+            filesState.selectedEntries.setSelected(data.meta.path)
         }
     } else if (options.fileDataType === "array") {
         const data = dataResult as FullFileMetadata[]

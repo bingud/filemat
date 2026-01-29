@@ -40,14 +40,14 @@
     }
 
     function option_unselectAllFiles() {
-        filesState.selectedEntries.list = []
+        filesState.selectedEntries.setSelected([])
         closeFileContextMenuPopover()
     }
     function option_selectAllFiles() {
         if (filesState.isSearchOpen && filesState.search.entries) {
-            filesState.selectedEntries.list = filesState.search.entries.map(v => v.path)
+            filesState.selectedEntries.setSelected(filesState.search.entries.map(v => v.path))
         } else if (filesState.data.entries) {
-            filesState.selectedEntries.list = filesState.data.entries.map(v => v.path)
+            filesState.selectedEntries.setSelected(filesState.data.entries.map(v => v.path))
         }
         closeFileContextMenuPopover()
     }

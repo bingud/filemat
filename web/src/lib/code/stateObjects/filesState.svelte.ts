@@ -2,6 +2,7 @@ import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { SvelteSet } from "svelte/reactivity"
 import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
 import { getFileCategoryFromFilename, type FileCategory } from "../data/files"
@@ -144,7 +145,11 @@ class SelectedEntryStateClass {
     list = $state([]) as string[]
     searchList = $state([]) as string[]
 
+    set = new SvelteSet()
+    searchSet = new SvelteSet()
+
     currentList = $derived(filesState.isSearchOpen ? this.searchList : this.list)
+    currentSet = $derived(filesState.isSearchOpen ? this.searchSet : this.set)
 
     metadataMap = $derived.by(() => {
         const entriesMap = new Map(
@@ -197,22 +202,32 @@ class SelectedEntryStateClass {
     isCurrentPathSelected = $derived(filesState.path === this.singlePath)
     count = $derived(filesState.isSearchOpen ? this.searchList.length : this.list.length)
 
-    setSelected(path: string, preventSave: boolean = false) {
+    setSelected(path: string | string[], preventSave: boolean = false) {
+        const paths = Array.isArray(path) ? path : [path]
+        
         if (filesState.isSearchOpen) {
-            this.searchList = [path]
+            this.searchList = paths
+            this.searchSet.clear()
+            paths.forEach(p => this.searchSet.add(p))
         } else {
-            this.list = [path]
+            this.list = paths
+            this.set.clear()
+            paths.forEach(p => this.set.add(p))
             if (!preventSave) {
-                this.selectedPositions.set(path, true)
+                paths.forEach(p => this.selectedPositions.set(p, true))
             }
         }
     }
 
     addSelected(path: string) {
         if (filesState.isSearchOpen) {
+            this.searchSet.add(path)
+            
             if (this.searchList.includes(path)) return
             this.searchList.push(path)
         } else {
+            this.set.add(path)
+
             if (this.list.includes(path)) return
             this.list.push(path)
         }
@@ -221,18 +236,27 @@ class SelectedEntryStateClass {
     unselect(path: string) {
         if (filesState.isSearchOpen) {
             removeString(this.searchList, path)
+            this.searchSet.delete(path)
         } else {
+            this.set.delete(path)
             removeString(this.list, path)
         }
     }
-    unselectAll(paths: string[]) {
-        paths.forEach(deletedPath => {
-            this.unselect(deletedPath)
-        })
+    unselectAll(paths: string[] | undefined = undefined) {
+        if (paths) {
+            paths.forEach(deletedPath => {
+                this.unselect(deletedPath)
+                this.set.delete(deletedPath)
+            })
+        } else {
+            this.setSelected([])
+        }
     }
     reset() {
         this.list = []
         this.searchList = []
+        this.set.clear()
+        this.searchSet.clear()
     }
 }
 

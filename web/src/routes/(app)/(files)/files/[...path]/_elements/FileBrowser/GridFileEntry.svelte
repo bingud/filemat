@@ -1,11 +1,6 @@
 <script lang="ts">
-    import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { isFolder } from "$lib/code/util/codeUtil.svelte";
-    import FileArrow from "$lib/component/icons/FileArrow.svelte";
-    import FileIcon from "$lib/component/icons/FileIcon.svelte";
-    import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
-    import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
@@ -31,7 +26,7 @@
         }
     })
     
-    let isSelected = $derived(!!entry && filesState.selectedEntries.currentList.includes(entry.path))
+    let isSelected = $derived(!!entry && filesState.selectedEntries.currentSet.has(entry.path))
     
     let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
 </script>

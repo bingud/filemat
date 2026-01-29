@@ -1,12 +1,6 @@
 <script lang="ts">
-    import { type FullFileMetadata } from "$lib/code/auth/types";
-    import { fileCategories, getFileCategory, getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { formatBytesRounded, formatUnixMillis, getFileExtension, isFolder } from "$lib/code/util/codeUtil.svelte";
-    import FileArrow from "$lib/component/icons/FileArrow.svelte";
-    import FileIcon from "$lib/component/icons/FileIcon.svelte";
-    import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
-    import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
+    import { formatBytesRounded, formatUnixMillis, isFolder } from "$lib/code/util/codeUtil.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
@@ -25,8 +19,6 @@
         entryMenuOnClick,
     }: FileEntryProps = $props()
 
-    const loadFilePreview = filesState.ui.filePreviewLoader.getAction()
-
     onMount(() => {
         if (!entry) {
             console.log(`Entry in FileEntry is null`)
@@ -34,7 +26,7 @@
         }
     })
     
-    let isSelected = $derived(!!entry && filesState.selectedEntries.currentList.includes(entry.path))
+    let isSelected = $derived(!!entry && filesState.selectedEntries.currentSet.has(entry.path))
     
     let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
 </script>
