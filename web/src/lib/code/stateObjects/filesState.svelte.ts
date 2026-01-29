@@ -97,6 +97,7 @@ class FilesState {
      */
     sortingMode: FileSortingMode = $state("modified")
     sortingDirection: SortingDirection = $state("desc")
+    mixFilesAndFolders = $state(false)
     setFileSortingMode(mode: FileSortingMode) {
         this.sortingMode = mode
         localStorage.setItem("fm-sorting-mode", mode)
@@ -105,13 +106,20 @@ class FilesState {
         this.sortingDirection = dir
         localStorage.setItem("fm-sorting-direction", dir)
     }
+    setMixFilesAndFolders(mode: boolean) {
+        this.mixFilesAndFolders = mode
+        localStorage.setItem("fm-mix-files-and-folders", mode.toString())
+    }
 
     constructor() {
         // Load file sorting options
         const mode = localStorage.getItem("fm-sorting-mode")
         const direction = localStorage.getItem("fm-sorting-direction")
+        const mix = localStorage.getItem("fm-mix-files-and-folders")
+
         if (mode && keysOf(fileSortingModes).includes(mode as any)) this.sortingMode = mode as FileSortingMode
         if (direction && fileSortingDirections.includes(direction as any)) this.sortingDirection = direction as SortingDirection
+        if (mix) this.mixFilesAndFolders = (mix === "true")
     }
     
     /**
@@ -336,7 +344,7 @@ class FileDataStateClass {
         if (!filesState.data || !filesState.data.entries) return null
         if (filesState.meta.type === "allShared") return this.entries
 
-        return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection)
+        return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection, filesState.mixFilesAndFolders)
     })
 
     isFileSymlink = $derived.by(() => {
@@ -372,7 +380,7 @@ class FileSearchStateClass {
     entries = $state(null) as FullFileMetadata[] | null
     sortedEntries = $derived.by(() => {
         if (!this.entries) return null
-        return sortFileMetadata(this.entries, filesState.sortingMode, filesState.sortingDirection)
+        return sortFileMetadata(this.entries, filesState.sortingMode, filesState.sortingDirection, filesState.mixFilesAndFolders)
     })
     isLoading = $state(false)
 

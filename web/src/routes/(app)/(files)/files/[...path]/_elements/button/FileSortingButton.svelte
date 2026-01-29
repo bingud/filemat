@@ -3,18 +3,21 @@
     import { fileSortingModes, type FileSortingMode, type SortingDirection } from "$lib/code/types/fileTypes";
     import { entriesOf } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
+    import CheckboxIcon from "$lib/component/icons/CheckboxIcon.svelte";
     import CheckmarkIcon from "$lib/component/icons/CheckmarkIcon.svelte";
     import SortAscendingIcon from "$lib/component/icons/SortAscendingIcon.svelte";
     import SortDescendingIcon from "$lib/component/icons/SortDescendingIcon.svelte";
 
     let mode = $derived(filesState.sortingMode)
-    let direction = $derived(filesState.sortingDirection)
 
     function setMode(newMode: FileSortingMode) {
         filesState.setFileSortingMode(newMode)
     }
     function setDirection(newDirection: SortingDirection) {
         filesState.setFileSortingDirection(newDirection)
+    }
+    function setMixFilesAndFolders(mix: boolean) {
+        filesState.setMixFilesAndFolders(mix)
     }
     
 </script>
@@ -24,7 +27,7 @@
     <Popover.Trigger title="Change file sorting mode." class="h-full flex items-center justify-center">
         <div class="h-full flex items-center justify-center gap-2 bg-surface-content-button rounded-md px-4">
             <div class="h-[1.2rem]">
-                {#if direction === "asc"}
+                {#if filesState.sortingDirection === "asc"}
                     <SortAscendingIcon></SortAscendingIcon>
                 {:else}
                     <SortDescendingIcon></SortDescendingIcon>
@@ -50,7 +53,7 @@
 
             <button on:click={() => { setDirection("asc") }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
-                    {#if direction === "asc"}
+                    {#if filesState.sortingDirection === "asc"}
                         <SortAscendingIcon />
                     {/if}
                 </div>
@@ -68,7 +71,7 @@
             </button>
             <button on:click={() => { setDirection("desc") }} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
-                    {#if direction === "desc"}
+                    {#if filesState.sortingDirection === "desc"}
                         <SortDescendingIcon />
                     {/if}
                 </div>
@@ -83,6 +86,25 @@
                         Newest first
                     {/if}
                 </span>
+            </button>
+
+            <hr class="basic-hr my-2">
+
+            <button on:click={() => { setMixFilesAndFolders(false) }} class="surface-popover-button">
+                <div class="size-5 flex-shrink-0">
+                    {#if !filesState.mixFilesAndFolders}
+                        <CheckboxIcon />
+                    {/if}
+                </div>
+                <span>Separate folders</span>
+            </button>
+            <button on:click={() => { setMixFilesAndFolders(true) }} class="surface-popover-button">
+                <div class="size-5 flex-shrink-0">
+                    {#if filesState.mixFilesAndFolders}
+                        <CheckboxIcon />
+                    {/if}
+                </div>
+                <span>Mix folders</span>
             </button>
         </div>
     </Popover.Content>
