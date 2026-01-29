@@ -1,29 +1,29 @@
 <script lang="ts">
-    import { getFileData } from '$lib/code/module/files';
-    import { filesState } from '$lib/code/stateObjects/filesState.svelte';
-    import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte';
-    import { explicitEffect } from '$lib/code/util/codeUtil.svelte';
+    import { getFileData } from '$lib/code/module/files'
+    import { filesState } from '$lib/code/stateObjects/filesState.svelte'
+    import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte'
+    import { explicitEffect } from '$lib/code/util/codeUtil.svelte'
     import { Dialog } from '$lib/component/bits-ui-wrapper'
-    import ChevronDownIcon from '$lib/component/icons/ChevronDownIcon.svelte';
-    import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte';
-    import { onMount, untrack } from 'svelte';
+    import ChevronDownIcon from '$lib/component/icons/ChevronDownIcon.svelte'
+    import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte'
+    import { onMount } from 'svelte'
 
     interface FolderNode {
         name: string
         fullPath: string
         children: FolderNode[] | null
         isSelected: boolean
-        isLoading: boolean,
-        isExpanded: boolean,
+        isLoading: boolean
+        isExpanded: boolean
+        isLoaded: boolean
+        isHierarchy: boolean
     }
 
-    // Component state
     let dialogTitle = $state('Select a folder')
     let folderTree: FolderNode | null = $state(null)
     let selectedFolderPath: string | null = $state(null)
     let isFilenameChangable: boolean | null = $state(null)
     let defaultFilename: string | null = $state(null)
-
     let filenameInput: string = $state("")
 
     let selectedPath = $derived.by(() => {
@@ -39,14 +39,14 @@
 
     let initialSelection: string | null = $state(null)
     let hasScrolledToInitial: boolean = $state(false)
-    
-    // Promise resolver functions
     let resolvePromise: ((value: string | null) => void) | null = $state(null)
+    
+    // Logic for visual indicator of the starting folder
+    let parentPath = $derived(initialSelection)
     
     type FilenameProps = { isFilenameChangable?: undefined, defaultFilename?: undefined, resultType?: undefined } 
         | { isFilenameChangable: boolean, defaultFilename: string | null, resultType: "destination" }
 
-    // Public API - returns a Promise that resolves to a selected folder path, or null.
     export function show(options: FilenameProps & {
         title?: string,
         initialSelection?: string,
@@ -94,7 +94,6 @@
             hasScrolledToInitial = false
             isFilenameChangable = null
             defaultFilename = null
-
             filenameInput = ""
         }
     })
@@ -105,69 +104,153 @@
             fullPath: "/",
             children: null,
             isSelected: false,
-            isLoading: true,
-            isExpanded: true,
+            isLoading: false,
+            isExpanded: false,
+            isLoaded: false,
+            isHierarchy: true
         }
 
-        // Load the children of root folder
-        await loadPathData("/")
-
         if (initialSelection) {
-            await expandToPath(initialSelection)
-            initialSelection = null
+            buildSkeleton(initialSelection)
+            
+            // Calculate parent path to load siblings
+            const segments = initialSelection.split('/').filter(s => s.length > 0)
+            const parentSegments = segments.slice(0, -1)
+            const parentPath = parentSegments.length === 0 ? "/" : "/" + parentSegments.join("/")
+            
+            // Expand the direct parent so the selection is visible
+            let parentNode: FolderNode | null = folderTree
+            for (const segment of parentSegments) {
+                if (!parentNode || !parentNode.children) break
+                const next: FolderNode | undefined = parentNode.children.find(c => c.name === segment)
+                if (next) parentNode = next
+            }
+            
+            if (parentNode) {
+                parentNode.isExpanded = true
+            }
+
+            await loadPathData(parentPath)
+        } else {
+            if (folderTree) folderTree.isExpanded = true
+            await loadPathData("/")
         }
     }
 
-    async function loadPathData(parent: string) {
-        const segments = parent.split('/').filter(s => s.length > 0)
-        let node: FolderNode | null = folderTree!
-        for (const segment of segments) {
-            if (!node || !node.children) break
-            node = node.children.find(v => v.name === segment) || null
+    function buildSkeleton(path: string) {
+        if (!folderTree) return
+        
+        const segments = path.split('/').filter(s => s.length > 0)
+        let currentNode = folderTree
+        
+        if (path === "/") {
+            selectFolder(currentNode)
+            return
         }
+
+        for (const segment of segments) {
+            if (currentNode.children === null) {
+                currentNode.children = []
+            }
+
+            let child = currentNode.children.find(c => c.name === segment)
+            
+            // Create phantom node if it doesn't exist to ensure path connectivity
+            if (!child) {
+                const parentPath = currentNode.fullPath === "/" ? "" : currentNode.fullPath
+                child = {
+                    name: segment,
+                    fullPath: `${parentPath}/${segment}`,
+                    children: null,
+                    isSelected: false,
+                    isLoading: false,
+                    isExpanded: false,
+                    isLoaded: false,
+                    isHierarchy: true
+                }
+                currentNode.children.push(child)
+            } else {
+                child.isHierarchy = true
+            }
+            
+            currentNode = child
+        }
+
+        selectFolder(currentNode)
+    }
+
+    async function loadPathData(path: string) {
+        const segments = path.split('/').filter(s => s.length > 0)
+        let node: FolderNode | null = folderTree
+        
+        if (path !== "/") {
+            for (const segment of segments) {
+                if (!node || !node.children) {
+                    node = null
+                    break
+                }
+                node = node.children.find(v => v.name === segment) || null
+            }
+        }
+
         if (!node) return
 
         node.isLoading = true
-        const dataResult = await getFileData(parent, filesState.meta.fileEntriesUrlPath, undefined, { foldersOnly: true })
+        const dataResult = await getFileData(path, filesState.meta.fileEntriesUrlPath, undefined, { foldersOnly: true })
         node.isLoading = false
+        node.isLoaded = true 
         
         const data = dataResult.value
         if (dataResult.isUnsuccessful || !data?.entries) return
 
-        const nodeChildren: FolderNode[] = data.entries.map((child) => {
-            return {
-                name: child.filename!,
-                fullPath: child.path,
-                children: null,
-                isSelected: false,
-                isLoading: false,
-                isExpanded: false,
-            }
-        })
-        node.children = nodeChildren
+        const apiChildren = data.entries.map((entry) => ({
+            name: entry.filename!,
+            fullPath: entry.path,
+            children: null,
+            isSelected: false,
+            isLoading: false,
+            isExpanded: false,
+            isLoaded: false,
+            isHierarchy: false
+        }))
+
+        const finalChildren: FolderNode[] = []
+
+        // Merge API results with existing skeleton nodes
+        if (node.children) {
+            node.children.forEach(existing => {
+                const matchIndex = apiChildren.findIndex(api => api.name === existing.name)
+                
+                if (matchIndex !== -1) {
+                    apiChildren.splice(matchIndex, 1)
+                    finalChildren.push(existing)
+                } else {
+                    finalChildren.push(existing)
+                }
+            })
+        }
+
+        finalChildren.push(...apiChildren)
+        finalChildren.sort((a, b) => a.name.localeCompare(b.name))
+
+        node.children = finalChildren
     }
 
-    // Toggle folder expansion
     async function toggleFolder(node: FolderNode) {
-        if (!node.children) {
+        if (!node.isLoaded) {
             await loadPathData(node.fullPath)
         }
         node.isExpanded = !node.isExpanded
     }
 
-    // Select a folder
     function selectFolder(node: FolderNode) {
-        // Deselect previously selected folder if any
         if (folderTree) {
             deselectAllNodes(folderTree)
         }
-        
-        // Select the new folder
         node.isSelected = true
         selectedFolderPath = node.fullPath
     }
 
-    // Recursive function to deselect all nodes
     function deselectAllNodes(node: FolderNode) {
         node.isSelected = false
         if (node.children) {
@@ -175,42 +258,16 @@
         }
     }
 
-    // Confirm selection and resolve promise
     function confirmSelection() {
         folderSelectorState.isOpen = false
-        if (!resolvePromise) return
-        
-        
-        resolvePromise(selectedPath)
-    }
-
-    /** 
-     * Recursively loads & expands each segment, then selects the final node 
-     */
-    async function expandToPath(path: string) {
-        const segments = path.split('/').filter(s => s.length > 0)
-        let node: FolderNode | null = folderTree
-
-        for (const segment of segments) {
-            if (!node) return
-
-            if (node.children === null) {
-                await loadPathData(node.fullPath)
-            }
-
-            const child = node.children?.find(c => c.name === segment) || null
-            if (!child) return
-
-            child.isExpanded = true
-            node = child
+        if (resolvePromise) {
+            resolvePromise(selectedPath)
         }
-
-        if (node) selectFolder(node)
     }
 
     function onSelectedFolderElementMount(e: HTMLElement) {
         hasScrolledToInitial = true
-        e.scrollIntoView()
+        e.scrollIntoView({ block: "center" })
     }
 </script>
 
@@ -238,7 +295,7 @@
                     </div>
                 </div>
                 
-                <div class="flex-1 p-1 overflow-y-auto min-h-0">
+                <div class="flex-1 p-1 overflow-y-auto custom-scrollbar min-h-0">
                     {#if folderTree}
                         {@render treeNode(folderTree)}
                     {:else}
@@ -251,7 +308,7 @@
 
             {#if isFilenameChangable}
                 <div class="flex gap-4 items-center">
-                    <label for="selected-filename-input !w-fit">Filename:</label>
+                    <label for="selected-filename-input" class="!w-fit">Filename:</label>
                     <input id="selected-filename-input" bind:value={filenameInput} class="basic-input !max-w-full !flex-grow">
                 </div>
             {/if}
@@ -273,50 +330,51 @@
             </div>
         </div>
     </Dialog.Content>
-
 </Dialog.Root>
 
-
 {#snippet treeNode(node: FolderNode, level: number = 0)}
-    <div  class="w-full relative">
+    <div class="w-full relative">
         {#if node.isSelected && !hasScrolledToInitial}
             <div use:onSelectedFolderElementMount class="size-0 absolute"></div>
         {/if}
 
-        <div class="flex items-center py-1 ${node.isSelected ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'} rounded cursor-pointer"
+        <div class="flex items-center py-1 {node.isSelected ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'} rounded cursor-pointer"
             style="padding-left: {level}rem"
             on:click={() => selectFolder(node)}
         >
             <button class="mr-1 text-neutral-500 cursor-pointer aspect-square h-[1.5rem]" on:click|stopPropagation={() => toggleFolder(node)}>
                 <div class="h-[0.8rem] my-auto">
-                    {#if node.children !== null}
+                    {#if (node.children && node.children.length > 0) || !node.isLoaded}
                         {#if node.isExpanded}
                             <ChevronDownIcon />
                         {:else}
                             <ChevronRightIcon />
                         {/if}
                     {:else}
-                        <ChevronRightIcon />
+                        <div class="w-4"></div>
                     {/if}
                 </div>
             </button>
 
-            <span class="mr-2">
-                {#if node.name === ""}
-                    Root
-                {:else}
-                    {node.name}
+            <span class="mr-2 {node.fullPath === parentPath ? 'font-bold text-blue-600 dark:text-blue-400' : ''}">
+                {node.name === "" ? "Root" : node.name}
+                {#if node.fullPath === parentPath}
+                    <span class="text-[10px] ml-1 opacity-70">(Current Folder)</span>
                 {/if}
             </span>
+            
             {#if node.isLoading}
                 <span class="text-neutral-400">⟳</span>
             {/if}
         </div>
 
-        {#if node.isExpanded && node.children && node.children.length > 0}
+        {#if node.children && node.children.length > 0}
             <div class="w-full">
                 {#each node.children as child}
-                    {@render treeNode(child, level + 1)}
+                    <!-- Render if expanded or if the child is part of the persistent hierarchy path -->
+                    {#if node.isExpanded || child.isHierarchy}
+                        {@render treeNode(child, level + 1)}
+                    {/if}
                 {/each}
             </div>
         {/if}

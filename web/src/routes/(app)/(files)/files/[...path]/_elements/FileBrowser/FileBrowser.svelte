@@ -129,7 +129,7 @@
         if (filesState.isSearchOpen) return
 
         const newParentPath = await folderSelectorState.show!({
-            title: "Choose the new location:",
+            title: "Choose the new file location:",
             initialSelection: parentFromPath(entry.path)
         })
         if (!newParentPath) return
@@ -142,7 +142,7 @@
 
     async function option_copy(entry: FileMetadata) {
         const newPath = await folderSelectorState.show!({
-            title: "Choose the new location:",
+            title: "Choose location for the copied file:",
             initialSelection: parentFromPath(entry.path),
             isFilenameChangable: true,
             defaultFilename: entry.filename,
