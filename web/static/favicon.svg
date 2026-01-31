@@ -1,0 +1,13 @@
+<svg width="512" height="512" version="1.1" viewBox="0 0 135.47 135.47" xmlns="http://www.w3.org/2000/svg">
+ <rect x=".46302" y="-3.0427" width="135.47" height="135.47" rx="0" ry="0" style="fill:#121212;paint-order:normal"/>
+ <ellipse cx="108.78" cy="98.64" rx="14.412" ry="23.156" style="fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m31.906 121.8a14.412 23.156 0 0 1-12.481-11.578 14.412 23.156 0 0 1 0-23.156 14.412 23.156 0 0 1 12.481-11.578" style="fill:none;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m108.77 121.8h-76.879" style="fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m120.08 111.16c-3.0315 6.8784-10.836 5.4653-14.938-0.0153-2.5617-3.4226-3.9089-9.784-1.5489-13.707 1.0727-1.9175 2.3943-3.6008 4.9111-2.6409 4.432 1.6904 3.5597 9.3547 3.6442 9.2702" style="display:none;fill:none;paint-order:normal;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m46.317 75.484v-62.831" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m123.19 96.126v-56.732" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m47.537 12.656h43.609" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m91.146 12.656 32.043 26.738" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+ <path d="m67.734 65.935v-30.462h17.939v4.6817h-13.212v8.3207h12.263v4.5795h-12.263v12.88z" style="display:none;fill:#fff;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:4.4979" aria-label="F"/>
+ <path d="m31.901 75.484h76.889" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-miterlimit:5;stroke-width:17.198;stroke:#fff"/>
+</svg>
