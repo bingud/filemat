@@ -6,7 +6,7 @@
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import type { record, ulid } from "$lib/code/types/types";
-    import { entriesOf, explicitEffect, formatUnixTimestamp, formData, handleErr, handleException, includesList, isServerDown, lockFunction, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { entriesOf, explicitEffect, formatUnixTimestamp, includesList, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import { getRole } from "$lib/code/util/stateUtils";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
@@ -54,6 +54,8 @@
         }
     })
 
+    $effect(() => appState.title.register(title))
+
     explicitEffect(() => [ 
         page.params.userId 
     ], () => {
@@ -72,11 +74,6 @@
         mounted = true
     })
 </script>
-
-
-<svelte:head>
-    <title>{pageTitle(title)}</title>
-</svelte:head>
 
 
 {#if pageState.user}

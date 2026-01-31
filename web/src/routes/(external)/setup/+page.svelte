@@ -2,7 +2,7 @@
     import Noindex from "$lib/component/head/Noindex.svelte"
     import CodeChunk from "$lib/component/CodeChunk.svelte"
     import { toast } from "@jill64/svelte-toast";
-    import { handleException, isBlank, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { handleException, isBlank, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { onMount } from "svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -12,7 +12,6 @@
     import { page } from "$app/state";
     import Close from "$lib/component/icons/CloseIcon.svelte";
     import Checkmark from "$lib/component/icons/CheckmarkIcon.svelte";
-    import { dev } from "$app/environment";
     import { envVars } from "$lib/code/data/environmentVariables";
 
     let alreadySetup: boolean | null = $state(null)
@@ -40,15 +39,9 @@
 
     onMount(async () => {
         await getSetupStatus()
-        if (dev) {
-            // codeInput = "aaaaaaaaaaaa"
-            // emailInput = "a@a.a"
-            // usernameInput = "a"
-            // passwordInput = "aaaa"
-            // repeatPasswordInput = "aaaa"
-            // phase = 3
-        }
     })
+
+    $effect(() => appState.title.register("Setup"))
 
     function increasePhase() { lastPhase = phase; phase++ }
     function decreasePhase() { lastPhase = phase; phase-- }
@@ -211,7 +204,6 @@
 
 <svelte:head>
     <Noindex />
-    <title>{pageTitle("Setup")}</title>
 </svelte:head>
 
 <div class="page flex-col items-center gap-12 pt-6 md:pt-12">

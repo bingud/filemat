@@ -83,6 +83,9 @@
 </script>
 
 <svelte:window on:resize={onResize} />
+<svelte:head>
+    <title>{appState.title.current}</title>
+</svelte:head>
 
 <Symbols />
 <Toaster {palette} {toastOptions} />

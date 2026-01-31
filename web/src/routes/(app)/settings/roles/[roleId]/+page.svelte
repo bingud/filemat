@@ -9,7 +9,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, formData, handleErr, handleException, includesList, pageTitle, parseJson, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, toStatus, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, formData, handleErr, includesList, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import Loader from "$lib/component/Loader.svelte";
     import Popover from "$lib/component/popover/CustomPopover.svelte";
@@ -60,6 +60,11 @@
 
         status = "loading"
         loadRoleData(roleId)
+    })
+
+    // Set title
+    $effect(() => {
+        return appState.title.register(title)
     })
 
     async function loadRoleData(id: string) {
@@ -181,10 +186,6 @@
     } finally { deletingRole = false }}
 </script>
 
-
-<svelte:head>
-    <title>{pageTitle(title)}</title>
-</svelte:head>
 
 
 {#if role}

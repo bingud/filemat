@@ -6,12 +6,11 @@
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte"
     import type { ulid } from "$lib/code/types/types";
-    import { formData,  handleErr,  handleException, isBlank, pageTitle, removeString, safeFetch, sortArrayByNumberDesc, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
+    import { formData,  handleErr, isBlank, removeString, safeFetch, sortArrayByNumberDesc, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte"
     import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte"
 
-    const title = "Create a new role"
-
+    
     let selectedPermissions: SystemPermission[] = $state([])
     let running = $state(false)
 
@@ -19,6 +18,10 @@
 
     onMount(() => {
         uiState.settings.title = "New role"
+    })
+
+    $effect(() => {
+        return appState.title.register"Create a new role"()
     })
 
     async function submit() {
@@ -79,11 +82,6 @@
         }
     }
 </script>
-
-
-<svelte:head>
-    <title>{pageTitle(title)}</title>
-</svelte:head>
 
 
 <div class="page settings-margin flex-col gap-4">

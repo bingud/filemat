@@ -1,7 +1,7 @@
 <script lang="ts">
     import { autofocus, disabledFor } from "$lib/code/util/uiUtil";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
-    import { explicitEffect, formData, handleErr, pageTitle, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { explicitEffect, formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import QRCode from 'qrcode'
     import CustomDialog from "$lib/component/popover/CustomDialog.svelte";
     import { Validator } from "$lib/code/util/validation";

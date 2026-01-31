@@ -3,7 +3,7 @@
     import { fetchState } from "$lib/code/state/stateFetcher";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { uiState, type SettingSectionId } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, pageTitle, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";

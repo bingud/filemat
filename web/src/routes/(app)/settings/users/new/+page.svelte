@@ -1,8 +1,8 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import { createUser } from "$lib/code/admin/users";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import { toast } from "@jill64/svelte-toast";
     import { onMount } from "svelte";
@@ -15,8 +15,10 @@
     let passwordInput = $state('')
 
     onMount(() => {
-        uiState.settings.title = "Create a new user"
+        uiState.settings.title = title
     })
+
+    $effect(() => appState.title.register(title))
 
     async function create() {if (creatingUser) return; creatingUser = true; try {
         const validation = Validator.email(emailInput) ?? Validator.username(usernameInput) ?? Validator.password(passwordInput)
@@ -32,10 +34,6 @@
 
 </script>
 
-
-<svelte:head>
-    <title>{pageTitle(title)}</title>
-</svelte:head>
 
 
 <div class="page settings-margin flex-col">

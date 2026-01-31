@@ -1,6 +1,6 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isPathDirectChild as isPathDirectChildOf, letterS, pageTitle, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isPathDirectChild as isPathDirectChildOf, letterS, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -39,6 +39,7 @@
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
     import UndoIcon from "$lib/component/icons/UndoIcon.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
     let {
         meta,
@@ -84,7 +85,11 @@
         destroyBreadcrumbState(breadcrumbStateNonce)
     })
 
-    const title = $derived(pageTitle(filesState.segments[filesState.segments.length - 1] || (filesState.getIsShared() ? filesState.meta.shareTopLevelFilename : undefined) || stateMeta.pageTitle))
+    const title = $derived(filesState.segments[filesState.segments.length - 1] || (filesState.getIsShared() ? filesState.meta.shareTopLevelFilename : undefined) || stateMeta.pageTitle)
+    $effect(() => {
+        return appState.title.register(title)
+    })
+
     let lastDataLoadDate: number = unixNow()
 
     // Load page data when path changes
@@ -224,10 +229,6 @@
     }
 </script>
 
-
-<svelte:head>
-    <title>{title}</title>
-</svelte:head>
 
 <!-- 5.5, lg 6.5 -->
 <div class="page">

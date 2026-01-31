@@ -1,7 +1,8 @@
 import { page } from "$app/state"
-import type { Principal, Role } from "../auth/types"
+import { untrack } from "svelte"
+import type { Role } from "../auth/types"
 import type { ulid, ValuesOf } from "../types/types"
-import { entriesOf, valuesOf } from "../util/codeUtil.svelte"
+import { entriesOf } from "../util/codeUtil.svelte"
 
 export const filePagePaths = {
     "/files": "files",
@@ -18,6 +19,7 @@ const sitePaths = {
 
 class AppState {
     settings = new SettingState()
+    title = new TitleState()
 
     /**
      * Indicates whether application has been set up.
@@ -92,6 +94,26 @@ class SettingState {
     loadAllPreviews = $state(false)
 	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
     clickToOpenFile = $state(false)
+}
+
+class TitleState {
+    segments: string[] = $state([])
+
+    current = $derived.by(() => {
+        const title = this.segments[this.segments.length - 1]
+        if (!title) return "Filemat"
+        return `${title} — Filemat`
+    })
+
+    register(segment: string) {
+        untrack(() => {
+            this.segments.push(segment)
+            console.log(`Registered ${segment}`)
+            return () => {
+                this.segments = this.segments.filter((s) => s !== segment)
+            }
+        })
+    }
 }
 
 /**

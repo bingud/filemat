@@ -3,8 +3,9 @@
     import { loadUserList } from "$lib/code/admin/users";
     import type { PublicUser } from "$lib/code/auth/types";
     import { hasPermissionLevel } from "$lib/code/module/permissions";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { formatUnixTimestamp, pageTitle, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, sortArrayByNumber } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -22,6 +23,9 @@
         loadList()
     })
 
+    $effect(() => {
+        return appState.title.register(title)
+    })
 
     async function loadList() {if (loading) return; loading = true; try {
         const r = await loadUserList()
@@ -31,11 +35,6 @@
     } finally { loading = false }}
 
 </script>
-
-
-<svelte:head>
-    <title>{pageTitle(title)}</title>
-</svelte:head>
 
 
 <div class="page flex-col gap-8 settings-margin">

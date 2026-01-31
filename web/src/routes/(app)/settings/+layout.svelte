@@ -7,7 +7,7 @@
     
     import { settingSections } from "$lib/code/module/settings";
     import { openSettingsSection } from "$lib/code/util/uiUtil";
-    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
     let { children } = $props()
 
@@ -22,6 +22,11 @@
         setSectionFromUrl(urlSection)
     })
 
+    // Set title
+    $effect(() => {
+        return appState.title.register(uiState.settings.title || "Settings")
+    })
+
     function setSectionFromUrl(urlSection: any) {
         if (settingSections.hasPermission(urlSection) === false) {
             openSettingsSection(null)
@@ -30,11 +35,6 @@
         uiState.settings.section = urlSection
     }
 </script>
-
-
-<svelte:head>
-    <title>{pageTitle(uiState.settings.title || "Settings")}</title>
-</svelte:head>
 
 
 <div class="flex w-full h-full flex-col lg:flex-row">

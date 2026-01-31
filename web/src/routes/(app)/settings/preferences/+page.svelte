@@ -3,21 +3,21 @@
     import { onMount, type Component } from "svelte";
     import MfaSetting from "./_setting-components/MfaSetting.svelte";
     import LogoutSetting from "./_setting-components/LogoutSetting.svelte";
-    import { pageTitle } from "$lib/code/util/codeUtil.svelte";
     import LoadPreviewsSetting from "./_setting-components/LoadPreviewsSetting.svelte";
     import DefaultPageSetting from "./_setting-components/DefaultPageSetting.svelte";
     import ClickToOpenFileSetting from "./_setting-components/ClickToOpenFileSetting.svelte";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
     const title = "Preferences"
 
     onMount(() => {
         uiState.settings.title = title
     })
-</script>
 
-<svelte:head>
-    <title>{pageTitle("Preferences")}</title>
-</svelte:head>
+    $effect(() => {
+        return appState.title.register("Preferences")
+    })
+</script>
 
 
 <div class="page !h-fit settings-margin flex-col gap-8 xoverflow-y-auto">
