@@ -40,20 +40,20 @@
     <form on:submit|preventDefault={create} class="flex flex-col gap-6 w-full md:max-w-[25rem]">
         <div class="flex flex-col gap-1">
             <label for="input-email">Email</label>
-            <input bind:value={emailInput} id="input-email" type="email" maxlength="256" required>
+            <input bind:value={emailInput} id="input-email" type="email" maxlength="256" required class="basic-input">
         </div>
 
         <div class="flex flex-col gap-1">
             <label for="input-username">Username</label>
-            <input bind:value={usernameInput} id="input-username" minlength="1" maxlength="48" required>
+            <input bind:value={usernameInput} id="input-username" minlength="1" maxlength="48" required class="basic-input">
         </div>
 
         <div class="flex flex-col gap-1">
             <label for="input-password">Password</label>
-            <input bind:value={passwordInput} id="input-password" type="password" minlength="4" maxlength="256" required>
+            <input bind:value={passwordInput} id="input-password" type="password" minlength="4" maxlength="256" required class="basic-input">
         </div>
 
-        <button class="tw-form-button w-fit">Create user</button>
+        <button class="basic-input-button">Create user</button>
     </form>
 </div>
 

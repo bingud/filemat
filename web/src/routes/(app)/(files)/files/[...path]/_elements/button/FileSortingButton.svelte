@@ -5,6 +5,7 @@
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import CheckboxIcon from "$lib/component/icons/CheckboxIcon.svelte";
     import CheckmarkIcon from "$lib/component/icons/CheckmarkIcon.svelte";
+    import CircleIcon from "$lib/component/icons/CircleIcon.svelte";
     import SortAscendingIcon from "$lib/component/icons/SortAscendingIcon.svelte";
     import SortDescendingIcon from "$lib/component/icons/SortDescendingIcon.svelte";
 
@@ -39,10 +40,12 @@
     <Popover.Content align="end" class="relative z-50">
         <div class="w-[14rem] surface-popover-container">
             {#each entriesOf(fileSortingModes) as [modeId, modeName]}
+                {@const isSelected = mode === modeId}
+
                 <button on:click={() => setMode(modeId)} class="surface-popover-button">
-                    <div class="size-5 flex-shrink-0">
-                        {#if mode === modeId}
-                            <CheckmarkIcon />
+                    <div class="size-3 flex-shrink-0">
+                        {#if isSelected}
+                            <CircleIcon />
                         {/if}
                     </div>
                     <span>{modeName}</span>
@@ -61,11 +64,11 @@
                     {#if mode === "name"}
                         A to Z
                     {:else if mode === "modified"}
-                        Oldest first
+                        Newest first
                     {:else if mode === "size"}
                         Smallest first
                     {:else if mode === "created"}
-                        Oldest first
+                        Newest first
                     {/if}
                 </span>
             </button>
@@ -79,11 +82,11 @@
                     {#if mode === "name"}
                         Z to A
                     {:else if mode === "modified"}
-                        Newest first
+                        Oldest first
                     {:else if mode === "size"}
                         Largest first
                     {:else if mode === "created"}
-                        Newest first
+                        Oldest first
                     {/if}
                 </span>
             </button>
@@ -91,17 +94,17 @@
             <hr class="basic-hr my-2">
 
             <button on:click={() => { setMixFilesAndFolders(false) }} class="surface-popover-button">
-                <div class="size-5 flex-shrink-0">
+                <div class="size-3 flex-shrink-0">
                     {#if !filesState.mixFilesAndFolders}
-                        <CheckboxIcon />
+                        <CircleIcon />
                     {/if}
                 </div>
                 <span>Separate folders</span>
             </button>
             <button on:click={() => { setMixFilesAndFolders(true) }} class="surface-popover-button">
-                <div class="size-5 flex-shrink-0">
+                <div class="size-3 flex-shrink-0">
                     {#if filesState.mixFilesAndFolders}
-                        <CheckboxIcon />
+                        <CircleIcon />
                     {/if}
                 </div>
                 <span>Mix folders</span>

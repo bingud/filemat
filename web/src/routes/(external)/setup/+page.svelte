@@ -13,6 +13,7 @@
     import Close from "$lib/component/icons/CloseIcon.svelte";
     import Checkmark from "$lib/component/icons/CheckmarkIcon.svelte";
     import { envVars } from "$lib/code/data/environmentVariables";
+    import { dev } from "$app/environment";
 
     let alreadySetup: boolean | null = $state(null)
     let running = $state(false)
@@ -169,7 +170,7 @@
             const response = await fetch(`/api/v1/setup/status`, { method: "GET" })
             const text = await response.text()
             if (text === "true") {
-                alreadySetup = true 
+                alreadySetup = true
             } else if (text === "false") {
                 alreadySetup = false
             } else {
@@ -226,8 +227,8 @@
                 </div>
                 
                 <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_1}>
-                    <input placeholder="Setup code (12 letters)" type="text" bind:value={codeInput} minlength="12" maxlength="12" required title="Enter the generated code." id="code-input" class="">
-                    <button type="submit" class="tw-form-button" disabled={!codeInputValid}>{running ? "..." : "Continue"}</button>
+                    <input placeholder="Setup code (12 letters)" type="text" bind:value={codeInput} minlength="12" maxlength="12" required title="Enter the generated code." id="code-input" class="basic-input">
+                    <button type="submit" class="basic-input-button" disabled={!codeInputValid}>{running ? "..." : "Continue"}</button>
                 </form>
 
             {:else if phase === 2}
@@ -237,18 +238,18 @@
                 
                 <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_2} title="Create a Filemat admin account">
                     <label for="email-input">Email</label>
-                    <input type="email" bind:value={emailInput} minlength="3" maxlength="256" required title="Enter your email" id="email-input" class="">
+                    <input type="email" bind:value={emailInput} minlength="3" maxlength="256" required title="Enter your email" id="email-input" class="basic-input">
 
                     <label for="username-input">Username</label>
-                    <input type="text" bind:value={usernameInput} minlength="1" maxlength="48" required title="Enter your username" id="username-input" class="">
+                    <input type="text" bind:value={usernameInput} minlength="1" maxlength="48" required title="Enter your username" id="username-input" class="basic-input">
 
                     <label for="password-input">Password</label>
-                    <input type="password" bind:value={passwordInput} minlength="1" maxlength="256" required title="Enter your password" id="password-input" class="">
+                    <input type="password" bind:value={passwordInput} minlength="1" maxlength="256" required title="Enter your password" id="password-input" class="basic-input">
 
                     <label for="repeat-password-input">Repeat Password</label>
-                    <input type="password" bind:value={repeatPasswordInput} minlength="1" maxlength="256" required title="Repeat your password" id="repeat-password-input" class="">
+                    <input type="password" bind:value={repeatPasswordInput} minlength="1" maxlength="256" required title="Repeat your password" id="repeat-password-input" class="basic-input">
 
-                    <button type="submit" class="tw-form-button">{running ? "..." : "Continue"}</button>
+                    <button type="submit" class="basic-input-button">{running ? "..." : "Continue"}</button>
                 </form>
             {:else if phase === 3}
                 <div class="flex flex-col items-center gap-2 shrink-0">
@@ -269,7 +270,7 @@
                     <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto custom-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
                         {#each exposedFolders as folder, index}
                             <div class="flex flex-col sm:flex-row items-center gap-2 shrink-0">
-                                <input placeholder="Full folder path" class="sm:order-2 max-sm:w-full sm:flex-grow shrink-0" bind:value={folder.path}>
+                                <input placeholder="Full folder path" class="sm:order-2 max-sm:w-full sm:flex-grow shrink-0 basic-input" bind:value={folder.path}>
                                 <div class="flex items-center justify-between w-full sm:contents">
                                     <button on:click={() => { exposedFolders.splice(index, 1) }} title="Remove this folder" class="sm:order-1 flex items-center justify-center w-[1.5rem] hover:bg-neutral-200 dark:hover:bg-neutral-800 h-full rounded opacity-60">
                                         <div class="size-4">
@@ -291,7 +292,7 @@
                         {/each}
                     </div>
                     <div class="w-full px-8">
-                        <button on:click={addExposedFolder} class="tw-form-button w-full shrink-0 select-none" title="Configure the visibility of another folder">Add folder</button>
+                        <button on:click={addExposedFolder} class="basic-input-button w-full shrink-0 select-none" title="Configure the visibility of another folder">Add folder</button>
                     </div>
                 </div>
 
@@ -303,7 +304,7 @@
                         </div>
                         <p><button title="Open information about symbolic links" on:click={openInfo_symbolicLinks} class="underline hover:text-blue-400">Click here</button> to learn about symbolic links.</p>
                     </div>
-                    <button on:click={submit_3} class="tw-form-button">{#if !running}Continue{:else}...{/if}</button>
+                    <button on:click={submit_3} class="basic-input-button">{#if !running}Continue{:else}...{/if}</button>
                 </div>
             {:else if phase === 4}
                 <div class="flex flex-col items-center gap-6">
@@ -312,16 +313,16 @@
                     
                     <form class="flex flex-col gap-2 w-[20rem] max-w-full" on:submit|preventDefault={submit_4}>
                         <label for="download-path-input">Folder path</label>
-                        <input type="text" bind:value={uploadPathInput} id="download-path-input" class="">
+                        <input type="text" bind:value={uploadPathInput} id="download-path-input" class="basic-input">
                         <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
                         <p class="text-sm text-neutral-500">Files will appear in: <CodeChunk>{uploadPathInput}/uploads</CodeChunk></p>
-                        <button type="submit" class="tw-form-button mt-4">{running ? "..." : "Continue"}</button>
+                        <button type="submit" class="basic-input-button mt-4">{running ? "..." : "Continue"}</button>
                     </form>
                 </div>
             {:else if phase === 5}
                 <div class="flex flex-col items-center gap-6">
                     <h1 class="text-2xl font">Filemat was set up.</h1>
-                    <a href="/" class="tw-form-button">Continue</a>
+                    <a href="/" class="basic-input-button text-center">Continue</a>
                 </div>
             {:else}
                 <div class="loader"></div>
@@ -347,7 +348,7 @@
             {/if}
             
             <div class="shrink-0 mt-auto pb-6">
-                <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] tw-form-button">Go back</button>
+                <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] basic-input-button">Go back</button>
             </div>
         {:else if page.state.popupPhase === "symbolic-links"}
             <div class="flex flex-col gap-6 shrink-0 max-w-full w-[30rem]">
@@ -356,7 +357,7 @@
                 <p>You can toggle the following of symbolic links with this environtment variable: <CodeChunk>{envVars.FM_FOLLOW_SYMBOLIC_LINKS}</CodeChunk> by setting it to <CodeChunk>true</CodeChunk> or <CodeChunk>false</CodeChunk>.</p>
             </div>
 
-            <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] tw-form-button">Go back</button>
+            <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] basic-input-button">Go back</button>
         {/if}
     {:else if alreadySetup === true}
         <div class="flex flex-col gap-6 items-center">

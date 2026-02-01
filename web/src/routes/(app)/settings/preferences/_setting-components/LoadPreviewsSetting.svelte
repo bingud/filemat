@@ -28,7 +28,7 @@
     
     <button
         on:click={toggle} 
-        class="mt-2 w-fit px-4 py-2 bg-surface-content rounded-md">
+        class="mt-2 w-fit px-4 py-2 bg-surface-content-button rounded-md">
         {appState.settings.loadAllPreviews ? 'Disable' : 'Enable'}
     </button>
 </div>

@@ -308,7 +308,7 @@
             class="fixed inset-0 z-50 bg-black/50"
         />
         <Dialog.Content>
-            <div class="rounded-lg bg-neutral-50 dark:bg-neutral-900 shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
+            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
                 <p>Enter the authentication code to configure exposed files.</p>
                 <div class="flex flex-col gap-2">
                     <p>The code can be found in:</p>
@@ -319,9 +319,9 @@
                 </div>
                 <form on:submit={verifyAuthCode} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">
                     <label for="code-input">Code:</label>
-                    <input id="code-input" required minlength="16" maxlength="16" bind:value={codeInput}>
+                    <input id="code-input" required minlength="16" maxlength="16" bind:value={codeInput} class="basic-input bg-surface-content!">
 
-                    <button type="submit" class="tw-form-button">{#if !loading}Continue{:else}...{/if}</button>
+                    <button type="submit" class="basic-input-button bg-surface-content!">{#if !loading}Continue{:else}...{/if}</button>
                 </form>
             </div>
         </Dialog.Content>
@@ -340,8 +340,8 @@
                 <form on:submit={addNewConfiguration} class="flex flex-col w-full gap-6">
                     <fieldset class="contents" disabled={newFile.isLoading}>
                         <div class="flex flex-col gap-2 w-full">
-                            <label for="code-input">Full path:</label>
-                            <input id="code-input" required minlength="1" bind:value={newFile.path} use:prefixSlash class="w-full">
+                            <label for="path-input">Full path:</label>
+                            <input id="path-input" required minlength="1" bind:value={newFile.path} use:prefixSlash class="basic-input">
                         </div>
 
                         <!-- Visibility switcher -->
@@ -375,7 +375,7 @@
                             </div>
                         </div>
 
-                        <button type="submit" class="tw-form-button">{#if !newFile.isLoading}Add file{:else}...{/if}</button>
+                        <button type="submit" class="basic-input-button">{#if !newFile.isLoading}Add file{:else}...{/if}</button>
                     </fieldset>
                 </form>
             </div>

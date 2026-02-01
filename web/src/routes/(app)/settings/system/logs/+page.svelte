@@ -193,7 +193,7 @@
 
                 <div class="w-full flex-col">
                     <p>IP address</p>
-                    <input bind:value={ipInput} class="basic-input" placeholder="1.2.3.4">
+                    <input bind:value={ipInput} class="basic-input" placeholder="0.0.0.0">
                 </div>
 
                 <div class="w-full flex-col">

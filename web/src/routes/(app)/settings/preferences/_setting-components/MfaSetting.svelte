@@ -16,7 +16,7 @@
     let phase = $state(1)
     let previousMfaStatus: boolean | null = $state(null)
 
-    let totpInput: number | undefined = $state()
+    let totpInput: string | undefined = $state()
 
     // QR code generation
     $effect(() => {
@@ -190,7 +190,7 @@
     
     <button
         on:click={toggleMfa} 
-        class="mt-2 w-fit px-4 py-2 bg-surface-content rounded-md">
+        class="mt-2 w-fit px-4 py-2 bg-surface-content-button rounded-md">
         {auth.principal?.mfaTotpStatus ? 'Disable' : 'Enable'} 2FA
     </button>
 </div>
@@ -218,7 +218,7 @@
                 <div class="flex flex-col gap-6">
                     <label for="in
                     put-totp" class="">Enter the 6-digit code to disable 2FA:</label>
-                    <input use:autofocus id="input-totp" class="!rounded-lg w-[10rem] max-w-full" type="number" max="999999" bind:value={totpInput}>
+                    <input use:autofocus id="input-totp" class="!rounded-lg w-[10rem] max-w-full basic-input" type="number" max="999999" bind:value={totpInput}>
                 </div>
 
                 <div class="flex gap-6 mt-auto">

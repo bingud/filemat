@@ -21,7 +21,7 @@
     })
 
     $effect(() => {
-        return appState.title.register"Create a new role"()
+        return appState.title.register("Create a new role")
     })
 
     async function submit() {
@@ -88,7 +88,7 @@
     <form class="flex flex-col gap-8 w-full" on:submit|preventDefault={submit}>
         <div class="flex flex-col w-[27rem] max-w-full gap-2">
             <label for="name-input">Name</label>
-            <input required disabled={running} bind:value={nameInput} id="name-input" minlength="1" maxlength="128">
+            <input required disabled={running} bind:value={nameInput} id="name-input" minlength="1" maxlength="128" class="basic-input">
         </div>
 
         <div class="flex flex-col w-[35rem] max-w-full gap-2">
@@ -102,7 +102,7 @@
             </div>
         </div>
 
-        <button type="submit" class="tw-form-button w-fit">{#if !running}Create{:else}Creating...{/if}</button>
+        <button type="submit" class="basic-input-button max-w-[27rem]">{#if !running}Create{:else}Creating...{/if}</button>
     </form>
 </div>
 

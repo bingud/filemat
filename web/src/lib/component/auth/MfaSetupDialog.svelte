@@ -22,7 +22,7 @@
         onCancel: () => any,
         onSubmit: () => any,
         onFinish?: () => any,
-        totpInput: number | undefined,
+        totpInput: string | undefined,
     } = $props()
 
     function goBack() { phase -= 1 }
@@ -33,7 +33,7 @@
 </script>
 
 
-<CustomDialog bind:isOpen={isOpen} classes="w-[35rem] h-[40rem]">
+<CustomDialog bind:isOpen={isOpen} classes="w-[35rem] h-[40rem]" onOpenChange={(open) => { if (!open) onCancel() }}>
     <div class="size-full flex flex-col items-center px-4 py-4 gap-8 overflow-hidden">
         {#if credentials}
             {#if phase === 1}
@@ -58,7 +58,7 @@
 
                 <div class="flex flex-col gap-2">
                     <label for="input-totp" class="">Enter the 6-digit code</label>
-                    <input use:autofocus id="input-totp" class="!rounded-lg w-[10rem] max-w-full" type="number" max="999999" bind:value={totpInput}>
+                    <input use:autofocus id="input-totp" class="w-[10rem] max-w-full basic-input" type="text" inputmode="numeric" bind:value={totpInput}>
                 </div>
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
@@ -75,7 +75,7 @@
                 <h2 class="text-2xl">Backup Codes</h2>
 
                 <div class="flex flex-col gap-8 w-full items-center">
-                    <p class="text-sm text-neutral-700 dark:text-neutral-300 text-center">
+                    <p class="text-neutral-700 dark:text-neutral-300 text-center">
                         2FA was enabled.<br>Save these backup codes in a secure location. You can use them to access your account if you lose access to your 2FA.
                     </p>
                     <div class="grid grid-cols-2 gap-3 w-full max-w-[20rem]">
@@ -88,10 +88,6 @@
                 </div>
 
                 <div class="w-full flex gap-10 items-center justify-center h-[4rem] mt-auto">
-                    <button on:click={goBack} class="rounded-lg bg-neutral-900 border px-6 py-3 flex gap-2 bg-surface-content-button">
-                        <ChevronLeftIcon class="h-[1rem] my-auto" />
-                        Back
-                    </button>
                     <button use:disabledFor={6000} on:click={three_finish} class="rounded-lg border border-neutral-700 px-6 py-3 flex gap-2 disabled:opacity-50 bg-surface-content-button">
                         Continue
                         <ChevronRightIcon class="h-[1rem] my-auto" />

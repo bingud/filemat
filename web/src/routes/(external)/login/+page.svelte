@@ -22,7 +22,7 @@
     let mfaSetupOpen = $state(false)
     let mfaSetupPhase = $state(1)
     let mfaQrCodeBase64: string | null = $state(null)
-    let mfaSetupTotpInput: number | undefined = $state()
+    let mfaSetupTotpInput: string | undefined = $state()
 
     $effect(() => {
         if (!mfaCredentials || !mfaCredentials.url) {
@@ -129,6 +129,17 @@
     function finishMfaSetup() {
         goto(`/`)
     }
+
+    function cancelMfaSetup() {
+        mfaSetupOpen = false
+        phase = "login"
+        totpInput = ""
+        mfaCredentials = null
+        mfaSetupPhase = 1
+        mfaQrCodeBase64 = null
+        mfaSetupTotpInput = ""
+    }
+    $inspect(phase)
 </script>
 
 
@@ -138,12 +149,12 @@
     {#if phase === "login" || phase === "setup-mfa"}
         <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={() => { submit_password() }} title="Login to Filemat">
             <label for="username-input">Email or username</label>
-            <input type="text" bind:value={usernameInput} minlength="1" maxlength="256" required title="Enter email or username" id="username-input" class="">
+            <input type="text" bind:value={usernameInput} minlength="1" maxlength="256" required title="Enter email or username" id="username-input" class="basic-input" autocomplete="username" autofocus>
 
             <label for="password-input">Password</label>
-            <input type="password" bind:value={passwordInput} minlength="4" maxlength="256" required title="Enter your password" id="password-input" class="">
+            <input type="password" bind:value={passwordInput} minlength="4" maxlength="256" required title="Enter your password" id="password-input" class="basic-input" autocomplete="current-password">
 
-            <button type="submit" class="tw-form-button">{running ? "..." : "Login"}</button>
+            <button type="submit" class="basic-input-button">{running ? "..." : "Login"}</button>
         </form>
 
         {#if phase === "setup-mfa" && mfaQrCodeBase64}
@@ -152,7 +163,7 @@
                 credentials={mfaCredentials!}
                 bind:phase={mfaSetupPhase}
                 qrCodeBase64={mfaQrCodeBase64}
-                onCancel={() => { mfaSetupOpen = false }}
+                onCancel={cancelMfaSetup}
                 onSubmit={() => { submit_password(true) }}
                 onFinish={finishMfaSetup}
                 bind:totpInput={mfaSetupTotpInput}
@@ -161,9 +172,9 @@
     {:else if phase === "totp"}
         <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_totp} title="Login to Filemat">
             <label for="password-input">2FA code</label>
-            <input type="text" bind:value={totpInput} minlength="6" maxlength="6" required title="Enter 2FA code" id="totp-input" class="" placeholder="000 000">
+            <input type="text" inputmode="numeric" bind:value={totpInput} minlength="6" maxlength="6" required title="Enter 2FA code" id="totp-input" class="basic-input" placeholder="000 000">
 
-            <button type="submit" class="tw-form-button">{running ? "..." : "Login"}</button>
+            <button type="submit" class="basic-input-button">{running ? "..." : "Login"}</button>
         </form>
     {/if}
 </div>

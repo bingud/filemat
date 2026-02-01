@@ -25,11 +25,6 @@ export function isFile(meta: FileMetadata | null | undefined): boolean {
 }
 
 /**
- * Returns a template for a page title.
- */
-export function pageTitle(text: string) { return `${text} — Filemat` }
-
-/**
  * Logs an exception
  */
 export function handleException(message: string, userMessage: string | null, exception: any) {
@@ -836,22 +831,22 @@ export function sortFileMetadata(fileList: FullFileMetadata[], mode: FileSorting
 
     if (mode === "modified") {
         if (direction === "asc") {
-            sortedFiles = sortArrayByNumber(files, f => f.modifiedDate)
-            if (folders) sortedFolders = sortArrayByNumber(folders, f => f.modifiedDate)
-        } else {
             sortedFiles = sortArrayByNumberDesc(files, f => f.modifiedDate)
             if (folders) sortedFolders = sortArrayByNumberDesc(folders, f => f.modifiedDate)
+        } else {
+            sortedFiles = sortArrayByNumber(files, f => f.modifiedDate)
+            if (folders) sortedFolders = sortArrayByNumber(folders, f => f.modifiedDate)
         }
     } else if (mode === "name") {
         sortedFiles = sortArrayAlphabetically(files, f => f.filename!, direction)
         if (folders) sortedFolders = sortArrayAlphabetically(folders, f => f.filename!, direction)
     } else if (mode === "created") {
         if (direction === "asc") {
-            sortedFiles = sortArrayByNumber(files, f => f.createdDate)
-            if (folders) sortedFolders = sortArrayByNumber(folders, f => f.createdDate)
-        } else {
             sortedFiles = sortArrayByNumberDesc(files, f => f.createdDate)
             if (folders) sortedFolders = sortArrayByNumberDesc(folders, f => f.createdDate)
+        } else {
+            sortedFiles = sortArrayByNumber(files, f => f.createdDate)
+            if (folders) sortedFolders = sortArrayByNumber(folders, f => f.createdDate)
         }
     } else if (mode === "size") {
         if (direction === "asc") {
