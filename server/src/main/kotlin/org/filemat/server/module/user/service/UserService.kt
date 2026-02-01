@@ -31,7 +31,7 @@ class UserService(
         }
 
         try {
-            userRepository.updateUsername(meta.targetUserId, email)
+            userRepository.updateEmail(meta.targetUserId, email)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
