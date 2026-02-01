@@ -70,6 +70,8 @@ class AdminUserService(
             isRequired = enforce
         ).also {
             if (it.isSuccessful) {
+                authService.logoutUserByUserId(meta.targetUserId)
+
                 logService.info(
                     type = LogType.AUDIT,
                     action = meta.action,

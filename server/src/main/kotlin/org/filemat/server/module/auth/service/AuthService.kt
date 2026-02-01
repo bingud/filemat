@@ -234,10 +234,20 @@ class AuthService(
 
     fun logoutUserByUserId(userId: Ulid): Result<Unit> {
         authTokenService.removeTokensByUserId(userId).let {
-            if (it.isNotSuccessful) return it
+            if (it.isNotSuccessful) {
+                logService.error(
+                    type = LogType.AUTH,
+                    action = UserAction.LOGOUT_USER_SESSIONS,
+                    description = "Failed to log out user",
+                    message = it.errorOrNull ?: "No error message. Failed to log out all user sessions by user ID.",
+                    targetId = userId,
+                )
+                return it
+            }
         }
 
         tokenToUserIdMap.removeIf { key, value -> value.userId == userId }
+
         return Result.ok()
     }
 }

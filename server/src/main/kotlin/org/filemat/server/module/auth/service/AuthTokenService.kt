@@ -72,7 +72,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
 
     fun removeTokensByUserId(userId: Ulid): Result<Unit> {
         try {
-            val result = authTokenRepository.deleteToken(userId.toString())
+            val result = authTokenRepository.removeTokensByUserId(userId.toString())
             return Result.ok()
         } catch (e: Exception) {
             logService.error(
