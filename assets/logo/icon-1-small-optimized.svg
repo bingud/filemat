@@ -1,0 +1,13 @@
+<svg width="512" height="512" version="1.1" viewBox="0 0 135.47 135.47" xmlns="http://www.w3.org/2000/svg">
+ <rect x="-2.4023e-6" y="-2.4023e-6" width="135.47" height="135.47" rx="0" ry="0" style="fill:#121212;paint-order:normal"/>
+ <ellipse cx="106.77" cy="103.21" rx="14.259" ry="18.586" style="fill:none;stroke-linecap:square;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m106.77 84.624h-78.017" style="fill:none;stroke-linecap:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m106.77 121.8h-78.017" style="fill:none;stroke-linecap:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m28.756 121.8a14.277 18.587 0 0 1-12.364-9.2933 14.277 18.587 0 0 1 0-18.587 14.277 18.587 0 0 1 12.364-9.2933" style="fill:none;stroke-linecap:square;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m119.66 111.16c-3.0315 6.8784-10.836 5.4653-14.938-0.0153-2.5617-3.4226-3.9089-9.784-1.5489-13.707 1.0727-1.9175 2.3943-3.6008 4.9111-2.6409 4.432 1.6904 3.5597 9.3547 3.6442 9.2702" style="display:none;fill:none;paint-order:normal;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m43.012 84.624v-70.952" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m43.012 13.671h59.353" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m121.03 102.82-0.21943-70.188" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m102.37 13.671 18.448 18.956" style="fill:none;paint-order:normal;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:13.229;stroke:#fff"/>
+ <path d="m67.734 65.935v-30.462h17.939v4.6817h-13.212v8.3207h12.263v4.5795h-12.263v12.88z" style="display:none;fill:#fff;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:5;stroke-width:4.4979" aria-label="F"/>
+</svg>
