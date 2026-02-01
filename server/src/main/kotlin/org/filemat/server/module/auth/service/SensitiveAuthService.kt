@@ -9,15 +9,16 @@ import java.util.concurrent.TimeUnit
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.user.model.UserAction
 
 
 /**
  * Service for strict authentication (proof of physical access to the backend)
  */
 @Service
-class SensitiveAuthService(
-
-) {
+class SensitiveAuthService(private val logService: LogService) {
     final val maxCodeAge = 300L
 
     // Code, expirationDate
@@ -62,6 +63,12 @@ class SensitiveAuthService(
             val file = File(Props.authCodeFile)
             file.writeText(otp)
         } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.GENERATE_ADMIN_OTP,
+                description = "Failed to save admin OTP to a file.",
+                message = e.stackTraceToString(),
+            )
             return Result.error("Failed to save code to a file.")
         }
         return Result.ok()

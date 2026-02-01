@@ -64,7 +64,8 @@ enum class UserAction(val index: Int) {
     REMOVE_SAVED_FILE(55),
     UPDATE_SAVED_FILE(56),
     COPY_FILE(57),
-    DUPLICATE_ENTITY(58);
+    DUPLICATE_ENTITY(58),
+    GENERATE_ADMIN_OTP(59);
 
     companion object {
         init {
