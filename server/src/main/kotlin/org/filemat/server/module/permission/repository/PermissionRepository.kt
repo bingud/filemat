@@ -1,9 +1,7 @@
 package org.filemat.server.module.permission.repository
 
 import com.github.f4b6a3.ulid.Ulid
-import org.filemat.server.module.permission.model.EntityPermission
 import org.filemat.server.module.permission.model.EntityPermissionDto
-import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.PermissionType
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query

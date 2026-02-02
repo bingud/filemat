@@ -2,8 +2,6 @@ package org.filemat.server.module.log.repository
 
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.module.log.model.Log
-import org.filemat.server.module.log.model.LogLevel
-import org.filemat.server.module.log.model.LogType
 import org.springframework.data.jdbc.repository.query.Modifying
 import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.CrudRepository
@@ -57,8 +55,8 @@ interface LogRepository : CrudRepository<Log, Int> {
         userId: Ulid?,
         targetId: Ulid?,
         ip: String?,
-        severityList: List<LogLevel>?,
-        logTypeList: List<LogType>?,
+        severityList: List<Int>?,
+        logTypeList: List<Int>?,
         fromDate: Long?,
         toDate: Long?,
     ): List<Log>

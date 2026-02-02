@@ -152,9 +152,9 @@ class LogService(
 
         try {
             logRepository.insertLog(
-                level = level.ordinal,
-                type = type.ordinal,
-                action = action.ordinal,
+                level = level.index,
+                type = type.index,
+                action = action.index,
                 createdDate = createdDate,
                 description = description,
                 message = message,
@@ -189,8 +189,8 @@ class LogService(
                 userId = log.userId,
                 targetId = log.targetId,
                 ip = log.ip,
-                severityList = log.severityList.takeIf { it.isNotEmpty() },
-                logTypeList = log.logTypeList.takeIf { it.isNotEmpty() },
+                severityList = log.severityList.map { it.index }.takeIf { it.isNotEmpty() },
+                logTypeList = log.logTypeList.map { it.index }.takeIf { it.isNotEmpty() },
                 fromDate = log.fromDate,
                 toDate = log.toDate,
             ).toResult()

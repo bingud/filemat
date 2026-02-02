@@ -79,7 +79,6 @@ class SystemPermissionListToStringConverter : Converter<List<SystemPermission>, 
 @ReadingConverter
 class StringToSystemPermissionListConverter : Converter<String, List<SystemPermission>> {
     override fun convert(source: String): List<SystemPermission> {
-        println("to multiple permissions")
         return Json.decodeFromString<List<Int>>(source).map { SystemPermission.fromInt(it) }
     }
 }
@@ -97,7 +96,6 @@ class FilePermissionListToStringConverter : Converter<List<FilePermission>, Stri
 @ReadingConverter
 class StringToFilePermissionListConverter : Converter<String, List<FilePermission>> {
     override fun convert(source: String): List<FilePermission> {
-        println("to multiple permissions")
         return Json.decodeFromString<List<Int>>(source).map { FilePermission.fromInt(it) }
     }
 }
