@@ -210,7 +210,7 @@
         />
     {/if}
 {:else if auth.principal?.mfaTotpStatus === true}
-    <CustomDialog bind:isOpen={dialogOpen} classes="w-fit max-w-[32rem] h-[25rem]">
+    <CustomDialog bind:isOpen={dialogOpen} class="w-fit! h-[25rem]!">
         <div class="size-full flex flex-col px-4 py-4 gap-8 overflow-hidden">
             {#if phase === 1}
                 <h2 class="text-2xl">Disable 2FA</h2>
@@ -222,10 +222,10 @@
                 </div>
 
                 <div class="flex gap-6 mt-auto">
-                    <button on:click={cancel} class="rounded-lg bg-surface-content px-6 py-3 flex gap-2 ">
+                    <button on:click={cancel} class="basic-button bg-transparent">
                         Cancel
                     </button>
-                    <button on:click={disable_one_submit} class="rounded-lg bg-surface-content px-6 py-3 flex gap-2 ">
+                    <button on:click={disable_one_submit} class="basic-button bg-surface-content-button!">
                         Disable 2FA
                     </button>
                 </div>

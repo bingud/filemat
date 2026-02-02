@@ -57,7 +57,7 @@
 
 <Popover.Root bind:open={filesState.ui.fileContextMenuPopoverOpen} onOpenChange={entryMenuPopoverOnOpenChange}>
     <Popover.Content onInteractOutside={() => { filesState.ui.fileContextMenuPopoverOpen = false }} customAnchor={entryMenuButton} align="start" >
-        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
+        <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-popover select-none">
             <a 
                 href={`${filesState.meta.pagePath}${menuEntry.path}`}
                 on:click={close}

@@ -99,6 +99,7 @@
     onOpenChange={handleClose}
     title={dialogTitle}
     description={dialogMessage}
+    class="w-[30rem]!"
 >
     <input
         bind:value={inputValue}

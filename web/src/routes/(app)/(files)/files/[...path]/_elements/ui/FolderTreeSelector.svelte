@@ -6,6 +6,7 @@
     import { Dialog } from '$lib/component/bits-ui-wrapper'
     import ChevronDownIcon from '$lib/component/icons/ChevronDownIcon.svelte'
     import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte'
+    import CustomDialog from '$lib/component/popover/CustomDialog.svelte';
     import { onMount } from 'svelte'
 
     interface FolderNode {
@@ -374,72 +375,64 @@
     }
 </script>
 
-<Dialog.Root bind:open={folderSelectorState.isOpen} onOpenChange={handleClose}>
-    <Dialog.Content 
-        class="fixed left-[50%] top-[50%] z-50 flex flex-col w-[40rem] max-w-full h-[40rem] max-h-full translate-x-[-50%] translate-y-[-50%] 
-            border-[1px] border-neutral-300 dark:border-neutral-700
-            bg-neutral-50 dark:bg-neutral-800
-            gap-4 p-6 sm:rounded-sm shadow-md duration-200 !select-none
-            data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 
-            data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] 
-            data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]
-        "
-    >
-        <Dialog.Title class="text-lg font-semibold text-neutral-800 dark:text-neutral-50 h-fit">
-            {dialogTitle}
-        </Dialog.Title>
-
-        <div class="flex flex-col flex-1 w-full min-h-0 gap-4">
-            <div class="flex flex-col flex-1 min-h-0 border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 overflow-hidden">
-                <div class="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 h-10 px-3">
-                    <span class="mr-1 opacity-50 text-sm whitespace-nowrap">Selected:</span>
-                    <input 
-                        id="address-bar-input"
-                        type="text" 
-                        class="w-full bg-transparent !border-none !outline-none !ring-0 font-medium text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400"
-                        value={addressBarValue}
-                        on:input={handleAddressInput}
-                        spellcheck="false"
-                        autocomplete="off"
-                    />
-                </div>
-                
-                <div class="flex-1 p-1 overflow-y-auto custom-scrollbar min-h-0">
-                    {#if folderTree}
-                        {@render treeNode(folderTree)}
-                    {:else}
-                        <div class="flex items-center justify-center h-full text-neutral-500">
-                            <span>Loading...</span>
-                        </div>
-                    {/if}
-                </div>  
+<CustomDialog
+    bind:isOpen={folderSelectorState.isOpen}
+    onOpenChange={handleClose}
+    title={dialogTitle}
+    class="max-sm:p-4!"
+>
+    <div class="flex flex-col flex-1 w-full min-h-0 gap-4">
+        <div class="flex flex-col flex-1 w-full min-h-0 border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 overflow-hidden">
+            <div class="flex items-center w-full gap-1 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 h-10 px-3 overflow-hidden">
+                <span class="mr-1 opacity-50 text-sm whitespace-nowrap shrink-0">Selected:</span>
+                <input 
+                    id="address-bar-input"
+                    type="text" 
+                    class="flex-grow max-w-full min-w-0 bg-transparent !border-none !outline-none !ring-0 font-medium text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 truncate"
+                    value={addressBarValue}
+                    on:input={handleAddressInput}
+                    spellcheck="false"
+                    autocomplete="off"
+                />
             </div>
-
-            {#if !hideFilenameInput}
-                <div class="flex gap-4 items-center">
-                    <label for="selected-filename-input" class="!w-fit">Filename:</label>
-                    <input id="selected-filename-input" bind:value={filenameInput} class="basic-input !max-w-full !flex-grow">
-                </div>
-            {/if}
             
-            <div class="flex justify-end gap-2 mt-4">
-                <button 
-                    class="px-4 py-2 rounded bg-neutral-200 hover:bg-neutral-300 text-neutral-800 dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-100"
-                    on:click={handleClose}
-                >
-                    Cancel
-                </button>
-                <button 
-                    class="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    on:click={confirmSelection}
-                    disabled={!selectedPath}
-                >
-                    Select
-                </button>
-            </div>
+            <div class="w-full flex-1 p-1 overflow-auto custom-scrollbar min-h-0">
+                {#if folderTree}
+                    {@render treeNode(folderTree)}
+                {:else}
+                    <div class="flex items-center justify-center h-full text-neutral-500">
+                        <span>Loading...</span>
+                    </div>
+                {/if}
+            </div>  
         </div>
-    </Dialog.Content>
-</Dialog.Root>
+
+        {#if !hideFilenameInput}
+            <div class="flex gap-4 items-center flex-wrap min-w-0 w-full">
+                <label for="selected-filename-input" class="!w-fit shrink-0">Filename:</label>
+                <input id="selected-filename-input" bind:value={filenameInput} class="basic-input-light !max-w-full !flex-grow min-w-0">
+            </div>
+        {/if}
+        
+        <div class="flex justify-end gap-2 mt-4 flex-wrap w-full">
+            <button 
+                class="px-4 py-2 rounded bg-neutral-200 hover:bg-neutral-300 text-neutral-800 dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-100 whitespace-nowrap"
+                on:click={handleClose}
+            >
+                Cancel
+            </button>
+            <button 
+                class="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                on:click={confirmSelection}
+                disabled={!selectedPath}
+            >
+                Select
+            </button>
+        </div>
+    </div>
+</CustomDialog>
+
+
 
 {#snippet treeNode(node: FolderNode, level: number = 0)}
     <div class="w-full relative">
@@ -447,12 +440,12 @@
             <div use:onSelectedFolderElementMount class="size-0 absolute"></div>
         {/if}
 
-        <div class="flex items-center py-1 {node.isSelected ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'} rounded cursor-pointer"
+        <div class="flex items-center py-1 {node.isSelected ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-neutral-100 dark:hover:bg-neutral-700'} rounded cursor-pointer min-w-0 w-full"
             style="padding-left: {level}rem"
             on:click={() => selectFolder(node)}
             on:dblclick={(e) => { e.stopPropagation(); toggleFolder(node); }}
         >
-            <button class="mr-1 text-neutral-500 cursor-pointer aspect-square h-[1.5rem]" on:click|stopPropagation={() => toggleFolder(node)}>
+            <button class="mr-1 text-neutral-500 cursor-pointer aspect-square h-[1.5rem] shrink-0" on:click|stopPropagation={() => toggleFolder(node)}>
                 <div class="h-[0.8rem] my-auto">
                     {#if (node.children && node.children.length > 0) || !node.isLoaded}
                         {#if node.isExpanded}
@@ -466,15 +459,15 @@
                 </div>
             </button>
 
-            <span class="mr-2 {node.fullPath === initialFolder ? 'font-bold text-blue-600 dark:text-blue-400' : ''}">
+            <span class="mr-2 {node.fullPath === initialFolder ? 'font-bold text-blue-600 dark:text-blue-400' : ''} truncate min-w-0 flex-1">
                 {node.name === "" ? "Root" : node.name}
                 {#if node.fullPath === initialFolder}
-                    <span class="text-[10px] ml-1 opacity-70">(Current Folder)</span>
+                    <span class="text-[10px] ml-1 opacity-70 whitespace-nowrap">(Current Folder)</span>
                 {/if}
             </span>
             
             {#if node.isLoading}
-                <span class="text-neutral-400">⟳</span>
+                <span class="text-neutral-400 shrink-0">⟳</span>
             {/if}
         </div>
 

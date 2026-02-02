@@ -128,6 +128,8 @@
     async function option_move(entry: FileMetadata) {
         if (filesState.isSearchOpen) return
 
+        closeFileContextMenu()
+
         const newPath = await folderSelectorState.show!({
             title: "Choose the new file location:",
             initialSelection: parentFromPath(entry.path),
@@ -137,11 +139,11 @@
         if (!newPath) return
 
         moveFile(entry.path, newPath)
-
-        closeFileContextMenu()
     }
 
     async function option_copy(entry: FileMetadata) {
+        closeFileContextMenu()
+
         const newPath = await folderSelectorState.show!({
             title: "Choose location for the copied file:",
             initialSelection: parentFromPath(entry.path),
@@ -151,8 +153,6 @@
         if (!newPath) return
 
         copyFile(entry.path, newPath)
-
-        closeFileContextMenu()
     }
 
     async function option_save(entry: FileMetadata, action: "save" | "unsave") {

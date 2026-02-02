@@ -66,6 +66,7 @@
     onOpenChange={handleClose}
     title={dialogTitle}
     description={dialogMessage}
+    class="w-[30rem]!"
 >
     <div class="flex justify-end gap-2">
         <button 

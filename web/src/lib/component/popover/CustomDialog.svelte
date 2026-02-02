@@ -8,14 +8,14 @@
         description,
         onOpenChange,
         isOpen = $bindable(),
-        classes,
+        class: classes,
     }: {
         children: snippet,
         title?: string,
         description?: string,
         onOpenChange?: (state: boolean) => any,
         isOpen: boolean,
-        classes?: string
+        class?: string
     } = $props()
 </script>
 
@@ -23,12 +23,14 @@
 <Dialog.Root bind:open={isOpen} onOpenChange={onOpenChange}>
     <Dialog.Portal>
         <Dialog.Overlay
-            class="fixed inset-0 z-50 bg-black/50"
+            class="fixed inset-0 z-dialog-overlay bg-black/50"
         />
         <Dialog.Content
             class="
-                {classes || ""} fixed left-[50%] top-[50%] z-50 grid w-full max-w-md md:w-full translate-x-[-50%] translate-y-[-50%] gap-4 p-6
-                bg-surface sm:rounded-sm
+                fixed translate-x-[-50%] translate-y-[-50%] left-[50%] top-[50%] z-dialog
+                flex flex-col gap-4 p-6 bg-surface sm:rounded-sm
+                w-[95%] max-w-2xl max-h-[95%]
+                {classes || ""}
             "
         >
             {#if title}

@@ -33,7 +33,7 @@
 </script>
 
 
-<CustomDialog bind:isOpen={isOpen} classes="w-[35rem] h-[40rem]" onOpenChange={(open) => { if (!open) onCancel() }}>
+<CustomDialog bind:isOpen={isOpen} class="w-[35rem]! h-[40rem]!" onOpenChange={(open) => { if (!open) onCancel() }}>
     <div class="size-full flex flex-col items-center px-4 py-4 gap-8 overflow-hidden">
         {#if credentials}
             {#if phase === 1}

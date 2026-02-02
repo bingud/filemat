@@ -41,9 +41,14 @@ html {
 
     --breakpoint-xs: 25.75rem;
 
+    /* z-index */
     --z-index-sidebar: 30;
     --z-index-sidebar-bg: 20;
+    
     --z-index-popover: 10; 
+
+    --z-index-dialog: 50;
+    --z-index-dialog-overlay: 40
 }
 
 
