@@ -104,6 +104,7 @@ class FolderController(private val fileService: FileService) : AController() {
 
         if (result.hasError) return internal(result.error)
         if (result.notFound) return notFound()
+        if (result.rejected) return bad(result.error, "no-permission")
         if (result.isNotSuccessful) return bad(result.error)
 
         val (

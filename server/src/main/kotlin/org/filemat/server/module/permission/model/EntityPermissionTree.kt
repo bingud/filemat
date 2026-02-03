@@ -350,8 +350,8 @@ class EntityPermissionTree() {
      * For example, if user has access to `/folder`, no access to `/folder/subfolder`,
      * but access to `/folder/subfolder/file`, returns permissions for both `/folder` and `/folder/subfolder/file`.
      */
-    fun getAllAccessibleEntitiesForUser(userId: Ulid, roleIds: List<Ulid>): List<EntityPermission> {
-        val result = mutableListOf<EntityPermission>()
+    fun getAllAccessibleEntitiesForUser(userId: Ulid, roleIds: List<Ulid>): List<Pair<Ulid, Set<FilePermission>>> {
+        val result = mutableListOf<Pair<Ulid, Set<FilePermission>>>()
 
         treeLock.read {
             traverseAndCollectTopLevelAccessible(root, userId, roleIds, result)
@@ -367,7 +367,7 @@ class EntityPermissionTree() {
         node: Node,
         userId: Ulid,
         roleIds: List<Ulid>,
-        result: MutableList<EntityPermission>
+        result: MutableList<Pair<Ulid, Set<FilePermission>>>
     ) {
         // Check if user has permission for this node
         val userPermission = node.userPermissions[userId]
@@ -390,9 +390,13 @@ class EntityPermissionTree() {
             if (isTopLevelAccessible(node, userId, roleIds)) {
                 // Add the permissions that grant access
                 if (hasReadPermissionForUser == true) {
-                    userPermission.let { result.add(it) }
+                    userPermission.let { result.add(it.entityId to it.permissions.toSet()) }
+                } else {
+                    if (rolePermissions != null) {
+                        val perms = mergeEntityPermissions(rolePermissions)
+                        rolePermissions.firstOrNull()?.let { result.add(it.entityId to perms) }
+                    }
                 }
-                rolePermissions?.let { result.addAll(rolePermissions) }
             }
         }
 
@@ -403,18 +407,25 @@ class EntityPermissionTree() {
     }
 
     /**
-     * Checks if a node is a top-level accessible entity (parent has no access).
+     * Checks if a node is a top-level accessible entity (no ancestor grants access).
      */
     private fun isTopLevelAccessible(node: Node, userId: Ulid, roleIds: List<Ulid>): Boolean {
         // Root is always top-level if accessible
         if (node.parent == null) return true
 
-        // Check immediate parent - if user doesn't have access to it, this node is top-level
-        val parent = node.parent!!
-        val parentHasUserPermission = parent.userPermissions[userId]?.permissions?.contains(FilePermission.READ) ?: false
-        val parentHasRolePermission = roleIds.any { roleId -> parent.rolePermissions[roleId]?.permissions?.contains(FilePermission.READ) ?: false }
+        // Walk up entire ancestor chain to check if any ancestor grants access
+        var current = node.parent
+        while (current != null) {
+            val hasUserPermission = current.userPermissions[userId]?.permissions?.contains(FilePermission.READ) ?: false
+            val hasRolePermission = roleIds.any { roleId -> current!!.rolePermissions[roleId]?.permissions?.contains(FilePermission.READ) ?: false }
 
-        return !parentHasUserPermission && !parentHasRolePermission
+            if (hasUserPermission || hasRolePermission) {
+                return false  // An ancestor grants access, so this is NOT top-level
+            }
+            current = current.parent
+        }
+
+        return true  // No ancestor grants access, this IS top-level
     }
 
     /**
@@ -444,7 +455,7 @@ class EntityPermissionTree() {
                 }
                 if (applicableRolePerms.isNotEmpty()) {
                     // Merge permissions from all matching roles at this level
-                    return@read applicableRolePerms.flatMap { it.permissions }.toSet()
+                    return@read mergeEntityPermissions(applicableRolePerms)
                 }
 
                 // Move to parent to find inherited permissions
@@ -452,5 +463,9 @@ class EntityPermissionTree() {
             }
             emptySet()
         }
+    }
+
+    private fun mergeEntityPermissions(perms: List<EntityPermission>): Set<FilePermission> {
+        return perms.flatMap { it.permissions }.toSet()
     }
 }

@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.file.component
 
+import com.github.f4b6a3.ulid.Ulid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -17,6 +18,7 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.savedFile.SavedFileService
@@ -124,11 +126,11 @@ class FileEntryListsService(
      * @return List of top-level files that a user has access to
      */
     fun getPermittedFileList(user: Principal): Result<List<FullFileMetadata>> {
-        val entityPermissions = entityPermissionService.getPermittedEntities(user)
+        val entityIds = entityPermissionService.getPermittedEntities(user)
 
-        val fileMetadataList = entityPermissions.mapNotNull { entityPermission ->
+        val fileMetadataList = entityIds.mapNotNull { (entityId: Ulid, permissions: Set<FilePermission>) ->
             // Get entity
-            val entity = entityService.getById(entityPermission.entityId, UserAction.GET_PERMITTED_ENTITIES).valueOrNull ?: return@mapNotNull null
+            val entity = entityService.getById(entityId, UserAction.GET_PERMITTED_ENTITIES).valueOrNull ?: return@mapNotNull null
             if (entity.path == null) return@mapNotNull null
 
             // Get metadata
@@ -140,7 +142,7 @@ class FileEntryListsService(
             val fullMeta = FullFileMetadata.from(
                 meta,
                 isSaved = isSaved,
-                permissions = entityPermission.permissions
+                permissions = permissions
             )
 
             return@mapNotNull fullMeta

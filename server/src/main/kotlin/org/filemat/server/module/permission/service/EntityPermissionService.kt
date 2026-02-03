@@ -42,7 +42,7 @@ class EntityPermissionService(
     private val pathTree = EntityPermissionTree()
 
 
-    fun getPermittedEntities(user: Principal): List<EntityPermission> {
+    fun getPermittedEntities(user: Principal): List<Pair<Ulid, Set<FilePermission>>> {
         return pathTree.getAllAccessibleEntitiesForUser(user.userId, user.roles)
     }
 
