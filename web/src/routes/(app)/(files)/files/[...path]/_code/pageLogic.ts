@@ -33,6 +33,9 @@ export function recoverScrollPosition() {
 }
 
 
+/**
+ * Returns status
+ */
 export async function loadPageData(
     filePath: string,
     options: {
@@ -45,7 +48,7 @@ export async function loadPageData(
         shareToken?: string,
         bodyParams?: Record<string, string>
     }
-) {
+): Promise<null | "no-permission"> {
     filesState.lastFilePathLoaded = filePath
     if (!options.silent && !options.parentFolderOnly) filesState.metaLoading = true
 
@@ -65,12 +68,14 @@ export async function loadPageData(
 
     if (result.isUnsuccessful) {
         if (result.notFound) {
-            if (filesState.path === "/") return
+            if (filesState.path === "/") return null
             if (options.isRefresh) {
                 toast.plain("This file is not available anymore.")
             } else {
                 toast.error("This file was not found.")
             }
+        } else if (result.isRejected) {
+            return "no-permission"
         }
 
         const pagePath = filesState.isShared ? filesState.meta.pagePath : "/files"
@@ -78,8 +83,8 @@ export async function loadPageData(
     }
     const dataResult = result.value
 
-    if (filesState.lastFilePathLoaded !== filePath) return
-    if (!result) return
+    if (filesState.lastFilePathLoaded !== filePath) return null
+    if (!result) return null
 
     if (options.fileDataType === "object") {
         const data = dataResult as FileData
@@ -134,6 +139,7 @@ export async function loadPageData(
         const data = dataResult as FullFileMetadata[]
         filesState.data.entries = data
     }
+    return null
 }
 
 

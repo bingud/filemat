@@ -42,6 +42,8 @@ export async function getFileData(
     if (status.notFound) {
         return Result.notFound()
     } else if (status.failed) {
+        if (path === "/" && json.error === "no-permission") return Result.reject(json.message)
+
         handleErr({
             description: `Failed to open file.`,
             notification: options.silent ? undefined : (json.message || `Failed to open file.`),

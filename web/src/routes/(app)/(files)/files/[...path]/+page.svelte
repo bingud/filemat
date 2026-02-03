@@ -61,6 +61,7 @@
     const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
     let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
     
+    let lacksRootFolderPermission = $state(false)
 
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
@@ -139,7 +140,10 @@
             (newPath === "/" && (stateMeta.isArrayOnly) 
                 ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array",  shareToken: shareToken,            bodyParams })
                 : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: !isSearchedFile, shareToken: shareToken })
-            ).then(() => {
+            ).then((status) => {
+                if (status === "no-permission") {
+                    lacksRootFolderPermission = true
+                }
                 recoverScrollPosition()
             })
 
@@ -350,9 +354,20 @@
                         <Loader></Loader>
                     </div>
                 {:else if !filesState.data.currentMeta && !stateMeta.isArrayOnly}
-                    <div class="center">
-                        <p class="text-xl">Could not open this file.</p>
-                    </div>
+                    {#if lacksRootFolderPermission}
+                        <div class="flex flex-col items-center justify-center size-full gap-4">
+                            <p class="text-xl">Missing permission to view the root folder</p>
+                            <p class="text-sm">
+                                Open the
+                                <a href="/accessible-files" class="text-blue-300 hover:underline">Accessible to me</a>
+                                tab to view files you have access to.
+                            </p>
+                        </div>                    
+                    {:else}
+                        <div class="center">
+                            <p class="text-xl">Could not open this file</p>
+                        </div>
+                    {/if}
                 {/if}
             </div>
         </div>

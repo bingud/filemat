@@ -553,7 +553,8 @@ export function dynamicInterval(
     }
 }
 
-export type ResultType = 'value' | 'error' | 'notFound'
+export type ResultType = 'value' | 'error' | 'notFound' | 'rejected'
+
 export class Result<T> {
     private constructor(
         private readonly type: ResultType,
@@ -573,6 +574,10 @@ export class Result<T> {
         return new Result<T>('notFound')
     }
 
+    static reject<T>(error: string) {
+        return new Result<T>('rejected', undefined, error)
+    }
+
     get isOk() {
         return this.type === 'value'
     }
@@ -585,6 +590,10 @@ export class Result<T> {
         return this.type === 'notFound'
     }
 
+    get isRejected() {
+        return this.type === 'rejected'
+    }
+
     get value() {
         return this._value
     }
@@ -594,7 +603,7 @@ export class Result<T> {
     }
 
     get isUnsuccessful() {
-        return this.type !== "value"
+        return this.type !== 'value'
     }
 }
 

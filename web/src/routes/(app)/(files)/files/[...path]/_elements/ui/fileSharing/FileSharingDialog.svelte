@@ -212,9 +212,6 @@
 <Dialog.Root bind:open={open}>
     <Dialog.Trigger>
         {#snippet child({props})}
-            <!-- <button {...props} title="File sharing" class="flex items-center h-[2.5rem] w-fit gap-3 px-3 rounded-md bg-surface-content-button disabled:opacity-50 disabled:cursor-not-allowed">
-                File sharing
-            </button> -->
             <button {...props} title="File sharing" class="basic-button bg-surface-content-button!">
                 <span class="size-4"><ShareIcon /></span>
                 <span>File sharing</span>
