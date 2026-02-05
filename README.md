@@ -22,8 +22,9 @@ Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org.
 - User management, roles
 - Granular permissions for users and roles
     - File permissions
-    - Application administration permissions
-- Public file sharing
+    - Application administrative permissions
+- File sharing with public link (optional password)
+- Text file editing, video streaming
 
 
 ## Requirements
@@ -89,9 +90,15 @@ Input multiple values by putting a colon in between (`/one:/two`)
 - **Frontend:** SvelteKit (Svelte 5), statically built and served as static files by the backend
 - **Database:** SQLite ([More details here](</docs/database.md>))
 
+#### How files are exposed / secured
+Files must be explicitly configured to be exposed, so that Filemat can allow users to interact with them.  
+The application data folder is fully blocked by default, and can only be made accessible using an environment variable.  
+Symbolic links can be toggled.  
+
+In order to make any of these changes through the web UI, a user must have CLI access to the Filemat deployment to authenticate.  
+Environment variables override these settings.  
 
 ## Contributing
 
 Bug reports and feature requests are welcome in the GitHub Issues.  
-For larger changes, please open an issue first to discuss what you want
-to add or change.
+For larger changes, please open an issue first to discuss what you want to add or change.
