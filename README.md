@@ -87,7 +87,7 @@ Input multiple values by putting a colon in between (`/one:/two`)
 
 - **Backend:** Spring Boot MVC (Kotlin)
 - **Frontend:** SvelteKit (Svelte 5), statically built and served as static files by the backend
-- **Database:** SQLite (single-file)
+- **Database:** SQLite ([More details here](</docs/database.md>))
 
 
 ## Contributing
