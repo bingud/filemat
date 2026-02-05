@@ -129,7 +129,7 @@ class EntityService(
                 it.value
             }
 
-        val newEntity = create(canonicalPath = canonicalDestinationPath, ownerId = sourceEntity.ownerId, userAction = userAction, followSymLinks = sourceEntity.followSymlinks)
+        val newEntity = create(canonicalPath = canonicalDestinationPath, ownerId = sourceEntity.ownerId, userAction = userAction)
             .let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
@@ -153,7 +153,7 @@ class EntityService(
         return Result.ok(newEntity)
     }
 
-    fun create(canonicalPath: FilePath, ownerId: Ulid?, userAction: UserAction, followSymLinks: Boolean): Result<FilesystemEntity> {
+    fun create(canonicalPath: FilePath, ownerId: Ulid?, userAction: UserAction): Result<FilesystemEntity> {
         val isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
             ?: return Result.notFound()
 
@@ -173,7 +173,6 @@ class EntityService(
             inode = inode,
             isFilesystemSupported = isFilesystemSupported,
             ownerId = ownerId,
-            followSymlinks = followSymLinks
         )
 
         db_create(entity, userAction).let {
@@ -191,7 +190,6 @@ class EntityService(
                 inode = entity.inode,
                 isFilesystemSupported = entity.isFilesystemSupported,
                 ownerId = entity.ownerId,
-                followSymlinks = entity.followSymlinks,
             )
             map_put(entity)
 

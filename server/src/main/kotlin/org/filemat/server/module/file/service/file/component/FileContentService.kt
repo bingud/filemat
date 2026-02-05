@@ -344,7 +344,6 @@ class FileContentService(
                 canonicalPath = canonicalPath,
                 ownerId = user.userId,
                 userAction = UserAction.CREATE_FOLDER,
-                followSymLinks = false
             )
 
             return Result.ok()

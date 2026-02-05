@@ -38,13 +38,12 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
     fun updateInode(entityId: Ulid, inode: Long?): Int
 
     @Modifying
-    @Query("INSERT INTO files (entity_id, path, inode, is_filesystem_supported, owner_user_id, follow_symlinks) VALUES (:entityId, :path, :inode, :isFilesystemSupported, :ownerId, :followSymlinks)")
+    @Query("INSERT INTO files (entity_id, path, inode, is_filesystem_supported, owner_user_id) VALUES (:entityId, :path, :inode, :isFilesystemSupported, :ownerId)")
     fun insert(
         entityId: Ulid,
         path: String?,
         inode: Long?,
         isFilesystemSupported: Boolean,
         ownerId: Ulid?,
-        followSymlinks: Boolean
     ): Int
 }

@@ -170,7 +170,7 @@ class EntityPermissionService(
         if (existingPermission != null) return Result.reject("This ${mode.name.lowercase()} already has a permission.")
 
         val entity = existingEntity
-            ?: entityService.create(canonicalPath = canonicalPath, userId ?: user!!.userId, action, State.App.followSymlinks).let {
+            ?: entityService.create(canonicalPath = canonicalPath, userId ?: user!!.userId, action).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }

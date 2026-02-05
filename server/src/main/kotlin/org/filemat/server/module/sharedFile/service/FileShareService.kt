@@ -205,7 +205,7 @@ class FileShareService(
                 if (it.isSuccessful) return@let it.value
                 null
             }
-        val entity = existingEntity ?: entityService.create(canonicalPath, null, UserAction.SHARE_FILE, State.App.followSymlinks)
+        val entity = existingEntity ?: entityService.create(canonicalPath, null, UserAction.SHARE_FILE)
             .let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value

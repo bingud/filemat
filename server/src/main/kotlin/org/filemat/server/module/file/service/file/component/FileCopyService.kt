@@ -85,7 +85,6 @@ class FileCopyService(private val fileService: FileService, private val filesyst
             canonicalPath = canonicalDestinationPath,
             ownerId = user.userId,
             userAction = UserAction.COPY_FILE,
-            followSymLinks = false
         )
 
         val fileMeta = fileService.getFullMetadata(
