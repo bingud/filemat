@@ -20,8 +20,6 @@ repositories {
 }
 
 dependencies {
-	//	implementation("commons-io:commons-io:2.21.0")
-
 	implementation("com.atlassian:onetime:2.2.0")
 	implementation("org.apache.tika:tika-core:3.2.3")
 	implementation("me.desair.tus:tus-java-server:1.0.0-3.0")
