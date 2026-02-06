@@ -42,13 +42,15 @@ html {
     --breakpoint-xs: 25.75rem;
 
     /* z-index */
-    --z-index-sidebar: 30;
-    --z-index-sidebar-bg: 20;
-    
-    --z-index-popover: 10; 
+    --z-index-floating: 10;
+    --z-index-overlay: 20;
+    --z-index-popover: 30;
 
-    --z-index-dialog: 50;
-    --z-index-dialog-overlay: 40
+    --z-index-sidebar-bg: 40;
+    --z-index-sidebar: 50;
+    
+    --z-index-dialog-overlay: 60
+    --z-index-dialog: 70;
 }
 
 

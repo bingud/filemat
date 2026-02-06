@@ -398,7 +398,7 @@
 
 {#if uploadState.count > 0 && uploadState.panelOpen}
     <div class="
-        fixed z-10 h-full w-full top-0 left-0 pb-4 pointer-events-none  flex items-end justify-end
+        fixed z-overlay h-full w-full top-0 left-0 pb-4 pointer-events-none  flex items-end justify-end
         pr-[1rem] pl-[1rem]
         {filesState.ui.detailsOpen ? "lg:pr-[calc(1rem+var(--spacing-details-sidebar))]" : ""}
     ">

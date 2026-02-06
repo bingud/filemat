@@ -163,7 +163,7 @@
 <div class="relative size-full flex flex-col bg-bg overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
     <!-- Left tap zone -->
     <div 
-        class="absolute left-0 top-0 w-12 h-full z-popover transition-opacity flex items-center {leftHovering ? 'opacity-100' : 'opacity-0'}"
+        class="absolute left-0 top-0 w-12 h-full z-floating transition-opacity flex items-center {leftHovering ? 'opacity-100' : 'opacity-0'}"
         on:mouseenter={() => handleLeftHover(true)}
         on:mouseleave={() => handleLeftHover(false)}
     >
@@ -181,7 +181,7 @@
 
     <!-- Right tap zone -->
     <div 
-        class="absolute right-0 top-0 w-12 h-full z-popover transition-opacity flex items-center justify-end {rightHovering ? 'opacity-100' : 'opacity-0'}"
+        class="absolute right-0 top-0 w-12 h-full z-floating transition-opacity flex items-center justify-end {rightHovering ? 'opacity-100' : 'opacity-0'}"
         on:mouseenter={() => handleRightHover(true)}
         on:mouseleave={() => handleRightHover(false)}
     >
