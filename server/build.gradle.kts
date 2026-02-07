@@ -54,6 +54,7 @@ dependencies {
 	runtimeOnly("org.bytedeco:opencv:4.10.0-1.5.11:linux-arm64")
 	implementation("com.drewnoakes:metadata-extractor:2.18.0")
 
+	implementation("net.coobird:thumbnailator:0.4.21")
 	val twelvemonkeysVersion = "3.12.0"
 	// Core TwelveMonkeys
 	implementation("com.twelvemonkeys.imageio:imageio-core:$twelvemonkeysVersion")
