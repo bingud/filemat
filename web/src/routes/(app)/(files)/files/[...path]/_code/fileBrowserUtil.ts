@@ -195,10 +195,11 @@ export class ImageLoadQueue {
     private scheduleProcess() {
         if (this.rafId !== null) return
         
-        this.rafId = requestAnimationFrame(() => {
+        // setTimeout runs even when the tab is not focused
+        this.rafId = setTimeout(() => {
             this.rafId = null
             this.runProcessLoop()
-        })
+        }, 0) as unknown as number
     }
 
     // Gets the next candidate to load, respecting the sorted order from reorderQueue
@@ -302,12 +303,11 @@ export class ImageLoadQueue {
 
     // Cleanup method for component teardown
     destroy() {
-        // Cancel any pending RAF to prevent orphaned callbacks
         if (this.rafId !== null) {
-            cancelAnimationFrame(this.rafId)
+            clearTimeout(this.rafId)
             this.rafId = null
         }
-        
+
         this.observer?.disconnect()
         this.observer = null
         this.pending.clear()
