@@ -52,6 +52,7 @@ export const fileCategories: Record<string, FileCategory> = {
     "cfg": "text",
     "toml": "text",
     "env": "text",
+    "svg": "text",
 
     // Image Files
     "jpg": "image",
@@ -59,9 +60,13 @@ export const fileCategories: Record<string, FileCategory> = {
     "png": "image",
     "gif": "image",
     "bmp": "image",
-    "svg": "image",
     "webp": "image",
     "ico": "image",
+    "jfif": "image",
+    "wbmp": "image",
+    "avif": "image",
+    "heic": "image",
+    
 
     // Video Files
     "mp4": "video",
