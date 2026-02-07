@@ -37,7 +37,7 @@
             <p class="capitalize">{mode}</p>
         </div>
     </Popover.Trigger>
-    <Popover.Content align="end" class="relative z-50">
+    <Popover.Content align="end" class="relative z-popover">
         <div class="w-[14rem] surface-popover-container">
             {#each entriesOf(fileSortingModes) as [modeId, modeName]}
                 {@const isSelected = mode === modeId}

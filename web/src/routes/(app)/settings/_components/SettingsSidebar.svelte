@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { uiState, type SettingSectionId } from "$lib/code/stateObjects/uiState.svelte"
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte"
+    import { type SettingSectionId } from "$lib/code/module/settings";
     import { goto } from "$app/navigation"
     
     import { type SettingsSection } from "$lib/code/module/settings";

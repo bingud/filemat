@@ -49,7 +49,7 @@ html {
     --z-index-sidebar-bg: 40;
     --z-index-sidebar: 50;
     
-    --z-index-dialog-overlay: 60
+    --z-index-dialog-overlay: 60;
     --z-index-dialog: 70;
 }
 

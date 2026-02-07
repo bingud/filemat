@@ -1,5 +1,6 @@
 import type { Role } from "../auth/types";
-import { config } from "../config/values";
+import { config, type previewSize } from "../config/values";
+import { setPreferenceSetting } from "../module/settings";
 import { appState } from "../stateObjects/appState.svelte";
 import { clientState } from "../stateObjects/clientState.svelte";
 import { filesState } from "../stateObjects/filesState.svelte";
@@ -21,6 +22,17 @@ export function mapRoles(roleIds: ulid[]): Role[] | null {
     return list as Role[]
 }
 
+export function setPreviewSize(size: previewSize) {
+    const isRows = filesState.ui.fileViewType === "rows"
+
+    if (isRows) {
+        setPreferenceSetting("preview_size_rows", size.toString())
+        appState.settings.previewSize.rows = size
+    } else {
+        setPreferenceSetting("preview_size_grid", size.toString())
+        appState.settings.previewSize.grid = size
+    }
+}
 
 /**
  * Detects when the user is idle

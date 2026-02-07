@@ -94,6 +94,7 @@ class SettingState {
     loadAllPreviews = $state(false)
 	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
     clickToOpenFile = $state(false)
+    previewSize = $state({ rows: 2, grid: 2 })
 }
 
 class TitleState {
@@ -108,7 +109,6 @@ class TitleState {
     register(segment: string) {
         untrack(() => {
             this.segments.push(segment)
-            console.log(`Registered ${segment}`)
             return () => {
                 this.segments = this.segments.filter((s) => s !== segment)
             }

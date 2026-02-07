@@ -195,7 +195,3 @@ export function handleUpload() {
 export function handleNewFile() {
     filesState.ui.newFilePopoverOpen = false
 }
-
-export function option_changeFileView() {
-    filesState.ui.switchFileViewType();
-}

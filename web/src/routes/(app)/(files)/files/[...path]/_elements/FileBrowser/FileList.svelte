@@ -1,5 +1,6 @@
 <script lang="ts">
-    import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types";
+    import type { FullFileMetadata } from "$lib/code/auth/types";
+    import { type RowPreviewSize, type GridPreviewSize, config } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { changeSortingMode, type FileListProps } from "../../_code/fileBrowserUtil";
@@ -129,23 +130,43 @@
         </div>
 
         <!-- Each entry is a grid item -->
-        {#each sortedEntries as entry (entry.filename)}
-            <RowFileEntry
-                {entry}
-                {event_dragStart}
-                {event_dragOver}
-                {event_dragLeave}
-                {event_drop}
-                {event_dragEnd}
-                {entryOnClick}
-                {entryOnContextMenu}
-                {onClickSelectCheckbox}
-                {entryMenuOnClick}
-            />
-        {/each}
-    {:else if filesState.ui.fileViewType === "tiles"}
-        <div class="w-full h-fit grid gap-2
-                grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]"
+        {#key config.preview}
+            {@const size = filesState.ui.previewSize as RowPreviewSize}
+
+            {#each sortedEntries as entry (entry.filename)}
+                <div 
+                    style:--icon-padding="{size.iconPadding}rem" 
+                    style:--menu-icon-padding="{size.menuIconPadding}rem"
+                    class="contents"
+                >
+                    <RowFileEntry
+                        {entry}
+                        {event_dragStart}
+                        {event_dragOver}
+                        {event_dragLeave}
+                        {event_drop}
+                        {event_dragEnd}
+                        {entryOnClick}
+                        {entryOnContextMenu}
+                        {onClickSelectCheckbox}
+                        {entryMenuOnClick}
+                        size={size as RowPreviewSize}
+                    />
+                </div>
+            {/each}
+        {/key}
+    {:else if filesState.ui.fileViewType === "grid"}
+        {@const size = filesState.ui.previewSize as GridPreviewSize}
+
+        <div 
+            style:--min-width="{size.width}rem"
+            style:--icon-padding="{size.iconPadding}rem"
+            class="
+                w-full h-fit grid gap-2
+            "
+            style="
+                grid-template-columns: repeat(auto-fill, minmax(min(var(--min-width),100%), 1fr));
+            "
         >
             {#each sortedEntries as entry (entry.filename)}
                 <GridFileEntry
@@ -159,6 +180,7 @@
                     {entryOnContextMenu}
                     {onClickSelectCheckbox}
                     {entryMenuOnClick}
+                    size={size}
                 />
             {/each}
         </div>
@@ -169,7 +191,7 @@
 <!-- Entry context menu popover -->
 {#if entryMenuButton && menuEntry}
     {#key entryMenuButton || menuEntry}
-        <div class="z-50 relative">
+        <div class="z-popover relative">
             <FileContextMenuPopover
                 {entryMenuButton}
                 {entryMenuPopoverOnOpenChange}
@@ -188,5 +210,12 @@
 
 <!-- Entry context menu floating element -->
 {#if menuEntry && entryMenuXPos != null && entryMenuYPos != null}
-    <div bind:this={entryMenuButton} class="size-0 fixed z-10" style="top: {entryMenuYPos}px; left: {entryMenuXPos}px"></div>
+    <div bind:this={entryMenuButton} class="size-0 fixed z-popover" style="top: {entryMenuYPos}px; left: {entryMenuXPos}px"></div>
 {/if}
+
+
+<style lang="postcss">
+    :global(.file-row-grid) {
+        @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
+    }
+</style>

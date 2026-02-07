@@ -1,10 +1,14 @@
 import type { SystemPermission } from "../auth/types";
 import { appState, filePagePaths } from "../stateObjects/appState.svelte";
-import type { SettingSectionId } from "../stateObjects/uiState.svelte";
-import { valuesOf, includesList, run, keysOf } from "../util/codeUtil.svelte";
+import { filesState } from "../stateObjects/filesState.svelte";
+import { valuesOf, includesList, keysOf } from "../util/codeUtil.svelte";
 import { getCurrentPermissions } from "./permissions";
 
-export type PreferenceSetting = "load_all_previews" | "default_page_path" | "click_to_open_file"
+export type PreferenceSetting = "load_all_previews" | "default_page_path" | "click_to_open_file" | "preview_size_grid" | "preview_size_rows" | "file_view_type"
+
+export type SettingsSection = { name: SettingSectionId; permissions: SystemPermission[]; admin: boolean; }
+export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "system" | "account"
+
 
 export function loadPreferenceSettings() {
     const loadAllPreviewsStr = getPreferenceSetting("load_all_previews")
@@ -25,6 +29,32 @@ export function loadPreferenceSettings() {
         appState.settings.clickToOpenFile = true
     }
 }
+
+export function loadFilePreferenceSettings() {
+    const fileViewType = getPreferenceSetting("file_view_type")
+    if (fileViewType) {
+        if (fileViewType === "grid" || fileViewType === "rows") {
+            filesState.ui.fileViewType = fileViewType
+        }
+    }
+
+    const previewSizeRowsStr = getPreferenceSetting("preview_size_rows")
+    if (previewSizeRowsStr) {
+        const int = parseInt(previewSizeRowsStr)
+        if (int) {
+            appState.settings.previewSize.rows = int
+        }
+    }
+
+    const previewSizeGridStr = getPreferenceSetting("preview_size_grid")
+    if (previewSizeGridStr) {
+        const int = parseInt(previewSizeGridStr)
+        if (int) {
+            appState.settings.previewSize.grid = int
+        }        
+    }
+}
+
 
 function getPreferenceSetting(id: PreferenceSetting): string | null {
     return localStorage.getItem(`preference-${id}`) || null
@@ -60,10 +90,9 @@ export const settingSections = {
     },
     sections: {
         "preferences": { name: "preferences", permissions: [], admin: false },
+        "account": { name: "account", permissions: [], admin: false },
         "system": { name: "system", permissions: ["MANAGE_SYSTEM"], admin: true },
         "users": { name: "users", permissions: ["MANAGE_USERS"], admin: true },
         "roles": { name: "roles", permissions: ["EDIT_ROLES"], admin: true },
     } as Record<string, SettingsSection>
 }
-
-export type SettingsSection = { name: SettingSectionId; permissions: SystemPermission[]; admin: boolean; }

@@ -1,33 +1,26 @@
 <script lang="ts">
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { onMount, type Component } from "svelte";
-    import MfaSetting from "./_setting-components/MfaSetting.svelte";
-    import LogoutSetting from "./_setting-components/LogoutSetting.svelte";
-    import LoadPreviewsSetting from "./_setting-components/LoadPreviewsSetting.svelte";
+    import { type Component } from "svelte";
     import DefaultPageSetting from "./_setting-components/DefaultPageSetting.svelte";
     import ClickToOpenFileSetting from "./_setting-components/ClickToOpenFileSetting.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import LoadPreviewsSetting from "./_setting-components/LoadPreviewsSetting.svelte";
 
     const title = "Preferences"
 
-    onMount(() => {
-        uiState.settings.title = title
-    })
-
     $effect(() => {
-        return appState.title.register("Preferences")
+        uiState.settings.title = title
+        return appState.title.register(title)
     })
 </script>
 
 
 <div class="page !h-fit settings-margin flex-col gap-8 xoverflow-y-auto">
-    <h2 class="text-lg font-medium">Account Settings</h2>
+    <!-- <h2 class="text-lg font-medium">{title}</h2> -->
 
-    {@render settingCell(MfaSetting)}
     {@render settingCell(LoadPreviewsSetting)}
     {@render settingCell(DefaultPageSetting)}
     {@render settingCell(ClickToOpenFileSetting)}
-    <LogoutSetting></LogoutSetting>
 </div>
 
 {#snippet settingCell(Component: Component<any>)}

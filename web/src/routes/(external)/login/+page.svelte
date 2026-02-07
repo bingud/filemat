@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import type { TotpMfaCredentials } from "$lib/code/auth/types";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { formData,  handleErr,  parseJson,  safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
     import MfaSetupDialog from "$lib/component/auth/MfaSetupDialog.svelte";
@@ -23,6 +24,8 @@
     let mfaSetupPhase = $state(1)
     let mfaQrCodeBase64: string | null = $state(null)
     let mfaSetupTotpInput: string | undefined = $state()
+
+    $effect(() => appState.title.register("Login"))
 
     $effect(() => {
         if (!mfaCredentials || !mfaCredentials.url) {
@@ -139,7 +142,6 @@
         mfaQrCodeBase64 = null
         mfaSetupTotpInput = ""
     }
-    $inspect(phase)
 </script>
 
 

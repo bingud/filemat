@@ -13,10 +13,9 @@
     import type Player from "video.js/dist/types/player";
     import mime from 'mime'
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
-    import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
-    import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { selectSiblingFile } from "../../_code/fileBrowserUtil";
     import OpenFileAsCategoryButton from "../button/OpenFileAsCategoryButton.svelte";
+    import FileNavZone from "../ui/FileNavZone.svelte";
     
     let meta = $derived(filesState.data.fileMeta) 
     let fileCategory = $derived(filesState.currentFile.displayedFileCategory)
@@ -100,39 +99,6 @@
         }
     })
 
-    /// Arrows hovering
-    let leftLongHovering: boolean = $state(false)
-    let rightLongHovering: boolean = $state(false)
-    let leftHovering: boolean = $state(false)
-    let rightHovering: boolean = $state(false)
-    let leftTimeout: ReturnType<typeof setTimeout>
-    let rightTimeout: ReturnType<typeof setTimeout>
-
-    function handleLeftHover(hovering: boolean): void {
-        leftHovering = hovering
-        if (hovering) {
-            leftTimeout = setTimeout(() => {
-                leftLongHovering = true
-            }, 500)
-        } else {
-            clearTimeout(leftTimeout)
-            leftLongHovering = false
-        }
-    }
-
-    function handleRightHover(hovering: boolean): void {
-        rightHovering = hovering
-        if (hovering) {
-            rightTimeout = setTimeout(() => {
-                rightLongHovering = true
-            }, 500)
-        } else {
-            clearTimeout(rightTimeout)
-            rightLongHovering = false
-        }
-    }
-    ///
-
     explicitEffect(() => [ fileCategory ], () => {
         if (!fileCategory) return
         openAsFileType(fileCategory)
@@ -161,41 +127,20 @@
 
 
 <div class="relative size-full flex flex-col bg-bg overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both">
-    <!-- Left tap zone -->
-    <div 
-        class="absolute left-0 top-0 w-12 h-full z-floating transition-opacity flex items-center {leftHovering ? 'opacity-100' : 'opacity-0'}"
-        on:mouseenter={() => handleLeftHover(true)}
-        on:mouseleave={() => handleLeftHover(false)}
-    >
-        {#if leftHovering && !filesState.currentFile.isEditable || leftLongHovering}
-            <button 
-                on:click={() => { selectSiblingFile('previous', true, true) }} 
-                class="flex items-center justify-center w-full h-2/3 bg-surface rounded-lg cursor-pointer"
-            >
-                <div class="w-full p-3 opacity-50">
-                    <ChevronLeftIcon />
-                </div>
-            </button>
-        {/if}
-    </div>
-
-    <!-- Right tap zone -->
-    <div 
-        class="absolute right-0 top-0 w-12 h-full z-floating transition-opacity flex items-center justify-end {rightHovering ? 'opacity-100' : 'opacity-0'}"
-        on:mouseenter={() => handleRightHover(true)}
-        on:mouseleave={() => handleRightHover(false)}
-    >
-        {#if rightHovering && !filesState.currentFile.isEditable || rightLongHovering}
-            <button 
-                on:click={() => { selectSiblingFile('next', true, true) }} 
-                class="flex items-center justify-center w-full h-2/3 bg-surface rounded-lg cursor-pointer"
-            >
-                <div class="w-full p-3 opacity-50">
-                    <ChevronRightIcon />
-                </div>
-            </button>
-        {/if}
-    </div>
+    <!-- Nav tap zones -->
+    <FileNavZone 
+        side="left"
+        requireLongHover={filesState.currentFile.isEditable !== false}
+        onclick={() => { selectSiblingFile('previous', true, true) }}
+        lastMousePositionState={filesState.ui.fileNavZoneLastMousePosition}
+    />
+    
+    <FileNavZone 
+        side="right"
+        requireLongHover={filesState.currentFile.isEditable !== false}
+        onclick={() => { selectSiblingFile('next', true, true) }}
+        lastMousePositionState={filesState.ui.fileNavZoneLastMousePosition}
+    />
 
     {#if filesState.contentLoading || !meta}
         <div class="center">

@@ -3,7 +3,7 @@
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
-    import type { EntityPermission, FilePermission, MiniUser, PermissionType, Role } from "$lib/code/auth/types";
+    import type { EntityPermission, FilePermission, MiniUser } from "$lib/code/auth/types";
     import { hasAnyPermission, hasPermission } from "$lib/code/module/permissions";
     import { getRole } from "$lib/code/util/stateUtils";
     import { fade } from "svelte/transition";

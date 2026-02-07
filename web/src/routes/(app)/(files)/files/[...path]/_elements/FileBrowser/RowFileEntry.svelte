@@ -5,6 +5,7 @@
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
     import FileThumbnail from "./FileThumbnail.svelte";
+    import type { RowPreviewSize } from "$lib/code/config/values";
 
     let {
         entry,
@@ -17,7 +18,8 @@
         entryOnContextMenu,
         onClickSelectCheckbox,
         entryMenuOnClick,
-    }: FileEntryProps = $props()
+        size
+    }: FileEntryProps & { size: RowPreviewSize } = $props()
 
     onMount(() => {
         if (!entry) {
@@ -37,8 +39,10 @@
     on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
     draggable={entry.permissions?.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
+    style="height: {size.height}rem;"
     class="
-        file-row-grid h-[2.5rem] gap-x-2 items-center select-none group outline-0
+        file-row-grid gap-x-2 items-center select-none group outline-0 min-h-0
+        py-1 pl-2 pr-1
         {isUnopenable 
             ? 'cursor-default' 
             : 'cursor-pointer'
@@ -56,40 +60,40 @@
     on:dragend={(e) => { event_dragEnd(e, entry) }}
 >
     <!-- Filename + Icon -->
-    <div class="h-full flex items-center overflow-hidden">
+    <div class="h-full flex items-center min-h-0">
         {#key isSelected}
-            <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pl-2 pr-1">
+            <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pr-1">
                 <input checked={isSelected} class="!size-5 opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
             </div>
         {/key}
 
         <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
-            <div class="h-6 aspect-square fill-neutral-500 stroke-neutral-500 flex-shrink-0 flex items-center justify-center py-[0.1rem] pointer-events-none">
+            <div class="!h-full !aspect-square overflow-hidden min-h-0 fill-neutral-500 stroke-neutral-500 xflex-shrink-0 flex items-center justify-center pointer-events-none">
                 {#if entry.filename}
-                    <FileThumbnail {entry} size={48} isLarge={false}></FileThumbnail>
+                    <FileThumbnail {entry} size={size.pixelSize} isLarge={false}></FileThumbnail>
                 {/if}
             </div>
-            <p class="truncate py-1" title={entry.filename}>
+            <p class="truncate" title={entry.filename}>
                 {entry.filename!}
             </p>
         </div>
     </div>
 
     <!-- Last Modified -->
-    <div class="h-full text-right whitespace-nowrap max-sm:hidden flex items-center justify-end opacity-70 py-1">
+    <div class="h-full text-right whitespace-nowrap max-sm:hidden flex items-center justify-end opacity-70 ">
         {formatUnixMillis(entry.modifiedDate)}
     </div>
 
     <!-- Size -->
-    <div class="h-full text-right whitespace-nowrap max-md:hidden flex items-center justify-end py-1">
+    <div class="h-full text-right whitespace-nowrap max-md:hidden flex items-center justify-end ">
         {formatBytesRounded(entry.size)}
     </div>
 
     <!-- Menu button -->
-    <div class="h-full text-center py-1 pr-1">
+    <div class="flex items-center justify-center h-full min-h-0">
         <button
             on:click|stopPropagation|preventDefault={(e) => { entryMenuOnClick(e.currentTarget, entry) }}
-            class="h-full aspect-square flex items-center justify-center rounded-full p-2 hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
+            class="h-[2.5rem] max-h-full! aspect-square flex items-center justify-center rounded-full p-(--menu-icon-padding) hover:bg-neutral-400/30 dark:hover:bg-neutral-600/50 fill-neutral-700 dark:fill-neutral-500"
         >
             <ThreeDotsIcon />
         </button>

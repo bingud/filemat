@@ -5,6 +5,7 @@
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
     import FileThumbnail from "./FileThumbnail.svelte";
+    import type { GridPreviewSize } from "$lib/code/config/values";
 
     let {
         entry,
@@ -17,12 +18,14 @@
         entryOnContextMenu,
         onClickSelectCheckbox,
         entryMenuOnClick,
-    }: FileEntryProps = $props()
+        size
+    }: FileEntryProps & { size: GridPreviewSize } = $props()
 
     onMount(() => {
         if (!entry) {
             console.log(`Entry in FileEntry is null`)
             console.log(entry)
+            return
         }
     })
     
@@ -37,6 +40,7 @@
     on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
     draggable={entry.permissions?.includes("MOVE")}
     data-entry-path={entry.path} rel="noopener noreferrer"
+    style:--entry-height="{size.height}rem"
     class="
         grid-file-entry w-full min-w-0 flex flex-col items-center select-none group rounded-lg outline-0
         {isUnopenable 
@@ -60,7 +64,7 @@
         <!-- Preview image -->
         <div class="h-full fill-neutral-500 stroke-neutral-500 shrink-0 flex items-center justify-center pointer-events-none">
             {#if entry.filename}
-                <FileThumbnail {entry} size={256} isLarge={true}></FileThumbnail>
+                <FileThumbnail {entry} size={size.pixelSize} isLarge={true}></FileThumbnail>
             {/if}
         </div>
 

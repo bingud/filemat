@@ -309,45 +309,7 @@
 </script>
 
 
-{#if filesState.search.sortedEntries}
-    {#if filesState.search.sortedEntries.length > 0 || filesState.search.isLoading}
-        <div 
-            class="
-                w-full h-fit absolute top-0 left-0 z-10
-                {filesState.path !== filesState.search.searchPath ? 'max-h-full overflow-y-hidden opacity-0' : ''}
-            "
-        >
-            <FileList
-                sortedEntries={filesState.search.sortedEntries}
-                {event_dragStart}
-                {event_dragOver}
-                {event_dragLeave}
-                {event_drop}
-                {event_dragEnd}
-                {entryOnClick}
-                {onClickSelectCheckbox}
-                {option_rename}
-                {option_move}
-                {option_copy}
-                {option_delete}
-                {option_details}
-                {option_save}
-                closeFileContextMenuPopover={closeFileContextMenu}
-            ></FileList>
-        </div>
-    {:else}
-        <div class="center absolute top-0 left-0 z-10">
-            <p>No files have been found.</p>
-        </div>
-    {/if}
-
-    {#if filesState.search.isLoading}
-        <div class="center absolute top-0 left-0 z-20 pointer-events-none">
-            <Loader />
-        </div>
-    {/if}
-{/if}
-
+<!-- File browser -->
 {#if filesState.data.sortedEntries && filesState.data.sortedEntries.length > 0}
     <div 
         class="
@@ -396,6 +358,49 @@
     </div>
 {/if}
 
+
+<!-- Search results -->
+{#if filesState.search.sortedEntries}
+    {#if filesState.search.sortedEntries.length > 0 || filesState.search.isLoading}
+        <div 
+            class="
+                w-full h-fit absolute top-0 left-0
+                {filesState.path !== filesState.search.searchPath ? 'max-h-full overflow-y-hidden opacity-0' : ''}
+            "
+        >
+            <FileList
+                sortedEntries={filesState.search.sortedEntries}
+                {event_dragStart}
+                {event_dragOver}
+                {event_dragLeave}
+                {event_drop}
+                {event_dragEnd}
+                {entryOnClick}
+                {onClickSelectCheckbox}
+                {option_rename}
+                {option_move}
+                {option_copy}
+                {option_delete}
+                {option_details}
+                {option_save}
+                closeFileContextMenuPopover={closeFileContextMenu}
+            ></FileList>
+        </div>
+    {:else}
+        <div class="center absolute top-0 left-0 z-10">
+            <p>No files have been found.</p>
+        </div>
+    {/if}
+
+    {#if filesState.search.isLoading}
+        <div class="center absolute top-0 left-0 z-20 pointer-events-none">
+            <Loader />
+        </div>
+    {/if}
+{/if}
+
+
+<!-- Upload panel -->
 {#if uploadState.count > 0 && uploadState.panelOpen}
     <div class="
         fixed z-overlay h-full w-full top-0 left-0 pb-4 pointer-events-none  flex items-end justify-end
@@ -408,16 +413,14 @@
     </div>
 {/if}
 
+
 <FolderTreeSelector></FolderTreeSelector>
+
 
 <p bind:this={dragImageElement} class="fixed top-[100vh] right-[100vw] py-4 px-6 rounded-lg whitespace-nowrap bg-neutral-300 dark:bg-neutral-800" style="display: none">-</p>
 
 
 <style lang="postcss">
-    :global(.file-row-grid) {
-        @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
-    }
-
     :global(.dragover) {
         @apply dark:bg-neutral-700;
     }

@@ -8,9 +8,10 @@ import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...
 import { getFileCategoryFromFilename, type FileCategory } from "../data/files"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
 import { getContentUrl } from "../util/stateUtils"
-import { fileViewType_saveInLocalstorage } from "../util/uiUtil"
 import { appState } from "./appState.svelte"
 import { auth } from "./authState.svelte"
+import { config } from "../config/values"
+import { loadFilePreferenceSettings, setPreferenceSetting } from "../module/settings"
 
 type StateMetadataProps = { fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
 export type StateMetadata = { type: "files",                                                                            } & StateMetadataProps
@@ -287,7 +288,7 @@ class FileUiStateClasss {
     /**
      * File view type
      */
-    fileViewType = $state("rows")  as "rows" | "tiles"
+    fileViewType = $state("rows")  as "rows" | "grid"
 
     /**
      * Is file sorting menu popover open
@@ -301,19 +302,38 @@ class FileUiStateClasss {
     }
     switchFileViewType(): typeof this.fileViewType {
         const newType = this.fileViewType === "rows" 
-                ? "tiles" 
+                ? "grid" 
                 : "rows"
 
         this.fileViewType = newType
-        fileViewType_saveInLocalstorage(newType)
+        setPreferenceSetting("file_view_type", newType)
         return newType
     }
+
+    previewSize = $derived.by(() => {
+        const isRows = this.fileViewType === "rows"
+
+        if (isRows) {
+            const sizes = config.preview.row
+            const size = appState.settings.previewSize.rows
+
+            return sizes[size] || sizes[2]
+        } else {
+            const sizes = config.preview.grid
+            const size = appState.settings.previewSize.grid
+
+            return sizes[size] || sizes[2]
+        }
+    })
+
+    fileNavZoneLastMousePosition = { y: 0, x: 0 }
 
     clear() {
         if (!uiState.isDesktop) this.detailsOpen = false
         this.fileContextMenuPopoverOpen = false
         this.newFilePopoverOpen = false
         this.fileSortingMenuPopoverOpen = false
+        this.fileNavZoneLastMousePosition = { y: 0, x: 0 }
     }
 }
 
@@ -454,6 +474,8 @@ export function createFilesState(meta: StateMetadata): number | null {
     filesState = new FilesState()
     appState.filesStateNonce = generateRandomNumber()
     filesState.meta = meta
+
+    loadFilePreferenceSettings()
 
     return appState.actualFilesStanceNonce
 }

@@ -29,7 +29,7 @@
             class="
                 fixed translate-x-[-50%] translate-y-[-50%] left-[50%] top-[50%] z-dialog
                 flex flex-col gap-4 p-6 bg-surface sm:rounded-sm
-                w-[95%] max-w-2xl max-h-[95%]
+                w-[30rem] max-w-[min(42rem,95vw)] max-h-[95svh]
                 {classes || ""}
             "
         >

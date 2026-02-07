@@ -22,7 +22,6 @@
     import { event_filesDropped, handleKeyDown, handleNewFile, loadPageData, recoverScrollPosition, reloadCurrentFolder, saveScrollPosition } from './_code/pageLogic'
     import { handleNewFolder, option_cancelFileEdit, option_deleteSelectedFiles, option_downloadSelectedFiles, option_moveSelectedFiles, saveEditedFile } from './_code/fileActions'
     import NewFileButton from './_elements/button/NewFileButton.svelte'
-    import { fileViewType_getFromLocalstorage } from "$lib/code/util/uiUtil"
     import FileSortingButton from "./_elements/button/FileSortingButton.svelte"
     import FileViewTypeButton from "./_elements/button/FileViewTypeButton.svelte"
     import FileDetailsButton from "./_elements/button/FileDetailsButton.svelte"
@@ -66,9 +65,6 @@
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
         filesState.ui.filePreviewLoader.setScrollContainer(filesState.scroll.container || null)
-
-        const fileViewType = fileViewType_getFromLocalstorage()
-        if (fileViewType) filesState.ui.fileViewType = fileViewType
 
         // Automatically refresh folder entries
         pollingInterval = dynamicInterval(() => {

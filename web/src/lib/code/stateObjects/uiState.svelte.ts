@@ -1,3 +1,5 @@
+import type { SettingSectionId } from "../module/settings"
+
 class UiState {
     /**
      * Indicates whether mobile navigation menu is open
@@ -60,4 +62,3 @@ class UiState {
  */
 export const uiState = new UiState()
 
-export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "system"
