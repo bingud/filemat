@@ -32,7 +32,7 @@
                 <GridIcon />
             {/if}
         </Popover.Trigger>
-        <Popover.Content align="end" class="relative z-50">
+        <Popover.Content preventScroll={true} align="end" class="relative z-50">
             <div class="w-[12rem] surface-popover-container">
                 <button
                     onclick={() => setView("rows")}

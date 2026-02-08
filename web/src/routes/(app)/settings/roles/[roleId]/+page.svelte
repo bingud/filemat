@@ -11,8 +11,8 @@
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { formatUnixTimestamp, formData, handleErr, includesList, removeString, safeFetch, sortArrayAlphabetically, sortArrayByNumberDesc, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { Validator } from "$lib/code/util/validation";
+    import { Popover } from "$lib/component/bits-ui-wrapper";
     import Loader from "$lib/component/Loader.svelte";
-    import Popover from "$lib/component/popover/CustomPopover.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
 
@@ -33,7 +33,7 @@
 
     // Editing
     let editingPermissions = $state(false)
-    let addPermissionButton: HTMLElement | undefined = $state()
+    let addPermissionPopoverOpen = $state(false)
     let canEditPermissions = $derived((highestRolePermissionLevel != null && auth.permissionLevel != null) ? (highestRolePermissionLevel <= (auth.permissionLevel)) : null)
     let newPermissionList: SystemPermission[] | null = $state(null)
     let savingEditedPermissions = $state(false)
@@ -112,28 +112,36 @@
     /**
      * Load list of all filemat users
      */
-    async function loadAllUserList() {if (allUsersLoading) return; allUsersLoading = true; try {
-        allUsers = null
-        const r = await loadMiniUsers(null, true)
-        if (r) {
-            allUsers = r
-        }
-    } finally { allUsersLoading = false }}
+    async function loadAllUserList() {
+        if (allUsersLoading) return
+        allUsersLoading = true
+        try {
+            allUsers = null
+            const r = await loadMiniUsers(null, true)
+            if (r) {
+                allUsers = r
+            }
+        } finally { allUsersLoading = false }
+    }
 
     /**
      * Assign this role to user
      */
-    async function addUser(user: MiniUser) {if (addingUser) return; addingUser = true; try {
-        if (!role || !user) return
-        const result = await addRoleToUser(user.userId, role.roleId)
-        if (result) {
-            role.miniUsers.push({
-                userId: user.userId,
-                username: user.username
-            })
-            addUserPopoverOpen = false
-        }
-    } finally { addingUser = true }}
+    async function addUser(user: MiniUser) {
+        if (addingUser) return
+        addingUser = true
+        try {
+            if (!role || !user) return
+            const result = await addRoleToUser(user.userId, role.roleId)
+            if (result) {
+                role.miniUsers.push({
+                    userId: user.userId,
+                    username: user.username
+                })
+                addUserPopoverOpen = false
+            }
+        } finally { addingUser = true }
+    }
 
     /**
      * Add permission to role while editing
@@ -223,38 +231,39 @@
                 </div>
 
                 {#if highestRolePermissionLevel && hasPermissionLevel(highestRolePermissionLevel)}
-                    <button bind:this={addUsersButton} on:click={() => { addUserPopoverOpen = true }} on:click={loadAllUserList} class="basic-button">Add users</button>
-                {/if}
-                    
-                {#if addUsersButton}
-                    <Popover bind:isOpen={addUserPopoverOpen} fadeDuration={40} marginRem={1} button={addUsersButton} onClose={() => {}}>
-                        <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
-                            {#if allUsers}
-                                {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
-                                    <div class="flex flex-col gap-2 p-2">
-                                        {#each sortArrayAlphabetically(allUsers, v => v.username) as user}
-                                            {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
-                                            {#if !hasRole}
-                                                <button disabled={addingUser} on:click={() => { addUser(user) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{user.username}</button>
-                                            {/if}
-                                        {/each}
+                    <Popover.Root bind:open={addUserPopoverOpen}>
+                        <Popover.Trigger class="basic-button" onclick={loadAllUserList}>
+                            Add users
+                        </Popover.Trigger>
+                        <Popover.Content preventScroll={true} align="end" class="relative z-popover">
+                            <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                                {#if allUsers}
+                                    {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
+                                        <div class="flex flex-col gap-2 p-2">
+                                            {#each sortArrayAlphabetically(allUsers, v => v.username) as user}
+                                                {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
+                                                {#if !hasRole}
+                                                    <button disabled={addingUser} on:click={() => { addUser(user) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{user.username}</button>
+                                                {/if}
+                                            {/each}
+                                        </div>
+                                    {:else}
+                                        <div class="center !h-[3rem]">
+                                            <p>All users have this role.</p>
+                                        </div>
+                                    {/if}
+                                {:else if allUsersLoading}
+                                    <div class="center !h-[3rem] py-2">
+                                        <Loader></Loader>
                                     </div>
                                 {:else}
                                     <div class="center !h-[3rem]">
-                                        <p>All users have this role.</p>
+                                        <p class="">Failed to load list of users.</p>
                                     </div>
                                 {/if}
-                            {:else if allUsersLoading}
-                                <div class="center !h-[3rem] py-2">
-                                    <Loader></Loader>
-                                </div>
-                            {:else}
-                                <div class="center !h-[3rem]">
-                                    <p class="">Failed to load list of users.</p>
-                                </div>
-                            {/if}
-                        </div>
-                    </Popover>
+                            </div>
+                        </Popover.Content>
+                    </Popover.Root>
                 {/if}
             </div>
         {/if}
@@ -281,17 +290,20 @@
             </div>
 
             {#if editingPermissions && newPermissionList && !includesList(newPermissionList, valuesOf(systemPermissionMeta).filter(v=>v.type !== PermissionType.file).map(v=>v.id))}
-                <button bind:this={addPermissionButton} class="basic-button text-sm">Add permission</button>
-
-                <Popover marginRem={1} fadeDuration={40} button={addPermissionButton} onClose={() => {}}>
-                    <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
-                        <div class="flex flex-col gap-2 p-2">
-                            {#each sortArrayByNumberDesc(valuesOf(systemPermissionMeta).filter(m => m.type !== PermissionType.file && newPermissionList?.includes(m.id) != true), v => v.level) as meta}
-                                <button on:click={() => { addPermission(meta.id) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{meta.name}</button>
-                            {/each}
+                <Popover.Root bind:open={addPermissionPopoverOpen}>
+                    <Popover.Trigger title="Assign a role" class="basic-button text-sm">
+                        Add permission
+                    </Popover.Trigger>
+                    <Popover.Content preventScroll={true} align="end" class="relative z-popover">
+                        <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
+                            <div class="flex flex-col gap-2 p-2">
+                                {#each sortArrayByNumberDesc(valuesOf(systemPermissionMeta).filter(m => m.type !== PermissionType.file && newPermissionList?.includes(m.id) != true), v => v.level) as meta}
+                                    <button on:click={() => { addPermission(meta.id) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{meta.name}</button>
+                                {/each}
+                            </div>
                         </div>
-                    </div>
-                </Popover>
+                    </Popover.Content>
+                </Popover.Root>
 
                 <hr class="basic-hr max-w-full w-[10rem]">
             {/if}            

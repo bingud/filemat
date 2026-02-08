@@ -95,7 +95,7 @@
                     <Popover.Trigger>
                         <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
                     </Popover.Trigger>
-                    <Popover.Content align="start" sideOffset={8}>
+                    <Popover.Content preventScroll={true} align="start" sideOffset={8}>
                         <div class="min-w-[20rem] w-fit max-w-[min(100vw,40rem)] rounded-lg bg-neutral-300 dark:bg-neutral-800 py-2">
                             {#each breadcrumbState.hidden as segment}
                                 {@render breadcrumbButton(
@@ -138,7 +138,7 @@
     {#key contextMenuButton || menuSegment}
         <div class="z-50 relative">
             <Popover.Root bind:open={contextMenuOpen} onOpenChange={onContextMenuOpenChange}>
-                <Popover.Content onInteractOutside={() => { contextMenuOpen = false }} customAnchor={contextMenuButton} align="start" >
+                <Popover.Content preventScroll={true} onInteractOutside={() => { contextMenuOpen = false }} customAnchor={contextMenuButton} align="start" >
                     <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
                         <button on:click={() => { option_details(menuSegment!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                             <div class="size-5 flex-shrink-0">

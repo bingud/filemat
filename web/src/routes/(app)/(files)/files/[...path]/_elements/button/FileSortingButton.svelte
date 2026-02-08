@@ -3,8 +3,6 @@
     import { fileSortingModes, type FileSortingMode, type SortingDirection } from "$lib/code/types/fileTypes";
     import { entriesOf } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
-    import CheckboxIcon from "$lib/component/icons/CheckboxIcon.svelte";
-    import CheckmarkIcon from "$lib/component/icons/CheckmarkIcon.svelte";
     import CircleIcon from "$lib/component/icons/CircleIcon.svelte";
     import SortAscendingIcon from "$lib/component/icons/SortAscendingIcon.svelte";
     import SortDescendingIcon from "$lib/component/icons/SortDescendingIcon.svelte";
@@ -37,7 +35,7 @@
             <p class="capitalize">{mode}</p>
         </div>
     </Popover.Trigger>
-    <Popover.Content align="end" class="relative z-popover">
+    <Popover.Content preventScroll={true} align="end" class="relative z-popover">
         <div class="w-[14rem] surface-popover-container">
             {#each entriesOf(fileSortingModes) as [modeId, modeName]}
                 {@const isSelected = mode === modeId}

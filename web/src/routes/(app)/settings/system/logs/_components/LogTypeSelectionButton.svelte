@@ -32,7 +32,7 @@
             <p>Log Type</p>
         </div>
     </Popover.Trigger>
-    <Popover.Content align="end" class="relative z-50">
+    <Popover.Content preventScroll={true} align="end" class="relative z-50">
         <div class="w-[14rem] surface-popover-container">
             <button on:click={selectAll} class="surface-popover-button font-semibold mb-2">
                 <span>Select all</span>

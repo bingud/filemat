@@ -38,7 +38,7 @@
             {/snippet}
         </Popover.Trigger>
         <Popover.Portal>
-            <Popover.Content align="start" sideOffset={8}>
+            <Popover.Content preventScroll={true} align="start" sideOffset={8} class="z-popover">
                 <div class="rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col w-[10rem]">
                     <button on:click={() => { openAsFileType("text") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Text</button>
                     <button on:click={() => { openAsFileType("image") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Image</button>

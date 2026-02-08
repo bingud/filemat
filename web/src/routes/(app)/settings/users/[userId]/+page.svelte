@@ -11,11 +11,11 @@
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import Popover from "$lib/component/popover/CustomPopover.svelte";
     import { fade } from "svelte/transition";
     import { assignRole, changeUserPassword, editUserProperty, loadUser, removeSelectedRoles, resetUserMfa, selectRole, toggleRoleSelection } from "./actions";
     import { userPageState as pageState } from "./state.svelte";
     import { onMount } from "svelte";
+    import { Popover } from "$lib/component/bits-ui-wrapper";
 
     const title = "Manage user"
 
@@ -38,7 +38,7 @@
     let loading = $state(true)
     let mounted = $state(false)
 
-    let addRolesButton: undefined | HTMLElement = $state()
+    let addRolesPopoverOpen = $state(false)
     let addRolesDisabled = $derived.by(() => {
         if (!pageState.user || !appState.roleList) return true
 
@@ -111,33 +111,32 @@
                             {#if !selectingRoles}
                                 <a href="/settings/roles/{role.roleId}" class="detail-content !bg-surface-content-button !w-fit hover:text-blue-400 hover:underline">{role.name}</a>
                             {:else}
-                                <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !w-fit hover:text-red-400 {pageState.selectedRoles.includes(role.roleId) ? 'ring-2 ring-red-400' : ''}">{role.name}</button>
+                                <button on:click={()=>{ selectRole(role.roleId) }} class="detail-content !bg-surface-content-button !w-fit hover:text-red-400 {pageState.selectedRoles.includes(role.roleId) ? 'ring-2 ring-red-400' : ''}">{role.name}</button>
                             {/if}
                         {/each}
                     {/if}
 
-                    {#if !addRolesDisabled && !selectingRoles}
-                        <button bind:this={addRolesButton} id="add-roles" title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none cursor-pointer">
-                            <div class="size-4 rotate-45">
-                                <CloseIcon></CloseIcon>
-                            </div>
-                        </button>
-                    {/if}
-
-                    {#if appState.roleList && !addRolesDisabled && addRolesButton}
-                        <Popover onClose={() => {}} button={addRolesButton} marginRem={1} fadeDuration={40}>
-                            <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
-                                <div class="flex flex-col gap-2 p-2">
-                                    {#each sortArrayByNumberDesc(appState.roleList, v => getMaxPermissionLevel(v.permissions)) as role}
-                                        {@const hasRole = user.roles.includes(role.roleId)}
-                                        {@const rolePermissionLevel = getMaxPermissionLevel(role.permissions)}
-                                        {#if !hasRole && (auth.permissionLevel ?? 0) >= rolePermissionLevel}
-                                            <button on:click={() => { assignRole(role.roleId) }} class="rounded hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{role.name}</button>
-                                        {/if}
-                                    {/each}
+                    {#if !addRolesDisabled && !selectingRoles && appState.roleList}
+                        <Popover.Root bind:open={addRolesPopoverOpen}>
+                            <Popover.Trigger title="Assign a role" class="detail-content aspect-square h-12 !w-auto flex items-center justify-center hover:!bg-blue-400/40 dark:hover:!bg-blue-400/20 disabled:pointer-events-none cursor-pointer">
+                                <div class="size-4 rotate-45">
+                                    <CloseIcon></CloseIcon>
                                 </div>
-                            </div>
-                        </Popover>
+                            </Popover.Trigger>
+                            <Popover.Content preventScroll={true} align="end" class="relative z-popover">
+                                <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto custom-scrollbar overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                                    <div class="flex flex-col gap-2 p-2">
+                                        {#each sortArrayByNumberDesc(appState.roleList, v => getMaxPermissionLevel(v.permissions)) as role}
+                                            {@const hasRole = user.roles.includes(role.roleId)}
+                                            {@const rolePermissionLevel = getMaxPermissionLevel(role.permissions)}
+                                            {#if !hasRole && (auth.permissionLevel ?? 0) >= rolePermissionLevel}
+                                                <button on:click={() => { assignRole(role.roleId) }} class="rounded hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{role.name}</button>
+                                            {/if}
+                                        {/each}
+                                    </div>
+                                </div>
+                            </Popover.Content>
+                        </Popover.Root>
                     {/if}
                 </div>
 

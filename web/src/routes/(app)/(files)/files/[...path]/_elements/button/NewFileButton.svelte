@@ -20,7 +20,7 @@
             <p>New</p>
         </div>
     </Popover.Trigger>
-    <Popover.Content align="end" class="relative z-popover">
+    <Popover.Content preventScroll={true} align="end" class="relative z-popover">
         <div class="w-[14rem] surface-popover-container">
             <button on:click={handleUpload} class="surface-popover-button">
                 <div class="size-5 flex-shrink-0">
