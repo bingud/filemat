@@ -3,6 +3,8 @@
 
 Spring Data adapter for SQLite: `org.komamitsu:spring-data-sqlite`
 
+Data file location: `/var/lib/filemat`
+
 
 ## Schema
 

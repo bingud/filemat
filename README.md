@@ -27,6 +27,7 @@ Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org.
 - File sharing with public link (optional password)
 - Text file editing, video streaming
 
+[See full list of features here](/docs/details.md)
 
 ## Requirements
 
