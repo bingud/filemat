@@ -16,6 +16,7 @@ It's self-hosted and allows you to manage your local files from anywhere using a
 
 Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org.
 
+<img src="/docs/images/screenshot_files_1.png" width="500" alt="Files screenshot" />
 
 ## Features
 
