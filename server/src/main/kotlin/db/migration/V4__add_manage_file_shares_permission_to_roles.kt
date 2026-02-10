@@ -1,10 +1,8 @@
 package db.migration
 
-import org.filemat.server.common.util.parseUlidOrNull
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.model.serialize
 import org.filemat.server.module.role.model.Role
-import org.filemat.server.module.role.model.RoleDto
 import java.sql.Statement
 
 class V4__add_manage_file_shares_permission_to_roles : Migration() {
