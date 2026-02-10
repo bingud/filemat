@@ -393,6 +393,6 @@
 
 <style lang="postcss">
     :global(.file-action-button) {
-        @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-content-button;
+        @apply h-full aspect-square flex items-center justify-center rounded-lg p-2 bg-surface-content-button select-none;
     }
 </style>

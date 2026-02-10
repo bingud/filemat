@@ -28,7 +28,7 @@
             {#snippet child({props})}
                 <button {...props} class="
                     {isLocationBar 
-                        ? 'h-full flex items-center justify-center gap-2 bg-surface-content-button rounded-md px-4'
+                        ? 'file-action-button gap-2 px-4! whitespace-nowrap'
                         : 'basic-button flex items-center gap-2'
                     }
                 ">
