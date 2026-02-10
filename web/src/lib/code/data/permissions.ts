@@ -14,6 +14,7 @@ export const systemPermissionMeta: Record<SystemPermission, PermissionMeta<Syste
     "MANAGE_SYSTEM": { id: "MANAGE_SYSTEM", name: "Manage system", description: "Manage the system", type: PermissionType.system, level: 3},
     "SUPER_ADMIN": { id: "SUPER_ADMIN", name: "Super admin", description: "Has all permissions to manage the entire system", type: PermissionType.system, level: 4},
     "MANAGE_ALL_FILE_SHARES": { id: "MANAGE_ALL_FILE_SHARES", name: "Manage all file shares", description: "Manage all shares of a file", type: PermissionType.system, level: 1},
+    "CHANGE_OWN_HOME_FOLDER": { id: "CHANGE_OWN_HOME_FOLDER", name: "Set own home folder", description: "User can set the path of their own home folder.", type: PermissionType.system, level: 1},
 }
 export const systemPermissionCount = Object.keys(systemPermissionMeta).length
 

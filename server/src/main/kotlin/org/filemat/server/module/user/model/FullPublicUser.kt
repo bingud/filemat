@@ -18,6 +18,7 @@ data class FullPublicUser(
     override val createdDate: Long,
     override val lastLoginDate: Long?,
     override val isBanned: Boolean,
+    override val homeFolderPath: String?,
     override val roles: List<@Serializable(UlidSerializer::class) Ulid>,
 ) : AFullPublicUser() {
 
@@ -32,7 +33,8 @@ data class FullPublicUser(
                 createdDate = u.createdDate,
                 lastLoginDate = u.lastLoginDate,
                 isBanned = u.isBanned,
-                roles = roles
+                homeFolderPath = u.homeFolderPath,
+                roles = roles,
             )
         }
     }

@@ -8,26 +8,40 @@ import org.filemat.server.module.role.model.RoleDto
 import java.sql.Statement
 
 class V4__add_manage_file_shares_permission_to_roles : Migration() {
-    override fun run(st: Statement) {
-        val count = SystemPermission.entries.size
-        val previousFullCount = count - 1
 
+    val systemPermissions = setOf(
+        SystemPermission.ACCESS_ALL_FILES,
+        SystemPermission.MANAGE_OWN_FILE_PERMISSIONS,
+        SystemPermission.MANAGE_ALL_FILE_PERMISSIONS,
+        SystemPermission.MANAGE_USERS,
+        SystemPermission.MANAGE_SYSTEM,
+        SystemPermission.EDIT_ROLES,
+        SystemPermission.EXPOSE_FOLDERS,
+        SystemPermission.SUPER_ADMIN,
+    )
+
+    val newPermissions = systemPermissions.toMutableSet().also { it.add(SystemPermission.MANAGE_ALL_FILE_SHARES) }
+    val newPermissionsSerialized = newPermissions.serialize()
+
+    override fun run(st: Statement) {
         val roleResults = st.executeQuery("SELECT * FROM role")
         val roles = mutableListOf<Role>()
         while (roleResults.next()) {
-            roles.add(RoleDto(
-                roleId = parseUlidOrNull(roleResults.getString("role_id")) ?: throw IllegalStateException("While executing database migration, role ID was invalid ID."),
-                name = roleResults.getString("name"),
-                createdDate = roleResults.getLong("created_date"),
-                permissions = roleResults.getString("permissions")
-            ).toRole())
-        }
+            val roleId = roleResults.getString("role_id")
+            val permissionsStr = roleResults.getString("permissions")
 
-        val newPermissions = SystemPermission.entries
-        val serializedPermissions = newPermissions.serialize()
-        roles.forEach { role ->
-            if (role.permissions.size == previousFullCount) {
-                st.execute("UPDATE role SET permissions = '$serializedPermissions' WHERE role_id = '${role.roleId}'")
+            if (roleId != null && permissionsStr != null) {
+                val permissions = SystemPermission.fromString(permissionsStr)
+                val hasAll = permissions.size == systemPermissions.size
+
+                if (hasAll) {
+                    try {
+                        st.execute("UPDATE role SET permissions = '$newPermissionsSerialized' WHERE role_id = '${roleId}'")
+                    } catch (e: Exception) {
+                        println("Migration V4 failed to update permissions of role with role ID '$roleId'")
+                        e.printStackTrace()
+                    }
+                }
             }
         }
     }

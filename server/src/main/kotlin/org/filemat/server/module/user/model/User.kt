@@ -30,6 +30,8 @@ data class User(
     override val lastLoginDate: Long?,
     @Column("is_banned")
     override val isBanned: Boolean,
+    @Column("home_folder_path")
+    override val homeFolderPath: String?
 ) : AUser()
 
 

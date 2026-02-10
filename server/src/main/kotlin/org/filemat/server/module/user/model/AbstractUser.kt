@@ -14,6 +14,7 @@ abstract class APublicUser {
     abstract val createdDate: Long
     abstract val lastLoginDate: Long?
     abstract val isBanned: Boolean
+    abstract val homeFolderPath: String?
 }
 
 /**

@@ -28,4 +28,6 @@ data class PublicUser(
     override val lastLoginDate: Long?,
     @Column("is_banned")
     override val isBanned: Boolean,
+    @Column("home_folder_path")
+    override val homeFolderPath: String?,
 ) : APublicUser()
