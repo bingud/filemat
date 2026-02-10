@@ -152,6 +152,7 @@ class SetupController(
             createdDate = now,
             lastLoginDate = null,
             isBanned = false,
+            homeFolderPath = null
         )
 
         val result = runTransaction { status ->

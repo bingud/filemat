@@ -58,7 +58,8 @@ export type SystemPermission =
   | "EDIT_ROLES"
   | "EXPOSE_FOLDERS"
   | "SUPER_ADMIN"
-  | "MANAGE_ALL_FILE_SHARES";
+  | "MANAGE_ALL_FILE_SHARES"
+  | "CHANGE_OWN_HOME_FOLDER";
 
 export type FilePermission =
   | "READ"
