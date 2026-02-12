@@ -199,7 +199,8 @@ class AuthService(
                 mfaTotpStatus = user.mfaTotpStatus,
                 mfaTotpRequired = user.mfaTotpRequired,
                 isBanned = user.isBanned,
-                roles = roles.map { it.roleId }.toMutableList()
+                roles = roles.map { it.roleId }.toMutableList(),
+                homeFolderPath = user.homeFolderPath
             )
 
             if (cacheInMemory) principalMap[user.userId] = (principal to unixNow())

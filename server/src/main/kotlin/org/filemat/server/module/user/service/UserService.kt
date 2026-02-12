@@ -7,9 +7,13 @@ import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.toJsonOrNull
+import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.auth.service.AuthService
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.UserRepository
@@ -21,6 +25,30 @@ class UserService(
     private val logService: LogService,
     private val authService: AuthService,
 ) {
+    fun changeHomeFolderPath(user: Principal, newPath: FilePath): Result<String> {
+        if (!user.hasPermission(SystemPermission.CHANGE_OWN_HOME_FOLDER)) return Result.reject("Missing permission to change home folder.")
+
+
+        try {
+            userRepository.updateHomeFolderPath(newPath.pathString, user.userId)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.UPDATE_HOME_FOLDER_PATH,
+                description = "Failed to update home folder path in the database.",
+                message = e.stackTraceToString(),
+                initiatorId = user.userId
+            )
+            return Result.error("Failed to update home folder path.")
+        }
+
+        authService.updatePrincipal(user.userId) { existingPrincipal ->
+            existingPrincipal.copy(homeFolderPath = newPath.pathString)
+        }
+
+        return Result.ok(newPath.pathString)
+    }
+
     fun changeEmail(meta: RequestMeta, email: String): Result<Unit> {
         Validator.email(email)
             ?.let { return Result.reject(it) }

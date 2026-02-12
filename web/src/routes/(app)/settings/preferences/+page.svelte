@@ -5,6 +5,7 @@
     import ClickToOpenFileSetting from "./_setting-components/ClickToOpenFileSetting.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import LoadPreviewsSetting from "./_setting-components/LoadPreviewsSetting.svelte";
+    import HomeFolderPathSetting from "./_setting-components/HomeFolderPathSetting.svelte";
 
     const title = "Preferences"
 
@@ -16,11 +17,10 @@
 
 
 <div class="page !h-fit settings-margin flex-col gap-8 xoverflow-y-auto">
-    <!-- <h2 class="text-lg font-medium">{title}</h2> -->
-
     {@render settingCell(LoadPreviewsSetting)}
     {@render settingCell(DefaultPageSetting)}
     {@render settingCell(ClickToOpenFileSetting)}
+    {@render settingCell(HomeFolderPathSetting)}
 </div>
 
 {#snippet settingCell(Component: Component<any>)}

@@ -64,4 +64,8 @@ interface UserRepository : CrudRepository<User, Ulid> {
     @Modifying
     @Query("UPDATE users SET email = :email WHERE user_id = :userId")
     fun updateEmail(userId: Ulid, email: String): Int
+
+    @Modifying
+    @Query("UPDATE users SET home_folder_path = :homeFolderPath WHERE user_id = :userId")
+    fun updateHomeFolderPath(homeFolderPath: String, userId: Ulid): Int
 }

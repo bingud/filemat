@@ -39,7 +39,8 @@ export type Principal = {
     username: string,
     mfaTotpStatus: boolean,
     isBanned: boolean,
-    roles: ulid[]
+    roles: ulid[],
+    homeFolderPath: string | null,
 }
 
 export type Role = {

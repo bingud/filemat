@@ -25,10 +25,9 @@
 
 /* Page background */
 @utility bg-surface-button {
-    @apply bg-surface hover:bg-surface-content;
+    @apply bg-surface not-disabled:hover:bg-surface-content;
 }
 
 @utility bg-surface-content-button {
-    @apply bg-surface-content hover:bg-surface-content-hover;
+    @apply bg-surface-content not-disabled:hover:bg-surface-content-hover;
 }
-

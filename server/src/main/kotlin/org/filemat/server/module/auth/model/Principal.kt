@@ -19,6 +19,7 @@ data class Principal(
     val isBanned: Boolean,
     @Suppress("SERIALIZER_TYPE_INCOMPATIBLE")
     var roles: MutableList<@Serializable(UlidSerializer::class) Ulid>,
+    val homeFolderPath: String?,
 ) {
     companion object {
         fun Principal.getRoles(): List<Role> {

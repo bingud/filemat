@@ -3,6 +3,7 @@ import { untrack } from "svelte"
 import type { Role } from "../auth/types"
 import type { ulid, ValuesOf } from "../types/types"
 import { entriesOf } from "../util/codeUtil.svelte"
+import { auth } from "./authState.svelte"
 
 export const filePagePaths = {
     "/files": "files",
@@ -84,9 +85,13 @@ class AppState {
         const state: any = {}
         
         entriesOf(sitePaths).forEach(([path, name]) => {
-            state[name] = (current.startsWith(path))
+            const matches = current.startsWith(path)
+            state[name] = matches
         })
-        return state as Record<ValuesOf<typeof sitePaths>, boolean>
+
+        state["home"] = current === `/files${auth.principal?.homeFolderPath}`
+
+        return state as Record<ValuesOf<typeof sitePaths> | "home", boolean>
     })
 }
 
@@ -95,6 +100,7 @@ class SettingState {
 	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
     clickToOpenFile = $state(false)
     previewSize = $state({ rows: 2, grid: 2 })
+    homeFolderPath = $state(null)
 }
 
 class TitleState {
