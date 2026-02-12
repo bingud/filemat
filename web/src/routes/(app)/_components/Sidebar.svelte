@@ -27,13 +27,13 @@
         <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar lg:w-sidebar-desktop h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files}>
+                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files && !appState.currentPath.home}>
                     <span class="button-icon">
                         <FolderIcon />
                     </span>
                     <span>All</span>
                 </a>
-                <a href="/home" on:click={hide} class="sidebar-button">
+                <a href="/home" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home}>
                     <span class="button-icon">
                         <HomeIcon />
                     </span>

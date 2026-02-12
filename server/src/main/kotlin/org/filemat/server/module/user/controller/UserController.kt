@@ -7,7 +7,9 @@ import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.module.auth.service.MfaService
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.user.model.UserAction
+import org.filemat.server.module.user.service.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -22,7 +24,24 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/user")
 class UserController(
     private val mfaService: MfaService,
+    private val userService: UserService,
 ) : AController() {
+
+    @PostMapping("/update-home-folder-path")
+    fun setHomeFolderPathMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") newPathStr: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val newPath = FilePath.of(newPathStr)
+
+        // Pass plaintext input path
+        userService.changeHomeFolderPath(user, newPath).let {
+            if (it.hasError) return internal(it.error)
+            if (it.rejected) return bad(it.error)
+            return ok(it.value)
+        }
+    }
 
     @PostMapping("/mfa/disable/confirm")
     fun disableMfaMapping(
