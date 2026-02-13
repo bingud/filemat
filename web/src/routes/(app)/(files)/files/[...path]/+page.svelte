@@ -292,7 +292,7 @@
                                 <FileViewTypeButton></FileViewTypeButton>
                             {/if}
 
-                            {#if uiState.isDesktop && filesState.isFileListOpen && auth.authenticated && !filesState.isSearchOpen}
+                            {#if uiState.isDesktop && filesState.isFileListOpen && auth.authenticated && !filesState.isSearchOpen && filesState.data.folderMeta?.permissions?.includes("WRITE")}
                                 <NewFileButton />
                             {/if}
 

@@ -4,7 +4,7 @@
     import { onMount } from "svelte";
 
     let isLoading = $state(false)
-    let pathInput = $derived(auth.principal!.homeFolderPath)
+    let pathInput = $derived(auth.principal?.homeFolderPath)
 
     let isUnchanged = $derived(pathInput === auth.principal?.homeFolderPath)
 
