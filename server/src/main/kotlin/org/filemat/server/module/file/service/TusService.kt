@@ -228,12 +228,17 @@ class TusService(
             FilePath.ofAlreadyNormalized(candidatePath) to candidateName
         }
 
-        fileService.isAllowedToAccessFile(user, destinationPath).let {
+        fileService.isAllowedToEditFile(user, destinationParent).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
         // Move the file to the target folder
-        val fileMoved = filesystem.moveFile(user = user, source = uploadLocation, destination = destinationPath)
+        val fileMoved = filesystem.moveFile(
+            user = user,
+            source = uploadLocation,
+            destination = destinationPath,
+            ignorePermissions = true
+        )
         if (fileMoved.isNotSuccessful) return Result.error("Failed to move the file from the uploads folder. ${fileMoved.errorOrNull ?: ""}")
 
         // Delete the TUS upload folder
