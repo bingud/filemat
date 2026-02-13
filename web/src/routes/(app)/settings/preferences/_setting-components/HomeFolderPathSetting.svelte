@@ -31,11 +31,13 @@
             const text = response.content
             const json = response.json()
             if (response.code.failed) {
-                    handleErr({
+                handleErr({
                     description: `Failed to update home folder path.`,
                     notification: json.message || "Failed to update home folder path.",
                     isServerDown: response.code.serverDown
                 })
+
+                return
             }
 
             if (auth.principal) auth.principal.homeFolderPath = text
