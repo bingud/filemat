@@ -22,7 +22,7 @@ class V4__add_manage_file_shares_permission_to_roles : Migration() {
     override fun run(st: Statement) {
         val roleResults = st.executeQuery("SELECT role_id, permissions FROM role")
 
-        // UserID + PermissionList
+        // RoleID + PermissionList
         val updatedRows = mutableListOf<Pair<String, String>>()
 
         while (roleResults.next()) {
