@@ -4,7 +4,7 @@
     import { onMount } from "svelte";
 
     onMount(() => {
-        const path = auth.principal?.homeFolderPath
+        const path = auth.principal?.homeFolderPath ?? ""
         goto(`/files${path}`)
     })
 </script>
