@@ -40,6 +40,22 @@ class FileController(
     private val fileLockService: FileLockService,
 ) : AController() {
 
+    @PostMapping("/create-blank")
+    fun createBlankFileMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+
+        fileService.createBlankFile(user, path).let {
+            if (it.rejected) return bad(it.error)
+            if (it.isNotSuccessful) return internal(it.error)
+            val serialized = Json.encodeToString(it.value)
+            return ok(serialized)
+        }
+    }
+
     @Unauthenticated
     @PostMapping("/search", produces = [ "application/x-ndjson" ])
     fun searchFilesMapping(

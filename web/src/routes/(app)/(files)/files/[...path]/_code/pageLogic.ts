@@ -1,13 +1,14 @@
 import { goto } from "$app/navigation"
-import type { FullFileMetadata } from "$lib/code/auth/types"
+import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, filenameFromPath, parentFromPath } from "$lib/code/util/codeUtil.svelte"
+import { addSuffix, filenameFromPath, formData, handleErr, handleException, parentFromPath, safeFetch, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
 import { sharedFilesPageState } from "../../../shared-files/state.svelte"
+import { inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
 
 
 export function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
@@ -192,6 +193,45 @@ export function handleUpload() {
     uploadWithTus()
 }
 
-export function handleNewFile() {
+export async function handleNewFile() {
+    const path = filesState.path
     filesState.ui.newFilePopoverOpen = false
+
+    const filename = await inputDialogState.show({
+        title: "Create a blank file",
+        confirmText: "Create",
+        cancelText: "Cancel",
+        message: "Enter the new filename:",
+    })
+    if (!filename) return
+
+    const newPath = `${path}/${filename}`
+
+    const response = await safeFetch(`/api/v1/file/create-blank`, {
+        body: formData({path: newPath})
+    })
+    if (response.failed) {
+        handleErr({
+            description: "Failed to create a blank file.",
+            exception: response.exception
+        })
+        return
+    }
+
+    const json = response.json()
+    const status = response.code
+    if (status.failed) {
+        handleErr({
+            description: "Failed to create a blank file.",
+            notification: json.message || "Failed to create a blank file.",
+            isServerDown: status.serverDown
+        })
+    }
+
+    if (filesState.path !== path) return
+    if (!filesState.data.folderMeta) return
+
+    const fileMeta = json as FullFileMetadata
+    fileMeta.filename = filename
+    filesState.data.entries?.push(fileMeta)
 }

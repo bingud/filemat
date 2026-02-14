@@ -12,6 +12,7 @@ import org.filemat.server.common.util.safeStreamSkip
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
@@ -347,6 +348,54 @@ class FileContentService(
             )
 
             return Result.ok()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    fun createBlankFile(user: Principal, rawPath: FilePath): Result<FullFileMetadata> {
+        val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
+
+        // Get folder parent path
+        val (canonicalParentResult, pathHasSymlink) = resolvePath(rawParentPath)
+        if (canonicalParentResult.isNotSuccessful) return canonicalParentResult.cast()
+        val canonicalParent = canonicalParentResult.value
+
+        // Check permissions
+        fileService.isAllowedToEditFile(user, canonicalParent).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val lock = fileLockService.getLock(canonicalParent.path, LockType.READ)
+        if (!lock.successful) return Result.reject("This folder is currently being modified.")
+
+        try {
+            // Get folder canonical path
+            val filename = rawPath.path.fileName
+            val canonicalPath = FilePath.ofAlreadyNormalized(canonicalParent.path.resolve(filename))
+
+            // Check if folder already exists
+            val alreadyExists = filesystemService.exists(canonicalPath.path, false)
+            if (alreadyExists) return Result.reject("This file already exists.")
+
+            // Create folder
+            filesystemService.createBlankFile(canonicalPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+            entityService.create(
+                canonicalPath = canonicalPath,
+                ownerId = user.userId,
+                userAction = UserAction.CREATE_FILE,
+            )
+
+            val newMeta = fileService.getFullMetadata(user, canonicalPath, canonicalPath).let {
+                if (it.hasError) return Result.error("File was created, but failed to load file metadata: ${it.error}")
+                if (it.isNotSuccessful) return Result.reject(it.errorOrNull ?: "File was created, but failed to load file metadata. No error provided.")
+                it.value
+            }
+
+            return Result.ok(newMeta)
         } finally {
             lock.unlock()
         }

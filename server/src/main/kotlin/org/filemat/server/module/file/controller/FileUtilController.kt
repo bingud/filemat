@@ -1,6 +1,5 @@
 package org.filemat.server.module.file.controller
 
-import com.drew.metadata.exif.ExifIFD0Directory
 import jakarta.servlet.http.HttpServletRequest
 import net.coobird.thumbnailator.Thumbnails
 import org.bytedeco.javacv.FFmpegFrameGrabber
@@ -19,19 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
-import java.awt.RenderingHints
-import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.charset.StandardCharsets
-import javax.imageio.IIOImage
-import javax.imageio.ImageIO
-import javax.imageio.ImageWriteParam
 import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
-import org.bytedeco.javacv.OpenCVFrameConverter
 import org.filemat.server.config.auth.Unauthenticated
-import org.opencv.core.Mat
-import java.awt.geom.AffineTransform
 
 
 @RestController

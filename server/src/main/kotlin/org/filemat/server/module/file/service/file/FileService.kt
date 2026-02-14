@@ -69,6 +69,9 @@ class FileService(
     fun createFolder(user: Principal, rawPath: FilePath): Result<Unit>
             = fileContentService.createFolder(user = user, rawPath = rawPath)
 
+    fun createBlankFile(user: Principal, rawPath: FilePath): Result<FullFileMetadata>
+             = fileContentService.createBlankFile(user, rawPath)
+
     // --- File Operations ---
 
     fun moveFile(user: Principal, rawPath: FilePath, rawNewPath: FilePath): Result<Unit>

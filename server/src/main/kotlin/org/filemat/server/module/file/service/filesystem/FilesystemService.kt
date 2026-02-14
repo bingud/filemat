@@ -56,6 +56,15 @@ class FilesystemService(
         }
     }
 
+    fun createBlankFile(path: FilePath): Result<Unit> {
+        return try {
+            Files.createFile(path.path)
+            Result.ok()
+        } catch (e: Exception) {
+            Result.error("Failed to create file.")
+        }
+    }
+
     /**
      * Returns whether file is in a supported filesystem
      */
