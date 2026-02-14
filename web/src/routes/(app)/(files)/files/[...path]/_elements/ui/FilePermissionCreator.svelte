@@ -122,13 +122,12 @@
         </div>
     </div>
 
-    <div class="max-w-full rounded-lg py-3 overflow-y-auto max-h-[25rem] flex flex-col bg-surface-content w-fit min-w-[10rem]">
+    <div class="w-full rounded-lg py-3 overflow-y-auto custom-scrollbar max-h-[25rem] flex flex-col bg-surface-content">
         {#if mode.user}
             <!-- Check for list of available users -->
             {#if miniList}
                 {#each miniList as mini}
-                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-surface-content-light-hover dark:hover:bg-surface-content-dark-hover">{mini.username}</button>
-                <!-- No users available -->
+                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start bg-surface-content-button">{mini.username}</button>
                 {:else}
                     <p class="px-3 py-1">No users available.</p>
                 {/each}
@@ -142,8 +141,10 @@
                 <p>Failed to load available users.</p>
             {/if}
         {:else}
-            {#each appState.roleList! as role}
-                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-fit min-w-full text-start hover:bg-surface-content-light-hover dark:hover:bg-surface-content-dark-hover">{role.name}</button>
+            {#each appState.roleList!.filter(r => !excludedRoles.includes(r.roleId)) as role}
+                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-full text-start bg-surface-content-button">{role.name}</button>
+            {:else}
+                <p class="px-3 py-1">No roles available.</p>
             {/each}
         {/if}
     </div>
