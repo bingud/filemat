@@ -198,7 +198,7 @@
 
 {#if role}
     <div in:fade={{duration: 70}} class="page settings-margin flex-col gap-12">
-        <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-neutral-200 dark:bg-neutral-850">
+        <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-surface">
             <h1 class="text-lg">{role.name}</h1>
             <p class="dark:text-neutral-300">Created on: {formatUnixTimestamp(role.createdDate)}</p>
             {#if appState.systemRoleIds?.admin === role.roleId}
@@ -212,12 +212,12 @@
             <div class="flex flex-col w-full gap-4">
                 <h2 class="text-lg">Users with this role:</h2>
                 
-                <div class="flex flex-col gap-4 p-4 rounded-lg bg-neutral-200 dark:bg-neutral-850 w-full">
+                <div class="flex flex-col gap-4 p-4 rounded-lg bg-surface w-full">
                     {#if role.miniUsers}
                         {#if role.roleId !== appState.systemRoleIds?.user}
                             <div class="flex gap-3 flex-wrap w-full">
                                 {#each sortArrayAlphabetically(role.miniUsers, v => v.username) as mini}
-                                    <a href="/settings/users/{mini.userId}" title={mini.userId} class="p-3 rounded bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-900 dark:hover:bg-neutral-800">{mini.username}</a>
+                                    <a href="/settings/users/{mini.userId}" title={mini.userId} class="p-3 rounded bg-surface-content-button">{mini.username}</a>
                                 {:else}
                                     <p class="opacity-80">Nobody</p>
                                 {/each}
@@ -231,12 +231,46 @@
                 </div>
 
                 {#if highestRolePermissionLevel && hasPermissionLevel(highestRolePermissionLevel)}
-                    <Popover.Root bind:open={addUserPopoverOpen}>
+                    <!-- <Popover.Root bind:open={addUserPopoverOpen}>
                         <Popover.Trigger class="basic-button" onclick={loadAllUserList}>
                             Add users
                         </Popover.Trigger>
                         <Popover.Content preventScroll={true} align="end" class="relative z-popover">
-                            <div class="max-w-full w-[13rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit">
+                            <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
+                                {#if allUsers}
+                                    {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
+                                        <div class="flex flex-col gap-2 p-2">
+                                            {#each sortArrayAlphabetically(allUsers, v => v.username) as user}
+                                                {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
+                                                {#if !hasRole}
+                                                    <button disabled={addingUser} on:click={() => { addUser(user) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{user.username}</button>
+                                                {/if}
+                                            {/each}
+                                        </div>
+                                    {:else}
+                                        <div class="center !h-[3rem]">
+                                            <p>All users have this role.</p>
+                                        </div>
+                                    {/if}
+                                {:else if allUsersLoading}
+                                    <div class="center !h-[3rem] py-2">
+                                        <Loader></Loader>
+                                    </div>
+                                {:else}
+                                    <div class="center !h-[3rem]">
+                                        <p class="">Failed to load list of users.</p>
+                                    </div>
+                                {/if}
+                            </div>
+                        </Popover.Content>
+                    </Popover.Root> -->
+
+                    <Popover.Root bind:open={addUserPopoverOpen}>
+                        <Popover.Trigger class="basic-button text-sm" onclick={loadAllUserList}>
+                            Add users
+                        </Popover.Trigger>
+                        <Popover.Content preventScroll={true} align="start" class="relative z-popover">
+                            <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
                                 {#if allUsers}
                                     {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
                                         <div class="flex flex-col gap-2 p-2">
@@ -270,7 +304,7 @@
 
         <div class="flex flex-col gap-4">
             <h2 class="text-lg">Permissions:</h2>
-            <div class="flex gap-3 flex-wrap rounded-lg w-full bg-neutral-200 dark:bg-neutral-850 p-4">
+            <div class="flex gap-3 flex-wrap rounded-lg w-full bg-surface p-4">
                 {#if displayedPermissionList}
                     {#each sortArrayByNumberDesc(displayedPermissionList.map(v => getPermissionMeta(v)), v => v.level) as meta}
                         {#if !editingPermissions}
@@ -294,7 +328,7 @@
                     <Popover.Trigger title="Assign a role" class="basic-button text-sm">
                         Add permission
                     </Popover.Trigger>
-                    <Popover.Content preventScroll={true} align="end" class="relative z-popover">
+                    <Popover.Content preventScroll={true} align="start" class="relative z-popover">
                         <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
                             <div class="flex flex-col gap-2 p-2">
                                 {#each sortArrayByNumberDesc(valuesOf(systemPermissionMeta).filter(m => m.type !== PermissionType.file && newPermissionList?.includes(m.id) != true), v => v.level) as meta}
@@ -320,8 +354,10 @@
             {/if}
         </div>
 
+        <hr class="basic-hr max-w-full">
+        <p>ID:<br>{role.roleId}</p>
+
         {#if canEditPermissions}
-            <hr class="basic-hr max-w-full">
 
             <button on:click={delRole} class="basic-button hover:ring-2 ring-red-400">{#if !deletingRole}Delete role{:else}Deleting...{/if}</button>
         {/if}

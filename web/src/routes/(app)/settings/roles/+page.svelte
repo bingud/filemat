@@ -4,7 +4,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import { type SettingSectionId } from "$lib/code/module/settings";
-    import { formatUnixTimestamp, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
+    import { formatUnixTimestamp, sortArrayAlphabetically, sortArrayByNumberDesc } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -41,25 +41,25 @@
 
         <div in:fade={{duration: 70}} class="w-full overflow-y-auto custom-scrollbar h-fit pb-1">
             <div class="flex flex-col gap-4">
-                {#each appState.roleList as role}
-                    <div class="p-4 rounded-lg bg-neutral-200 dark:bg-neutral-800/50">
+                {#each sortArrayAlphabetically(appState.roleList, (r) => r.name, "asc") as role}
+                    <a href="/settings/roles/{role.roleId}" class="flex flex-col w-full p-4 gap-2 rounded-lg bg-surface hover:bg-surface-content group">
                         <!-- Role Name -->
-                        <a href="/settings/roles/{role.roleId}" class="font-medium text-lg mb-2 text-blue-400 hover:underline">
+                        <p class="font-medium text-lg group-hover:text-blue-600 group-hover:dark:text-blue-400 group-hover:underline">
                             {role.name}
-                        </a>
+                        </p>
                 
                         <!-- Created At -->
-                        <div class="mb-2">
+                        <div class="opacity-70 text-sm">
                             Created at: {formatUnixTimestamp(role.createdDate)}
                         </div>
                 
                         <!-- Role ID -->
-                        <div class="mb-2">
+                        <!-- <div class="opacity-70 text-sm">
                             Role ID:
                             <a href="/settings/roles/{role.roleId}" class="hover:text-blue-400 hover:underline" title="Open page to manage this role">
                                 {role.roleId}
                             </a>
-                        </div>
+                        </div> -->
                 
                         <!-- Permissions (wrapped) -->
                         <div title="Permissions of this role" class="flex flex-wrap gap-2">
@@ -69,7 +69,7 @@
                                 </span>
                             {/each}
                         </div>
-                    </div>
+                    </a>
                 {/each}
             </div>
               
