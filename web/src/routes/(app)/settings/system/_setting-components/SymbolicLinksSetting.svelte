@@ -61,7 +61,7 @@
     {#if !showConfirmation}
         <button 
             on:click={() => showConfirmation = true} 
-            class="mt-2 w-fit px-4 py-2 bg-neutral-300 dark:bg-neutral-700 hover:bg-neutral-400 dark:hover:bg-neutral-600 rounded-md">
+            class="basic-button bg-surface-content-button!">
             {appState.followSymlinks ? 'Disable' : 'Enable'} Symbolic Links
         </button>
     {:else}

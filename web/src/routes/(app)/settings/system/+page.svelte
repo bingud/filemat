@@ -15,7 +15,7 @@
 
 <div class="page settings-margin flex-col gap-8">
     <h2 class="text-lg font-medium">File System Settings</h2>
-    <div class="flex flex-col gap-6 p-6 rounded-lg w-full bg-neutral-200 dark:bg-neutral-850">
+    <div class="flex flex-col gap-6 p-6 rounded-lg w-full bg-surface">
         
         <div class="flex flex-col gap-8 w-full">
             <SymbolicLinksSetting></SymbolicLinksSetting>
