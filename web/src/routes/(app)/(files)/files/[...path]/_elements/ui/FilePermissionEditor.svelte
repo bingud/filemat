@@ -2,7 +2,7 @@
     import type { FilePermission } from "$lib/code/auth/types";
     import { filePermissionMeta } from "$lib/code/data/permissions";
     import type { ulid } from "$lib/code/types/types";
-    import { filterObject, formData, handleErr, handleException, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { filterObject, formData, handleErr, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
     import type { EntityPermissionMeta } from "../../_code/fileUtilities";

@@ -11,7 +11,6 @@
     import { Dialog } from "$lib/component/bits-ui-wrapper";
     import FilePermissionCreator from "../ui/FilePermissionCreator.svelte";
     import FilePermissionEditor from "../ui/FilePermissionEditor.svelte";
-    
     import type { EntityPermissionMeta } from "../../_code/fileUtilities";
     import { filePermissionCount, filePermissionMeta } from "$lib/code/data/permissions";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
@@ -227,9 +226,17 @@
         </div>
 
         <hr class="basic-hr shrink-0 flex-none">
-        
-        {#if selectedMeta && isFolder(selectedMeta) && !selectedMeta.isExecutable}
-            <p class="px-6 text-sm">Missing permission to open this folder</p>
+
+        {#if !selectedMeta.isExecutable || !selectedMeta.isWritable}
+            {@const missingBoth = !selectedMeta.isExecutable && !selectedMeta.isWritable}
+
+            <p class="px-6 text-sm">
+                Missing permission to 
+                {#if !selectedMeta.isExecutable}open{/if}
+                {#if missingBoth} or {/if}
+                {#if !selectedMeta.isWritable}edit{/if}
+                this {#if isFolder(selectedMeta)}folder{:else}file{/if}
+            </p>
             <hr class="basic-hr shrink-0 flex-none">
         {/if}
         

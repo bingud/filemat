@@ -14,6 +14,7 @@
     import SettingsIcon from "$lib/component/icons/SettingsIcon.svelte";
     import MoonIcon from "$lib/component/icons/MoonIcon.svelte";
     import SunIcon from "$lib/component/icons/SunIcon.svelte";
+    import { auth } from "$lib/code/stateObjects/authState.svelte";
 
     function hide() { uiState.menuOpen = false }
 
@@ -33,7 +34,7 @@
                     </span>
                     <span>All</span>
                 </a>
-                <a href="/home" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home}>
+                <a href="/files{auth.principal?.homeFolderPath || ""}" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home} class:pointer-events-none={!auth.principal?.homeFolderPath}>
                     <span class="button-icon">
                         <HomeIcon />
                     </span>

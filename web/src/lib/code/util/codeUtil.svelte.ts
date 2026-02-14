@@ -42,12 +42,14 @@ export function handleErr({
     description,
     notification,
     isServerDown,
+    exception,
 }: {
     description?: string,
     notification?: string,
     isServerDown?: boolean,
+    exception?: any,
 }) {
-    console.log(`${description || "(No description)"}  \n${notification || "(No notification message)"}  \n${isServerDown ? "(Server is unavailable)" : ""}`)
+    console.log(`${description || "(No description)"}  \n${notification || "(No notification message)"}  \n${isServerDown ? "(Server is unavailable)" : ""} ${exception ? `  \n${exception}` : ""}`)
 
     if (notification) {
         const downMessage = "Sever is unavailable."
@@ -95,6 +97,7 @@ export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boo
 
         return response
     } catch (e) { 
+        console.log(e)
         return { failed: true, exception: e } as any as SafeFetchResult
     }
 }

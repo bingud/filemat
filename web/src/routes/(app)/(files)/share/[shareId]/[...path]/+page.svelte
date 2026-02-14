@@ -133,11 +133,10 @@
         if (shareToken !== token) return
 
         if (response.failed) {
-            handleException(
-                `Failed to load shared file metadata.`,
-                `Failed to load shared file metadata.`,
-                response.exception
-            )
+            handleErr({
+                notification: `Failed to load shared file metadata.`,
+                exception: response.exception
+            })
             return null
         }
 
