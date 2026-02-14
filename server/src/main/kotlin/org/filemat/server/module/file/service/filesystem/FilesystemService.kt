@@ -72,7 +72,7 @@ class FilesystemService(
         return FileUtils.isSupportedFilesystem(path.path)
     }
 
-        /**
+    /**
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {
@@ -93,13 +93,13 @@ class FilesystemService(
         val modificationTime = attributes.lastModifiedTime().toMillis()
 
         return FileMetadata(
-            path = path.path.absolutePathString(),
+            path = path.pathString,
             modifiedDate = modificationTime,
             createdDate = creationTime,
             fileType = type,
             size = attributes.size(),
-            isExecutable = if (State.App.followSymlinks) Files.isExecutable(path.path) else true,
-            isWritable = if (State.App.followSymlinks) Files.isWritable(path.path) else false,
+            isExecutable = Files.isExecutable(path.path),
+            isWritable = Files.isWritable(path.path),
         )
     }
 
