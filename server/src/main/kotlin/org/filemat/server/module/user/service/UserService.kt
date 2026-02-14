@@ -7,7 +7,6 @@ import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.toJsonOrNull
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.file.model.FilePath
@@ -25,24 +24,27 @@ class UserService(
     private val logService: LogService,
     private val authService: AuthService,
 ) {
-    fun changeHomeFolderPath(user: Principal, newPath: FilePath): Result<String> {
-        if (!user.hasPermission(SystemPermission.CHANGE_OWN_HOME_FOLDER)) return Result.reject("Missing permission to change home folder.")
+    fun changeHomeFolderPath(meta: RequestMeta, newPath: FilePath, ignorePermissions: Boolean = false): Result<String> {
+        if (!ignorePermissions) {
+            if (meta.principal == null) return Result.reject("User must not be null.")
 
+            if (!meta.principal.hasPermission(SystemPermission.CHANGE_OWN_HOME_FOLDER)) return Result.reject("Missing permission to change home folder.")
+        }
 
         try {
-            userRepository.updateHomeFolderPath(newPath.pathString, user.userId)
+            userRepository.updateHomeFolderPath(newPath.pathString, meta.targetUserId)
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
                 action = UserAction.UPDATE_HOME_FOLDER_PATH,
                 description = "Failed to update home folder path in the database.",
                 message = e.stackTraceToString(),
-                initiatorId = user.userId
+                initiatorId = meta.initiatorId
             )
             return Result.error("Failed to update home folder path.")
         }
 
-        authService.updatePrincipal(user.userId) { existingPrincipal ->
+        authService.updatePrincipal(meta.targetUserId) { existingPrincipal ->
             existingPrincipal.copy(homeFolderPath = newPath.pathString)
         }
 

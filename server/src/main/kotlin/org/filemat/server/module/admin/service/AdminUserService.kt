@@ -15,11 +15,11 @@ import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.MfaService
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.role.service.UserRoleService
-import org.filemat.server.module.user.model.MiniUser
 import org.filemat.server.module.user.model.PublicUser
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.PublicUserRepository
@@ -50,15 +50,40 @@ class AdminUserService(
             }
 
         // Update property
-        if (property == "username") {
-            meta.action = UserAction.UPDATE_MFA
-            return userService.changeUsername(meta, value)
-        } else if (property == "email") {
-            meta.action = UserAction.UPDATE_EMAIL
-            return userService.changeEmail(meta, value)
-        } else {
-            return Result.reject("Invalid property.")
+        val result: Result<Unit> =
+            when (property) {
+                "username" -> {
+                    meta.action = UserAction.UPDATE_USERNAME
+                    userService.changeUsername(meta, value)
+                }
+
+                "email" -> {
+                    meta.action = UserAction.UPDATE_EMAIL
+                    userService.changeEmail(meta, value)
+                }
+
+                "homeFolderPath" -> {
+                    meta.action = UserAction.UPDATE_HOME_FOLDER_PATH
+                    userService.changeHomeFolderPath(meta, FilePath.of(value), true).cast()
+                }
+
+                else -> return Result.reject("Invalid property.")
+            }
+
+        if (result.isSuccessful) {
+            logService.info(
+                type = LogType.AUDIT,
+                action = UserAction.UPDATE_ACCOUNT_PROPERTY,
+                description = "Admin updated user property: $property",
+                message = "",
+                initiatorId = meta.initiatorId,
+                initiatorIp = meta.ip,
+                targetId = meta.targetId,
+                meta = meta("property" to property, "value" to value)
+            )
         }
+
+        return result
     }
 
     fun resetTotpMfa(meta: RequestMeta, enforce: Boolean): Result<Unit> {

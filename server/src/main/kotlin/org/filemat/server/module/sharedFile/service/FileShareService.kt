@@ -6,7 +6,6 @@ import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
-import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
@@ -19,6 +18,7 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.sharedFile.model.FileShare
 import org.filemat.server.module.sharedFile.model.isExpired
@@ -153,7 +153,22 @@ class FileShareService(
             return Result.reject("You do not have permission to delete this share.")
         }
 
-        return db_deleteShare(shareId, entityId, userAction)
+        db_deleteShare(shareId, entityId, userAction).let {
+            if (it.isNotSuccessful) return it
+        }
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.DELETE_FILE_SHARE,
+            description = "Public file share deleted",
+            message = "",
+            initiatorId = principal.userId,
+            meta = meta(
+                "share_id" to shareId,
+            )
+        )
+
+        return Result.ok()
     }
 
     private fun db_deleteShare(shareId: String, entityId: Ulid, userAction: UserAction): Result<Unit> {
@@ -224,6 +239,19 @@ class FileShareService(
         insertFileShare(share, UserAction.SHARE_FILE).let {
             if (it.isNotSuccessful) return it.cast()
         }
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.SHARE_FILE,
+            description = "Public file share created",
+            message = "",
+            initiatorId = principal.userId,
+            meta = meta(
+                "share_id" to sharePath,
+                "file_path" to canonicalPath.pathString,
+                "max_age" to maxAge.toString(),
+            )
+        )
 
         return share.toResult()
     }

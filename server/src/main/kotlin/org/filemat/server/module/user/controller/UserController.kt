@@ -6,6 +6,7 @@ import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.common.util.realIp
 import org.filemat.server.module.auth.service.MfaService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.user.model.UserAction
@@ -35,8 +36,16 @@ class UserController(
         val user = request.getPrincipal()!!
         val newPath = FilePath.of(newPathStr)
 
+        val meta = RequestMeta(
+            initiatorId = user.userId,
+            targetId = user.userId,
+            ip = request.realIp(),
+            action = UserAction.UPDATE_HOME_FOLDER_PATH,
+            principal = user
+        )
+
         // Pass plaintext input path
-        userService.changeHomeFolderPath(user, newPath).let {
+        userService.changeHomeFolderPath(meta, newPath).let {
             if (it.hasError) return internal(it.error)
             if (it.rejected) return bad(it.error)
             return ok(it.value)
