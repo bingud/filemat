@@ -50,6 +50,13 @@ export function hasPermission(permission: SystemPermission, ignoreSuperAdmin: bo
     return hasAnyPermission([permission], ignoreSuperAdmin)
 }
 
+export function hasAllPermissions(list: SystemPermission[], ignoreSuperAdmin: boolean = false): boolean {
+    for (const perm of list) {
+        if (!hasPermission(perm, ignoreSuperAdmin)) return false
+    }
+    return true
+}
+
 
 /**
  * Returns permission level for current user

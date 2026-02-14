@@ -5,6 +5,8 @@
     import { createLink } from "$lib/code/util/codeUtil.svelte"
     import CopyIcon from "$lib/component/icons/CopyIcon.svelte";
     import { DropdownMenu } from "bits-ui";
+    import { auth } from "$lib/code/stateObjects/authState.svelte";
+    import { hasAllPermissions, hasPermission } from "$lib/code/module/permissions";
 
 
     let {
@@ -77,9 +79,11 @@
                             </span>
                         {/if}
                         
-                        <a on:click|stopPropagation={() => {}} target="_blank" href="/settings/users/{share.userId}" class="text-blue-600 dark:text-blue-400 hover:underline">
-                            User Account
-                        </a>
+                        {#if hasAllPermissions(["MANAGE_USERS", "MANAGE_ALL_FILE_SHARES"])}
+                            <a on:click|stopPropagation={() => {}} target="_blank" href="/settings/users/{share.userId}" class="text-blue-600 dark:text-blue-400 hover:underline">
+                                User Account
+                            </a>
+                        {/if}
                     </div>
                 </div>
             </button>

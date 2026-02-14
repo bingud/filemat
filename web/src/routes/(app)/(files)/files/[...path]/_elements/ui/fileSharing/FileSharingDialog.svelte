@@ -224,7 +224,7 @@
             class="fixed inset-0 z-50 bg-black/50"
         />
         <Dialog.Content interactOutsideBehavior="ignore">
-            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] max-h-[calc(100svh-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-12">
+            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] max-h-[calc(100svh-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-8">
                 <div class="flex items-center justify-between w-full shrink-0">
                     <h3>File sharing</h3>
                     <Dialog.Close>
@@ -240,22 +240,22 @@
                         Create a public link
                     </button>
                 {:else}
-                    <form class="flex flex-col gap-4 shrink-0">
+                    <form class="flex flex-col w-full bg-bg rounded-lg gap-4 shrink-0 p-4">
                         <div class="flex flex-col gap-1">
                             <label for="id-input">Public file link</label>
                             <input use:useReplaceChars={replaceUrlChar} bind:value={linkInput} id="id-input" class="basic-input">
                         </div>
 
                         <!-- Expiration -->
-                        <div class="flex flex-col gap-1">
+                        <div class="w-full flex flex-col gap-1">
                             <div class="flex gap-1 items-center">
-                                <input bind:checked={maxAgeEnabled} type="checkbox" class="!opacity-100">
-                                <label for="duration-input">Expiration time</label>
+                                <input id="duration-input-enabled" bind:checked={maxAgeEnabled} type="checkbox" class="!opacity-100">
+                                <label for="duration-input-enabled">Expiration time</label>
                             </div>
                             {#if maxAgeEnabled}
-                                <div class="flex gap-2">
-                                    <input bind:value={maxAgeInput} id="duration-input" type="number" class="basic-input flex-1" min="1">
-                                    <select bind:value={maxAgeUnit} class="basic-input bg-bg">
+                                <div class="w-full flex gap-2">
+                                    <input bind:value={maxAgeInput} id="duration-input" type="number" class="basic-input flex-1 min-w-0" min="1">
+                                    <select bind:value={maxAgeUnit} class="basic-input bg-bg shrink-0">
                                         <option value="minutes">Minutes</option>
                                         <option value="hours">Hours</option>
                                         <option value="days">Days</option>
@@ -269,17 +269,17 @@
                         <!-- Password -->
                         <div class="flex flex-col gap-1">
                             <div class="flex gap-1 items-center">
-                                <input bind:checked={passwordEnabled} type="checkbox" class="!opacity-100">
+                                <input id="password-input" bind:checked={passwordEnabled} type="checkbox" class="!opacity-100">
                                 <label for="password-input">Password</label>
                             </div>
                             {#if passwordEnabled}
                                 <div class="flex gap-2">
-                                    <input bind:value={passwordInput} id="password-input" type="password" class="basic-input flex-1">
+                                    <input bind:value={passwordInput} type="password" class="basic-input flex-1">
                                 </div>
                             {/if}
                         </div>
                         
-                        <div>
+                        <div class="flex gap-4">
                             <button on:click={createShare} disabled={isCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-green-500">{isCreating ? 'Creating...' : 'Create'}</button>
                             <button on:click={cancelCreating} class="basic-button !bg-surface-content-button hover:ring-2 ring-red-500">Cancel</button>
                         </div>
@@ -295,7 +295,7 @@
                                 {getTimeRemaining} 
                             />
                         {:else}
-                            <p class="text-center">You haven't shared this file.</p>
+                            <p class="text-center">You haven't shared this file yet.</p>
                         {/each}
                     {:else}
                         <Loader class="m-auto"></Loader>
