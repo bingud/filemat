@@ -22,6 +22,7 @@
     const editableFields: record<PublicAccountProperty, string> = {
         "email": "Email",
         "username": "Username",
+        "homeFolderPath": "Home folder path"
     }
 
     const viewableFields: record<PublicAccountProperty, string> = {
@@ -206,9 +207,14 @@
     .detail-card {
         @apply w-full md:w-auto md:flex-1 max-w-[30rem];
     }
+
     .detail-content {
         @apply h-fit p-3 rounded bg-surface w-full whitespace-pre-wrap break-all;
     }
+    .detail-content:empty::before {
+        content: '\200b'
+    }
+
     .details-holder {
         @apply flex flex-col gap-4 w-full;
     }

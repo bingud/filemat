@@ -90,6 +90,7 @@ export type PublicUser = {
     createdDate: number,
     lastLoginDate: number | null,
     isBanned: boolean,
+    homeFolderPath: string | null,
 }
 
 export type FullPublicUser = PublicUser & {
