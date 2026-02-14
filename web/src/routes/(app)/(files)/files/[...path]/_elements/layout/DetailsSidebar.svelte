@@ -227,17 +227,19 @@
 
         <hr class="basic-hr shrink-0 flex-none">
 
-        {#if !selectedMeta.isExecutable || !selectedMeta.isWritable}
-            {@const missingBoth = !selectedMeta.isExecutable && !selectedMeta.isWritable}
+        {#if (isFolder(selectedMeta) && !selectedMeta.isExecutable) || !selectedMeta.isWritable}
+            {@const folder = isFolder(selectedMeta)}
+            {@const noOpen = folder && !selectedMeta.isExecutable}
+            {@const noEdit = !selectedMeta.isWritable}
 
             <p class="px-6 text-sm">
-                Missing permission to 
-                {#if !selectedMeta.isExecutable}open{/if}
-                {#if missingBoth} or {/if}
-                {#if !selectedMeta.isWritable}edit{/if}
-                this {#if isFolder(selectedMeta)}folder{:else}file{/if}
+                Missing permission to
+                {#if noOpen}open{/if}
+                {#if noOpen && noEdit} or {/if}
+                {#if noEdit}edit{/if}
+                this {folder ? 'folder' : 'file'}
             </p>
-            <hr class="basic-hr shrink-0 flex-none">
+            <hr class="basic-hr shrink-0 flex-none" />
         {/if}
         
         <div class="w-full flex flex-col px-6 gap-6 flex-none">
