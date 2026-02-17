@@ -26,6 +26,11 @@
     let videoElement: HTMLVideoElement | undefined = $state(undefined)
     let player: Player | undefined = $state(undefined)
 
+    let audioVolume = $state(
+        parseFloat(localStorage.getItem("audio-volume") || "0.5")
+    )
+    $effect(() => { localStorage.setItem("audio-volume", audioVolume.toString()) })
+
     onMount(() => {
         if (isViewableFile && fileCategory) {
             openAsFileType(fileCategory)
@@ -169,7 +174,7 @@
                         </video>
                     </div>
                 {:else if fileCategory === "audio"}
-                    <audio src={filesState.data.contentUrl} controls></audio>
+                    <audio bind:volume={audioVolume} src={filesState.data.contentUrl} controls></audio>
                 {:else if fileCategory === "pdf"}
                     <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
                 {/if}
