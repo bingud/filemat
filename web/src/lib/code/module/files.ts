@@ -255,7 +255,7 @@ export function startTusUpload(file: File) {
         metadata: {
             path: targetPath,
         },
-        chunkSize: 5 * 1024 * 1024,
+        chunkSize: 3072 * 1024, // 3 MB chunk
         onAfterResponse: (response) => {
             // Get the actual uploaded filename from the server
             // If the file already exists, the server will add a number to the end of the filename

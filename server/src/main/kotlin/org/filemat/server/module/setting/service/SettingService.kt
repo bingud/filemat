@@ -4,21 +4,88 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.plural
+import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.service.TusService
+import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.model.Setting
 import org.filemat.server.module.setting.repository.SettingRepository
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.concurrent.withLock
 
 @Service
 class SettingService(
     private val settingRepository: SettingRepository,
-    private val logService: LogService
+    private val logService: LogService,
+    private val filesystemService: FilesystemService,
+    private val tusService: TusService,
 ) {
+
+    fun set_uploadFolderPath(user: Principal, rawNewPath: FilePath): Result<Unit> {
+        TODO("Add a mechanism to replace upload folder while upload requests are active")
+
+        tusService.uploadLock.writeLock().withLock {
+            val newPath = resolvePath(rawNewPath).let { (result, containsSymLink) ->
+                if (result.isNotSuccessful) return result.cast()
+                result.value
+            }
+            val oldPath = FilePath.of(State.App.uploadFolderPath)
+
+            filesystemService.isFolderEmpty(newPath.path).let {
+                if (it.isNotSuccessful) return it.cast()
+                if (it.value == false) return Result.reject("Upload folder must be empty.")
+            }
+
+            db_setSetting(Props.Settings.uploadFolderPath, newPath.pathString).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+            State.App.uploadFolderPath = newPath.pathString
+
+            logService.info(
+                type = LogType.AUDIT,
+                action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
+                description = "Upload folder path was changed.",
+                message = "Old path:\n$oldPath\n\nNew path:\n$newPath",
+                initiatorId = user.userId,
+            )
+
+            filesystemService.initializeTusService()
+
+            // Move files to new location
+            var failedMoves = 0
+            val files = kotlin.runCatching {
+                Files.list(oldPath.path).use { it.toList() }
+            }.getOrElse { return Result.error("Upload folder was changed. Failed to move existing upload files.") }
+
+            files.forEach { child: Path ->
+                filesystemService.moveFile(
+                    FilePath.ofAlreadyNormalized(child),
+                    FilePath.ofAlreadyNormalized(newPath.path.resolve(child.fileName)),
+                    user,
+                    ignorePermissions = true
+                ).let {
+                    if (it.isNotSuccessful) failedMoves++
+                }
+            }
+
+            if (failedMoves > 0) {
+                return Result.error("Upload folder was changed. Failed to move ${failedMoves}${plural("file", failedMoves)}.")
+            }
+
+            return Result.ok()
+        }
+    }
 
     /**
      * Set the setting `followSymLinks`
@@ -65,10 +132,10 @@ class SettingService(
             logService.error(
                 type = LogType.SYSTEM,
                 action = UserAction.NONE,
-                description = "Failed to save setting in database. Setting name: [$name]",
+                description = "Failed to save setting in the database. Setting name: [$name]",
                 message = e.stackTraceToString()
             )
-            Result.error("Failed to save setting in database.")
+            Result.error("Failed to save setting in the database.")
         }
     }
 

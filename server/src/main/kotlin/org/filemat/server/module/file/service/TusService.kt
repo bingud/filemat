@@ -18,6 +18,8 @@ import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.withLock
 import kotlin.io.path.exists
 
 
@@ -30,6 +32,7 @@ class TusService(
     private val fileService: FileService,
     private val entityService: EntityService
 ) {
+    val uploadLock = ReentrantReadWriteLock()
 
     /**
      * Handles a file upload request with TUS
@@ -38,53 +41,55 @@ class TusService(
         request: HttpServletRequest,
         response: HttpServletResponse,
     ) {
-        response.contentType = "application/json"
-        response.characterEncoding = "UTF-8"
+        uploadLock.readLock().withLock {
+            response.contentType = "application/json"
+            response.characterEncoding = "UTF-8"
 
-        // Get the TUS service instance
-        val tusService = filesystem.tusFileService
-        if (tusService == null) return response.respond(500, "File upload service is not running.")
+            // Get the TUS service instance
+            val tusService = filesystem.tusFileService
+            if (tusService == null) return response.respond(500, "File upload service is not running.")
 
-        val user = request.getPrincipal()!!
+            val user = request.getPrincipal()!!
 
-        // Handle a POST request
-        if (request.method == "POST") {
-            handlePostRequest(
-                request = request,
-                response = response,
-                user = user,
-            ).let {
-                if (it == false) return
-            }
-        }
-
-        // Wrap request to change the path, so that TUS receives the api prefix
-        val wrappedRequest = RequestPathOverrideWrapper(request, "/api${request.requestURI}")
-        // Wrap response so that TUS cannot breach containment and send response too soon
-        val wrappedResponse = BufferedResponseWrapper(response)
-        // Make TUS handle uploads
-        tusService.process(wrappedRequest, wrappedResponse)
-
-        // Handle a PATCH request
-        if (request.method == "PATCH") {
-            handlePatchRequest(
-                request = request,
-                wrappedRequest = wrappedRequest,
-                response = response,
-                tusService = tusService,
-                user = user
-            ).let {
-                if (it.isNotSuccessful) return
-                val actualFilename = it.valueOrNull
-                if (actualFilename != null) {
-                    val actualFilenameEncoded = encodeToBase64(actualFilename)
-                    wrappedResponse.setHeader("actual-uploaded-filename", actualFilenameEncoded)
+            // Handle a POST request
+            if (request.method == "POST") {
+                handlePostRequest(
+                    request = request,
+                    response = response,
+                    user = user,
+                ).let {
+                    if (it == false) return
                 }
             }
-        }
 
-        // Send TUS response
-       wrappedResponse.copyTo(response)
+            // Wrap request to change the path, so that TUS receives the api prefix
+            val wrappedRequest = RequestPathOverrideWrapper(request, "/api${request.requestURI}")
+            // Wrap response so that TUS cannot breach containment and send response too soon
+            val wrappedResponse = BufferedResponseWrapper(response)
+            // Make TUS handle uploads
+            tusService.process(wrappedRequest, wrappedResponse)
+
+            // Handle a PATCH request
+            if (request.method == "PATCH") {
+                handlePatchRequest(
+                    request = request,
+                    wrappedRequest = wrappedRequest,
+                    response = response,
+                    tusService = tusService,
+                    user = user
+                ).let {
+                    if (it.isNotSuccessful) return
+                    val actualFilename = it.valueOrNull
+                    if (actualFilename != null) {
+                        val actualFilenameEncoded = encodeToBase64(actualFilename)
+                        wrappedResponse.setHeader("actual-uploaded-filename", actualFilenameEncoded)
+                    }
+                }
+            }
+
+            // Send TUS response
+           wrappedResponse.copyTo(response)
+        }
     }
 
     /**

@@ -16,7 +16,7 @@
 </script>
 
 
-<div class="page !h-fit settings-margin flex-col gap-8 xoverflow-y-auto">
+<div class="page !h-fit settings-margin flex-col gap-8">
     {@render settingCell(LoadPreviewsSetting)}
     {@render settingCell(DefaultPageSetting)}
     {@render settingCell(ClickToOpenFileSetting)}

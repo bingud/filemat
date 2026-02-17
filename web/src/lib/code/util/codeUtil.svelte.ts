@@ -240,7 +240,6 @@ export function toStatus(s: number): httpStatus {
     } else if (isServerDown(s)) {
         result = { ok: false, serverDown: true, failed: true, notFound: false, raw: s }
     } else if (s === 404) {
-        
         result = { ok: false, serverDown: false, failed: true, notFound: true, raw: s }
     } else {
         result = { ok: false, serverDown: false, failed: true, notFound: false, raw: s }

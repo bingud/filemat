@@ -62,6 +62,8 @@ class FileVisibilityService(
             return "This file is blocked because it is marked as sensitive."
         }
 
+        if (!State.App.allowReadDataFolder && canonicalPath.startsWith(Props.dataFolderPath)) return "${Props.appName} data folder is blocked."
+
         val isForceHidden = hiddenFileTrie.getVisibility(canonicalPath.pathString)
         // isExposed is set to true because all folders in this list are forcefully hidden
         if (isForceHidden.isExposed == true) return "This file is blocked."

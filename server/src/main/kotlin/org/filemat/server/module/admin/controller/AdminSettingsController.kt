@@ -2,18 +2,18 @@ package org.filemat.server.module.admin.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.State
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.auth.service.SensitiveAuthService
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileVisibility
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.SystemPermission
-import org.filemat.server.module.role.service.RoleService
-import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.setting.service.SettingService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.ResponseEntity
@@ -31,8 +31,6 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/admin/system")
 class AdminSettingsController(
-    private val roleService: RoleService,
-    private val userRoleService: UserRoleService,
     private val logService: LogService,
     private val settingService: SettingService,
     private val fileVisibilityService: FileVisibilityService,
@@ -143,7 +141,7 @@ class AdminSettingsController(
      * Set system setting `followSymLinks`
      */
     @PostMapping("/set/follow-symlinks")
-    fun adminGetRoleMapping(
+    fun admin_setFollowSymlinksSetting(
         request: HttpServletRequest,
         @RequestParam("new-state") rawNewState: String,
     ): ResponseEntity<String> {
@@ -156,5 +154,27 @@ class AdminSettingsController(
             if (it.isNotSuccessful) return bad(it.error, "")
             return ok()
         }
+    }
+
+    @PostMapping("/set/upload-folder-path")
+    fun admin_setUploadFolderSetting(
+        request: HttpServletRequest,
+        @RequestParam("new-path") rawNewPath: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val path = FilePath.of(rawNewPath)
+
+        settingService.set_uploadFolderPath(user, path).let {
+            if (it.rejected) return bad(it.error)
+            if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to update upload folder path.")
+            return ok("ok")
+        }
+    }
+
+    @GetMapping("/get-upload-folder-path")
+    fun adminGetUploadFolderPath(
+        request: HttpServletRequest
+    ): ResponseEntity<String> {
+        return ok(State.App.uploadFolderPath)
     }
 }
