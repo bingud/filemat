@@ -55,10 +55,10 @@
 
 
 
-<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-4 w-full">
     <h3 class="font-medium">Home folder path</h3>
     
-    <input bind:value={pathInput} class="basic-input" placeholder="Home folder path">
+    <input bind:value={pathInput} class="basic-input min-w-[35rem] w-fit max-w-[min(100%,70rem)] field-sizing-content" placeholder="Home folder path">
 
     <div class="flex gap-4">
         <button
@@ -68,10 +68,9 @@
         >
             Save
         </button>
-        {#if pathInput !== auth.principal?.homeFolderPath}
+        {#if !isUnchanged}
             <button
                 on:click={cancel}
-                disabled={isUnchanged}
                 class="basic-button"
             >
                 Cancel

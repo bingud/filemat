@@ -66,7 +66,8 @@ enum class UserAction(val index: Int) {
     COPY_FILE(57),
     DUPLICATE_ENTITY(58),
     GENERATE_ADMIN_OTP(59),
-    UPDATE_HOME_FOLDER_PATH(60);
+    UPDATE_HOME_FOLDER_PATH(60),
+    UPDATE_UPLOAD_FOLDER_PATH(61);
 
     companion object {
         init {

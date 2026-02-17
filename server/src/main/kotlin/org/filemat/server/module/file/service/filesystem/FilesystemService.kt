@@ -14,6 +14,7 @@ import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
 import kotlin.io.path.*
 
+
 /**
  * Service that provides low level filesystem access
  *
@@ -120,6 +121,37 @@ class FilesystemService(
      * Returns whether input file path exists
      */
     fun exists(path: Path, followSymbolicLinks: Boolean) = if (followSymbolicLinks) path.exists() else path.exists(LinkOption.NOFOLLOW_LINKS)
+
+    fun isFolderEmpty(path: Path): Result<Boolean> {
+        try {
+            if (!Files.isDirectory(path)) {
+                return Result.ok(false)
+            }
+            Files.newDirectoryStream(path).use { stream ->
+                return Result.ok(stream.iterator().hasNext() == false)
+            }
+        } catch (e: Exception) {
+            return Result.error("Failed to check if folder is empty.")
+        }
+    }
+
+    /**
+     * Walks over immediate children of the input path.
+     */
+    fun walkChildren(path: FilePath, onFile: (Path) -> Unit): Result<Unit> {
+        return try {
+            Files.newDirectoryStream(path.path).use { stream ->
+                stream.forEach { onFile(it) }
+            }
+            Result.ok()
+        } catch (e: NotDirectoryException) {
+            Result.error("Path is not a directory.")
+        } catch (e: NoSuchFileException) {
+            Result.notFound()
+        } catch (e: Exception) {
+            Result.error("Failed to walk directory.")
+        }
+    }
 
     /**
      * Returns inode number for input path
