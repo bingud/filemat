@@ -90,6 +90,7 @@
                 return
             }
 
+            currentPath = response.content
         } finally {
             isSaving = false
         }
