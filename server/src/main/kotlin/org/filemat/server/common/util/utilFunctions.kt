@@ -25,6 +25,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.path.exists
+import kotlin.io.path.name
 import kotlin.system.measureNanoTime
 
 fun unixNow() = Instant.now().epochSecond
@@ -263,7 +265,7 @@ fun <K, V> HashMap<K, V>.removeAll(keys: Collection<K>): Boolean {
  *
  * - Whether the error was caused because the path had a symlink.
  */
-fun resolvePath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
+fun resolvePath(filePath: FilePath, resolvePartial: Boolean = false): Pair<Result<FilePath>, Boolean> {
     return try {
         val (canonicalPath, containsSymlink) = if (State.App.followSymlinks) {
             filePath.path.toRealPath() to false
@@ -274,7 +276,29 @@ fun resolvePath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
 
         Result.ok(FilePath.ofAlreadyNormalized(canonicalPath)) to containsSymlink
     } catch (e: NoSuchFileException) {
-        Pair(Result.notFound(), false)
+        if (resolvePartial) {
+            resolvePartialPath(filePath)
+        } else {
+            Pair(Result.notFound(), false)
+        }
+    } catch (e: Exception) {
+        Pair(Result.error("Failed to resolve path"), false)
+    }
+}
+
+private fun resolvePartialPath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
+    var current = filePath.path
+    val missing = ArrayDeque<String>()
+
+    while (!current.exists()) {
+        missing.addFirst(current.name)
+        current = current.parent ?: return Pair(Result.notFound(), false)
+    }
+
+    return try {
+        val resolvedBase = current.toRealPath()
+        val resolved = missing.fold(resolvedBase) { acc, part -> acc.resolve(part) }
+        Result.ok(FilePath.ofAlreadyNormalized(resolved)) to false
     } catch (e: Exception) {
         Pair(Result.error("Failed to resolve path"), false)
     }

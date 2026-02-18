@@ -11,7 +11,6 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.TusService
-import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -31,17 +30,15 @@ class SettingService(
     private val tusService: TusService,
 ) {
 
-    fun set_uploadFolderPath(user: Principal, rawNewPath: FilePath): Result<Unit> {
-        TODO("Add a mechanism to replace upload folder while upload requests are active")
-
+    fun set_uploadFolderPath(user: Principal, rawNewPath: FilePath): Result<FilePath> {
         tusService.uploadLock.writeLock().withLock {
-            val newPath = resolvePath(rawNewPath).let { (result, containsSymLink) ->
+            val newPath = resolvePath(rawNewPath, resolvePartial = true).let { (result, containsSymLink) ->
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }
             val oldPath = FilePath.of(State.App.uploadFolderPath)
 
-            filesystemService.isFolderEmpty(newPath.path).let {
+            filesystemService.isFolderEmpty(newPath.path, ignoreEmpty = true).let {
                 if (it.isNotSuccessful) return it.cast()
                 if (it.value == false) return Result.reject("Upload folder must be empty.")
             }
@@ -63,11 +60,11 @@ class SettingService(
             filesystemService.initializeTusService()
 
             // Move files to new location
-            var failedMoves = 0
             val files = kotlin.runCatching {
                 Files.list(oldPath.path).use { it.toList() }
             }.getOrElse { return Result.error("Upload folder was changed. Failed to move existing upload files.") }
 
+            val failedMoves = mutableListOf<Pair<Path, String>>()
             files.forEach { child: Path ->
                 filesystemService.moveFile(
                     FilePath.ofAlreadyNormalized(child),
@@ -75,15 +72,24 @@ class SettingService(
                     user,
                     ignorePermissions = true
                 ).let {
-                    if (it.isNotSuccessful) failedMoves++
+                    if (it.isNotSuccessful) failedMoves.add(child to (it.errorOrNull ?: "No error message."))
                 }
             }
 
-            if (failedMoves > 0) {
-                return Result.error("Upload folder was changed. Failed to move ${failedMoves}${plural("file", failedMoves)}.")
+            if (failedMoves.size > 0) {
+                val str = failedMoves.joinToString("\n\n") { (path, reason) -> "$reason: \n$path" }
+                logService.info(
+                    type = LogType.SYSTEM,
+                    action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
+                    description = "Failed to move upload files to new upload folder..",
+                    message = str,
+                    initiatorId = user.userId,
+                )
+
+                return Result.error("Upload folder was changed. Failed to move ${failedMoves} ${plural("file", failedMoves.size)}.")
             }
 
-            return Result.ok()
+            return Result.ok(newPath)
         }
     }
 

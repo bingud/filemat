@@ -167,7 +167,7 @@ class AdminSettingsController(
         settingService.set_uploadFolderPath(user, path).let {
             if (it.rejected) return bad(it.error)
             if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to update upload folder path.")
-            return ok("ok")
+            return ok(it.value.pathString)
         }
     }
 
