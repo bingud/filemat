@@ -122,8 +122,12 @@ class FilesystemService(
      */
     fun exists(path: Path, followSymbolicLinks: Boolean) = if (followSymbolicLinks) path.exists() else path.exists(LinkOption.NOFOLLOW_LINKS)
 
-    fun isFolderEmpty(path: Path): Result<Boolean> {
+    fun isFolderEmpty(path: Path, ignoreEmpty: Boolean = false): Result<Boolean> {
         try {
+            if (ignoreEmpty) {
+                if (!Files.exists(path)) return Result.ok(true)
+            }
+
             if (!Files.isDirectory(path)) {
                 return Result.ok(false)
             }
