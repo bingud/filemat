@@ -14,9 +14,7 @@
 </script>
 
 
-<div class="page !h-fit settings-margin flex-col gap-8 xoverflow-y-auto">
-    <!-- <h2 class="text-lg font-medium">File Settings</h2> -->
-     
+<div class="page !h-fit settings-margin flex-col gap-8">
     {@render settingCell(UploadFolderPathSetting)}
     {@render settingCell(SymbolicLinksSetting)}
 
