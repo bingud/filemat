@@ -31,7 +31,7 @@
             const response = await safeFetch(`/api/v1/admin/system/get-upload-folder-path`, { method:"GET" })
             if (response.failed) {
                 handleErr({
-                    notification: "Failed to load uplad folder path.",
+                    notification: "Failed to load upload folder path.",
                 })
                 return
             }
