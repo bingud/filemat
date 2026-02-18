@@ -57,7 +57,8 @@ class SettingService(
                 initiatorId = user.userId,
             )
 
-            filesystemService.initializeTusService()
+            val createdTusService = filesystemService.initializeTusService()
+            val tusMessage = if (createdTusService) "" else "Failed to start upload service."
 
             // Move files to new location
             val files = kotlin.runCatching {
@@ -86,9 +87,10 @@ class SettingService(
                     initiatorId = user.userId,
                 )
 
-                return Result.error("Upload folder was changed. Failed to move ${failedMoves} ${plural("file", failedMoves.size)}.")
+                return Result.error("Upload folder was changed. Failed to move ${failedMoves} ${plural("file", failedMoves.size)}. $tusMessage")
             }
 
+            if (tusMessage.isNotBlank()) return Result.error("Upload folder was changed. $tusMessage")
             return Result.ok(newPath)
         }
     }

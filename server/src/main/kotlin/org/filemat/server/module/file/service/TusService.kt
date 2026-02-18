@@ -88,7 +88,7 @@ class TusService(
             }
 
             // Send TUS response
-           wrappedResponse.copyTo(response)
+            wrappedResponse.copyTo(response)
         }
     }
 
