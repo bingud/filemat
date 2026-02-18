@@ -42,10 +42,15 @@ class FilesystemService(
         }
     }
 
-    fun initializeTusService() {
-        tusFileService = TusFileUploadService()
-            .withUploadUri("/api/v1/file/upload")
-            .withStoragePath(State.App.uploadFolderPath)
+    fun initializeTusService(): Boolean {
+        try {
+            tusFileService = TusFileUploadService()
+                .withUploadUri("/api/v1/file/upload")
+                .withStoragePath(State.App.uploadFolderPath)
+            return true
+        } catch (e: Exception) {
+            return false
+        }
     }
 
     fun createFolder(folder: FilePath): Result<Unit> {
