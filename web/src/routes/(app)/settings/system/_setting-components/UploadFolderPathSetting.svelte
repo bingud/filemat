@@ -107,7 +107,7 @@
 <div class="flex flex-col gap-4 w-full">
     <h3 class="font-medium">Upload folder path</h3>
     
-    <input bind:value={pathInput} class="basic-input min-w-[35rem] w-fit max-w-[min(100%,70rem)] field-sizing-content" disabled={failedToLoad} placeholder={placeholder}>
+    <input bind:value={pathInput} class="basic-input min-w-[35rem] w-fit max-w-[min(100%,70rem)] field-sizing-content" disabled={failedToLoad || isLoading || isSaving} placeholder={placeholder}>
 
     <div class="flex gap-4">
         {#if !isSaving}
