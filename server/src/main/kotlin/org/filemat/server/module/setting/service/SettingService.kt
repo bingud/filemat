@@ -38,7 +38,11 @@ class SettingService(
             }
             val oldPath = FilePath.of(State.App.uploadFolderPath)
 
-            filesystemService.isFolderEmpty(newPath.path, ignoreEmpty = true).let {
+            filesystemService.createFolder(rawNewPath).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+            filesystemService.isFolderEmpty(newPath.path).let {
                 if (it.isNotSuccessful) return it.cast()
                 if (it.value == false) return Result.reject("Upload folder must be empty.")
             }
@@ -82,7 +86,7 @@ class SettingService(
                 logService.info(
                     type = LogType.SYSTEM,
                     action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
-                    description = "Failed to move upload files to new upload folder..",
+                    description = "Failed to move upload files to new upload folder.",
                     message = str,
                     initiatorId = user.userId,
                 )

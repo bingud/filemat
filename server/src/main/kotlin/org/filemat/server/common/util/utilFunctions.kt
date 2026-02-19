@@ -321,7 +321,7 @@ private fun resolveNonExistent(rawPath: FilePath): Result<FilePath> {
     }
 
     val resolvedPath = if (nonExistentSuffix != null) resolvedPrefixPath.resolve(nonExistentSuffix) else resolvedPrefixPath
-    if (!State.App.followSymlinks && rawPath.path !== resolvedPath) {
+    if (!State.App.followSymlinks && rawPath.path != resolvedPath) {
         return Result.notFound()
     }
 

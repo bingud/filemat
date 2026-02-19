@@ -55,27 +55,6 @@ class FileContentService(
             path.value
         }
 
-        // Return content of symlink file itself
-        // if following symlinks is disabled
-//        if (pathContainsSymlink) {
-//            if (!ignorePermissions) {
-//                fileService.isAllowedToAccessFile(user, rawPath).let {
-//                    if (it.isNotSuccessful) return it.cast()
-//                }
-//            }
-//
-//            if (Files.isSymbolicLink(rawPath.path)) {
-//                // stream the link itself
-//                return try {
-//                    Result.ok(Files.readSymbolicLink(rawPath.path).toString().toByteArray().inputStream())
-//                } catch (e: Exception) {
-//                    Result.error("Failed to read the symlink target path.")
-//                }
-//            } else {
-//                return Result.notFound()
-//            }
-//        }
-
         if (!ignorePermissions) {
             fileService.isAllowedToAccessFile(user, canonicalPath).let {
                 if (it.isNotSuccessful) return it.cast()
