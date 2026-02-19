@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.*
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.toResult
 import org.filemat.server.config.Props
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
@@ -16,17 +17,13 @@ import org.springframework.transaction.TransactionStatus
 import java.io.InputStream
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.NoSuchFileException
-import java.nio.file.Path
-import java.nio.file.Paths
+import java.nio.file.*
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.exists
-import kotlin.io.path.name
 import kotlin.system.measureNanoTime
 
 fun unixNow() = Instant.now().epochSecond
@@ -258,51 +255,79 @@ fun <K, V> HashMap<K, V>.removeAll(keys: Collection<K>): Boolean {
     return this.keys.removeAll(keys)
 }
 
+
+
+fun resolvePath(rawPath: FilePath, allowNonExistent: Boolean = false): Result<FilePath> {
+    try {
+        val resolvedPath = FilePath.ofAlreadyNormalized(
+            // Catch if file not found
+            try {
+                rawPath.path.toRealPath()
+            } catch (e: NoSuchFileException) {
+                if (allowNonExistent) return resolveNonExistent(rawPath)
+                return Result.notFound()
+            }
+        )
+
+        if (State.App.followSymlinks) {
+            return resolvedPath.toResult()
+        } else {
+            val matching = rawPath == resolvedPath
+            if (!matching) return Result.notFound()
+            return resolvedPath.toResult()
+        }
+    } catch (e: Exception) {
+        return Result.error("Failed to resolve file path.")
+    }
+}
+
 /**
- * Returns:
- *
- * - Resolved, canonical file path
- *
- * - Whether the error was caused because the path had a symlink.
+ * Resolves all segments of file path that actually exist
  */
-fun resolvePath(filePath: FilePath, resolvePartial: Boolean = false): Pair<Result<FilePath>, Boolean> {
-    return try {
-        val (canonicalPath, containsSymlink) = if (State.App.followSymlinks) {
-            filePath.path.toRealPath() to false
-        } else {
-            val containsSymlink = pathContainsSymlink(filePath.path)
-            filePath.path.toRealPath() to containsSymlink
-        }
+private fun resolveNonExistent(rawPath: FilePath): Result<FilePath> {
+    // Input path: /a/b/c/d
 
-        Result.ok(FilePath.ofAlreadyNormalized(canonicalPath)) to containsSymlink
+    // Prefix of path that does exist
+    // /a/b
+    var lowestExistingPath: Path = rawPath.path
+
+    // Suffix of path that does not exist
+    // c/d
+    var nonExistentSuffix: Path? = null
+
+    while (true) {
+        val exists = lowestExistingPath.exists(LinkOption.NOFOLLOW_LINKS)
+
+        if (exists) {
+            break
+        } else {
+            // Set the
+            if (nonExistentSuffix == null) {
+                nonExistentSuffix = lowestExistingPath.fileName
+            } else {
+                nonExistentSuffix = lowestExistingPath.fileName.resolve(nonExistentSuffix)
+            }
+
+            lowestExistingPath = lowestExistingPath.parent ?: return Result.notFound()
+        }
+    }
+
+    val resolvedPrefixPath = try {
+        lowestExistingPath.toRealPath()
     } catch (e: NoSuchFileException) {
-        if (resolvePartial) {
-            resolvePartialPath(filePath)
-        } else {
-            Pair(Result.notFound(), false)
-        }
+        return Result.notFound()
     } catch (e: Exception) {
-        Pair(Result.error("Failed to resolve path"), false)
+        return Result.error("Failed to resolve path that exists partially.")
     }
+
+    val resolvedPath = if (nonExistentSuffix != null) resolvedPrefixPath.resolve(nonExistentSuffix) else resolvedPrefixPath
+    if (!State.App.followSymlinks && rawPath.path !== resolvedPath) {
+        return Result.notFound()
+    }
+
+    return FilePath.ofAlreadyNormalized(resolvedPath).toResult()
 }
 
-private fun resolvePartialPath(filePath: FilePath): Pair<Result<FilePath>, Boolean> {
-    var current = filePath.path
-    val missing = ArrayDeque<String>()
-
-    while (!current.exists()) {
-        missing.addFirst(current.name)
-        current = current.parent ?: return Pair(Result.notFound(), false)
-    }
-
-    return try {
-        val resolvedBase = current.toRealPath()
-        val resolved = missing.fold(resolvedBase) { acc, part -> acc.resolve(part) }
-        Result.ok(FilePath.ofAlreadyNormalized(resolved)) to false
-    } catch (e: Exception) {
-        Pair(Result.error("Failed to resolve path"), false)
-    }
-}
 
 fun safeStreamSkip(stream: InputStream, skip: Long): Boolean {
     var toSkip = skip

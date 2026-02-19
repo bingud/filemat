@@ -45,43 +45,36 @@ class FileContentService(
         user: Principal?,
         rawPath: FilePath,
         existingCanonicalPath: FilePath? = null,
-        existingPathContainsSymlink: Boolean? = false,
         range: LongRange? = null,
         ignorePermissions: Boolean = false
     ): Result<InputStream> {
-        val (canonicalPath, pathContainsSymlink) = let {
-            if (existingCanonicalPath != null && existingPathContainsSymlink != null) {
-                existingCanonicalPath to existingPathContainsSymlink
-            } else {
-                resolvePath(rawPath).let { (path, containsSymlink) ->
-                    if (path.isNotSuccessful) {
-                        return path.cast()
-                    }
-                    path.value to containsSymlink
-                }
+        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath).let { path ->
+            if (path.isNotSuccessful) {
+                return path.cast()
             }
+            path.value
         }
 
         // Return content of symlink file itself
         // if following symlinks is disabled
-        if (pathContainsSymlink) {
-            if (!ignorePermissions) {
-                fileService.isAllowedToAccessFile(user, rawPath).let {
-                    if (it.isNotSuccessful) return it.cast()
-                }
-            }
-
-            if (Files.isSymbolicLink(rawPath.path)) {
-                // stream the link itself
-                return try {
-                    Result.ok(Files.readSymbolicLink(rawPath.path).toString().toByteArray().inputStream())
-                } catch (e: Exception) {
-                    Result.error("Failed to read the symlink target path.")
-                }
-            } else {
-                return Result.notFound()
-            }
-        }
+//        if (pathContainsSymlink) {
+//            if (!ignorePermissions) {
+//                fileService.isAllowedToAccessFile(user, rawPath).let {
+//                    if (it.isNotSuccessful) return it.cast()
+//                }
+//            }
+//
+//            if (Files.isSymbolicLink(rawPath.path)) {
+//                // stream the link itself
+//                return try {
+//                    Result.ok(Files.readSymbolicLink(rawPath.path).toString().toByteArray().inputStream())
+//                } catch (e: Exception) {
+//                    Result.error("Failed to read the symlink target path.")
+//                }
+//            } else {
+//                return Result.notFound()
+//            }
+//        }
 
         if (!ignorePermissions) {
             fileService.isAllowedToAccessFile(user, canonicalPath).let {
@@ -123,7 +116,7 @@ class FileContentService(
     ) {
         val isShared = shareToken != null
         // 1. Resolve Initial Path
-        val (canonicalPathResult, _) = fileService.resolvePathWithOptionalShare(
+        val canonicalPathResult = fileService.resolvePathWithOptionalShare(
             path = rawPath,
             shareToken = shareToken,
             withPathContainsSymlink = true
@@ -187,7 +180,7 @@ class FileContentService(
 
         // 2. Resolve Symlink and Check for Loops
         val resolvedPath = if (isSymlink == true) {
-            resolvePath(sourceFilePath).let { (result, _) ->
+            resolvePath(sourceFilePath).let { result ->
                 if (result.isNotSuccessful) return failedCount + 1
                 result.value
             }.also {
@@ -270,7 +263,7 @@ class FileContentService(
 
     data class EditFileResult(val modifiedDate: Long, val size: Long)
     fun editFile(user: Principal, rawPath: FilePath, newContent: String): Result<EditFileResult> {
-        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
+        val canonicalResult = resolvePath(rawPath)
         val canonicalPath = canonicalResult.let {
             if (it.isNotSuccessful) return canonicalResult.cast()
             it.value
@@ -315,7 +308,7 @@ class FileContentService(
         val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
         // Get folder parent path
-        val (canonicalParentResult, pathHasSymlink) = resolvePath(rawParentPath)
+        val canonicalParentResult = resolvePath(rawParentPath)
         if (canonicalParentResult.isNotSuccessful) return canonicalParentResult.cast()
         val canonicalParent = canonicalParentResult.value
 
@@ -357,7 +350,7 @@ class FileContentService(
         val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
         // Get folder parent path
-        val (canonicalParentResult, pathHasSymlink) = resolvePath(rawParentPath)
+        val canonicalParentResult = resolvePath(rawParentPath)
         if (canonicalParentResult.isNotSuccessful) return canonicalParentResult.cast()
         val canonicalParent = canonicalParentResult.value
 

@@ -33,7 +33,7 @@ class FileMetadataService(
      * if file is a folder, also returns entries
      */
     fun getFileOrFolderEntries(user: Principal, rawPath: FilePath, foldersOnly: Boolean = false): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
-        val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+        val pathResult = resolvePath(rawPath)
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
@@ -85,7 +85,7 @@ class FileMetadataService(
         val rawSharePath = FilePath.of(entity.path)
 
         // Resolve entity path
-        val (canonicalSharePathResult, parentPathHasSymlink) = resolvePath(rawSharePath)
+        val canonicalSharePathResult = resolvePath(rawSharePath)
         if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
         val canonicalSharePath = canonicalSharePathResult.value
 
@@ -137,7 +137,7 @@ class FileMetadataService(
         val canonicalPath = if (isPathCanonical) {
             rawPath
         } else {
-            val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+            val pathResult = resolvePath(rawPath)
             if (pathResult.isNotSuccessful) return pathResult.cast()
             pathResult.value
         }

@@ -5,21 +5,24 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.savedFile.SavedFileService
 import org.springframework.stereotype.Service
 
 @Service
-class FileMoveService(private val fileService: FileService, private val entityService: EntityService, private val savedFileService: SavedFileService, private val filesystemService: FilesystemService) {
+class FileMoveService(
+    private val fileService: FileService,
+    private val savedFileService: SavedFileService,
+    private val filesystemService: FilesystemService
+) {
 
     fun moveFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<Unit> {
         // Resolve the target path
         val rawParent = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
         val sourceParent = resolvePath(rawParent)
-            .let { (canonicalResult, _) ->
+            .let { canonicalResult ->
                 if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
                 canonicalResult.value
             }
@@ -34,7 +37,7 @@ class FileMoveService(private val fileService: FileService, private val entitySe
 
         // Resolve the target path
         val destinationParentPath = resolvePath(rawDestinationParentPath)
-            .let { (destinationParentPathResult, containsSymLink) ->
+            .let { destinationParentPathResult ->
                 if (destinationParentPathResult.isNotSuccessful) return destinationParentPathResult.cast()
                 destinationParentPathResult.value
             }
@@ -71,7 +74,7 @@ class FileMoveService(private val fileService: FileService, private val entitySe
      * Moves multiple files, returns inputted paths of successfully moved files
      */
     fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>> {
-        val (canonicalResult, parentPathHasSymlink) = resolvePath(rawNewParentPath)
+        val canonicalResult = resolvePath(rawNewParentPath)
         if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
         val newParentPath = canonicalResult.value
 

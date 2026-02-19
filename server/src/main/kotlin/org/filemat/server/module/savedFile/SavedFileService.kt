@@ -159,7 +159,7 @@ class SavedFileService(
         val metaList = entries.mapNotNull {
             val rawPath = FilePath.of(it.path)
 
-            val (pathResult, pathHasSymlink) = resolvePath(rawPath)
+            val pathResult = resolvePath(rawPath)
             if (pathResult.isNotSuccessful) return@mapNotNull null
             val canonicalPath = pathResult.value
 

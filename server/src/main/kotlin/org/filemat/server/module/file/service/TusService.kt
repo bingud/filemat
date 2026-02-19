@@ -121,7 +121,7 @@ class TusService(
         val destinationParentPath = let {
             val parent = rawPath.path.parent.toString()
 
-            resolvePath(FilePath.of(parent)).let { (result, hasSymlink) ->
+            resolvePath(FilePath.of(parent)).let { result ->
                 if (result.notFound) {
                     response.respond(400, "The target folder does not exist.")
                     return false
@@ -199,7 +199,7 @@ class TusService(
 
         // Resolve the destination parent folder
         val destinationParent = let {
-            resolvePath(rawDestinationParent).let { (result, hadSymlink) ->
+            resolvePath(rawDestinationParent).let { result ->
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }

@@ -32,7 +32,7 @@ class SettingService(
 
     fun set_uploadFolderPath(user: Principal, rawNewPath: FilePath): Result<FilePath> {
         tusService.uploadLock.writeLock().withLock {
-            val newPath = resolvePath(rawNewPath, resolvePartial = true).let { (result, containsSymLink) ->
+            val newPath = resolvePath(rawNewPath, allowNonExistent = true).let { result ->
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }

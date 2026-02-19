@@ -2,7 +2,6 @@ package org.filemat.server.module.permission.service
 
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
-import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
@@ -132,7 +131,7 @@ class EntityPermissionService(
     ): Result<EntityPermission> {
         if (ignorePermissions == false && user == null || ignorePermissions == true && userId == null) return Result.reject("Unauthenticated")
 
-        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath).let { (result, hasSymlink) ->
+        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath).let { result ->
             if (result.isNotSuccessful) return result.cast()
             result.value
         }
@@ -269,7 +268,7 @@ class EntityPermissionService(
      * Returns list of permissions for an entity along with affected usernames
      */
     fun getEntityPermissions(user: Principal, rawPath: FilePath): Result<EntityPermissionMeta> {
-        val (resolveResult, hasSymlink) = resolvePath(rawPath)
+        val resolveResult = resolvePath(rawPath)
         val canonicalPath = resolveResult.let {
             if (it.isNotSuccessful) return Result.notFound()
             it.value

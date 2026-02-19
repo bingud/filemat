@@ -55,7 +55,7 @@ class FolderController(private val fileService: FileService) : AController() {
         val path = FilePath.of(rawPath)
 
         val result = let {
-            val (pathResult, pathHasSymlink) = resolvePath(path)
+            val pathResult = resolvePath(path)
             if (pathResult.isNotSuccessful) return@let pathResult.cast()
             val canonicalPath = pathResult.value
 
