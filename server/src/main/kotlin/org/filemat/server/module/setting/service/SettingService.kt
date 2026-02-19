@@ -87,7 +87,7 @@ class SettingService(
                     initiatorId = user.userId,
                 )
 
-                return Result.error("Upload folder was changed. Failed to move ${failedMoves} ${plural("file", failedMoves.size)}. $tusMessage")
+                return Result.error("Upload folder was changed. Failed to move ${failedMoves.size} ${plural("file", failedMoves.size)}. $tusMessage")
             }
 
             if (tusMessage.isNotBlank()) return Result.error("Upload folder was changed. $tusMessage")
