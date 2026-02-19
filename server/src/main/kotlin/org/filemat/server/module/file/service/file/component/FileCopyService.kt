@@ -24,7 +24,7 @@ class FileCopyService(private val fileService: FileService, private val filesyst
 
         // Resolve the copied path
         val canonicalPath: FilePath = resolvePath(rawPath)
-            .let { (result: Result<FilePath>, pathHasSymlink: Boolean) ->
+            .let { result: Result<FilePath> ->
                 if (result.notFound) return Result.reject("Copied file was not found.")
                 if (result.isNotSuccessful) return result.cast()
                 result.value
@@ -36,7 +36,7 @@ class FileCopyService(private val fileService: FileService, private val filesyst
 
         // Resolve parent of destination path
         val canonicalParentDestinationPath: FilePath = resolvePath(rawParentDestinationPath)
-            .let { (result: Result<FilePath>, pathHasSymlink: Boolean) ->
+            .let { result: Result<FilePath> ->
                 if (result.notFound) return Result.reject("Destination folder was not found.")
                 if (result.isNotSuccessful) return result.cast()
                 result.value

@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest
 import net.coobird.thumbnailator.Thumbnails
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.Java2DFrameConverter
-import org.filemat.server.common.State
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.module.file.model.FilePath
@@ -47,7 +46,7 @@ class FileUtilController(
         val path = FilePath.of(rawPath)
         val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
-        val (canonicalPathResult, pathContainsSymlink) = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
+        val canonicalPathResult  = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
         val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
@@ -58,7 +57,6 @@ class FileUtilController(
             principal,
             path,
             existingCanonicalPath = canonicalPath,
-            existingPathContainsSymlink = pathContainsSymlink,
             ignorePermissions = shareToken != null
         )
         if (fileContentResult.notFound) return streamBad("This file was not found.", "")
@@ -148,15 +146,11 @@ class FileUtilController(
         val path = FilePath.of(rawPath)
         val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
-        val (canonicalPathResult, pathContainsSymlink) = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
+        val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
         val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             it.value
-        }
-
-        if (!State.App.followSymlinks && pathContainsSymlink) {
-            return streamBad("This file is not a video.", "")
         }
 
         if (shareToken == null) {

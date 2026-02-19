@@ -193,7 +193,7 @@ class FileShareService(
         password: ArgonHash?,
         maxAge: Long?
     ): Result<FileShare> {
-        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
+        val canonicalResult = resolvePath(rawPath)
         val canonicalPath = canonicalResult.let {
             if (it.isNotSuccessful) return canonicalResult.cast()
             it.value
@@ -280,7 +280,7 @@ class FileShareService(
     }
 
     fun getSharesByPath(principal: Principal, rawPath: FilePath): Result<List<FileShare>> {
-        val (canonicalResult, pathHasSymlink) = resolvePath(rawPath)
+        val canonicalResult = resolvePath(rawPath)
         val canonicalPath = canonicalResult.let {
             if (it.isNotSuccessful) return canonicalResult.cast()
             it.value
@@ -421,7 +421,7 @@ class FileShareService(
         val rawSharePath = FilePath.of(entity.path ?: return Result.notFound())
 
         // Resolve entity path
-        val (canonicalSharePathResult, parentPathHasSymlink) = resolvePath(rawSharePath)
+        val canonicalSharePathResult = resolvePath(rawSharePath)
         if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
         val canonicalSharePath = canonicalSharePathResult.value
 

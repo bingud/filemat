@@ -25,7 +25,7 @@ class FileDeletionService(
         val canonicalPath = if (isSymlink) {
             rawPath
         } else {
-            resolvePath(rawPath).let { (canonicalResult, pathHasSymlink) ->
+            resolvePath(rawPath).let { canonicalResult ->
                 if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
                 canonicalResult.value
             }

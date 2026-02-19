@@ -130,7 +130,7 @@ class FilesystemCopyService(
         val isSymlink = if (copyResolvedSymlinks) Files.isSymbolicLink(currentSource) else null
 
         val resolvedPath = if (isSymlink == true) {
-            resolvePath(sourceFilePath).let { (result, _) ->
+            resolvePath(sourceFilePath).let { result ->
                 if (result.isNotSuccessful) return failedCount + 1
                 result.value
             }.also {

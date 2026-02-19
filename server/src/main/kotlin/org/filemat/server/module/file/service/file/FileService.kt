@@ -61,7 +61,6 @@ class FileService(
         user = user,
         rawPath = rawPath,
         existingCanonicalPath = existingCanonicalPath,
-        existingPathContainsSymlink = existingPathContainsSymlink,
         range = range,
         ignorePermissions = ignorePermissions,
     )
@@ -180,13 +179,13 @@ class FileService(
 
     // --- Utilities ---
 
-    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean): Pair<Result<FilePath>, Boolean> {
+    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean): Result<FilePath> {
         val sharedPath = if (shareToken != null) {
             entityService.getByShareToken(shareToken = shareToken)
                 .let {
-                    if (it.isNotSuccessful) return Pair(it.cast(), false)
+                    if (it.isNotSuccessful) return it.cast()
 
-                    val sharePathStr = it.value.path ?: return Pair(Result.notFound(), false)
+                    val sharePathStr = it.value.path ?: return Result.notFound()
                     val sharePath = FilePath.of(sharePathStr)
                     val fullPath = sharePath.path.resolve(path.pathString.removePrefix("/"))
                     return@let FilePath.ofAlreadyNormalized(fullPath)
@@ -197,7 +196,6 @@ class FileService(
     }
 
     fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?): Result<FilePath> {
-        val result = resolvePathWithOptionalShare(path, shareToken, true)
-        return result.first
+        return resolvePathWithOptionalShare(path, shareToken, true)
     }
 }
