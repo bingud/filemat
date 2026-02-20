@@ -54,20 +54,24 @@ class SettingService(
             val createdTusService = filesystemService.initializeTusService()
             val tusMessage = if (createdTusService) "" else "Failed to start upload service."
 
-            // Move files to new location
-            fileService.moveFile(user, oldPath, newPath).let {
-                if (it.isNotSuccessful) {
-                    logService.info(
-                        type = LogType.SYSTEM,
-                        action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
-                        description = "Failed to move upload files to new upload folder.",
-                        message = "str",
-                        initiatorId = user.userId,
-                    )
+            val previousFolderExists = filesystemService.exists(oldPath.path, false)
 
-                    val tusError = if (tusMessage.isNotBlank()) "($tusMessage)" else ""
-                    val error = "${it.errorOrNull ?: ""} $tusError"
-                    return Result.error("Upload folder was changed. Failed to move upload folder: $error")
+            if (previousFolderExists) {
+                // Move files to new location
+                fileService.moveFile(user, oldPath, newPath).let {
+                    if (it.isNotSuccessful) {
+                        logService.info(
+                            type = LogType.SYSTEM,
+                            action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
+                            description = "Failed to move upload files to new upload folder.",
+                            message = "str",
+                            initiatorId = user.userId,
+                        )
+
+                        val tusError = if (tusMessage.isNotBlank()) "($tusMessage)" else ""
+                        val error = "${it.errorOrNull ?: ""} $tusError"
+                        return Result.error("Upload folder was changed. Failed to move upload folder: $error")
+                    }
                 }
             }
 

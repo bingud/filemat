@@ -12,7 +12,9 @@ import org.filemat.server.module.file.service.filesystem.fileOperation.*
 import org.springframework.stereotype.Service
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
+import java.time.Duration
 import kotlin.io.path.*
+import kotlin.properties.Delegates
 
 
 /**
@@ -29,7 +31,7 @@ class FilesystemService(
     FilesystemMoveOperations by filesystemMoveService,
     FilesystemCopyOperations by filesystemCopyService {
 
-    final var tusFileService: TusFileUploadService? = null
+    final var tusFileService: TusFileUploadService by Delegates.notNull()
         private set
 
     fun getSize(canonicalPath: FilePath): Result<Long> {
@@ -47,6 +49,7 @@ class FilesystemService(
             tusFileService = TusFileUploadService()
                 .withUploadUri("/api/v1/file/upload")
                 .withStoragePath(State.App.uploadFolderPath)
+                .withUploadExpirationPeriod(Duration.ofHours(48).toMillis())
             return true
         } catch (e: Exception) {
             return false

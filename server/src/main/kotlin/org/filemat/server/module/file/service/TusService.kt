@@ -2,6 +2,7 @@ package org.filemat.server.module.file.service
 
 import  jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import kotlinx.coroutines.*
 import me.desair.tus.server.TusFileUploadService
 import me.desair.tus.server.upload.UploadInfo
 import org.filemat.server.common.State
@@ -14,10 +15,15 @@ import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 import kotlin.io.path.exists
@@ -30,9 +36,38 @@ import kotlin.io.path.exists
 class TusService(
     private val filesystem: FilesystemService,
     private val fileService: FileService,
-    private val entityService: EntityService
+    private val entityService: EntityService,
+    private val logService: LogService
 ) {
     val uploadLock = ReentrantReadWriteLock()
+    private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @EventListener(ApplicationReadyEvent::class)
+    fun startTusCleanupLoop() {
+        scope.launch {
+            var logged = false
+
+            while (true) {
+                try {
+                    uploadLock.readLock().withLock {
+                        filesystem.tusFileService.cleanup()
+                    }
+                } catch (e: Exception) {
+                    if (!logged) {
+                        logged = true
+                        logService.error(
+                            type = LogType.SYSTEM,
+                            action = UserAction.NONE,
+                            description = "Failed to clear expired TUS upload files",
+                            message = e.stackTraceToString(),
+                        )
+                    }
+                }
+
+                delay(Duration.ofHours(2).toMillis())
+            }
+        }
+    }
 
     /**
      * Handles a file upload request with TUS
@@ -47,7 +82,6 @@ class TusService(
 
             // Get the TUS service instance
             val tusService = filesystem.tusFileService
-            if (tusService == null) return response.respond(500, "File upload service is not running.")
 
             val user = request.getPrincipal()!!
 

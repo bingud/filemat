@@ -12,7 +12,6 @@ import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.repository.AuthTokenRepository
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
@@ -72,7 +71,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
 
     fun removeTokensByUserId(userId: Ulid): Result<Unit> {
         try {
-            val result = authTokenRepository.removeTokensByUserId(userId.toString())
+            authTokenRepository.removeTokensByUserId(userId.toString())
             return Result.ok()
         } catch (e: Exception) {
             logService.error(
