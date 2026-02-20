@@ -428,6 +428,16 @@
                 <p>You have permission to manage shares of all files.</p>
             {/if}
         </div>
+    {:else if appState.currentPath.savedFiles}
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none">
+            <h3 class="truncate text-lg">Saved Files</h3>
+        </div>
+
+        <hr class="basic-hr flex-none">
+
+        <div class="w-full flex flex-col px-6 shrink-0 flex-none gap-6">
+            <p>This page shows all your bookmarked files.</p>
+        </div>
     {:else}
         <div class="w-full h-full flex flex-col items-center pt-4">
             <p class="opacity-80 select-none">Select a file to see details</p>
