@@ -233,8 +233,8 @@ class AuthService(
         return Result.ok()
     }
 
-    fun logoutUserByUserId(userId: Ulid): Result<Unit> {
-        authTokenService.removeTokensByUserId(userId).let {
+    fun logoutUserByUserId(userId: Ulid, excludedToken: String? = null): Result<Unit> {
+        authTokenService.removeTokensByUserId(userId, excludedToken).let {
             if (it.isNotSuccessful) {
                 logService.error(
                     type = LogType.AUTH,

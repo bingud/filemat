@@ -2,11 +2,9 @@ package org.filemat.server.module.user.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.dto.RequestMeta
-import org.filemat.server.common.util.getPrincipal
-import org.filemat.server.common.util.realIp
 import org.filemat.server.module.auth.service.MfaService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.user.model.UserAction
@@ -27,6 +25,37 @@ class UserController(
     private val mfaService: MfaService,
     private val userService: UserService,
 ) : AController() {
+
+    @PostMapping("/change-password")
+    fun changePasswordMapping(
+        request: HttpServletRequest,
+        @RequestParam("current-password") rawCurrentPassword: String,
+        @RequestParam("new-password") rawNewPassword: String,
+        @RequestParam("mfa-totp", required = false) mfaTotp: String?,
+        @RequestParam("logout-all-sessions") rawLogoutAllSessions: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val authToken = request.getAuthToken()!!
+        val logoutAllSessions = rawLogoutAllSessions.toBooleanStrictOrNull() ?: return bad("Specify whether to log out all sessions.")
+
+        if (user.mfaTotpStatus) {
+            Validator.totp(mfaTotp)?.let { return bad(it) }
+        }
+
+        userService.changePassword(
+            principal = user,
+            rawCurrentPassword = rawCurrentPassword,
+            rawNewPassword = rawNewPassword,
+            mfaTotp = mfaTotp,
+            authToken = authToken,
+            logoutSessions = logoutAllSessions
+        ).let {
+            if (it.hasError) return internal(it.error)
+            if (it.rejected) return bad(it.error)
+            if (it.notFound) return internal("Failed to change password.")
+            return ok("ok")
+        }
+    }
 
     @PostMapping("/update-home-folder-path")
     fun setHomeFolderPathMapping(
