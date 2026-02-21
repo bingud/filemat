@@ -4,6 +4,7 @@
     import LogoutSetting from "./_setting-components/LogoutSetting.svelte";
     import MfaSetting from "./_setting-components/MfaSetting.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import ChangePasswordSetting from "./_setting-components/ChangePasswordSetting.svelte";
 
     const title = "Account settings"
 
@@ -19,7 +20,8 @@
 
     {@render settingCell(MfaSetting)}
 
-    <LogoutSetting></LogoutSetting>
+    <ChangePasswordSetting />
+    <LogoutSetting />
 </div>
 
 {#snippet settingCell(Component: Component<any>)}

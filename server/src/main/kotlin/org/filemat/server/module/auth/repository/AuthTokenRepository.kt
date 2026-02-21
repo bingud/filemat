@@ -31,4 +31,9 @@ interface AuthTokenRepository : CrudRepository<AuthToken, String> {
     @Modifying
     @Query("DELETE FROM auth_token WHERE user_id = :userId")
     fun removeTokensByUserId(userId: String): Int
+
+    @Modifying
+    @Query("DELETE FROM auth_token WHERE user_id = :userId AND auth_token != :excludedToken")
+    fun removeTokensByUserIdWithExclusion(userId: String, excludedToken: String): Int
+
 }

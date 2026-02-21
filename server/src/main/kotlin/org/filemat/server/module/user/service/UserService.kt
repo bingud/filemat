@@ -1,12 +1,17 @@
 package org.filemat.server.module.user.service
 
+import com.atlassian.onetime.model.TOTPSecret
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.model.cast
+import org.filemat.server.common.model.onFailure
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.TotpUtil
 import org.filemat.server.common.util.Validator
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.toJsonOrNull
+import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.file.model.FilePath
@@ -16,6 +21,7 @@ import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.UserRepository
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
 @Service
@@ -23,7 +29,51 @@ class UserService(
     private val userRepository: UserRepository,
     private val logService: LogService,
     private val authService: AuthService,
+    private val passwordEncoder: PasswordEncoder,
 ) {
+    fun changePassword(
+        principal: Principal,
+        rawCurrentPassword: String,
+        rawNewPassword: String,
+        mfaTotp: String?,
+        logoutSessions: Boolean,
+        authToken: String,
+        userAction: UserAction = UserAction.CHANGE_PASSWORD
+    ): Result<Unit> {
+        Validator.password(rawNewPassword)?.let { return Result.reject(it) }
+
+        val user = getUserByUserId(principal.userId, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+
+        if (passwordEncoder.matches(rawCurrentPassword, user.password) == false) return Result.reject("Password is incorrect.")
+
+        if (user.mfaTotpStatus) {
+            val secret = TOTPSecret.fromBase32EncodedString(user.mfaTotpSecret!!)
+            val mfaMatches = TotpUtil.verify(secret, mfaTotp ?: return Result.reject("2FA code is missing."))
+            if (mfaMatches == false) return Result.reject("2FA code is incorrect.")
+        }
+
+        val newPassword = ArgonHash(passwordEncoder.encode(rawNewPassword))
+        changePassword(principal.userId, newPassword, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        if (logoutSessions) {
+            authService.logoutUserByUserId(principal.userId, excludedToken = authToken).onFailure { return it }
+        }
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = userAction,
+            description = "User has changed account password.",
+            initiatorId = principal.userId,
+        )
+
+        return Result.ok()
+    }
+
     fun changeHomeFolderPath(meta: RequestMeta, newPath: FilePath, ignorePermissions: Boolean = false): Result<String> {
         if (!ignorePermissions) {
             if (meta.principal == null) return Result.reject("User must not be null.")
@@ -158,7 +208,7 @@ class UserService(
                 isBanned = user.isBanned,
             )
 
-            return Result.ok(Unit)
+            return Result.ok()
         } catch (e: Exception) {
             logService.error(type = LogType.SYSTEM, action = action ?: UserAction.GENERIC_ACCOUNT_CREATION, description = "Failed to insert user to database", message = e.stackTraceToString())
             return Result.error("Failed to save user account.")

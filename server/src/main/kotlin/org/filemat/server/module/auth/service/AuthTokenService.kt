@@ -69,9 +69,13 @@ class AuthTokenService(private val logService: LogService, private val authToken
         }
     }
 
-    fun removeTokensByUserId(userId: Ulid): Result<Unit> {
+    fun removeTokensByUserId(userId: Ulid, excludedToken: String? = null): Result<Unit> {
         try {
-            authTokenRepository.removeTokensByUserId(userId.toString())
+            if (excludedToken == null) {
+                authTokenRepository.removeTokensByUserId(userId.toString())
+            } else {
+                authTokenRepository.removeTokensByUserIdWithExclusion(userId.toString(), excludedToken)
+            }
             return Result.ok()
         } catch (e: Exception) {
             logService.error(
