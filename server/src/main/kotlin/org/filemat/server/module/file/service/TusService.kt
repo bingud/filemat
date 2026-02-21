@@ -52,6 +52,8 @@ class TusService(
                     uploadLock.readLock().withLock {
                         filesystem.tusFileService.cleanup()
                     }
+                } catch (e: NoSuchFileException) {
+                    // Ignore error if upload file not found
                 } catch (e: Exception) {
                     if (!logged) {
                         logged = true
