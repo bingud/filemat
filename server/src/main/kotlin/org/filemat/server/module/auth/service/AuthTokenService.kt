@@ -81,7 +81,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
             logService.error(
                 type = LogType.SYSTEM,
                 action = UserAction.LOGOUT_USER_SESSIONS,
-                description = "Failed to get auth token from database.",
+                description = "Failed to remove auth token from database.",
                 message = e.stackTraceToString(),
             )
             return Result.error("Failed to remove auth tokens from the database.")

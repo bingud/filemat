@@ -266,7 +266,7 @@ class UserService(
             logService.error(
                 type = LogType.SYSTEM,
                 action = userAction ?: UserAction.CHANGE_PASSWORD,
-                description = "Failed to get user from by user ID",
+                description = "Failed to change user account password",
                 message = e.stackTraceToString()
             )
             return Result.error("Failed to load user.")
