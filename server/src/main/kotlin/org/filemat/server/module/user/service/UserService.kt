@@ -50,7 +50,7 @@ class UserService(
         if (passwordEncoder.matches(rawCurrentPassword, user.password) == false) return Result.reject("Password is incorrect.")
 
         if (user.mfaTotpStatus) {
-            val secret = TOTPSecret.fromBase32EncodedString(user.mfaTotpSecret!!)
+            val secret = TOTPSecret.fromBase32EncodedString(user.mfaTotpSecret ?: return Result.error("Server failed to load 2FA secret."))
             val mfaMatches = TotpUtil.verify(secret, mfaTotp ?: return Result.reject("2FA code is missing."))
             if (mfaMatches == false) return Result.reject("2FA code is incorrect.")
         }
