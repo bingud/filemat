@@ -60,16 +60,16 @@ class UserService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        if (logoutSessions) {
-            authService.logoutUserByUserId(principal.userId, excludedToken = authToken).onFailure { return it }
-        }
-
         logService.info(
             type = LogType.AUDIT,
             action = userAction,
             description = "User has changed account password.",
             initiatorId = principal.userId,
         )
+
+        if (logoutSessions) {
+            authService.logoutUserByUserId(principal.userId, excludedToken = authToken).onFailure { return it }
+        }
 
         return Result.ok()
     }
@@ -269,7 +269,7 @@ class UserService(
                 description = "Failed to change user account password",
                 message = e.stackTraceToString()
             )
-            return Result.error("Failed to load user.")
+            return Result.error("Failed change password.")
         }
     }
 }
