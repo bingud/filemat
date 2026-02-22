@@ -247,7 +247,9 @@ class AuthService(
             }
         }
 
-        tokenToUserIdMap.removeIf { key, value -> value.userId == userId }
+        tokenToUserIdMap.removeIf { key, value ->
+            (value.userId == userId) && key != excludedToken
+        }
 
         return Result.ok()
     }
