@@ -57,6 +57,8 @@ Use this command to run the file with Java (change the filename according to the
 
 ## Configuration
 
+[All configuration details here](</docs/technical-details.md>)
+
 ### \- Environment variables
 
 Input multiple values by putting a colon in between (`/one:/two`)
@@ -91,6 +93,7 @@ Input multiple values by putting a colon in between (`/one:/two`)
 - **Backend:** Spring Boot MVC (Kotlin)
 - **Frontend:** SvelteKit (Svelte 5), statically built and served as static files by the backend
 - **Database:** SQLite ([More details here](</docs/database.md>))
+- [Other technical details here](</docs/technical-details.md>)
 
 #### How files are exposed / secured
 Files must be explicitly configured to be exposed, so that Filemat can allow users to interact with them.  
