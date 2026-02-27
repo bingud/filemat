@@ -51,10 +51,10 @@ const previewSizeConfig: {
             pixelSize: 256
         },
         5: {
-            height: 5,
-            iconPadding: 0.8,
-            menuIconPadding: 0.5,
-            pixelSize: 256
+            height: 7,
+            iconPadding: 1,
+            menuIconPadding: 0.45,
+            pixelSize: 420
         }
     },
     grid: {
@@ -74,19 +74,19 @@ const previewSizeConfig: {
             width: 11,
             height: 10,
             iconPadding: 0.5,
-            pixelSize: 256
+            pixelSize: 420
         },
         4: {
             width: 15,
             height: 13,
             iconPadding: 1.5,
-            pixelSize: 426
+            pixelSize: 420
         },
         5: {
             width: 25,
             height: 20,
             iconPadding: 2.5,
-            pixelSize: 1080
+            pixelSize: 1150
         }
     }
 }
