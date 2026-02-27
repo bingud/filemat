@@ -2,6 +2,7 @@ package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import net.coobird.thumbnailator.Thumbnails
+import net.coobird.thumbnailator.resizers.configurations.ScalingMode
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.Java2DFrameConverter
 import org.filemat.server.common.util.controller.AController
@@ -22,6 +23,7 @@ import java.nio.charset.StandardCharsets
 import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
 import org.filemat.server.config.auth.Unauthenticated
+import javax.imageio.ImageIO
 
 
 @RestController
@@ -69,12 +71,23 @@ class FileUtilController(
             try {
                 fileContentResult.value.use { inputStream ->
                     try {
-                        // Try standard ImageIO first (for most formats)
-                        Thumbnails.of(inputStream)
-                            .size(size, size)
+                        // Read into memory (required regardless of approach)
+                        val image = ImageIO.read(inputStream)
+
+                        val thumbnail = Thumbnails.of(image)
                             .outputFormat("jpg")
                             .outputQuality(0.4)
-                            .toOutputStream(outputStream)
+                            .scalingMode(ScalingMode.BILINEAR)
+
+                        // Only apply size reduction if the image exceeds the bounds
+                        if (image.width > size || image.height > size) {
+                            thumbnail.size(size, size).keepAspectRatio(true)
+                        } else {
+                            // Do not resize, just compress and convert format
+                            thumbnail.scale(1.0)
+                        }
+
+                        thumbnail.toOutputStream(outputStream)
                     } catch (e: Exception) {
                         // Fallback to ffmpeg for unsupported formats like AVIF/HEIC
                         val imageFile = File(canonicalPath.pathString)
@@ -95,11 +108,20 @@ class FileUtilController(
                                 throw Exception("Could not convert frame to image")
                             }
 
-                            Thumbnails.of(image)
-                                .size(size, size)
+                            val thumbnail = Thumbnails.of(image)
                                 .outputFormat("jpg")
                                 .outputQuality(0.4)
-                                .toOutputStream(outputStream)
+                                .scalingMode(ScalingMode.BILINEAR)
+
+                            // Only apply size reduction if the image exceeds the bounds
+                            if (image.width > size || image.height > size) {
+                                thumbnail.size(size, size).keepAspectRatio(true)
+                            } else {
+                                // Do not resize, just compress and convert format
+                                thumbnail.scale(1.0)
+                            }
+
+                            thumbnail.toOutputStream(outputStream)
                         } finally {
                             grabber.stop()
                             grabber.release()
@@ -190,11 +212,19 @@ class FileUtilController(
                         return@StreamingResponseBody
                     }
 
-                    Thumbnails.of(originalImage)
-                        .size(size, size)
+                    val thumbnail = Thumbnails.of(originalImage)
                         .outputFormat("jpg")
                         .outputQuality(0.4)
-                        .toOutputStream(outputStream)
+
+                    // Only apply size reduction if the frame exceeds the bounds
+                    if (originalImage.width > size || originalImage.height > size) {
+                        thumbnail.size(size, size)
+                    } else {
+                        // Do not resize, just compress and convert format
+                        thumbnail.scale(1.0)
+                    }
+
+                    thumbnail.toOutputStream(outputStream)
                 } finally {
                     grabber.stop()
                     grabber.release()
