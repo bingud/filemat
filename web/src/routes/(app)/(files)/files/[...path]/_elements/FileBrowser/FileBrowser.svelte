@@ -98,6 +98,7 @@
             scrollSelectedEntryIntoView()
         } else {
             if (isFolder(entry) && !entry.isExecutable) return
+            if (entry.isSymlink && !appState.followSymlinks) return
             filesState.selectedEntries.setSelected(entry.path)
             openEntry(entry.path)
         }

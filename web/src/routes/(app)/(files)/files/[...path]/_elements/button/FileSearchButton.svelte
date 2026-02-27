@@ -2,7 +2,7 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import { inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import { filenameFromPath, formData, handleErr, handleException, isServerDown, parseJson, streamNDJSON } from "$lib/code/util/codeUtil.svelte";
+    import { addComputedValuesToFileMeta, filenameFromPath, formData, handleErr, handleException, isServerDown, parseJson, streamNDJSON } from "$lib/code/util/codeUtil.svelte";
     import MagnifyingGlassIcon from "$lib/component/icons/MagnifyingGlassIcon.svelte"
 
     async function search() {
@@ -35,7 +35,7 @@
                         return
                     }
 
-                    if (!meta.filename) meta.filename = filenameFromPath(meta.path)
+                    addComputedValuesToFileMeta(meta)
 
                     filesState.search.entries!.push(meta)
                 },

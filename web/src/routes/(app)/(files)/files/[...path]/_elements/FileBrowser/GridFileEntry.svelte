@@ -6,6 +6,7 @@
     import type { FileEntryProps } from "../../_code/fileBrowserUtil";
     import FileThumbnail from "./FileThumbnail.svelte";
     import type { GridPreviewSize } from "$lib/code/config/values";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
 
     let {
         entry,
@@ -31,7 +32,7 @@
     
     let isSelected = $derived(!!entry && filesState.selectedEntries.currentSet.has(entry.path))
     
-    let isUnopenable = $derived(!entry || isFolder(entry) && !entry.isExecutable)
+    let isUnopenable = $derived(!entry || (isFolder(entry) && !entry.isExecutable) || (entry.isSymlink && !appState.followSymlinks))
 </script>
 
 

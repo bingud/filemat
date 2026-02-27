@@ -19,9 +19,19 @@ export function isFolder(meta: FileMetadata | null | undefined): boolean {
     return meta.fileType === "FOLDER" || (meta.fileType === "FOLDER_LINK" && appState.followSymlinks === true)
 }
 
+export function isSymlink(meta: FileMetadata): boolean {
+    return meta && meta.fileType.endsWith("LINK")
+}
+
 export function isFile(meta: FileMetadata | null | undefined): boolean {
     if (!meta) return false
     return meta.fileType === "FILE" || (meta.fileType === "FILE_LINK" && appState.followSymlinks === true) || (meta.fileType === "ANY_LINK" && appState.followSymlinks === false)
+}
+
+export function addComputedValuesToFileMeta(meta: FileMetadata): FileMetadata {
+    if (!meta.filename) meta.filename = filenameFromPath(meta.path)
+    if (meta.isSymlink == null) meta.isSymlink = isSymlink(meta)
+    return meta
 }
 
 /**
