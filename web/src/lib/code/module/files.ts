@@ -57,6 +57,8 @@ export async function getFileData(
         data.entries.forEach(addComputedValuesToFileMeta)
     }
 
+    addComputedValuesToFileMeta(data.meta)
+
     return Result.ok(data)
 }
 
@@ -104,8 +106,6 @@ export async function getFileListFromCustomEndpoint({
     if (json) {
         json.forEach(addComputedValuesToFileMeta)
     }
-
-    addComputedValuesToFileMeta(json.meta)
 
     return Result.ok(json)
 }

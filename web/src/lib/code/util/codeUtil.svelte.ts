@@ -29,6 +29,7 @@ export function isFile(meta: FileMetadata | null | undefined): boolean {
 }
 
 export function addComputedValuesToFileMeta(meta: FileMetadata): FileMetadata {
+    if (!meta) return meta
     if (!meta.filename) meta.filename = filenameFromPath(meta.path)
     if (meta.isSymlink == null) meta.isSymlink = isSymlink(meta)
     return meta
