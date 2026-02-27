@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
@@ -54,9 +54,7 @@ export async function getFileData(
 
     let data = json as FileData
     if (data.entries) {
-        data.entries.forEach((v) => {
-            if (!v.filename) v.filename = filenameFromPath(v.path)
-        })
+        data.entries.forEach(addComputedValuesToFileMeta)
     }
 
     return Result.ok(data)
@@ -104,9 +102,7 @@ export async function getFileListFromCustomEndpoint({
     }
 
     if (json) {
-        json.forEach((v: FullFileMetadata) => {
-            v.filename = filenameFromPath(v.path)
-        })
+        json.forEach(addComputedValuesToFileMeta)
     }
 
     return Result.ok(json)
@@ -327,6 +323,7 @@ export function startTusUpload(file: File) {
                         isWritable: true,
                         isExecutable: true,
                         isSaved: false,
+                        isSymlink: false,
                     })
                 }
 
@@ -595,7 +592,7 @@ export async function copyFile(path: string, newPath: string) {
 
     if (json) {
         const meta = json as FullFileMetadata
-        meta.filename = filenameFromPath(meta.path)
+        addComputedValuesToFileMeta(meta)
 
         // Add copied file to entries of current folder
         if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, newPath)) {

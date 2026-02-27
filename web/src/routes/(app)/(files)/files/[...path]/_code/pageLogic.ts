@@ -233,5 +233,6 @@ export async function handleNewFile() {
 
     const fileMeta = json as FullFileMetadata
     fileMeta.filename = filename
+    fileMeta.isSymlink = false
     filesState.data.entries?.push(fileMeta)
 }

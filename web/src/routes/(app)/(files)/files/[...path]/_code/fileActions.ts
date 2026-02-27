@@ -125,6 +125,7 @@ export async function handleNewFolder() {
         permissions: keysOf(filePermissionMeta),
         isExecutable: true,
         isWritable: true,
+        isSymlink: false,
     })
 }
 

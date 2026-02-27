@@ -9,6 +9,7 @@ export type FileMetadata = {
     size: number,
     isExecutable: boolean,
     isWritable: boolean,
+    isSymlink: boolean,
 }
 
 export type FullFileMetadata = FileMetadata & {
