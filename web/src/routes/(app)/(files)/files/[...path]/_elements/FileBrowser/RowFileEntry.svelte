@@ -31,8 +31,7 @@
     
     let isSelected = $derived(!!entry && filesState.selectedEntries.currentSet.has(entry.path))
     
-    let isBlockedSymlink = $state(entry.isSymlink && !appState.followSymlinks)
-    let isUnopenable = $derived(!entry || (isFolder(entry) && !entry.isExecutable) || isBlockedSymlink)
+    let isUnopenable = $derived(!entry || (isFolder(entry) && !entry.isExecutable) || (entry.isSymlink && !appState.followSymlinks))
 </script>
 
 
