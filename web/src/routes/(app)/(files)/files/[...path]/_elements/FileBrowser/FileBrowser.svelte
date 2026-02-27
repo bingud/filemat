@@ -394,7 +394,7 @@
     {/if}
 
     {#if filesState.search.isLoading}
-        <div class="center absolute top-0 left-0 z-20 pointer-events-none">
+        <div class="center fixed top-0 left-0 z-20 pointer-events-none">
             <Loader />
         </div>
     {/if}
