@@ -5,7 +5,7 @@
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
-    import { openEntry } from '../../_code/fileBrowserUtil';
+    import { openEntry } from '../../_code/fileBrowserUtil.svelte';
 
     // Context menu for breadcrumb buttons
     let contextMenuButton: HTMLButtonElement | null = $state(null)

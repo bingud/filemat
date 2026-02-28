@@ -3,7 +3,7 @@
     import { formatBytesRounded, formatUnixMillis, isFolder } from "$lib/code/util/codeUtil.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
-    import type { FileEntryProps } from "../../_code/fileBrowserUtil";
+    import type { FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
     import FileThumbnail from "./FileThumbnail.svelte";
     import type { RowPreviewSize } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
@@ -32,9 +32,15 @@
     let isSelected = $derived(!!entry && filesState.selectedEntries.currentSet.has(entry.path))
     
     let isUnopenable = $derived(!entry || (isFolder(entry) && !entry.isExecutable) || (entry.isSymlink && !appState.followSymlinks))
+
+    let isVisible = $derived(appState.settings.alwaysRenderPreviews || filesState.ui.visibilityManager.visibleEntryPaths.has(entry.path))
+
+    const observeEntry = filesState.ui.visibilityManager.observeEntry
+    const observeSkeleton = filesState.ui.visibilityManager.observeSkeleton
 </script>
 
 
+{#if isVisible}
 <a
     on:click|preventDefault={(e) => entryOnClick(e, entry)}
     on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
@@ -59,6 +65,7 @@
     on:dragleave={(e) => { event_dragLeave(e, entry) }}
     on:drop={(e) => { event_drop(e, entry) }}
     on:dragend={(e) => { event_dragEnd(e, entry) }}
+    use:observeEntry={entry.path}
 >
     <!-- Filename + Icon -->
     <div class="h-full flex items-center min-h-0">
@@ -100,3 +107,26 @@
         </button>
     </div>
 </a>
+{:else}
+    <div
+        data-entry-path={entry.path}
+        style="height: {size.height}rem;"
+        class="file-row-grid gap-x-2 items-center py-1 pl-2 pr-1"
+        use:observeSkeleton={entry.path}
+    >
+        <span class="row-skeleton-filename">{entry.filename}</span>
+    </div>
+{/if}
+
+
+<style>
+    .row-skeleton-filename {
+        font-size: 1px;
+        line-height: 0;
+        color: transparent;
+        display: block;
+        overflow: hidden;
+        height: 0;
+        width: 0;
+    }
+</style>

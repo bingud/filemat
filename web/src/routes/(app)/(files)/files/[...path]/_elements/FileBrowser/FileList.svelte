@@ -1,9 +1,10 @@
 <script lang="ts">
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { type RowPreviewSize, type GridPreviewSize, config } from "$lib/code/config/values";
+    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
-    import { changeSortingMode, type FileListProps } from "../../_code/fileBrowserUtil";
+    import { changeSortingMode, type FileListProps } from "../../_code/fileBrowserUtil.svelte";
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
     import GridFileEntry from "./GridFileEntry.svelte";
     import RowFileEntry from "./RowFileEntry.svelte";
@@ -42,7 +43,15 @@
     explicitEffect(() => [sortedEntries], () => {
         const paths = sortedEntries?.map(e => e.path) || []
         
-        filesState.ui.filePreviewLoader.reorderQueue(paths)
+        filesState.ui.visibilityManager.reorderQueue(paths)
+    })
+
+    // Pre-register headless images for all entries when loadAllPreviews is enabled,
+    // so skeleton entries that are never rendered still get their thumbnails fetched
+    explicitEffect(() => [sortedEntries, appState.settings.loadAllPreviews, filesState.ui.previewSize], () => {
+        if (!appState.settings.loadAllPreviews || !sortedEntries) return
+        const size = filesState.ui.previewSize as GridPreviewSize
+        filesState.ui.visibilityManager.preloadAllPreviews(sortedEntries, size.pixelSize)
     })
 
     function closeContextMenu() {

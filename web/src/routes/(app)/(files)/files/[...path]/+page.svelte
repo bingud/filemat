@@ -33,7 +33,7 @@
     import SharedFileScopeSwitchPopover from "./_elements/button/SharedFileScopeSwitchPopover.svelte";
     import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
-    import { openEntry } from "./_code/fileBrowserUtil";
+    import { openEntry } from "./_code/fileBrowserUtil.svelte";
     import OpenFileAsCategoryButton from "./_elements/button/OpenFileAsCategoryButton.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
@@ -64,7 +64,6 @@
 
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
-        filesState.ui.filePreviewLoader.setScrollContainer(filesState.scroll.container || null)
 
         // Automatically refresh folder entries
         pollingInterval = dynamicInterval(() => {
@@ -74,6 +73,12 @@
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
             pollingInterval?.cancel()
+        }
+    })
+
+    $effect(() => {
+        if (filesState.scroll.container) {
+            filesState.ui.visibilityManager.setScrollContainer(filesState.scroll.container)
         }
     })
 

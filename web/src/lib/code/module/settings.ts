@@ -4,7 +4,7 @@ import { filesState } from "../stateObjects/filesState.svelte";
 import { valuesOf, includesList, keysOf } from "../util/codeUtil.svelte";
 import { getCurrentPermissions } from "./permissions";
 
-export type PreferenceSetting = "load_all_previews" | "default_page_path" | "click_to_open_file" | "preview_size_grid" | "preview_size_rows" | "file_view_type"
+export type PreferenceSetting = "load_all_previews" | "always_render_previews" | "default_page_path" | "click_to_open_file" | "preview_size_grid" | "preview_size_rows" | "file_view_type"
 
 export type SettingsSection = { name: SettingSectionId; permissions: SystemPermission[]; admin: boolean; }
 export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "system" | "account"
@@ -15,6 +15,11 @@ export function loadPreferenceSettings() {
     if (loadAllPreviewsStr) {
         const bool = loadAllPreviewsStr === "true"
         appState.settings.loadAllPreviews = bool
+    }
+
+    const alwaysRenderPreviewsStr = getPreferenceSetting("always_render_previews")
+    if (alwaysRenderPreviewsStr) {
+        appState.settings.alwaysRenderPreviews = alwaysRenderPreviewsStr === "true"
     }
 
     const defaultPagePath = getPreferenceSetting("default_page_path")
