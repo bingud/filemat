@@ -3,7 +3,7 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SvelteSet } from "svelte/reactivity"
-import { ImageLoadQueue } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil"
+import { VisibilityManager } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
 import { getFileCategoryFromFilename, type FileCategory } from "../data/files"
 import { fileSortingDirections, fileSortingModes, type FileSortingMode, type SortingDirection } from "../types/fileTypes"
@@ -295,7 +295,7 @@ class FileUiStateClasss {
      */
     fileSortingMenuPopoverOpen = $state(false)
 
-    filePreviewLoader = $state(new ImageLoadQueue())
+    visibilityManager = $state(new VisibilityManager())
 
     toggleSidebar() {
         this.detailsOpen = !this.detailsOpen

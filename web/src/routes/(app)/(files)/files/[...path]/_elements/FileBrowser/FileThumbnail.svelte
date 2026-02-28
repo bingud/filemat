@@ -19,7 +19,7 @@
         isLarge: boolean,
     } = $props()
 
-    const loadFilePreview = filesState.ui.filePreviewLoader.getAction()
+    const loadFilePreview = filesState.ui.visibilityManager.getAction()
 
     const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
     const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``

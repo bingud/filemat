@@ -13,7 +13,7 @@
     import type Player from "video.js/dist/types/player";
     import mime from 'mime'
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte";
-    import { selectSiblingFile } from "../../_code/fileBrowserUtil";
+    import { selectSiblingFile } from "../../_code/fileBrowserUtil.svelte";
     import OpenFileAsCategoryButton from "../button/OpenFileAsCategoryButton.svelte";
     import FileNavZone from "../ui/FileNavZone.svelte";
     

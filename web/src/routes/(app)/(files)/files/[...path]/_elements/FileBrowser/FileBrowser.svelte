@@ -11,7 +11,7 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte'
     import { isDialogOpen } from "$lib/code/util/stateUtils"
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
-    import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil";
+    import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil.svelte";
     import FileList from "./FileList.svelte";
     import Loader from "$lib/component/Loader.svelte";
 
@@ -31,7 +31,7 @@
         return () => {
             // Clean up listener when component unmounts
             window.removeEventListener('keydown', handleKeyDown)
-            filesState.ui.filePreviewLoader.destroy()
+            filesState.ui.visibilityManager.destroy()
         }
     })
 

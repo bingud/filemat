@@ -16,7 +16,7 @@
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
     import { option_downloadSelectedFiles } from "../../_code/fileActions";
-    import type { FileContextMenuProps } from "../../_code/fileBrowserUtil";
+    import type { FileContextMenuProps } from "../../_code/fileBrowserUtil.svelte";
 
     let {
         entryMenuButton,

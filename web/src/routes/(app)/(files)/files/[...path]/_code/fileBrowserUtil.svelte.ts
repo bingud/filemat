@@ -1,8 +1,11 @@
 import { goto } from "$app/navigation"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import type { GridPreviewSize, RowPreviewSize } from "$lib/code/config/values"
+import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+import { filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { SvelteSet } from "svelte/reactivity"
 
 export type FileContextMenuProps = {
     option_rename: (entry: FileMetadata) => any
@@ -47,92 +50,190 @@ export function changeSortingMode(mode: typeof filesState.sortingMode) {
     }
 }
 
-export class ImageLoadQueue {
-    // Target element for IntersectionObserver root (defaults to viewport if null)
+export class VisibilityManager {
     private scrollContainer: HTMLElement | null = null
-    
-    // Single unified observer for detecting visibility
     private observer: IntersectionObserver | null = null
     
-    // Queue management sets
-    private pending: Set<HTMLImageElement> = new Set() // Registered but not loaded
-    private highPriority: Set<HTMLImageElement> = new Set() // Currently in viewport
-    private lowPriority: Set<HTMLImageElement> = new Set() // Close to viewport
-    private loading: Set<HTMLImageElement> = new Set() // Currently fetching
+    private pending: Set<HTMLImageElement> = new Set()
+    private highPriority: Set<HTMLImageElement> = new Set()
+    private lowPriority: Set<HTMLImageElement> = new Set()
+    private loading: Set<HTMLImageElement> = new Set()
     
-    // Map to link file paths to image elements for data-driven sorting
     private imageMap = new Map<string, HTMLImageElement>()
     private nodeToPath = new WeakMap<HTMLImageElement, string>()
+    /** Tracks headless (offscreen) images created for loadAllPreviews preloading */
+    private headlessImages = new Set<HTMLImageElement>()
 
-    // RAF-based debouncing (replaces queueMicrotask for frame-aligned processing)
     private rafId: number | null = null
     
-    private concurrency = 2 // Max simultaneous downloads
-    private loadDistance = 500 // Pixel margin for "nearby" detection
-    
-    // Threshold to distinguish "in viewport" from "nearby" based on intersection ratio
-    // Elements with ratio >= this value are considered high priority (visible)
+    /** Tracks entry paths that have been observed at least once, to distinguish first mount from re-registration */
+    private knownEntryPaths = new Set<string>()
+
+    private concurrency = 2
+    private renderDistance = 500
+    private imageLoadDistance = 300
     private visibilityThreshold = 0.01
 
+    visibleEntryPaths = new SvelteSet<string>()
+    private entryElements = new Map<HTMLElement, string>()
 
-    // Sets the scroll container and resets observers to use the new root
+
     setScrollContainer(container: HTMLElement | null) {
         this.scrollContainer = container
         this.reinitObserver()
     }
 
     private initObserver() {
-        // Single observer with extended rootMargin and multiple thresholds
-        // This replaces the previous two-observer approach
         this.observer = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
-                    const img = entry.target as HTMLImageElement
-                    
-                    if (entry.isIntersecting) {
-                        // Determine priority based on intersection ratio
-                        // High ratio = actually visible in viewport
-                        // Low ratio = just entering the extended margin
-                        if (entry.intersectionRatio >= this.visibilityThreshold) {
-                            this.highPriority.add(img)
-                            this.lowPriority.delete(img)
-                        } else {
-                            // Only add to low priority if not already high priority
-                            if (!this.highPriority.has(img)) {
-                                this.lowPriority.add(img)
-                            }
-                        }
+                    if (entry.target instanceof HTMLImageElement) {
+                        this.handleImageIntersect(entry)
                     } else {
-                        // Element left the extended margin entirely
-                        this.highPriority.delete(img)
-                        this.lowPriority.delete(img)
+                        this.handleEntryIntersect(entry)
                     }
                 }
-                this.scheduleProcess()
+                this.scheduleImageLoad()
             },
             { 
                 root: this.scrollContainer,
-                rootMargin: `${this.loadDistance}px`,
-                // Multiple thresholds: 0 for entering margin, visibilityThreshold for actual viewport
+                rootMargin: `${this.renderDistance}px`,
                 threshold: [0, this.visibilityThreshold, 0.5, 1.0]
             }
         )
     }
 
-    // Restarts observer (e.g., when container changes) and re-observes pending images
+    private handleEntryIntersect(entry: IntersectionObserverEntry) {
+        const element = entry.target as HTMLElement
+        const path = this.entryElements.get(element)
+        if (!path) return
+        
+        if (entry.isIntersecting) {
+            this.visibleEntryPaths.add(path)
+        } else {
+            this.visibleEntryPaths.delete(path)
+        }
+    }
+
+    private handleImageIntersect(entry: IntersectionObserverEntry) {
+        const img = entry.target as HTMLImageElement
+        
+        if (entry.isIntersecting) {
+            const distance = this.getDistanceFromViewport(entry.boundingClientRect)
+            
+            if (distance <= this.imageLoadDistance) {
+                this.highPriority.add(img)
+                this.lowPriority.delete(img)
+            } else {
+                if (!this.highPriority.has(img)) {
+                    this.lowPriority.add(img)
+                }
+            }
+        } else {
+            this.highPriority.delete(img)
+            this.lowPriority.delete(img)
+        }
+    }
+
+    private getDistanceFromViewport(rect: DOMRectReadOnly): number {
+        if (!this.scrollContainer) {
+            return rect.top < 0 ? -rect.top : 
+                   rect.bottom > window.innerHeight ? rect.bottom - window.innerHeight : 0
+        }
+        
+        const containerRect = this.scrollContainer.getBoundingClientRect()
+        const top = rect.top - containerRect.top
+        const bottom = rect.bottom - containerRect.bottom
+        
+        if (top < 0) return -top
+        if (bottom > 0) return bottom
+        return 0
+    }
+
     private reinitObserver() {
         this.observer?.disconnect()
         this.highPriority.clear()
         this.lowPriority.clear()
+        this.visibleEntryPaths.clear()
+        this.knownEntryPaths.clear()
         
         this.initObserver()
         
         for (const img of this.pending) {
             this.observer?.observe(img)
         }
+        for (const [element] of this.entryElements) {
+            this.observer?.observe(element)
+        }
     }
 
-    // Registers an image to be managed by the queue
+    observeEntry = (node: HTMLElement, path: string) => {
+        if (!this.observer) {
+            this.initObserver()
+        }
+        
+        this.entryElements.set(node, path)
+        this.knownEntryPaths.add(path)
+        this.visibleEntryPaths.add(path)
+        this.observer!.observe(node)
+        
+        return {
+            update: (newPath: string) => {
+                const oldPath = this.entryElements.get(node)
+                if (oldPath && oldPath !== newPath) {
+                    this.visibleEntryPaths.delete(oldPath)
+                }
+                this.entryElements.set(node, newPath)
+                this.visibleEntryPaths.add(newPath)
+            },
+            destroy: () => {
+                this.observer?.unobserve(node)
+                this.entryElements.delete(node)
+            }
+        }
+    }
+
+    /**
+     * Svelte action for skeleton/placeholder elements.
+     * On first mount (path never seen before), eagerly marks as visible to avoid a flash of skeleton.
+     * On re-registration (path was visible, then scrolled away), does NOT eagerly add,
+     * allowing the IntersectionObserver to determine visibility naturally and preventing infinite loops.
+     */
+    observeSkeleton = (node: HTMLElement, path: string) => {
+        if (!this.observer) {
+            this.initObserver()
+        }
+
+        this.entryElements.set(node, path)
+
+        // First time this path is ever observed: eagerly mark visible (same as observeEntry)
+        // Re-registration after element swap: let IntersectionObserver decide
+        if (!this.knownEntryPaths.has(path)) {
+            this.knownEntryPaths.add(path)
+            this.visibleEntryPaths.add(path)
+        }
+
+        this.observer!.observe(node)
+
+        return {
+            update: (newPath: string) => {
+                const oldPath = this.entryElements.get(node)
+                if (oldPath && oldPath !== newPath) {
+                    this.visibleEntryPaths.delete(oldPath)
+                }
+                this.entryElements.set(node, newPath)
+                if (!this.knownEntryPaths.has(newPath)) {
+                    this.knownEntryPaths.add(newPath)
+                    this.visibleEntryPaths.add(newPath)
+                }
+            },
+            destroy: () => {
+                this.observer?.unobserve(node)
+                this.entryElements.delete(node)
+            }
+        }
+    }
+
     register(img: HTMLImageElement, path?: string) {
         if (!img.hasAttribute(`data-src`)) return
 
@@ -140,16 +241,22 @@ export class ImageLoadQueue {
             this.initObserver()
         }
 
-        this.pending.add(img)
+        // If there's an existing headless image for this path, clean it up
         if (path) {
+            const existing = this.imageMap.get(path)
+            if (existing && existing !== img && this.headlessImages.has(existing)) {
+                this.pending.delete(existing)
+                this.headlessImages.delete(existing)
+                this.nodeToPath.delete(existing)
+            }
             this.imageMap.set(path, img)
             this.nodeToPath.set(img, path)
         }
 
+        this.pending.add(img)
+
         this.observer!.observe(img)
-        
-        // Trigger process in case we are in loadAllPreviews mode or slots are open
-        this.scheduleProcess() 
+        this.scheduleImageLoad() 
     }
 
     // Sorts the pending queue to match the given list of file paths
@@ -175,27 +282,80 @@ export class ImageLoadQueue {
         // No need to trigger process() here as the queue size didn't change
     }
 
-    // Cleans up an image from all queues and observers
+    /**
+     * Pre-registers headless (offscreen) images for all image/video entries so that
+     * loadAllPreviews can fetch them even when their grid entries are in skeleton state.
+     * The images are added to the pending queue without being observed by IntersectionObserver.
+     * When an entry later scrolls into view and mounts a real FileThumbnail <img>,
+     * the headless image is replaced and the browser serves the data from the service worker cache.
+     */
+    preloadAllPreviews(entries: FullFileMetadata[], pixelSize: number) {
+        const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
+
+        let added = false
+        for (const entry of entries) {
+            // Skip entries that already have a registered image (real or headless)
+            if (this.imageMap.has(entry.path)) continue
+
+            const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
+            if (format !== `image` && format !== `video`) continue
+
+            const endpoint = format === `image` ? `image-thumbnail` : `video-preview`
+            const src = `/api/v1/file/${endpoint}?size=${pixelSize}&path=${encodeURIComponent(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`
+
+            const img = document.createElement(`img`)
+            img.setAttribute(`data-src`, src)
+
+            this.headlessImages.add(img)
+            this.pending.add(img)
+            this.imageMap.set(entry.path, img)
+            this.nodeToPath.set(img, entry.path)
+            added = true
+        }
+
+        if (added) {
+            this.scheduleImageLoad()
+        }
+    }
+
+    // Cleans up an image from all queues and observers.
+    // When loadAllPreviews is enabled and a real (non-headless) image is unregistered
+    // (e.g. entry went back to skeleton), a headless replacement is created so the
+    // thumbnail still gets fetched and cached by the service worker.
     unregister(img: HTMLImageElement) {
+        const wasHeadless = this.headlessImages.has(img)
+        const wasInPending = this.pending.has(img)
+        const dataSrc = img.getAttribute(`data-src`)
+
         this.pending.delete(img)
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
+        this.headlessImages.delete(img)
         this.observer?.unobserve(img)
         
         const path = this.nodeToPath.get(img)
         if (path) {
             this.imageMap.delete(path)
             this.nodeToPath.delete(img)
+
+            // If a real image is being unregistered (entry went to skeleton) and it was
+            // still pending (never started loading), create a headless replacement so that
+            // loadAllPreviews can still fetch and cache the thumbnail via the service worker.
+            if (!wasHeadless && wasInPending && dataSrc && appState.settings.loadAllPreviews) {
+                const headless = document.createElement(`img`)
+                headless.setAttribute(`data-src`, dataSrc)
+                this.headlessImages.add(headless)
+                this.pending.add(headless)
+                this.imageMap.set(path, headless)
+                this.nodeToPath.set(headless, path)
+                this.scheduleImageLoad()
+            }
         }
     }
 
-    // RAF-based debounced trigger for the processing loop
-    // Using requestAnimationFrame instead of queueMicrotask prevents forced reflows
-    // by ensuring processing happens at the optimal time in the frame lifecycle
-    private scheduleProcess() {
+    private scheduleImageLoad() {
         if (this.rafId !== null) return
         
-        // setTimeout runs even when the tab is not focused
         this.rafId = setTimeout(() => {
             this.rafId = null
             this.runProcessLoop()
@@ -266,7 +426,7 @@ export class ImageLoadQueue {
             img.onload = null
             img.onerror = null
             this.loading.delete(img)
-            this.scheduleProcess() // Trigger next item in queue
+            this.scheduleImageLoad()
         }
 
         img.onload = cleanup
@@ -315,6 +475,8 @@ export class ImageLoadQueue {
         this.lowPriority.clear()
         this.loading.clear()
         this.imageMap.clear()
+        this.headlessImages.clear()
+        this.knownEntryPaths.clear()
     }
 }
 

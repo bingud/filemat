@@ -97,6 +97,10 @@ class AppState {
 
 class SettingState {
     loadAllPreviews = $state(false)
+    /** When enabled alongside loadAllPreviews, all image entries always render their
+     *  real <img> elements instead of skeletonizing off-screen. Useful when there is
+     *  no service worker to cache headless image fetches. */
+    alwaysRenderPreviews = $state(false)
 	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
     clickToOpenFile = $state(false)
     previewSize = $state({ rows: 2, grid: 2 })
