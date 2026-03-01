@@ -53,6 +53,8 @@ export function changeSortingMode(mode: typeof filesState.sortingMode) {
 export class VisibilityManager {
     private scrollContainer: HTMLElement | null = null
     private observer: IntersectionObserver | null = null
+    /** A second observer with no margin, used to detect images that are truly in the visible viewport */
+    private visibleImageObserver: IntersectionObserver | null = null
     
     private pending: Set<HTMLImageElement> = new Set()
     private highPriority: Set<HTMLImageElement> = new Set()
@@ -71,7 +73,6 @@ export class VisibilityManager {
 
     private concurrency = 2
     private renderDistance = 500
-    private imageLoadDistance = 300
     private visibilityThreshold = 0.01
 
     visibleEntryPaths = new SvelteSet<string>()
@@ -101,6 +102,37 @@ export class VisibilityManager {
                 threshold: [0, this.visibilityThreshold, 0.5, 1.0]
             }
         )
+
+        // A zero-margin observer that only fires for images actually inside the visible viewport.
+        // Used to promote images to highPriority without relying on distance calculations.
+        this.visibleImageObserver = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    const img = entry.target as HTMLImageElement
+                    if (entry.isIntersecting) {
+                        // Truly visible: promote to high priority regardless of margin observer state
+                        if (this.pending.has(img) || this.lowPriority.has(img)) {
+                            this.highPriority.add(img)
+                            this.lowPriority.delete(img)
+                        }
+                    } else {
+                        // Left the real viewport: demote back to lowPriority if still in margin observer range
+                        if (this.highPriority.has(img) && !this.loading.has(img)) {
+                            this.highPriority.delete(img)
+                            if (this.pending.has(img)) {
+                                this.lowPriority.add(img)
+                            }
+                        }
+                    }
+                }
+                this.scheduleImageLoad()
+            },
+            {
+                root: this.scrollContainer,
+                rootMargin: `0px`,
+                threshold: 0,
+            }
+        )
     }
 
     private handleEntryIntersect(entry: IntersectionObserverEntry) {
@@ -119,15 +151,11 @@ export class VisibilityManager {
         const img = entry.target as HTMLImageElement
         
         if (entry.isIntersecting) {
-            const distance = this.getDistanceFromViewport(entry.boundingClientRect)
-            
-            if (distance <= this.imageLoadDistance) {
-                this.highPriority.add(img)
-                this.lowPriority.delete(img)
-            } else {
-                if (!this.highPriority.has(img)) {
-                    this.lowPriority.add(img)
-                }
+            // The margin observer fires for anything within renderDistance px.
+            // The visibleImageObserver (zero margin) will promote truly visible images
+            // to highPriority. Until then, place new images in lowPriority.
+            if (!this.highPriority.has(img)) {
+                this.lowPriority.add(img)
             }
         } else {
             this.highPriority.delete(img)
@@ -135,23 +163,9 @@ export class VisibilityManager {
         }
     }
 
-    private getDistanceFromViewport(rect: DOMRectReadOnly): number {
-        if (!this.scrollContainer) {
-            return rect.top < 0 ? -rect.top : 
-                   rect.bottom > window.innerHeight ? rect.bottom - window.innerHeight : 0
-        }
-        
-        const containerRect = this.scrollContainer.getBoundingClientRect()
-        const top = rect.top - containerRect.top
-        const bottom = rect.bottom - containerRect.bottom
-        
-        if (top < 0) return -top
-        if (bottom > 0) return bottom
-        return 0
-    }
-
     private reinitObserver() {
         this.observer?.disconnect()
+        this.visibleImageObserver?.disconnect()
         this.highPriority.clear()
         this.lowPriority.clear()
         this.visibleEntryPaths.clear()
@@ -161,10 +175,32 @@ export class VisibilityManager {
         
         for (const img of this.pending) {
             this.observer?.observe(img)
+            this.visibleImageObserver?.observe(img)
         }
         for (const [element] of this.entryElements) {
             this.observer?.observe(element)
         }
+    }
+
+    /**
+     * Returns true if the element's bounding rect overlaps the visible viewport of the scroll container
+     * (with the configured renderDistance margin). Used to eagerly mark entries visible on first mount
+     * without waiting for the async IntersectionObserver callback, but ONLY for entries that are
+     * actually near the viewport — preventing all entries from rendering fully on initial load.
+     */
+    private isNearViewport(node: HTMLElement): boolean {
+        const rect = node.getBoundingClientRect()
+        if (this.scrollContainer) {
+            const containerRect = this.scrollContainer.getBoundingClientRect()
+            return (
+                rect.bottom >= containerRect.top - this.renderDistance &&
+                rect.top <= containerRect.bottom + this.renderDistance
+            )
+        }
+        return (
+            rect.bottom >= -this.renderDistance &&
+            rect.top <= window.innerHeight + this.renderDistance
+        )
     }
 
     observeEntry = (node: HTMLElement, path: string) => {
@@ -174,7 +210,13 @@ export class VisibilityManager {
         
         this.entryElements.set(node, path)
         this.knownEntryPaths.add(path)
-        this.visibleEntryPaths.add(path)
+
+        // Only eagerly mark visible if the element is actually near the viewport.
+        // This prevents all N entries from being fully rendered on the initial mount.
+        if (this.isNearViewport(node)) {
+            this.visibleEntryPaths.add(path)
+        }
+
         this.observer!.observe(node)
         
         return {
@@ -195,7 +237,8 @@ export class VisibilityManager {
 
     /**
      * Svelte action for skeleton/placeholder elements.
-     * On first mount (path never seen before), eagerly marks as visible to avoid a flash of skeleton.
+     * On first mount (path never seen before), eagerly marks as visible only if the element
+     * is actually near the viewport — avoiding full renders for all off-screen entries.
      * On re-registration (path was visible, then scrolled away), does NOT eagerly add,
      * allowing the IntersectionObserver to determine visibility naturally and preventing infinite loops.
      */
@@ -206,11 +249,13 @@ export class VisibilityManager {
 
         this.entryElements.set(node, path)
 
-        // First time this path is ever observed: eagerly mark visible (same as observeEntry)
-        // Re-registration after element swap: let IntersectionObserver decide
+        // First time this path is ever observed: eagerly mark visible only if near viewport.
+        // Re-registration after element swap: let IntersectionObserver decide.
         if (!this.knownEntryPaths.has(path)) {
             this.knownEntryPaths.add(path)
-            this.visibleEntryPaths.add(path)
+            if (this.isNearViewport(node)) {
+                this.visibleEntryPaths.add(path)
+            }
         }
 
         this.observer!.observe(node)
@@ -224,7 +269,9 @@ export class VisibilityManager {
                 this.entryElements.set(node, newPath)
                 if (!this.knownEntryPaths.has(newPath)) {
                     this.knownEntryPaths.add(newPath)
-                    this.visibleEntryPaths.add(newPath)
+                    if (this.isNearViewport(node)) {
+                        this.visibleEntryPaths.add(newPath)
+                    }
                 }
             },
             destroy: () => {
@@ -256,6 +303,7 @@ export class VisibilityManager {
         this.pending.add(img)
 
         this.observer!.observe(img)
+        this.visibleImageObserver?.observe(img)
         this.scheduleImageLoad() 
     }
 
@@ -332,6 +380,7 @@ export class VisibilityManager {
         this.lowPriority.delete(img)
         this.headlessImages.delete(img)
         this.observer?.unobserve(img)
+        this.visibleImageObserver?.unobserve(img)
         
         const path = this.nodeToPath.get(img)
         if (path) {
@@ -419,6 +468,7 @@ export class VisibilityManager {
         
         // Stop observing once loading starts
         this.observer?.unobserve(img)
+        this.visibleImageObserver?.unobserve(img)
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
 
@@ -470,6 +520,8 @@ export class VisibilityManager {
 
         this.observer?.disconnect()
         this.observer = null
+        this.visibleImageObserver?.disconnect()
+        this.visibleImageObserver = null
         this.pending.clear()
         this.highPriority.clear()
         this.lowPriority.clear()
