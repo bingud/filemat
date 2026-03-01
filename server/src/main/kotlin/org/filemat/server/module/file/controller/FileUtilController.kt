@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets
 import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
 import org.filemat.server.config.auth.Unauthenticated
-import javax.imageio.ImageIO
 
 
 @RestController
@@ -72,7 +71,9 @@ class FileUtilController(
                 fileContentResult.value.use { inputStream ->
                     try {
                         // Read into memory (required regardless of approach)
-                        val image = ImageIO.read(inputStream)
+                        val image = Thumbnails.of(inputStream)
+                            .scale(1.0)
+                            .asBufferedImage()
 
                         val thumbnail = Thumbnails.of(image)
                             .outputFormat("jpg")
