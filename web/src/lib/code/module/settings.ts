@@ -7,7 +7,7 @@ import { getCurrentPermissions } from "./permissions";
 export type PreferenceSetting = "load_all_previews" | "always_render_previews" | "default_page_path" | "click_to_open_file" | "preview_size_grid" | "preview_size_rows" | "file_view_type"
 
 export type SettingsSection = { name: SettingSectionId; permissions: SystemPermission[]; admin: boolean; }
-export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "system" | "account"
+export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "system" | "account" | "other"
 
 
 export function loadPreferenceSettings() {
@@ -96,6 +96,7 @@ export const settingSections = {
     sections: {
         "preferences": { name: "preferences", permissions: [], admin: false },
         "account": { name: "account", permissions: [], admin: false },
+        "other": { name: "other", permissions: [], admin: false },
         "system": { name: "system", permissions: ["MANAGE_SYSTEM"], admin: true },
         "users": { name: "users", permissions: ["MANAGE_USERS"], admin: true },
         "roles": { name: "roles", permissions: ["EDIT_ROLES"], admin: true },

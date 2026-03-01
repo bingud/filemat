@@ -12,7 +12,7 @@ const CACHE_NAME = `app-cache-${version}`
 const THUMB_CACHE_NAME = `thumb-cache`
 
 // Assets to cache immediately
-const STATIC_ASSETS = [...build, ...files]
+// const STATIC_ASSETS = [...build, ...files]
 
 // max age for thumbnails in seconds
 const THUMB_MAX_AGE_SECONDS = 60 /* seconds */ * 60 /* minutes */ * 24 /* hours */ * 2 /* days */
@@ -53,6 +53,11 @@ sw.addEventListener('fetch', (event) => {
     }
 
     if (url.pathname.startsWith('/api/')) return
+
+    if (url.pathname.startsWith("/__filemat-clear-sw-thumb-cache")) {
+        caches.delete(THUMB_CACHE_NAME)
+        event.respondWith(new Response(null, { status: 200 }))
+    }
 })
 
 async function cacheResponse(request: Request, cachePromise: Cache | Promise<Cache>): Promise<Response> {
