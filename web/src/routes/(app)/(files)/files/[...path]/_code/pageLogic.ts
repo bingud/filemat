@@ -1,9 +1,9 @@
 import { goto } from "$app/navigation"
-import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
+import type { FullFileMetadata } from "$lib/code/auth/types"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, filenameFromPath, formData, handleErr, handleException, parentFromPath, safeFetch, unixNow, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+import { addSuffix, filenameFromPath, formData, handleErr, parentFromPath, safeFetch } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
@@ -29,8 +29,7 @@ export function saveScrollPosition() {
 export function recoverScrollPosition() {
     if (!filesState.path || !filesState.scroll.container) return
     const pos = filesState.scroll.pathPositions[filesState.path]
-    if (!pos) return
-    filesState.scroll.container.scrollTo({top: pos})
+    filesState.scroll.container.scrollTo({top: pos || 0})
 }
 
 

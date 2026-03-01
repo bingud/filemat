@@ -120,6 +120,10 @@
         const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
         const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
 
+        if (pathIsChild) {
+            delete filesState.scroll.pathPositions[newPath]
+        }
+
         if (!isSearchedFile) {
             if (pathIsParentFolder || isSearchedParent) {
                 filesState.clearOpenState()
