@@ -78,7 +78,6 @@ class FileUtilController(
                         val thumbnail = Thumbnails.of(image)
                             .outputFormat("jpg")
                             .outputQuality(0.4)
-                            .scalingMode(ScalingMode.BILINEAR)
 
                         // Only apply size reduction if the image exceeds the bounds
                         if (image.width > size || image.height > size) {
