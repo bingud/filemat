@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { setPreferenceSetting } from "$lib/code/module/settings";
-    import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { toast } from "@jill64/svelte-toast";

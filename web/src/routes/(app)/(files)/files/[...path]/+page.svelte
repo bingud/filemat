@@ -128,8 +128,7 @@
             if (pathIsParentFolder || isSearchedParent) {
                 filesState.clearOpenState()
             } else if (pathIsChild && filesState.data.fileMeta != null) {
-                // Dont clear state of open file, if a file is currently open
-                // filesState.clearOpenState()
+                filesState.clearFileData()
             } else if (!pathIsChild && !pathIsParentFolder) {
                 filesState.clearAllState()
             }
@@ -140,12 +139,13 @@
         // Do not load page data if navigating back to current parent folder
         // Use existing state
         if (pathIsParentFolder === false && !isSearchedParent) {
-            const bodyParams = stateMeta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined;
+            const bodyParams = stateMeta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined
 
-            (newPath === "/" && (stateMeta.isArrayOnly) 
+            const dataStatusPromise = newPath === "/" && (stateMeta.isArrayOnly) 
                 ? loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "array",  shareToken: shareToken,            bodyParams })
                 : loadPageData(newPath, { urlPath: stateMeta.fileEntriesUrlPath, fileDataType: "object", loadParentFolder: !isSearchedFile, shareToken: shareToken })
-            ).then((status) => {
+            
+            dataStatusPromise.then((status) => {
                 if (status === "no-permission") {
                     lacksRootFolderPermission = true
                 }

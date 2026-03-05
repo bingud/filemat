@@ -136,6 +136,9 @@ class FilesState {
         this.data.clearOpenContent()
         this.ui.clear()
     }
+    clearFileData() {
+        this.data.clearFileData()
+    }
 
     unselect() {
         if (this.selectedEntries) this.selectedEntries.reset()
@@ -390,6 +393,12 @@ class FileDataStateClass {
         this.contentFilePath = null
 
         filesState.currentFile.clear()
+    }
+
+    clearFileData() {
+        this.content = null
+        this.decodedContent = null
+        this.contentFilePath = null
     }
 }
 

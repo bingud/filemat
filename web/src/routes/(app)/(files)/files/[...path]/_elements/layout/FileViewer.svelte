@@ -44,13 +44,16 @@
         }
     })
 
+    let isContentDecoding = $state(false)
     $effect(() => {
         if (filesState.data.decodedContent != null && filesState.data.contentFilePath === filesState.path) return
         if (filesState.data.content == null) return
         if (!isViewableFile || !fileCategory) return
 
         const blobPath = filesState.data.contentFilePath
+        isContentDecoding = true
         getBlobContent(filesState.data.content, fileCategory).then((result) => {
+            isContentDecoding = false
             if (blobPath !== filesState.path) return
 
             filesState.data.decodedContent = result
@@ -147,7 +150,7 @@
         lastMousePositionState={filesState.ui.fileNavZoneLastMousePosition}
     />
 
-    {#if filesState.contentLoading || !meta}
+    {#if filesState.contentLoading || filesState.metaLoading || isContentDecoding || !meta}
         <div class="center">
             <Loader></Loader>
         </div>
