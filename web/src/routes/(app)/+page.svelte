@@ -5,7 +5,7 @@
 
     onMount(() => {
         const def = appState.settings.defaultPagePath
-        goto(def)
+        goto(def, { replaceState: true })
     })
 
 </script>
