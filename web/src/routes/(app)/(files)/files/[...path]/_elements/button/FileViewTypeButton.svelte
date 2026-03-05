@@ -9,9 +9,12 @@
     import GridIcon from "$lib/component/icons/GridIcon.svelte"
     import RowsIcon from "$lib/component/icons/RowsIcon.svelte"
 
+    let isOpen = $state(false)
+
     function setView(view: "rows" | "grid") {
         filesState.ui.fileViewType = view
         setPreferenceSetting("file_view_type", view)
+        isOpen = false
     }
 
     let currentSize = $derived.by(() => {
@@ -21,7 +24,7 @@
 </script>
 
 {#if filesState}
-    <Popover.Root>
+    <Popover.Root bind:open={isOpen}>
         <Popover.Trigger
             title="Change file view"
             class="file-action-button"
