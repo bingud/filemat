@@ -18,6 +18,7 @@ import java.io.InputStream
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.*
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -521,4 +522,10 @@ inline fun <reified T : Enum<T>> parseEnumList(str: String?): List<T> {
 fun encodePathSegment(input: String): String {
     return URLEncoder.encode(input, StandardCharsets.UTF_8.toString())
         .replace("+", "%20")
+}
+
+fun md5hash(str: String): String {
+    return MessageDigest.getInstance("MD5")
+        .digest(str.toByteArray())
+        .joinToString("") { "%02x".format(it) }
 }

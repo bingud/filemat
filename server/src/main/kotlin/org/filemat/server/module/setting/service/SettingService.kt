@@ -28,6 +28,9 @@ class SettingService(
     private val tusService: TusService,
     private val fileService: FileService,
 ) {
+    fun set_thumbnailCachePath(user: Principal, rawNewPath: FilePath): Result<FilePath> {
+        TODO()
+    }
 
     fun set_uploadFolderPath(user: Principal, rawNewPath: FilePath): Result<FilePath> {
         tusService.uploadLock.writeLock().withLock {
