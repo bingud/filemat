@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets
 import kotlin.math.min
 import org.bytedeco.ffmpeg.global.avutil.*
 import org.filemat.server.config.auth.Unauthenticated
+import kotlin.math.max
 
 
 @RestController
@@ -35,6 +36,21 @@ class FileUtilController(
         av_log_set_level(AV_LOG_QUIET)
     }
 
+    fun calculateQuality(width: Int): Double {
+        val minWidth = 200.0
+        val maxWidth = 1150.0
+        val maxQuality = 1.0
+        val minQuality = 0.60
+
+        if (width <= minWidth) return maxQuality
+        if (width >= maxWidth) return minQuality
+
+        val progress = (width - minWidth) / (maxWidth - minWidth)
+        val quality = maxQuality - (progress * (maxQuality - minQuality))
+
+        return Math.round(quality * 100.0) / 100.0
+    }
+
     @Unauthenticated
     @GetMapping("/image-thumbnail")
     fun imageThumbnailMapping(
@@ -45,7 +61,7 @@ class FileUtilController(
     ): ResponseEntity<StreamingResponseBody> {
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
-        val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
+        val targetSize = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
         val canonicalPathResult  = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
         val canonicalPath = canonicalPathResult.let {
@@ -64,7 +80,7 @@ class FileUtilController(
         if (fileContentResult.rejected) return streamBad(fileContentResult.error, "")
         if (fileContentResult.isNotSuccessful) return streamInternal(fileContentResult.error, "")
 
-        val filename = path.pathString.substringAfterLast("/") + "_${size}p.jpg"
+        val filename = path.pathString.substringAfterLast("/") + "_${targetSize}p.jpg"
 
         val responseBody = StreamingResponseBody { outputStream ->
             try {
@@ -74,14 +90,16 @@ class FileUtilController(
                         val image = Thumbnails.of(inputStream)
                             .scale(1.0)
                             .asBufferedImage()
+                        val sourceSize = max(image.width, image.height)
+                        val finalSize = min(sourceSize, targetSize)
 
                         val thumbnail = Thumbnails.of(image)
                             .outputFormat("jpg")
-                            .outputQuality(0.4)
+                            .outputQuality(calculateQuality(finalSize))
 
                         // Only apply size reduction if the image exceeds the bounds
-                        if (image.width > size || image.height > size) {
-                            thumbnail.size(size, size).keepAspectRatio(true)
+                        if (sourceSize > targetSize) {
+                            thumbnail.size(targetSize, targetSize).keepAspectRatio(true)
                         } else {
                             // Do not resize, just compress and convert format
                             thumbnail.scale(1.0)
@@ -107,15 +125,17 @@ class FileUtilController(
                             if (image == null) {
                                 throw Exception("Could not convert frame to image")
                             }
+                            val sourceSize = max(image.width, image.height)
+                            val finalSize = min(sourceSize, targetSize)
 
                             val thumbnail = Thumbnails.of(image)
                                 .outputFormat("jpg")
-                                .outputQuality(0.4)
+                                .outputQuality(calculateQuality(finalSize))
                                 .scalingMode(ScalingMode.BILINEAR)
 
                             // Only apply size reduction if the image exceeds the bounds
-                            if (image.width > size || image.height > size) {
-                                thumbnail.size(size, size).keepAspectRatio(true)
+                            if (sourceSize > targetSize) {
+                                thumbnail.size(targetSize, targetSize).keepAspectRatio(true)
                             } else {
                                 // Do not resize, just compress and convert format
                                 thumbnail.scale(1.0)
@@ -166,7 +186,7 @@ class FileUtilController(
     ): ResponseEntity<StreamingResponseBody> {
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
-        val size = min(rawSize?.toIntOrNull() ?: 100, 4096)
+        val targetSize = min(rawSize?.toIntOrNull() ?: 100, 4096)
 
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
         val canonicalPath = canonicalPathResult.let {
@@ -211,14 +231,16 @@ class FileUtilController(
                         outputStream.write("Invalid video format or frame".toByteArray())
                         return@StreamingResponseBody
                     }
+                    val sourceSize = max(originalImage.width, originalImage.height)
+                    val finalSize = min(sourceSize, targetSize)
 
                     val thumbnail = Thumbnails.of(originalImage)
                         .outputFormat("jpg")
-                        .outputQuality(0.4)
+                        .outputQuality(calculateQuality(finalSize))
 
                     // Only apply size reduction if the frame exceeds the bounds
-                    if (originalImage.width > size || originalImage.height > size) {
-                        thumbnail.size(size, size)
+                    if (sourceSize > targetSize) {
+                        thumbnail.size(targetSize, targetSize)
                     } else {
                         // Do not resize, just compress and convert format
                         thumbnail.scale(1.0)

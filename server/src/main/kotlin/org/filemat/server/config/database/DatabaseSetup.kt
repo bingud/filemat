@@ -6,6 +6,7 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.role.service.RoleService
 import org.filemat.server.module.service.AppService
 import org.filemat.server.module.setting.service.SettingService
+import org.filemat.server.module.setting.service.component.ThumbCacheSettingService
 import org.flywaydb.core.Flyway
 import org.springframework.core.env.Environment
 import org.springframework.core.io.ClassPathResource
@@ -25,6 +26,7 @@ class DatabaseSetup(
     private val roleService: RoleService,
     private val appService: AppService,
     private val environment: Environment,
+    private val thumbCacheSettingService: ThumbCacheSettingService,
 ) {
     fun runFlywayMigrations() {
         println("Running flyway migrations...")
@@ -109,5 +111,8 @@ class DatabaseSetup(
                 }
             }
         }
+
+        // Thumbnail cache settings
+        thumbCacheSettingService.initializeSettings()
     }
 }

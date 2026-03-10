@@ -39,6 +39,13 @@ object State {
         val printLogs = env("FM_PRINT_LOGS", true)?.toBooleanStrictOrNull() ?: true
     }
 
+    object ThumbCache {
+        var isEnabled: Boolean by Delegates.notNull()
+        var folderPath: String? = null
+        var maxSizeMb: Int? = null
+        var maxAge: Int? = null
+    }
+
     object Auth {
         // All roles
         val roleMap = ConcurrentHashMap<Ulid, Role>()

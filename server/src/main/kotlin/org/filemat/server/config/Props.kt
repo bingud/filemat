@@ -40,6 +40,13 @@ object Props {
         const val isAppSetup = "is_application_setup"
         const val followSymlinks = "follow_symbolic_links"
         const val uploadFolderPath = "upload_folder_path"
+
+        object ThumbCache {
+            const val enabled = "is_thumbnail_cache_enabled"
+            const val folderPath = "thumbnail_cache_folder_path"
+            const val maxSizeMb = "thumbnail_cache_max_size_mb"
+            const val maxAge = "thumbnail_cache_max_age"
+        }
     }
 
     object Cookies {
