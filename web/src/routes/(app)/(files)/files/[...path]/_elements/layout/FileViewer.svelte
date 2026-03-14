@@ -158,7 +158,7 @@
         <div class="w-full flex-grow min-h-0 flex items-center justify-center">
             {#if filesState.data.isFileSymlink === false}
                 {#if isText}
-                    <div class="w-full h-full custom-scrollbar overflow-y-auto" 
+                    <div class="w-full h-full custom-scrollbar overflow-auto" 
                         on:focusin={() => { textFileViewerState.isFocused = true }} 
                         on:focusout={() => { textFileViewerState.isFocused = false }}
                         bind:this={textFileViewerState.textEditorContainer}>
@@ -200,3 +200,11 @@
         </div>
     {/if}
 </div>
+
+<style>
+    @import "/src/app.css" reference;
+
+    :global(.cm-scroller) {
+        @apply custom-scrollbar;
+    }
+</style>

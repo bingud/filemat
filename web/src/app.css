@@ -7,7 +7,6 @@
 @import "./lib/css/components.css";
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-@plugin 'tailwind-scrollbar';
 
 @source inline("bg-blue-500 bg-green-500 bg-yellow-500 bg-red-500 bg-purple-500 size-10!");
 
@@ -54,10 +53,6 @@ html {
 }
 
 
-.custom-scrollbar {
-    @apply scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-hover:scrollbar-thumb-neutral-400  dark:scrollbar-thumb-neutral-700 scrollbar-hover:dark:scrollbar-thumb-neutral-600;
-}
-
 /* 
     Layouts
 */
@@ -98,4 +93,49 @@ h1 {
 
 .center {
     @apply size-full flex flex-col items-center justify-center;
+}
+
+
+/* .custom-scrollbar {
+    @apply scrollbar-thin! scrollbar-track-transparent! scrollbar-thumb-neutral-300! scrollbar-hover:scrollbar-thumb-neutral-400! dark:scrollbar-thumb-neutral-700! scrollbar-hover:dark:scrollbar-thumb-neutral-600!;
+} */
+.custom-scrollbar {
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: oklch(87% 0 0); /* neutral-300 */
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb, initial) var(--scrollbar-track, initial);
+
+    &::-webkit-scrollbar {
+        display: block;
+        width: 8px;
+        height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background-color: var(--scrollbar-track);
+        border-radius: var(--scrollbar-track-radius);
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--scrollbar-thumb);
+        border-radius: var(--scrollbar-thumb-radius);
+    }
+
+    &::-webkit-scrollbar-corner {
+        background-color: var(--scrollbar-corner);
+        border-radius: var(--scrollbar-corner-radius);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        --scrollbar-thumb: oklch(70.8% 0 0); /* neutral-400 */
+
+        &:where([data-theme=dark], [data-theme=dark] *) {
+            --scrollbar-thumb: oklch(43.9% 0 0); /* neutral-600 */
+        }
+    }
+
+    &:where([data-theme=dark], [data-theme=dark] *) {
+        --scrollbar-thumb: oklch(37.1% 0 0); /* neutral-700 */
+    }
 }
