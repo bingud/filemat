@@ -2,7 +2,7 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { filenameFromPath } from "$lib/code/util/codeUtil.svelte";
+    import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
@@ -39,7 +39,7 @@
             on:error={onImageError} 
             use:loadFilePreview={entry.path} 
             alt=""
-            data-src="/api/v1/file/image-thumbnail?size={size}&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" 
+            data-src="/api/v1/file/image-thumbnail?size={size}&path={encodeUrlFilePath(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" 
             class="h-full w-full object-contain opacity-0" 
             on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}
         >
@@ -50,7 +50,7 @@
                 on:error={onImageError}
                 use:loadFilePreview={entry.path}
                 alt=""
-                data-src="/api/v1/file/video-preview?size={size}&path={encodeURIComponent(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}"
+                data-src="/api/v1/file/video-preview?size={size}&path={encodeUrlFilePath(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}"
                 class="h-full w-full object-contain opacity-0"
             >
             {#if isLarge}

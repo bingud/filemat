@@ -4,7 +4,7 @@ import type { GridPreviewSize, RowPreviewSize } from "$lib/code/config/values"
 import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
 import { SvelteSet } from "svelte/reactivity"
 
 export type FileContextMenuProps = {
@@ -349,7 +349,7 @@ export class VisibilityManager {
             if (format !== `image` && format !== `video`) continue
 
             const endpoint = format === `image` ? `image-thumbnail` : `video-preview`
-            const src = `/api/v1/file/${endpoint}?size=${pixelSize}&path=${encodeURIComponent(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`
+            const src = `/api/v1/file/${endpoint}?size=${pixelSize}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`
 
             const img = document.createElement(`img`)
             img.setAttribute(`data-src`, src)
@@ -599,7 +599,7 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
 
 export function openEntry(path: string) {
     if (filesState.metaLoading) return
-    goto(`${filesState.meta.pagePath}${encodeURI(path)}`)
+    goto(`${filesState.meta.pagePath}${encodeUrlFilePath(path)}`)
 }
 
 export function scrollSelectedEntryIntoView(path: string | null = null) {
