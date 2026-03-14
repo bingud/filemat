@@ -1,6 +1,6 @@
 <script lang="ts">
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { isFolder } from "$lib/code/util/codeUtil.svelte";
+    import { encodeUrlFilePath, isFolder } from "$lib/code/util/codeUtil.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
     import type { FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
@@ -58,7 +58,7 @@
                 : isSelected ? 'bg-blue-200/60 dark:bg-sky-950/60' : 'bg-neutral-200/30 dark:bg-neutral-800/30 hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60'
             }
         "
-        href={encodeURI(`${filesState.meta.pagePath}${(entry.path)}`)}
+        href={encodeUrlFilePath(`${filesState.meta.pagePath}${(entry.path)}`)}
         on:dragstart={(e) => { event_dragStart(e, entry) }}
         on:dragover={(e) => { event_dragOver(e, entry) }}
         on:dragleave={(e) => { event_dragLeave(e, entry) }}

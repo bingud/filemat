@@ -905,3 +905,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
         )
     )
 }
+
+export function encodeUrlFilePath(str: string): string {
+    return str.split('/').map(encodeURIComponent).join('/')
+}
