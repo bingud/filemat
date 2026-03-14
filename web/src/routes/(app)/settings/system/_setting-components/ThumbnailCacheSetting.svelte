@@ -129,7 +129,7 @@
                 </div>
             </div>
 
-            <hr class="border-neutral-300 dark:border-neutral-700" />
+            <hr class="border-neutral-300 dark:border-neutral-700 w-[15rem] max-w-full" />
 
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-1">
@@ -138,7 +138,7 @@
                         id="cache-folder"
                         type="text"
                         bind:value={options.folderPath}
-                        class="basic-input"
+                        class="basic-input max-w-full w-[35rem]"
                     />
                 </div>
 

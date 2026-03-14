@@ -450,7 +450,7 @@ class FileStateClass {
     displayedFileCategory = $derived(this.originalFileCategory) as FileCategory | null
 
     isEditable = $derived(
-        this.displayedFileCategory === "text" 
+        (this.displayedFileCategory === "text" || this.displayedFileCategory === "md" )
         && !filesState.isShared
         && auth.authenticated 
         && (filesState.data.fileMeta && filesState.data.fileMeta.permissions!.includes("WRITE")) 
