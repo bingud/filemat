@@ -5,10 +5,10 @@
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
-    import { openEntry } from '../../_code/fileBrowserUtil.svelte';
+    import { getFilePagePath, openEntry } from '../../_code/fileBrowserUtil.svelte';
 
     // Context menu for breadcrumb buttons
-    let contextMenuButton: HTMLButtonElement | null = $state(null)
+    let contextMenuButton: HTMLElement | null = $state(null)
     let menuSegment: Segment | null = $state(null)
     let contextMenuOpen = $state(false)
 
@@ -21,10 +21,10 @@
         return filesState.meta.pageTitle
     })
 
-    function onContextMenu(event: MouseEvent, segment: Segment, button: HTMLButtonElement) {
+    function onContextMenu(event: MouseEvent, segment: Segment, button: HTMLElement) {
         if (filesState.data.currentMeta == null) return
         event.preventDefault()
-        contextMenuButton = button
+        contextMenuButton = button as HTMLButtonElement
         menuSegment = segment
         contextMenuOpen = true
     }
@@ -39,12 +39,6 @@
     function option_details(segment: Segment) {
         filesState.selectedEntries.setSelected(segment.path === "" ? `/` : `/${segment.path}`)
         filesState.ui.detailsOpen = true
-        closeContextMenu()
-    }
-
-    function option_selectAllFiles() {
-        if (!filesState.data.entries) return
-        filesState.selectedEntries.setSelected(filesState.data.entries.map(v => v.path))
         closeContextMenu()
     }
 
@@ -74,19 +68,23 @@
 
         {#snippet breadcrumbButton(
             segment: Segment, 
-            o: { classes: string, withPopup: Boolean, isClickable: boolean })}
-            <button 
-                disabled={filesState.path === segment.path} 
+            o: { classes: string, withPopup: Boolean, isClickable: boolean }
+        )}
+            <a 
+                href="{getFilePagePath(segment.path, filesState.meta.pagePath)}" 
                 title={segment.name} 
-                on:click={() => {
+                on:click={(e) => {
                     if (o.isClickable) { 
                         filesState.search.clear()
                         openEntry(`/${segment.path}`)
+                        e.preventDefault()
                     }
-                }} 
+                }}
                 on:contextmenu={(e) => { if (o.withPopup) { onContextMenu(e, segment, e.currentTarget) } }}
                 class="py-1 px-2 whitespace-nowrap max-w-full truncate {o.classes}"
-            >{segment.name}</button>
+            >
+                {segment.name}
+            </a>
         {/snippet}
 
         {#if !hiddenEmpty}
