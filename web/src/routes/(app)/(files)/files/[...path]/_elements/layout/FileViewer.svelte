@@ -200,11 +200,3 @@
         </div>
     {/if}
 </div>
-
-<style>
-    @import "/src/app.css" reference;
-
-    :global(.cm-scroller) {
-        @apply custom-scrollbar;
-    }
-</style>

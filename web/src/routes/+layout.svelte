@@ -84,7 +84,7 @@
 
 <svelte:window on:resize={onResize} />
 <svelte:head>
-    <title>{appState.title.current}</title>
+    <title>{appState.title.current || "Filemat"}</title>
 </svelte:head>
 
 <Symbols />
