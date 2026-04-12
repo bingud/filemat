@@ -96,10 +96,7 @@ h1 {
 }
 
 
-/* .custom-scrollbar {
-    @apply scrollbar-thin! scrollbar-track-transparent! scrollbar-thumb-neutral-300! scrollbar-hover:scrollbar-thumb-neutral-400! dark:scrollbar-thumb-neutral-700! scrollbar-hover:dark:scrollbar-thumb-neutral-600!;
-} */
-.custom-scrollbar {
+.custom-scrollbar, .cm-scroller {
     --scrollbar-track: transparent;
     --scrollbar-thumb: oklch(87% 0 0); /* neutral-300 */
 
