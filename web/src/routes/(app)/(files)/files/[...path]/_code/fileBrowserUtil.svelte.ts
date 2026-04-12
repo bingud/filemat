@@ -599,7 +599,12 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
 
 export function openEntry(path: string) {
     if (filesState.metaLoading) return
-    goto(`${filesState.meta.pagePath}${encodeUrlFilePath(path)}`)
+    goto(getFilePagePath(path, filesState.meta.pagePath))
+}
+
+export function getFilePagePath(path: string, pagePath: string) {
+    const slash = path.startsWith('/') ? '' : '/'
+    return `${pagePath}${slash}${encodeUrlFilePath(path)}`
 }
 
 export function scrollSelectedEntryIntoView(path: string | null = null) {

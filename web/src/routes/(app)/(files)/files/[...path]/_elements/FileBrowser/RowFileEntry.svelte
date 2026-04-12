@@ -3,7 +3,7 @@
     import { encodeUrlFilePath, formatBytesRounded, formatUnixMillis, isFolder } from "$lib/code/util/codeUtil.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
-    import type { FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
+    import { getFilePagePath, type FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
     import FileThumbnail from "./FileThumbnail.svelte";
     import type { RowPreviewSize } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
@@ -59,7 +59,7 @@
             : isSelected ? 'bg-blue-200/60 dark:bg-sky-950/60' : 'hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60'
         }
     "
-    href={encodeUrlFilePath(`${filesState.meta.pagePath}${(entry.path)}`)}
+    href={getFilePagePath(entry.path, filesState.meta.pagePath)}
     on:dragstart={(e) => { event_dragStart(e, entry) }}
     on:dragover={(e) => { event_dragOver(e, entry) }}
     on:dragleave={(e) => { event_dragLeave(e, entry) }}
