@@ -587,7 +587,6 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
         }
     }
     
-    filesState.selectedEntries.selectedPositions.set(newEntry.path, true)
     filesState.selectedEntries.setSelected(newEntry.path)
     
     if (openFile) {

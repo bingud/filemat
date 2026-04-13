@@ -149,8 +149,6 @@ class FilesState {
 /**
  * # Classes
  */
-
-
 class SelectedEntryStateClass {
     selectedPositions = new SingleChildBooleanTree()
 
@@ -199,11 +197,15 @@ class SelectedEntryStateClass {
             }
             return null
         }
-        return this.list.length === 1 ? this.list[0] : null
+        return this.list[0] || null
     })
     singleMeta = $derived.by(() => {
         // Only return if one entry is selected
         const metaList = filesState.isSearchOpen ? this.searchMetaList : this.metaList
+        if (metaList.length === 0) {
+            return filesState.data.folderMeta
+        }
+
         if (metaList.length > 1) return null
 
         const value = metaList[0]
@@ -215,9 +217,9 @@ class SelectedEntryStateClass {
     isCurrentPathSelected = $derived(filesState.path === this.singlePath)
     count = $derived(filesState.isSearchOpen ? this.searchList.length : this.list.length)
 
-    setSelected(path: string | string[], preventSave: boolean = false) {
+    setSelected(path: string | string[], preventSave = false) {
         const paths = Array.isArray(path) ? path : [path]
-        
+
         if (filesState.isSearchOpen) {
             this.searchList = paths
             this.searchSet.clear()
@@ -231,7 +233,6 @@ class SelectedEntryStateClass {
             }
         }
     }
-
     addSelected(path: string) {
         if (filesState.isSearchOpen) {
             this.searchSet.add(path)
@@ -245,26 +246,31 @@ class SelectedEntryStateClass {
             this.list.push(path)
         }
     }
-
-    unselect(path: string) {
+    unselect(path: string, preventSave = false) {
         if (filesState.isSearchOpen) {
             removeString(this.searchList, path)
-            this.searchSet.delete(path)
+            if (!preventSave) this.searchSet.delete(path)
         } else {
-            this.set.delete(path)
             removeString(this.list, path)
+            if (!preventSave)this.set.delete(path)
         }
     }
     unselectAll(paths: string[] | undefined = undefined) {
         if (paths) {
             paths.forEach(deletedPath => {
                 this.unselect(deletedPath)
-                this.set.delete(deletedPath)
             })
         } else {
             this.setSelected([])
         }
     }
+    /**
+     * Sets whether path is selected. Only saves into selection tree, does not select entry.
+     */
+    saveSelectedState(path: string, selected: boolean) {
+        this.selectedPositions.set(path, selected)
+    }
+
     reset() {
         this.list = []
         this.searchList = []

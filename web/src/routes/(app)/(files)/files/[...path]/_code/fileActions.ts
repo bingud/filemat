@@ -41,11 +41,10 @@ export function option_deleteSelectedFiles() {
         cancelText: "Cancel"
     })?.then((confirmed: boolean) => {
         if (!confirmed) return;
-        if (!filesState.selectedEntries.metadataMap) return;
 
-        const list = valuesOf(filesState.selectedEntries.metadataMap).filter(v => !!v);
-        deleteFiles(list);
-    });
+        const list = filesState.selectedEntries.metaList
+        deleteFiles(list)
+    })
 }
 
 
