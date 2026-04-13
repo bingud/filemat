@@ -39,6 +39,7 @@
     import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
     import UndoIcon from "$lib/component/icons/UndoIcon.svelte";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import UnselectIcon from "$lib/component/icons/UnselectIcon.svelte";
 
     let {
         meta,
@@ -148,6 +149,10 @@
             dataStatusPromise.then((status) => {
                 if (status === "no-permission") {
                     lacksRootFolderPermission = true
+                }
+
+                if (pathIsChild && !filesState.data.fileMeta) {
+                    filesState.selectedEntries.unselect(newPath, true)
                 }
                 recoverScrollPosition()
             })
@@ -266,6 +271,9 @@
                                 <button on:click={cancelSearch} title="Close search" class="file-action-button"><CloseIcon /></button>
                             {/if}
 
+                            {#if filesState.isShared || filesState.selectedEntries.hasSelected}
+                                <button on:click={option_downloadSelectedFiles} title="Download selected" class="file-action-button"><DownloadIcon /></button>
+                            {/if}
                             <!-- Parent folder options -->
                             {#if filesState.data.folderMeta && filesState.isFileListOpen &&
                                     (filesState.selectedEntries.hasSelected === false || filesState.selectedEntries.isCurrentPathSelected)
@@ -274,17 +282,16 @@
                                     <button on:click={handleNewFolder} title="Create a new folder inside this folder" class="file-action-button"><NewFolderIcon /></button>
                                     <button on:click={handleNewFile} title="Create a new blank file inside this folder" class="file-action-button"><NewFileIcon /></button>
                                 {/if}
-                                {#if (filesState.path !== "/" || filesState.isShared) && !filesState.isSearchOpen}
-                                    <button on:click={option_downloadSelectedFiles} title="Download this folder" class="file-action-button"><DownloadIcon /></button>
-                                {/if}
                             <!-- Selected child file options -->
                             {:else if filesState.selectedEntries.hasSelected}
-                                <button on:click={option_downloadSelectedFiles} title="Download the selected files" class="file-action-button"><DownloadIcon /></button>
                                 {#if filesState.meta.type === "files"} 
                                     <button on:click={option_deleteSelectedFiles} title="Delete the selected files" class="file-action-button"><TrashIcon /></button>
                                 {/if}
                                 {#if filesState.data.fileMeta == null && filesState.meta.type === "files" && !filesState.isSearchOpen}
                                     <button on:click={option_moveSelectedFiles} title="Move the selected file{letterS(filesState.selectedEntries.count)}" class="file-action-button"><MoveIcon /></button>
+                                {/if}
+                                {#if filesState.isFileListOpen}
+                                    <button on:click={() => { filesState.selectedEntries.setSelected([]) }} title="Unselect files" class="file-action-button"><UnselectIcon /></button>
                                 {/if}
                             {/if}
                         </div>

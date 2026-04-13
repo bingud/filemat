@@ -91,6 +91,10 @@ export async function loadPageData(
         const meta = data.meta
         const type = meta.fileType
 
+        if (!meta.filename) {
+            meta.filename = filenameFromPath(meta.path)
+        }
+
         // If the metadata is a folder, set folder entries and folder metadata
         // If its a file, set file metadata
         if (type === "FOLDER") {
@@ -114,9 +118,6 @@ export async function loadPageData(
         } else if (type === "FILE" || type === "FILE_LINK") {
             if (!options.parentFolderOnly) {
                 filesState.data.fileMeta = meta
-                if (!filesState.data.fileMeta.filename) {
-                    filesState.data.fileMeta.filename = filenameFromPath(meta.path)
-                }
             }
 
             // Load parent folder of file
@@ -131,10 +132,8 @@ export async function loadPageData(
             }
         }
 
-        // If no entry is selected and this is a folder, select the current folder
-        if (filesState.selectedEntries.singlePath === null) {
-            filesState.selectedEntries.setSelected(data.meta.path)
-        }
+        // Select this entry at the parent level
+        filesState.selectedEntries.saveSelectedState(data.meta.path, true)
     } else if (options.fileDataType === "array") {
         const data = dataResult as FullFileMetadata[]
         filesState.data.entries = data

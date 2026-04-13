@@ -420,7 +420,7 @@
                         {:else if permissionDataDebounced}
                             <!-- Waiting for debounce timer -->
                         {:else}
-                            {#if filesState.selectedEntries.singleMeta.isSymlink}
+                            {#if selectedMeta.isSymlink}
                                 <div in:fade={{duration: 75}} class="center">
                                     <p class="text-neutral-600 dark:text-neutral-400 py-2">
                                         Failed to load permissions of linked file.

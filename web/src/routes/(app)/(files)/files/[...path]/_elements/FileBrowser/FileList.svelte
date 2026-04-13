@@ -42,7 +42,6 @@
     // Reorder the image loading queue whenever the sort order changes
     explicitEffect(() => [sortedEntries], () => {
         const paths = sortedEntries?.map(e => e.path) || []
-        
         filesState.ui.visibilityManager.reorderQueue(paths)
     })
 

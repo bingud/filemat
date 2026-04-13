@@ -97,7 +97,6 @@
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
         } else {
-            if (isFolder(entry) && !entry.isExecutable) return
             if (entry.isSymlink && !appState.followSymlinks) return
             filesState.selectedEntries.setSelected(entry.path)
             openEntry(entry.path)
@@ -225,13 +224,6 @@
         const isSelected = filesState.selectedEntries.currentList.includes(path)
         if (isSelected) {
             filesState.selectedEntries.unselect(path)
-
-            // Select folder if 0 files are selected
-            if (filesState.selectedEntries.count === 0 && !filesState.isSearchOpen) {
-                if (filesState.data.folderMeta) {
-                    filesState.selectedEntries.addSelected(filesState.data.folderMeta.path)
-                }
-            }
         } else {
             if (filesState.data.folderMeta) {
                 filesState.selectedEntries.unselect(filesState.data.folderMeta.path)
