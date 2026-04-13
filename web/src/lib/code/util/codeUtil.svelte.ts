@@ -909,3 +909,11 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 export function encodeUrlFilePath(str: string): string {
     return str.split('/').map(encodeURIComponent).join('/')
 }
+
+export function calculateFilesSize(list: FileMetadata[]): number {
+    let bytes = 0
+    for (const file of list) {
+        bytes += file.size
+    }
+    return bytes
+}

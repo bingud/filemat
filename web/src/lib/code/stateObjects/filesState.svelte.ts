@@ -154,39 +154,42 @@ class FilesState {
 class SelectedEntryStateClass {
     selectedPositions = new SingleChildBooleanTree()
 
-    list = $state([]) as string[]
-    searchList = $state([]) as string[]
+    list: string[] = $state([])
+    searchList: string[] = $state([])
 
-    set = new SvelteSet()
-    searchSet = new SvelteSet()
+    set: SvelteSet<string> = new SvelteSet()
+    searchSet: SvelteSet<string> = new SvelteSet()
 
     currentList = $derived(filesState.isSearchOpen ? this.searchList : this.list)
     currentSet = $derived(filesState.isSearchOpen ? this.searchSet : this.set)
 
-    metadataMap = $derived.by(() => {
-        const entriesMap = new Map(
-            filesState.data.entries?.map(e => [e.path, e]) || []
-        )
+    metaList: FullFileMetadata[] = $derived.by(() => {
+        return this.list.map((path) => {
+            const meta = path === filesState.path 
+                    ? filesState.data.currentMeta || null
+                    : filesState.data.entryMap.get(path) || null
 
-        return Object.fromEntries(
-            this.list.map(path => [
-                path,
-                path === filesState.path 
-                    ? (filesState.data.currentMeta || null)
-                    : (entriesMap.get(path) || null)
-            ])
-        )
+            return meta
+        }).filter(v => !!v)
     })
-    searchMetadataMap = $derived.by(() => {
-        const entriesMap = new Map(
-            filesState.search.entries?.map(e => [e.path, e]) || []
-        )
-        return Object.fromEntries(
-            this.searchList.map(path => [
-                path,
-                entriesMap.get(path) || null
-            ])
-        )
+    metadataMap: { [key: string]: FullFileMetadata } = $derived.by(() => {
+        let map: {[key: string]: FullFileMetadata} = {}
+
+        for (const item of this.metaList) {
+            map["item"] = item as any
+        }
+
+        return map
+    })
+
+    searchMetaList: FullFileMetadata[] = $derived.by(() => {
+        return this.searchList.map((path) => {
+            const meta = path === filesState.path 
+                    ? filesState.data.currentMeta || null
+                    : filesState.data.entryMap.get(path) || null
+
+            return meta
+        }).filter(v => !!v)
     })
 
     singlePath = $derived.by(() => {
@@ -199,10 +202,8 @@ class SelectedEntryStateClass {
         return this.list.length === 1 ? this.list[0] : null
     })
     singleMeta = $derived.by(() => {
-        if (!this.metadataMap || (filesState.isSearchOpen && !this.searchMetadataMap)) return null
-
         // Only return if one entry is selected
-        const metaList = filesState.isSearchOpen ? valuesOf(this.searchMetadataMap) : valuesOf(this.metadataMap)
+        const metaList = filesState.isSearchOpen ? this.searchMetaList : this.metaList
         if (metaList.length > 1) return null
 
         const value = metaList[0]
@@ -369,6 +370,9 @@ class FileDataStateClass {
 
         return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection, filesState.mixFilesAndFolders)
     })
+
+    // Map of path to fileMetadata
+    entryMap = $derived(new Map(this.entries?.map(e => [e.path, e]) || []))
 
     isFileSymlink = $derived.by(() => {
         if (!this.fileMeta) return false

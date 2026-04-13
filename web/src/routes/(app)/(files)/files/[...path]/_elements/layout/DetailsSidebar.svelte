@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, safeFetch, debounceFunction, handleErr, isFolder, explicitEffect } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, safeFetch, debounceFunction, handleErr, isFolder, explicitEffect, valuesOf, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
@@ -219,9 +219,24 @@
     {#if filesState.metaLoading && filesState.meta.type !== "allShared"}
         <div></div>
     {:else if filesState.selectedEntries.hasMultiple}
+        {@const count = filesState.selectedEntries.list.length}
+        {@const collectiveSize = calculateFilesSize(filesState.selectedEntries.metaList)}
+
         <div class="w-full flex flex-col px-6 shrink-0 flex-none">
-            <h3 class="truncate text-lg">Multiple files selected</h3>
+            <h3 class="truncate text-lg">{count} files selected</h3>
         </div>
+
+        <hr class="basic-hr flex-none">
+
+        <div class="w-full flex flex-col px-6 gap-6 flex-none">
+            <div class="detail-container">
+                <p class="detail-title">Size</p>
+                <p>{formatBytes(collectiveSize)}</p>
+            </div>
+        </div>
+
+        <hr class="basic-hr flex-none">
+
     {:else if filesState.selectedEntries.singleMeta}
         {@const selectedMeta = filesState.selectedEntries.singleMeta}
 
