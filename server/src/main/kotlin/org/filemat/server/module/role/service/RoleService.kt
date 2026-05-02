@@ -71,6 +71,10 @@ class RoleService(
         val hasSufficientPermissions = userPermissions.hasSufficientPermissionsFor(rolePermissions)
         if (!hasSufficientPermissions) return Result.reject("Cannot edit role with higher permissions than you have.")
 
+        if (!userPermissions.hasSufficientPermissionsFor(newList)) {
+            return Result.reject("Cannot update role with higher permissions than you have.")
+        }
+
         // Update permissions in database
         updateDatabasePermissionList(roleId, newList, userAction).let {
             if (it.isNotSuccessful) return it.cast()
