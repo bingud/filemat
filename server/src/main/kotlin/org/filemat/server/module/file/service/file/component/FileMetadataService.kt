@@ -133,7 +133,7 @@ class FileMetadataService(
         }
     }
 
-    fun getMetadata(user: Principal?, rawPath: FilePath, isPathCanonical: Boolean = false): Result<FileMetadata> {
+    fun getMetadata(user: Principal?, rawPath: FilePath, isPathCanonical: Boolean = false, ignorePermissions: Boolean = false): Result<FileMetadata> {
         val canonicalPath = if (isPathCanonical) {
             rawPath
         } else {
@@ -142,14 +142,18 @@ class FileMetadataService(
             pathResult.value
         }
 
-        return getMetadata(user, rawPath, canonicalPath)
+        return getMetadata(user, rawPath, canonicalPath, ignorePermissions)
     }
 
     /**
      * Returns file metadata. Authenticates user
      */
-    fun getMetadata(user: Principal?, rawPath: FilePath, canonicalPath: FilePath): Result<FileMetadata> {
-        fileService.isAllowedToAccessFile(user, canonicalPath).let {
+    fun getMetadata(user: Principal?, rawPath: FilePath, canonicalPath: FilePath, ignorePermissions: Boolean = false): Result<FileMetadata> {
+        fileService.isAllowedToAccessFile(
+            user = user,
+            canonicalPath = canonicalPath,
+            ignorePermissions = ignorePermissions,
+        ).let {
             if (it.isNotSuccessful) return it.cast()
         }
 

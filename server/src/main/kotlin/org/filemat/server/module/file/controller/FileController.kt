@@ -195,7 +195,8 @@ class FileController(
             fileService.getMetadata(
                 principal,
                 resolvedPath,
-                isPathCanonical = shareToken != null
+                isPathCanonical = shareToken != null,
+                ignorePermissions = shareToken != null,
             ).let {
                 if (it.notFound) return@tryWithLock notFound()
                 if (it.hasError) return@tryWithLock internal(it.error, "")

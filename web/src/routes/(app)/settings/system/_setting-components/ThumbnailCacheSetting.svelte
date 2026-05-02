@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { debounceFunction, deepEqual, explicitEffect, formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte"
-    import Loader from "$lib/component/Loader.svelte";
-    import { onMount } from "svelte";
+    import { deepEqual, formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte"
+    import Loader from "$lib/component/Loader.svelte"
+    import { onMount } from "svelte"
 
     type Options = {
         isEnabled: boolean,
@@ -10,27 +10,46 @@
         maxAge: number
     }
 
+    const editableOptionKeys = ["folderPath", "maxSizeMb", "maxAge"] as const
+
     let dataLoadError: string | null = $state(null)
 
     let saving = $state(false)
+    let togglingCaching = $state(false)
     let clearingCache = $state(false)
 
     let originalOptions: Options | null = $state(null)
     let options: Options | null = $state(null)
-    let isOptionsEdited = $derived(!deepEqual(options, originalOptions))
+
+    function hasEditableOptionChanges(options: Options | null, originalOptions: Options | null) {
+        if (!options || !originalOptions) return false
+
+        return editableOptionKeys.some((key) => !deepEqual(options[key], originalOptions[key]))
+    }
+
+    let isOptionsEdited = $derived(hasEditableOptionChanges(options, originalOptions))
 
     onMount(() => {
         loadData()
     })
 
     async function saveSettings() {
-        if (saving) return
+        if (saving || togglingCaching) return
         saving = true
 
         try {
-            const body = formData({})
+            if (!options || !originalOptions) return
 
-            const response = await safeFetch(`/api/v1/admin/thumbnails/settings`, { body })
+            const body = formData({})
+            for (const key of editableOptionKeys) {
+                const value = options[key]
+                const originalValue = originalOptions[key]
+                if (value != null && value !== originalValue) {
+                    body.append(key, value.toString())
+                }
+            }
+
+            const response = await safeFetch(`/api/v1/admin/system/thumbnails/update`, { body })
 
             if (response.failed) {
                 handleErr({
@@ -51,6 +70,8 @@
                 })
                 return
             }
+
+            await loadData()
         } finally {
             saving = false
         }
@@ -61,7 +82,7 @@
         clearingCache = true
 
         try {
-            const response = await safeFetch(`/api/v1/admin/thumbnails/clear-cache`, {
+            const response = await safeFetch(`/api/v1/admin/system/thumbnails/clear-cache`, {
                 body: formData({}),
             })
 
@@ -92,13 +113,57 @@
             return
         }
 
-        originalOptions = json
-        options = json
+        originalOptions = {...json}
+        options = {...json}
         dataLoadError = null
     }
 
+    function updateEnabledState(isEnabled: boolean) {
+        if (!options || !originalOptions) return
+
+        originalOptions = { ...originalOptions, isEnabled }
+        options = { ...options, isEnabled }
+    }
+
+    async function toggleCaching() {
+        if (saving || togglingCaching || !options || !originalOptions) return
+
+        togglingCaching = true
+
+        try {
+            const nextIsEnabled = !originalOptions.isEnabled
+            const response = await safeFetch(`/api/v1/admin/system/thumbnails/update`, {
+                body: formData({ isEnabled: nextIsEnabled.toString() }),
+            })
+
+            if (response.failed) {
+                handleErr({
+                    description: "Failed to update thumbnail caching",
+                    notification: "Could not update thumbnail caching",
+                })
+                return
+            }
+
+            const status = response.code
+            const json = response.json()
+
+            if (status.failed) {
+                handleErr({
+                    description: "Failed to update thumbnail caching",
+                    notification: json.message || "Failed to update thumbnail caching",
+                    isServerDown: status.serverDown,
+                })
+                return
+            }
+
+            updateEnabledState(nextIsEnabled)
+        } finally {
+            togglingCaching = false
+        }
+    }
+
     function cancel() {
-        options = originalOptions
+        options = originalOptions ? { ...originalOptions } : null
     }
 </script>
 
@@ -108,16 +173,21 @@
         <div class="flex flex-col gap-6">
             <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-2 my-1">
-                    <div class={`w-3 h-3 rounded-full ${options.isEnabled ? "bg-green-500" : "bg-neutral-500"}`}></div>
-                    <p class="text-base font-medium">{options.isEnabled ? "Enabled" : "Disabled"}</p>
+                    <div class={`w-3 h-3 rounded-full ${originalOptions.isEnabled ? "bg-green-500" : "bg-neutral-500"}`}></div>
+                    <p class="text-base font-medium">{originalOptions.isEnabled ? "Enabled" : "Disabled"}</p>
                 </div>
 
                 <div class="flex gap-2">
                     <button
-                        on:click={() => {}}
-                        class="basic-button bg-surface-content-button!"
+                        disabled={saving || togglingCaching}
+                        on:click={toggleCaching}
+                        class="basic-button bg-surface-content-button! disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {options.isEnabled ? "Disable" : "Enable"}
+                        {#if togglingCaching}
+                            Updating...
+                        {:else}
+                            {options.isEnabled ? "Disable" : "Enable"}
+                        {/if}
                     </button>
                     <button
                         disabled={clearingCache}
@@ -168,15 +238,16 @@
 
                 <div class="flex gap-3">
                     <button
-                        disabled={saving}
+                        disabled={saving || togglingCaching}
                         on:click={saveSettings}
                         class="basic-button bg-surface-content-button! disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? "Saving..." : "Save"}
                     </button>
                     <button
+                        disabled={saving || togglingCaching}
                         on:click={cancel}
-                        class="basic-button bg-surface-button"
+                        class="basic-button bg-surface-button disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>

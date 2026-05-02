@@ -124,8 +124,13 @@ class FileService(
     fun getFullMetadata(user: Principal?, rawPath: FilePath, canonicalPath: FilePath, ignorePermissions: Boolean = false): Result<FullFileMetadata>
             = fileMetadataService.getFullMetadata(user = user, rawPath = rawPath, canonicalPath = canonicalPath, ignorePermissions = ignorePermissions)
 
-    fun getMetadata(user: Principal?, rawPath: FilePath, isPathCanonical: Boolean = false): Result<FileMetadata>
-            = fileMetadataService.getMetadata(user = user, rawPath = rawPath, isPathCanonical = isPathCanonical)
+    fun getMetadata(user: Principal?, rawPath: FilePath, isPathCanonical: Boolean = false, ignorePermissions: Boolean = false): Result<FileMetadata>
+            = fileMetadataService.getMetadata(
+            user = user,
+            rawPath = rawPath,
+            isPathCanonical = isPathCanonical,
+            ignorePermissions = ignorePermissions,
+        )
 
     // --- Entry lists ---
 
