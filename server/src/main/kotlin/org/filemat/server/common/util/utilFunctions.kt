@@ -169,7 +169,6 @@ fun formatUnixToFilename(instant: Instant): String {
 }
 
 fun formatMillisecondsToReadableTime(ms: Long): String {
-    // Use when for fast branching, no allocations
     return when {
         ms >= 86_400_000L -> {
             val days = ms / 86_400_000L
@@ -189,6 +188,10 @@ fun formatMillisecondsToReadableTime(ms: Long): String {
         }
         else -> "$ms millisecond" + if (ms == 1L) "" else "s"
     }
+}
+
+fun formatSecondsToReadableTime(s: Long): String {
+    return formatMillisecondsToReadableTime(s * 1000)
 }
 
 fun printlns(vararg texts: Any?): Unit {

@@ -10,6 +10,7 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
+import org.filemat.server.module.file.service.file.ThumbnailService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -39,6 +40,7 @@ class FilesystemDeletionService(
     private val fileService: FileService,
     private val fileLockService: FileLockService,
     private val entityService: EntityService,
+    private val thumbnailService: ThumbnailService,
 ) : FilesystemDeletionOperations {
 
     override fun deleteFile(
@@ -114,6 +116,8 @@ class FilesystemDeletionService(
         // Delete folder if empty
         val deleteResult = internal_deleteFile(currentPath, recursive = false)
         if (deleteResult.isSuccessful) {
+            thumbnailService.deleteCacheForPath(filePath)
+
             val entity = entityService.getByPath(filePath.pathString, UserAction.DELETE_FILE).let {
                 if (it.hasError) return failedCount
                 it.valueOrNull

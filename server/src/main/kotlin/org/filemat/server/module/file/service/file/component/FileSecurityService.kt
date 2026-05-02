@@ -27,7 +27,13 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
      * Fully verifies if a user is allowed to read a file
      */
     fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, checkPermissionOnly: Boolean = false, ignorePermissions: Boolean? = null): Result<Unit> {
-        user ?: return Result.reject("Unauthenticated")
+        // Share-link flows pass ignorePermissions=true after the path was scoped by [shareToken];
+        // there may be no logged-in user, but blocked/sensitive paths must still be rejected.
+        val ignorePerms = ignorePermissions ?: user?.let { hasAdminAccess(it) } ?: false
+
+        if (user == null && !ignorePerms) {
+            return Result.reject("Unauthenticated")
+        }
 
         if (!checkPermissionOnly) {
             // Deny blocked folder
@@ -36,15 +42,17 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             }
         }
 
-        // Check if user can read all files
-        val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
+        if (ignorePerms) {
+            return Result.ok()
+        }
 
-        if (ignorePerms == false) {
+        if (!ignorePerms) {
+            val u = user ?: return Result.reject("Unauthenticated")
             // Verify the file location and handle conflicts
             val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
             if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
-            val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = user, permission = FilePermission.READ)
+            val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = u, permission = FilePermission.READ)
             if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
         }
 

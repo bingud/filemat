@@ -3,6 +3,7 @@ package org.filemat.server.common
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.role.model.Role
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.properties.Delegates
 
@@ -43,7 +44,23 @@ object State {
         var isEnabled: Boolean by Delegates.notNull()
         var folderPath: String? = null
         var maxSizeMb: Int? = null
-        var maxAge: Int? = null
+
+        /**
+         * [maxAge] in milliseconds for comparisons with [System.currentTimeMillis]; kept in sync
+         * by the [maxAge] setter.
+         */
+        var maxAgeMs: Long? = null
+            private set
+
+        /**
+         * Maximum cache entry age in **seconds** (persisted setting). Assigning this updates
+         * [maxAgeMs] so readers do not convert on every use.
+         */
+        var maxAge: Long? = null
+            set(value) {
+                field = value
+                maxAgeMs = value?.let { Duration.ofSeconds(it).toMillis().coerceAtLeast(0L) }
+            }
     }
 
     object Auth {

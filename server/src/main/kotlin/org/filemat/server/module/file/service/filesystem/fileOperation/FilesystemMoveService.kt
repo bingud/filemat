@@ -11,6 +11,7 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
+import org.filemat.server.module.file.service.file.ThumbnailService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -46,6 +47,7 @@ class FilesystemMoveService(
     private val fileLockService: FileLockService,
     private val entityService: EntityService,
     @Lazy private val filesystemService: FilesystemService,
+    private val thumbnailService: ThumbnailService,
 ) : FilesystemMoveOperations {
 
     override fun moveFile(
@@ -196,6 +198,8 @@ class FilesystemMoveService(
                     return failedCount + 1
                 }
             }
+
+            thumbnailService.moveCacheForPath(oldPath = sourcePath, newPath = destinationPath)
         } else {
             failedCount++
         }

@@ -96,7 +96,7 @@
 
 
 <!-- File list -->
-<div on:click|stopPropagation on:scroll={() => { console.log(`scrok`) }} class="w-full h-fit overflow-x-hidden">
+<div on:click|stopPropagation class="w-full h-fit overflow-x-hidden">
     {#if filesState.ui.fileViewType === "rows"}
         <!-- Header row (separate grid) -->
         <div class="file-row-grid gap-x-2 px-4 pb-2 font-medium text-neutral-700 dark:text-neutral-400">

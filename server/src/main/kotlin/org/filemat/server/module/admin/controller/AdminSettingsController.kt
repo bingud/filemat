@@ -5,17 +5,18 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.auth.service.SensitiveAuthService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileVisibility
 import org.filemat.server.module.file.service.FileVisibilityService
+import org.filemat.server.module.file.service.file.ThumbnailService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.setting.service.SettingService
+import org.filemat.server.module.setting.service.component.ThumbCacheSettingService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -36,7 +37,43 @@ class AdminSettingsController(
     private val settingService: SettingService,
     private val fileVisibilityService: FileVisibilityService,
     private val sensitiveAuthService: SensitiveAuthService,
+    private val thumbCacheSettingService: ThumbCacheSettingService,
+    private val thumbnailService: ThumbnailService,
 ) : AController() {
+
+    @PostMapping("/thumbnails/update")
+    fun adminUpdateThumbnailSettingsMapping(
+        request: HttpServletRequest,
+        @RequestParam("isEnabled", required = false) isEnabledRaw: String?,
+        @RequestParam("deleteCache", required = false) deleteCacheRaw: String?,
+        @RequestParam("moveCache", required = false) moveCacheRaw: String?,
+        @RequestParam("folderPath", required = false) folderPathRaw: String?,
+        @RequestParam("maxSizeMb", required = false) maxSizeMbRaw: String?,
+        @RequestParam("maxAge", required = false) maxAgeRaw: String?,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+
+        val isEnabled = isEnabledRaw?.toBooleanStrictOrNull()
+        val deleteCache = deleteCacheRaw?.toBooleanStrictOrNull()
+        val moveCache = moveCacheRaw?.toBooleanStrictOrNull()
+        val folderPath = folderPathRaw?.let { FilePath.of(folderPathRaw) }
+        val maxSizeMb = maxSizeMbRaw?.toIntOrNull()
+        val maxAge = maxAgeRaw?.toLongOrNull()
+
+        thumbCacheSettingService.set_thumbnail(
+            user = user,
+            isEnabled = isEnabled,
+            deleteCache = deleteCache,
+            moveCache = moveCache,
+            folderPath = folderPath,
+            maxSizeMb = maxSizeMb,
+            maxAge = maxAge
+        ).let {
+            if (it.rejected) return bad(it.error)
+            if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to update thumbnail settings.")
+            return ok()
+        }
+    }
 
     @GetMapping("/thumbnails")
     fun adminGetThumbnailSettingsMapping(
@@ -48,6 +85,12 @@ class AdminSettingsController(
             put("maxSizeMb", State.ThumbCache.maxSizeMb)
             put("maxAge", State.ThumbCache.maxAge)
         })
+    }
+
+    @PostMapping("/thumbnails/clear-cache")
+    fun adminClearThumbnailCacheMapping(): ResponseEntity<String> {
+        thumbnailService.clearCache()
+        return ok()
     }
 
     @PostMapping("/remove-file-visibility")
