@@ -220,7 +220,7 @@ class ThumbnailService(
     /**
      * Builds the cache file path for a thumbnail request.
      */
-    fun getCacheFile(canonicalPathString: String, modifiedDate: Long, fileSize: Long, targetSize: Int): File? {
+    fun getCacheFile(canonicalPath: FilePath, modifiedDate: Long, fileSize: Long, targetSize: Int): File? {
         val cacheEnabled = State.ThumbCache.isEnabled
         val cacheDir = State.ThumbCache.folderPath ?: return null
 
@@ -230,9 +230,9 @@ class ThumbnailService(
         if (isAllowed != null) return null
 
         // Prevent caching if the file is already inside the cache directory
-        if (canonicalPathString.startsWith(cacheDir)) return null
+        if (canonicalPath.startsWith(cacheDir)) return null
 
-        val pathHash = md5hash(canonicalPathString)
+        val pathHash = md5hash(canonicalPath.pathString)
         val cacheName = "${pathHash}_${modifiedDate}_${fileSize}_${targetSize}.jpg"
         return File(cacheDir, cacheName)
     }
@@ -738,7 +738,7 @@ class ThumbnailService(
      * Streams an image thumbnail, using the cache when possible.
      */
     fun streamImageThumbnail(
-        canonicalPathString: String,
+        canonicalPath: FilePath,
         targetSize: Int,
         modifiedDate: Long,
         fileSize: Long,
@@ -747,37 +747,37 @@ class ThumbnailService(
     ) {
         triggerActivityCleanup()
         
-        val cacheFile = getCacheFile(canonicalPathString, modifiedDate, fileSize, targetSize)
+        val cacheFile = getCacheFile(canonicalPath, modifiedDate, fileSize, targetSize)
 
         streamCachedOrGenerate(cacheFile, outputStream) { targetCacheFile ->
             val inputStream = inputStreamProvider()
 
-            try {
-                // Read the source image once so Thumbnailator can work with a BufferedImage.
-                val image = inputStream.use {
+            // FFmpeg fallback when Thumbnailator cannot decode the stream (e.g. AVIF/HEIC).
+            val image = try {
+                inputStream.use {
                     Thumbnails.of(it).scale(1.0).asBufferedImage()
                 }
-
-                val sourceSize = max(image.width, image.height)
-                val finalSize = min(sourceSize, targetSize)
-
-                val thumbnail = Thumbnails.of(image)
-                    .outputFormat("jpg")
-                    .outputQuality(calculateQuality(finalSize))
-
-                // Only apply size reduction if the image exceeds the bounds
-                if (sourceSize > targetSize) {
-                    thumbnail.size(targetSize, targetSize).keepAspectRatio(true)
-                } else {
-                    // Keep original dimensions and only compress/convert.
-                    thumbnail.scale(1.0)
-                }
-
-                saveAndStreamThumbnail(thumbnail, outputStream, targetCacheFile)
-            } catch (e: Exception) {
-                // Fallback to ffmpeg for unsupported formats like AVIF/HEIC
-                fallbackFfmpegImageThumbnail(canonicalPathString, targetSize, outputStream, targetCacheFile)
+            } catch (_: Exception) {
+                fallbackFfmpegImageThumbnail(canonicalPath, targetSize, outputStream, targetCacheFile)
+                return@streamCachedOrGenerate
             }
+
+            val sourceSize = max(image.width, image.height)
+            val finalSize = min(sourceSize, targetSize)
+
+            val thumbnail = Thumbnails.of(image)
+                .outputFormat("jpg")
+                .outputQuality(calculateQuality(finalSize))
+
+            // Only apply size reduction if the image exceeds the bounds
+            if (sourceSize > targetSize) {
+                thumbnail.size(targetSize, targetSize).keepAspectRatio(true)
+            } else {
+                // Keep original dimensions and only compress/convert.
+                thumbnail.scale(1.0)
+            }
+
+            saveAndStreamThumbnail(thumbnail, outputStream, targetCacheFile)
         }
     }
 
@@ -785,12 +785,12 @@ class ThumbnailService(
      * Uses ffmpeg as a fallback for image formats Thumbnailator cannot decode.
      */
     private fun fallbackFfmpegImageThumbnail(
-        canonicalPathString: String,
+        canonicalPath: FilePath,
         targetSize: Int,
         outputStream: OutputStream,
         cacheFile: File?
     ) {
-        val imageFile = File(canonicalPathString)
+        val imageFile = File(canonicalPath.pathString)
         val grabber = FFmpegFrameGrabber(imageFile)
         grabber.start()
 
@@ -835,7 +835,7 @@ class ThumbnailService(
      * Streams a video preview frame, using the cache when possible.
      */
     fun streamVideoPreview(
-        canonicalPathString: String,
+        canonicalPath: FilePath,
         targetSize: Int,
         modifiedDate: Long,
         fileSize: Long,
@@ -843,10 +843,10 @@ class ThumbnailService(
     ) {
         triggerActivityCleanup()
 
-        val cacheFile = getCacheFile(canonicalPathString, modifiedDate, fileSize, targetSize)
+        val cacheFile = getCacheFile(canonicalPath, modifiedDate, fileSize, targetSize)
 
         streamCachedOrGenerate(cacheFile, outputStream) { targetCacheFile ->
-            val videoFile = File(canonicalPathString)
+            val videoFile = File(canonicalPath.pathString)
 
             if (!videoFile.exists() || !videoFile.canRead()) {
                 outputStream.write("File not found or cannot be read".toByteArray())

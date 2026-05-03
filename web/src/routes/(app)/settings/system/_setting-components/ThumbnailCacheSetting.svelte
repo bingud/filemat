@@ -6,8 +6,8 @@
     type Options = {
         isEnabled: boolean,
         folderPath: string | null,
-        maxSizeMb: number,
-        maxAge: number
+        maxSizeMb: number | null,
+        maxAge: number | null
     }
 
     const editableOptionKeys = ["folderPath", "maxSizeMb", "maxAge"] as const
@@ -40,14 +40,17 @@
         try {
             if (!options || !originalOptions) return
 
-            const body = formData({})
-            for (const key of editableOptionKeys) {
+            const payload: Record<string, string> = {}
+            for (const key of ["folderPath", "maxSizeMb"] as const) {
                 const value = options[key]
-                const originalValue = originalOptions[key]
-                if (value != null && value !== originalValue) {
-                    body.append(key, value.toString())
+                if (value != null && value !== originalOptions[key]) {
+                    payload[key] = String(value)
                 }
             }
+            if (options.maxAge != null && options.maxAge !== originalOptions.maxAge) {
+                payload.maxAge = Math.round(options.maxAge * 3600).toString()
+            }
+            const body = formData(payload)
 
             const response = await safeFetch(`/api/v1/admin/system/thumbnails/update`, { body })
 
@@ -113,8 +116,16 @@
             return
         }
 
-        originalOptions = {...json}
-        options = {...json}
+        let maxAgeHours: number | null = null
+        if (json.maxAge != null && json.maxAge !== "") {
+            const maxAgeSeconds = Number(json.maxAge)
+            if (Number.isFinite(maxAgeSeconds)) {
+                maxAgeHours = maxAgeSeconds / 3600
+            }
+        }
+        const normalized = { ...json, maxAge: maxAgeHours }
+        originalOptions = normalized
+        options = { ...normalized }
         dataLoadError = null
     }
 

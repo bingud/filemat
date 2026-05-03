@@ -69,6 +69,10 @@ class ThumbCacheSettingService(
         val previousFolderPath = State.ThumbCache.folderPath?.let { FilePath.of(it) }
         val log = logChange(userId = user.userId)
 
+        if (maxSizeMb != null && maxSizeMb < 1) return Result.reject("Max Size parameter is too low.")
+        if (maxAge != null && maxAge < 1) return Result.reject("Expiration time is too low.")
+        if (folderPath != null && folderPath.pathString == "/") return Result.reject("Thumbnail folder cannot be root.")
+
         try {
             if (isEnabled != null) {
                 settingService.db_setSetting(Props.Settings.ThumbCache.enabled, isEnabled.toString()).let {

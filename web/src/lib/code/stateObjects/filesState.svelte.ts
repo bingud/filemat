@@ -174,7 +174,7 @@ class SelectedEntryStateClass {
         let map: {[key: string]: FullFileMetadata} = {}
 
         for (const item of this.metaList) {
-            map["item"] = item as any
+            map[item.path] = item as any
         }
 
         return map
@@ -252,7 +252,10 @@ class SelectedEntryStateClass {
             if (!preventSave) this.searchSet.delete(path)
         } else {
             removeString(this.list, path)
-            if (!preventSave)this.set.delete(path)
+            if (!preventSave) this.set.delete(path)
+        }
+        if (!preventSave) {
+            this.selectedPositions.set(path, false)
         }
     }
     unselectAll(paths: string[] | undefined = undefined) {
