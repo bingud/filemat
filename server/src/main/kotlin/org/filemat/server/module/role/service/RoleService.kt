@@ -71,7 +71,8 @@ class RoleService(
         val hasSufficientPermissions = userPermissions.hasSufficientPermissionsFor(rolePermissions)
         if (!hasSufficientPermissions) return Result.reject("Cannot edit role with higher permissions than you have.")
 
-        if (!userPermissions.hasSufficientPermissionsFor(newList)) {
+
+        if (!userPermissions.containsAll(newList)) {
             return Result.reject("Cannot update role with higher permissions than you have.")
         }
 

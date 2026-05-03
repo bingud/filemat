@@ -529,6 +529,6 @@ fun encodePathSegment(input: String): String {
 
 fun md5hash(str: String): String {
     return MessageDigest.getInstance("MD5")
-        .digest(str.toByteArray())
-        .joinToString("") { "%02x".format(it) }
+        .digest(str.toByteArray(StandardCharsets.UTF_8))
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 }

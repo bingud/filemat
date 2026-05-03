@@ -42,7 +42,7 @@ class FileUtilController(
     ): ResponseEntity<*> {
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
-        val targetSize = min(rawSize?.toIntOrNull() ?: 100, 4096)
+        val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
         val ignorePermissions = shareToken != null
 
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
@@ -69,7 +69,7 @@ class FileUtilController(
         val baos = ByteArrayOutputStream(512 * 1024)
         try {
             thumbnailService.streamImageThumbnail(
-                canonicalPathString = canonicalPath.pathString,
+                canonicalPath = canonicalPath,
                 targetSize = targetSize,
                 modifiedDate = meta.modifiedDate,
                 fileSize = meta.size,
@@ -129,7 +129,7 @@ class FileUtilController(
     ): ResponseEntity<*> {
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
-        val targetSize = min(rawSize?.toIntOrNull() ?: 100, 4096)
+        val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
 
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
         val canonicalPath = canonicalPathResult.let {
@@ -164,7 +164,7 @@ class FileUtilController(
         val baos = ByteArrayOutputStream(512 * 1024)
         try {
             thumbnailService.streamVideoPreview(
-                canonicalPathString = canonicalPath.pathString,
+                canonicalPath = canonicalPath,
                 targetSize = targetSize,
                 modifiedDate = modifiedDate,
                 fileSize = fileSize,

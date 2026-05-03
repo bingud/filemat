@@ -24,6 +24,7 @@ data class FilePath(
 
     fun startsWith(other: FilePath) = this.path.startsWith(other.path)
     fun startsWith(other: Path) = this.path.startsWith(other)
+    fun startsWith(other: String) = this.path.startsWith(other)
 
     fun exists(vararg options: LinkOption) = this.path.exists(*options)
 
