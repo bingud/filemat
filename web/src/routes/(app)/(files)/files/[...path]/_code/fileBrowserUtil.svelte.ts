@@ -71,9 +71,16 @@ export class VisibilityManager {
     /** Tracks entry paths that have been observed at least once, to distinguish first mount from re-registration */
     private knownEntryPaths = new Set<string>()
 
-    private concurrency = 2
+    private networkConcurrency = 2
+    private cachedConcurrency = 4
     private renderDistance = 500
     private visibilityThreshold = 0.01
+    private readonly thumbCacheName = `thumb-cache`
+    private readonly cacheHintTtlSeconds = 10
+
+    private loadingFromNetwork: Set<HTMLImageElement> = new Set()
+    private cacheStateBySrc = new Map<string, { isCached: boolean, checkedAtSeconds: number }>()
+    private cacheChecksInFlight = new Set<string>()
 
     visibleEntryPaths = new SvelteSet<string>()
     private entryElements = new Map<HTMLElement, string>()
@@ -301,6 +308,7 @@ export class VisibilityManager {
         }
 
         this.pending.add(img)
+        this.primeCacheState(img)
 
         this.observer!.observe(img)
         this.visibleImageObserver?.observe(img)
@@ -356,6 +364,7 @@ export class VisibilityManager {
 
             this.headlessImages.add(img)
             this.pending.add(img)
+            this.primeCacheState(img)
             this.imageMap.set(entry.path, img)
             this.nodeToPath.set(img, entry.path)
             added = true
@@ -378,6 +387,7 @@ export class VisibilityManager {
         this.pending.delete(img)
         this.highPriority.delete(img)
         this.lowPriority.delete(img)
+        this.loadingFromNetwork.delete(img)
         this.headlessImages.delete(img)
         this.observer?.unobserve(img)
         this.visibleImageObserver?.unobserve(img)
@@ -395,6 +405,7 @@ export class VisibilityManager {
                 headless.setAttribute(`data-src`, dataSrc)
                 this.headlessImages.add(headless)
                 this.pending.add(headless)
+                this.primeCacheState(headless)
                 this.imageMap.set(path, headless)
                 this.nodeToPath.set(headless, path)
                 this.scheduleImageLoad()
@@ -415,12 +426,13 @@ export class VisibilityManager {
     // Iterates through `pending` (which maintains visual/sorted order) and finds
     // the first image that matches the desired priority level
     // This avoids getBoundingClientRect calls while still loading top-to-bottom
-    private getNextCandidateFromPending(priorityFilter?: Set<HTMLImageElement>): HTMLImageElement | null {
+    private getNextCandidateFromPending(priorityFilter?: Set<HTMLImageElement>, requireCached: boolean = false): HTMLImageElement | null {
         for (const img of this.pending) {
             if (this.loading.has(img)) continue
             
             // If a priority filter is specified, only return images in that set
             if (priorityFilter && !priorityFilter.has(img)) continue
+            if (requireCached && !this.isCacheHitCandidate(img, true)) continue
             
             return img
         }
@@ -431,20 +443,22 @@ export class VisibilityManager {
     // Uses pending set iteration order (maintained by reorderQueue) to ensure
     // images load sequentially from top to bottom in visual order
     private runProcessLoop() {
-        while (this.loading.size < this.concurrency) {
+        while (this.loading.size < this.cachedConcurrency) {
             let candidate: HTMLImageElement | null = null
+            const networkSlotsAvailable = this.loadingFromNetwork.size < this.networkConcurrency
+            const requireCached = !networkSlotsAvailable
 
             // 1. ALWAYS check High Priority (Visible) first - but in sorted order
-            candidate = this.getNextCandidateFromPending(this.highPriority)
+            candidate = this.getNextCandidateFromPending(this.highPriority, requireCached)
 
             // 2. Check Low Priority (Nearby) - but in sorted order
             if (!candidate) {
-                candidate = this.getNextCandidateFromPending(this.lowPriority)
+                candidate = this.getNextCandidateFromPending(this.lowPriority, requireCached)
             }
 
             // 3. Fallback: Load All (Remaining Pending) - already in sorted order
             if (!candidate && appState.settings.loadAllPreviews) {
-                candidate = this.getNextCandidateFromPending()
+                candidate = this.getNextCandidateFromPending(undefined, requireCached)
             }
 
             if (!candidate) break
@@ -465,6 +479,10 @@ export class VisibilityManager {
 
         this.pending.delete(img)
         this.loading.add(img)
+        const isCacheHit = this.isCacheHitCandidate(img, false)
+        if (!isCacheHit) {
+            this.loadingFromNetwork.add(img)
+        }
         
         // Stop observing once loading starts
         this.observer?.unobserve(img)
@@ -476,6 +494,7 @@ export class VisibilityManager {
             img.onload = null
             img.onerror = null
             this.loading.delete(img)
+            this.loadingFromNetwork.delete(img)
             this.scheduleImageLoad()
         }
 
@@ -486,6 +505,65 @@ export class VisibilityManager {
         }
         
         img.src = src
+    }
+
+    private getNowSeconds(): number {
+        return Math.floor(Date.now() / 1000)
+    }
+
+    private isCacheHintFresh(checkedAtSeconds: number): boolean {
+        return (this.getNowSeconds() - checkedAtSeconds) <= this.cacheHintTtlSeconds
+    }
+
+    private isCacheHitCandidate(img: HTMLImageElement, requireFreshHint: boolean): boolean {
+        const src = img.getAttribute(`data-src`)
+        if (!src) return false
+
+        const state = this.cacheStateBySrc.get(src)
+        if (!state) {
+            this.primeCacheState(img)
+            return false
+        }
+
+        if (!this.isCacheHintFresh(state.checkedAtSeconds)) {
+            this.primeCacheState(img, true)
+            return false
+        }
+
+        if (requireFreshHint) {
+            return state.isCached
+        }
+
+        return state.isCached
+    }
+
+    private primeCacheState(img: HTMLImageElement, force: boolean = false) {
+        const src = img.getAttribute(`data-src`)
+        if (!src) return
+        if (this.cacheChecksInFlight.has(src)) return
+        if (!force) {
+            const existing = this.cacheStateBySrc.get(src)
+            if (existing && this.isCacheHintFresh(existing.checkedAtSeconds)) return
+        }
+        if (typeof window === `undefined` || !(`caches` in window)) return
+
+        this.cacheChecksInFlight.add(src)
+        caches.open(this.thumbCacheName)
+            .then(cache => cache.match(src))
+            .then((cached) => {
+                if (!cached) {
+                    this.cacheStateBySrc.set(src, { isCached: false, checkedAtSeconds: this.getNowSeconds() })
+                    return
+                }
+                this.cacheStateBySrc.set(src, { isCached: true, checkedAtSeconds: this.getNowSeconds() })
+            })
+            .catch(() => {
+                this.cacheStateBySrc.set(src, { isCached: false, checkedAtSeconds: this.getNowSeconds() })
+            })
+            .finally(() => {
+                this.cacheChecksInFlight.delete(src)
+                this.scheduleImageLoad()
+            })
     }
 
     // Svelte Action to attach to <img> elements
@@ -526,7 +604,10 @@ export class VisibilityManager {
         this.highPriority.clear()
         this.lowPriority.clear()
         this.loading.clear()
+        this.loadingFromNetwork.clear()
         this.imageMap.clear()
+        this.cacheStateBySrc.clear()
+        this.cacheChecksInFlight.clear()
         this.headlessImages.clear()
         this.knownEntryPaths.clear()
     }
