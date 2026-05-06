@@ -84,25 +84,40 @@
         return meta.filename || filenameFromPath(meta.path)
     })
 
-    // Load permissions for selected file
+    /** Path for entity permission API: explicit selection, else current folder. */
+    let permissionEntityPath = $derived.by(() => {
+        return filesState.selectedEntries.singlePath ?? filesState.data.folderMeta?.path ?? null
+    })
+
+    // Load permissions for selected entry or current folder
     let lastLoaded = ""
     explicitEffect(() => [ 
         filesState.selectedEntries.singlePath,
         filesState.ui.detailsOpen,
+        filesState.data.folderMeta?.path,
     ], () => {
         if (filesState.isShared) return
-        const selectedPath = filesState.selectedEntries.singlePath
+        const loadPath = permissionEntityPath
 
-        if (!selectedPath) return
+        if (!loadPath) {
+            abortController.abort()
+            abortController = new AbortController()
+            lastLoaded = ""
+            showPermissions = false
+            permissionData = null
+            permissionDataLoading = false
+            permissionDataDebounced = false
+            return
+        }
         if (!filesState.ui.detailsOpen) return
-        if (lastLoaded === selectedPath) return
+        if (lastLoaded === loadPath) return
         if (!auth.authenticated) return
 
         showPermissions = false
         permissionData = null
         permissionDataDebounced = true
 
-        loadPermissionDataDebounced(selectedPath)
+        loadPermissionDataDebounced(loadPath)
     })
 
     // Debounced function to load permission data
@@ -115,7 +130,7 @@
         if (hasAnyPermission(["MANAGE_ALL_FILE_PERMISSIONS", "MANAGE_OWN_FILE_PERMISSIONS"])) {
             permissionDataLoading = true
             await loadPermissionData(path, abortController.signal)
-            if (path !== filesState.selectedEntries.singlePath) return
+            if (path !== permissionEntityPath) return
             lastLoaded = path
             permissionDataLoading = false
             showPermissions = true
@@ -169,7 +184,7 @@
             return
         }
 
-        if (path !== filesState.selectedEntries.singlePath) return
+        if (path !== permissionEntityPath) return
 
         const miniUsers = json.miniUserList
         json.miniUserList = {}
@@ -323,8 +338,8 @@
                                                 </div>
                                             </Dialog.Close>
                                         </div>
-                                        {#if filesState.selectedEntries.singlePath}
-                                            <FilePermissionCreator path={filesState.selectedEntries.singlePath} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
+                                        {#if permissionEntityPath}
+                                            <FilePermissionCreator path={permissionEntityPath} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
                                         {/if}
                                     </div>
                                 </Dialog.Content>

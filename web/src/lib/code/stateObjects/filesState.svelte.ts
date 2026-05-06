@@ -225,6 +225,10 @@ class SelectedEntryStateClass {
             this.searchSet.clear()
             paths.forEach(p => this.searchSet.add(p))
         } else {
+            if (paths.length === 0 && !preventSave) {
+                const folderPath = filesState.data.folderMeta?.path ?? filesState.path
+                this.selectedPositions.clearPersistedChildSelection(folderPath)
+            }
             this.list = paths
             this.set.clear()
             paths.forEach(p => this.set.add(p))
@@ -249,10 +253,10 @@ class SelectedEntryStateClass {
     unselect(path: string, preventSave = false) {
         if (filesState.isSearchOpen) {
             removeString(this.searchList, path)
-            if (!preventSave) this.searchSet.delete(path)
+            this.searchSet.delete(path)
         } else {
             removeString(this.list, path)
-            if (!preventSave) this.set.delete(path)
+            this.set.delete(path)
         }
         if (!preventSave) {
             this.selectedPositions.set(path, false)
@@ -444,6 +448,7 @@ class FileSearchStateClass {
         this.entries = null
         this.searchPath = null
         filesState.selectedEntries.searchList = []
+        filesState.selectedEntries.searchSet.clear()
     }
 }
 
