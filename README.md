@@ -1,6 +1,5 @@
 ## Contents
 
-[What is Filemat?](<#what-is-filemat> "What is Filemat?")  
 [Features](<#features> "Features")  
 [Requirements](<#requirements> "Requirements")  
 [Installation](<#installation> "Installation")  
@@ -8,20 +7,20 @@
 [Usage recommendations](<#usage-recommendations> "Usage recommendations")  
 [Technical details](<#technical-details> "Technical details")  
 
-
 ## What is Filemat?
 
 Filemat is a web-based file manager.  
 It's self-hosted and allows you to manage your local files from anywhere using a web UI.  
 
-Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org.
+Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org
 
-<img src="/docs/images/screenshot_files_1.jpg" width="500" alt="Files screenshot" />
+<img src="/docs/images/screenshot_files_1.jpg" width="750" alt="Files screenshot" />
 
 ## Features
 
+- Fast and simple setup
 - User management, roles
-- Granular permissions for users and roles
+- Granular permissions (by user or role)
     - File permissions
     - Application administrative permissions
 - File sharing with public link (optional password)
