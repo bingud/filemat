@@ -273,6 +273,11 @@ class SelectedEntryStateClass {
             this.setSelected([])
         }
     }
+    reselect(path: string) {
+        this.unselect(path, true)
+        this.addSelected(path)
+    }
+
     /**
      * Sets whether path is selected. Only saves into selection tree, does not select entry.
      */

@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
-    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, safeFetch, formData, handleException, handleErr } from "$lib/code/util/codeUtil.svelte"
+    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, safeFetch, formData, handleException, handleErr, includesList } from "$lib/code/util/codeUtil.svelte"
     import { onMount } from "svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
@@ -220,7 +220,33 @@
         filesState.ui.fileContextMenuPopoverOpen = false
     }
 
-    function onClickSelectCheckbox(path: string) {
+    function onClickSelectCheckbox(event: MouseEvent, path: string) {
+        while (event.shiftKey) {
+            const lastSelectedPath = filesState.selectedEntries.currentList[filesState.selectedEntries.currentList.length - 1]
+            if (!lastSelectedPath) break
+            const entries = (filesState.isSearchOpen ? filesState.search.sortedEntries : filesState.data.sortedEntries)?.map(v => v.path)
+            if (!entries) break
+
+            const anchorIndex = entries.findIndex(v => v === lastSelectedPath)
+            const newIndex = entries.findIndex(v => v === path)
+
+            const selections = entries.slice(Math.min(anchorIndex, newIndex), Math.max(anchorIndex, newIndex) + 1).map(v => v)
+
+            // Unselect all if already selected
+            if (includesList(filesState.selectedEntries.currentList, selections)) {
+                filesState.selectedEntries.unselectAll(selections)
+                filesState.selectedEntries.addSelected(lastSelectedPath)
+                return
+            }
+
+            for (const entry of selections) {
+                filesState.selectedEntries.addSelected(entry)
+            }
+
+            filesState.selectedEntries.reselect(lastSelectedPath)
+            return
+        }
+
         const isSelected = filesState.selectedEntries.currentList.includes(path)
         if (isSelected) {
             filesState.selectedEntries.unselect(path)

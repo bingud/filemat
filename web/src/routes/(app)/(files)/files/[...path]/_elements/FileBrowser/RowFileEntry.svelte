@@ -70,7 +70,7 @@
     <!-- Filename + Icon -->
     <div class="h-full flex items-center min-h-0">
         {#key isSelected}
-            <div on:click|stopPropagation|preventDefault={() => { onClickSelectCheckbox(entry.path) }} class="h-full flex items-center justify-center pr-1">
+            <div on:click|stopPropagation|preventDefault={(e) => { onClickSelectCheckbox(e, entry.path) }} class="h-full flex items-center justify-center pr-1">
                 <input checked={isSelected} class="!size-5 opacity-0 checked:opacity-100 group-hover:opacity-100" type="checkbox">
             </div>
         {/key}

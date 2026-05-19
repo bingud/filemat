@@ -24,7 +24,7 @@ export type FileEntryHandlerProps = {
     event_drop: (e: DragEvent, entry: FullFileMetadata) => void
     event_dragEnd: (e: DragEvent, entry: FullFileMetadata) => void
     entryOnClick: (e: MouseEvent, entry: FullFileMetadata) => void
-    onClickSelectCheckbox: (path: string) => void
+    onClickSelectCheckbox: (e: MouseEvent, path: string) => void
 }
 
 export type FileListProps = FileContextMenuProps & FileEntryHandlerProps & {
