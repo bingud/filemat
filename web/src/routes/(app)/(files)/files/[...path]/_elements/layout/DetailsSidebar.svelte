@@ -283,6 +283,21 @@
         {/if}
         
         <div class="w-full flex flex-col px-6 gap-6 flex-none">
+            {#if filesState.selectedEntries.isCurrentFolderSelected && filesState.data.entries}
+                {@const count = filesState.data.entries.length}
+                {@const collectiveSize = calculateFilesSize(filesState.data.entries)}
+
+                <div class="detail-container">
+                    <p class="detail-title">File count</p>
+                    <p>{count}</p>
+                </div>
+
+                <div class="detail-container" title="Collective size of all files in this folder. Sub-directories are not counted.">
+                    <p class="detail-title">Size</p>
+                    <p>{formatBytes(collectiveSize)}</p>
+                </div>
+            {/if}
+
             <div class="detail-container">
                 <p class="detail-title">File Size</p>
                 <p>{formatBytes(selectedMeta.size)}</p>

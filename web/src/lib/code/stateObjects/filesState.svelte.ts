@@ -189,6 +189,7 @@ class SelectedEntryStateClass {
             return meta
         }).filter(v => !!v)
     })
+    activeMetaList = $derived(filesState.isSearchOpen ? this.searchMetaList : this.metaList)
 
     singlePath = $derived.by(() => {
         if (filesState.isSearchOpen) {
@@ -201,7 +202,7 @@ class SelectedEntryStateClass {
     })
     singleMeta = $derived.by(() => {
         // Only return if one entry is selected
-        const metaList = filesState.isSearchOpen ? this.searchMetaList : this.metaList
+        const metaList = this.activeMetaList
         if (metaList.length === 0) {
             return filesState.data.folderMeta
         }
@@ -211,6 +212,7 @@ class SelectedEntryStateClass {
         const value = metaList[0]
         return value
     })
+    isCurrentFolderSelected = $derived(this.activeMetaList.length === 0 && filesState.data.folderMeta)
 
     hasMultiple = $derived(filesState.isSearchOpen ? (this.searchList.length > 1) : (this.list.length > 1))
     hasSelected = $derived(filesState.isSearchOpen ? (this.searchList.length > 0) : (this.list.length > 0))
