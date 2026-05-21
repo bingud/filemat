@@ -6,6 +6,7 @@
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
     import { getFilePagePath, openEntry } from '../../_code/fileBrowserUtil.svelte';
+    import CopyIcon from '$lib/component/icons/CopyIcon.svelte';
 
     // Context menu for breadcrumb buttons
     let contextMenuButton: HTMLElement | null = $state(null)
@@ -39,6 +40,10 @@
     function option_details(segment: Segment) {
         filesState.selectedEntries.setSelected(segment.path === "" ? `/` : `/${segment.path}`)
         filesState.ui.detailsOpen = true
+        closeContextMenu()
+    }
+    function option_copyPath(segment: Segment) {
+        navigator.clipboard.writeText("/" + segment.path)
         closeContextMenu()
     }
 
@@ -137,12 +142,19 @@
         <div class="z-50 relative">
             <Popover.Root bind:open={contextMenuOpen} onOpenChange={onContextMenuOpenChange}>
                 <Popover.Content preventScroll={true} onInteractOutside={() => { contextMenuOpen = false }} customAnchor={contextMenuButton} align="start" >
-                    <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50">
+                    <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-50 select-none">
                         <button on:click={() => { option_details(menuSegment!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
                             <div class="size-5 flex-shrink-0">
                                 <InfoIcon />
                             </div>
                             <span>Details</span>
+                        </button>
+
+                        <button on:click={() => { option_copyPath(menuSegment!) }} class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2">
+                            <div class="size-5 flex-shrink-0">
+                                <CopyIcon />
+                            </div>
+                            <span>Copy path</span>
                         </button>
                     </div>
                 </Popover.Content>
