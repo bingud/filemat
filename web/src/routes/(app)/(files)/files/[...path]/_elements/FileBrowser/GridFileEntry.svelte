@@ -42,7 +42,7 @@
 
 {#if isVisible}
     <a
-        on:click|preventDefault={(e) => entryOnClick(e, entry)}
+        on:click={(e) => entryOnClick(e, entry)}
         on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
         draggable={entry.permissions?.includes("MOVE")}
         data-entry-path={entry.path} rel="noopener noreferrer"

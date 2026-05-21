@@ -90,16 +90,66 @@
     /**
      * onClick for file entry
      */
-    function entryOnClick(e: UIEvent, entry: FileMetadata) {
+    function entryOnClick(e: MouseEvent, entry: FileMetadata) {
+        if (e.shiftKey) {
+            if (filesState.selectedEntries.hasSelected) {
+                e.preventDefault()
+                return handleEntrySelection(e, entry.path)
+            } else {
+                return
+            }
+        }
+
+        if (e.ctrlKey || e.metaKey) return
+
         if (filesState.selectedEntries.singlePath !== entry.path && !appState.settings.clickToOpenFile) {
             e.preventDefault()
             filesState.selectedEntries.setSelected(entry.path)
             // Scroll selected entry into view
             scrollSelectedEntryIntoView()
         } else {
+            e.preventDefault()
             if (entry.isSymlink && !appState.followSymlinks) return
             filesState.selectedEntries.setSelected(entry.path)
             openEntry(entry.path)
+        }
+    }
+
+    function handleEntrySelection(event: MouseEvent, path: string) {
+        while (event.shiftKey) {
+            const lastSelectedPath = filesState.selectedEntries.currentList[filesState.selectedEntries.currentList.length - 1]
+            if (!lastSelectedPath) break
+            const entries = (filesState.isSearchOpen ? filesState.search.sortedEntries : filesState.data.sortedEntries)?.map(v => v.path)
+            if (!entries) break
+
+            const anchorIndex = entries.findIndex(v => v === lastSelectedPath)
+            const newIndex = entries.findIndex(v => v === path)
+
+            const selections = entries.slice(Math.min(anchorIndex, newIndex), Math.max(anchorIndex, newIndex) + 1).map(v => v)
+
+            // Unselect all if already selected
+            if (includesList(filesState.selectedEntries.currentList, selections)) {
+                filesState.selectedEntries.unselectAll(selections)
+                filesState.selectedEntries.addSelected(lastSelectedPath)
+                return
+            }
+
+            for (const entry of selections) {
+                filesState.selectedEntries.addSelected(entry)
+            }
+
+            filesState.selectedEntries.reselect(lastSelectedPath)
+            return
+        }
+
+        const isSelected = filesState.selectedEntries.currentList.includes(path)
+        if (isSelected) {
+            filesState.selectedEntries.unselect(path)
+        } else {
+            if (filesState.data.folderMeta) {
+                filesState.selectedEntries.unselect(filesState.data.folderMeta.path)
+            }
+            filesState.selectedEntries.addSelected(path)
         }
     }
 
@@ -220,45 +270,6 @@
         filesState.ui.fileContextMenuPopoverOpen = false
     }
 
-    function onClickSelectCheckbox(event: MouseEvent, path: string) {
-        while (event.shiftKey) {
-            const lastSelectedPath = filesState.selectedEntries.currentList[filesState.selectedEntries.currentList.length - 1]
-            if (!lastSelectedPath) break
-            const entries = (filesState.isSearchOpen ? filesState.search.sortedEntries : filesState.data.sortedEntries)?.map(v => v.path)
-            if (!entries) break
-
-            const anchorIndex = entries.findIndex(v => v === lastSelectedPath)
-            const newIndex = entries.findIndex(v => v === path)
-
-            const selections = entries.slice(Math.min(anchorIndex, newIndex), Math.max(anchorIndex, newIndex) + 1).map(v => v)
-
-            // Unselect all if already selected
-            if (includesList(filesState.selectedEntries.currentList, selections)) {
-                filesState.selectedEntries.unselectAll(selections)
-                filesState.selectedEntries.addSelected(lastSelectedPath)
-                return
-            }
-
-            for (const entry of selections) {
-                filesState.selectedEntries.addSelected(entry)
-            }
-
-            filesState.selectedEntries.reselect(lastSelectedPath)
-            return
-        }
-
-        const isSelected = filesState.selectedEntries.currentList.includes(path)
-        if (isSelected) {
-            filesState.selectedEntries.unselect(path)
-        } else {
-            if (filesState.data.folderMeta) {
-                filesState.selectedEntries.unselect(filesState.data.folderMeta.path)
-            }
-            filesState.selectedEntries.addSelected(path)
-        }
-    }
-
-
     /**
      * # Drag and dropping
     */
@@ -343,7 +354,7 @@
             {event_drop}
             {event_dragEnd}
             {entryOnClick}
-            {onClickSelectCheckbox}
+            onClickSelectCheckbox={handleEntrySelection}
             {option_rename}
             {option_move}
             {option_copy}
@@ -395,7 +406,7 @@
                 {event_drop}
                 {event_dragEnd}
                 {entryOnClick}
-                {onClickSelectCheckbox}
+                onClickSelectCheckbox={handleEntrySelection}
                 {option_rename}
                 {option_move}
                 {option_copy}
