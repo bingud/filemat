@@ -51,7 +51,7 @@ class SettingService(
                 message = "Old path:\n$oldPath\n\nNew path:\n$newPath",
                 initiatorId = user.userId,
             )
-            val createdTusService = filesystemService.initializeTusService()
+            val createdTusService = tusService.initializeTusService()
             val tusMessage = if (createdTusService) "" else "Failed to start upload service."
 
             val previousFolderExists = filesystemService.exists(oldPath.path, false)

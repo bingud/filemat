@@ -1,7 +1,5 @@
 package org.filemat.server.module.file.service.filesystem
 
-import me.desair.tus.server.TusFileUploadService
-import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
@@ -12,9 +10,7 @@ import org.filemat.server.module.file.service.filesystem.fileOperation.*
 import org.springframework.stereotype.Service
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
-import java.time.Duration
 import kotlin.io.path.*
-import kotlin.properties.Delegates
 
 
 /**
@@ -31,9 +27,6 @@ class FilesystemService(
     FilesystemMoveOperations by filesystemMoveService,
     FilesystemCopyOperations by filesystemCopyService {
 
-    final var tusFileService: TusFileUploadService by Delegates.notNull()
-        private set
-
     fun getSize(canonicalPath: FilePath): Result<Long> {
         try {
             return canonicalPath.path.fileSize().toResult()
@@ -41,18 +34,6 @@ class FilesystemService(
             return Result.notFound()
         } catch (e: Exception) {
             return Result.error("Failed to get file size.")
-        }
-    }
-
-    fun initializeTusService(): Boolean {
-        try {
-            tusFileService = TusFileUploadService()
-                .withUploadUri("/api/v1/file/upload")
-                .withStoragePath(State.App.uploadFolderPath)
-                .withUploadExpirationPeriod(Duration.ofHours(48).toMillis())
-            return true
-        } catch (e: Exception) {
-            return false
         }
     }
 

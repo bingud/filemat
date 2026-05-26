@@ -5,6 +5,7 @@ import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
+import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.savedFile.SavedFileService
 import org.springframework.stereotype.Component
@@ -15,8 +16,8 @@ class Initialization(
     private val databaseSetup: DatabaseSetup,
     private val fileVisibilityService: FileVisibilityService,
     private val filePermissionService: EntityPermissionService,
-    private val filesystemService: FilesystemService,
     private val savedFileService: SavedFileService,
+    private val tusService: TusService,
 ) {
 
     /**
@@ -50,7 +51,7 @@ class Initialization(
                     }
                 }.line()
 
-            filesystemService.initializeTusService()
+            tusService.initializeTusService()
         }
 
         println("${Props.appName} is initialized.")

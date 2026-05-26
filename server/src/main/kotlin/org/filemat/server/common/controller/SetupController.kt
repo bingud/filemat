@@ -17,6 +17,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.PlainFolderVisibility
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
+import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.log.model.LogLevel
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -53,7 +54,7 @@ class SetupController(
     private val settingService: SettingService,
     private val authTokenService: AuthTokenService,
     private val fileVisibilityService: FileVisibilityService,
-    private val filesystemService: FilesystemService,
+    private val tusService: TusService,
 ) : AController() {
 
     val submitLock = Locker()
@@ -228,8 +229,9 @@ class SetupController(
         appService.deleteSetupCode()
         State.App.isSetup = true
         State.App.followSymlinks = followSymlinks
+        State.App.uploadFolderPath = uploadFolderPath.pathString
 
-        filesystemService.initializeTusService()
+        tusService.initializeTusService()
 
         val tokenR = authTokenService.createToken(user.userId, "", UserAction.APP_SETUP)
         if (tokenR.isSuccessful) {

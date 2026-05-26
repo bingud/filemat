@@ -18,8 +18,7 @@ import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.event.EventListener
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
@@ -28,6 +27,7 @@ import java.time.Duration
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 import kotlin.io.path.exists
+import kotlin.properties.Delegates
 
 
 /**
@@ -35,7 +35,7 @@ import kotlin.io.path.exists
  */
 @Service
 class TusService(
-    private val filesystem: FilesystemService,
+    @Lazy private val filesystem: FilesystemService,
     private val fileService: FileService,
     private val entityService: EntityService,
     private val logService: LogService
@@ -43,15 +43,35 @@ class TusService(
     val uploadLock = ReentrantReadWriteLock()
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    @EventListener(ApplicationReadyEvent::class)
+    final var tusFileService: TusFileUploadService by Delegates.notNull()
+        private set
+
+    fun initializeTusService(): Boolean {
+        try {
+            tusFileService = TusFileUploadService()
+                .withUploadUri("/api/v1/file/upload")
+                .withStoragePath(State.App.uploadFolderPath)
+                .withUploadExpirationPeriod(Duration.ofHours(48).toMillis())
+
+            startTusCleanupLoop()
+            return true
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    private var isCleanupRunning = false
     fun startTusCleanupLoop() {
+        if (isCleanupRunning) return
+        isCleanupRunning = true
+
         scope.launch {
             var logged = false
 
             while (true) {
                 try {
                     uploadLock.readLock().withLock {
-                        filesystem.tusFileService.cleanup()
+                        tusFileService.cleanup()
                     }
                 } catch (e: NoSuchFileException) {
                     // Ignore error if upload file not found
@@ -84,8 +104,6 @@ class TusService(
             response.characterEncoding = "UTF-8"
 
             // Get the TUS service instance
-            val tusService = filesystem.tusFileService
-
             val user = request.getPrincipal()!!
 
             // Handle a POST request
@@ -104,7 +122,7 @@ class TusService(
             // Wrap response so that TUS cannot breach containment and send response too soon
             val wrappedResponse = BufferedResponseWrapper(response)
             // Make TUS handle uploads
-            tusService.process(wrappedRequest, wrappedResponse)
+            tusFileService.process(wrappedRequest, wrappedResponse)
 
             // Handle a PATCH request
             if (request.method == "PATCH") {
@@ -112,7 +130,7 @@ class TusService(
                     request = request,
                     wrappedRequest = wrappedRequest,
                     response = response,
-                    tusService = tusService,
+                    tusService = tusFileService,
                     user = user
                 ).let {
                     if (it.isNotSuccessful) return
