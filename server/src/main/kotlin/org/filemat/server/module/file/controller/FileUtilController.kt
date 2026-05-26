@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
-import kotlin.math.min
 
 @RestController
 @RequestMapping("/v1/file")
