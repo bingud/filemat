@@ -56,8 +56,12 @@ Working Directory: `./web`
   - Use `handleErr` or `handleException` from `$lib/code/util/codeUtil.svelte` for unified error reporting/notifications.
   - Check `response.failed`, `status.notFound`, `status.serverDown` properties from `safeFetch` results.
 - **Backend**:
-  - Use standard Spring Boot exception handling (`@ExceptionHandler` or `ResponseStatusException`).
+  - Use standard Spring Boot exception handling (`@ExceptionHandler` or `ResponseStatusException`).\
 
-## AI Rules (Cursor/Copilot)
-*No specific `.cursorrules` or `copilot-instructions.md` were found in the repository.*
-*Please default to the conventions above.*
+---
+
+## Project information
+
+### Frontend
+
+- Icons have individual files in `$lib/component/icons`.

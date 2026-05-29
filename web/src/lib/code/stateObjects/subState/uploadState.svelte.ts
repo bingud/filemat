@@ -31,8 +31,10 @@ export class UploadState {
         let failed = 0
         let paused = 0
         let queued = 0
+        let total = 0
 
         forEachObject(this.all, (k, v) => {
+            total++
             if (v.status === "success") { successful++ }
             else if (v.status === "uploading") { uploading++ }
             else if (v.status === "canceled") { canceled++ }
@@ -47,7 +49,8 @@ export class UploadState {
             failed: failed,
             canceled: canceled,
             paused: paused,
-            queued: queued
+            queued: queued,
+            total: total,
         }
     })
 
@@ -56,6 +59,8 @@ export class UploadState {
     }
 
     addUpload(path: string, upload: Upload, status: fileUploadStatus): boolean {
+        this.panelExpanded = true
+        
         const existing = this.all[path]
         if (existing && existing.status === "uploading") return false
 
@@ -77,6 +82,7 @@ export class UploadState {
     }
 
     panelOpen = $state(true)
+    panelExpanded = $state(true)
 }
 
 export const uploadState = new UploadState()
