@@ -3,6 +3,10 @@
 This file contains instructions for AI agents (and human developers) working on the **Filemat** repository.
 Please adhere strictly to these guidelines to maintain code quality and consistency.
 
+## Project description
+This repository contains the frontend and backend of a file manager web application.
+Features: user auth, file permissions, public file sharing
+
 ## Project Structure
 - **server/**: Backend (Kotlin, Spring Boot, Gradle).
 - **web/**: Frontend (SvelteKit, TypeScript, Tailwind, Vite, NPM).

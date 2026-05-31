@@ -4,7 +4,7 @@
     import CustomDialog from './CustomDialog.svelte';
 
     // Component state
-    let dialogTitle = $state('Confirm')
+    let dialogTitle: string | null = $state('Confirm')
     let dialogMessage = $state('Are you sure?')
     let dialogConfirmText = $state('Yes')
     let dialogCancelText = $state('No')
@@ -14,12 +14,12 @@
     
     // Public API - returns a Promise that resolves to true (confirm) or false (cancel/close)
     export function show(options: {
-        title?: string,
+        title?: string | null,
         message?: string,
         confirmText?: string,
         cancelText?: string,
     } = {}) {
-        if (options.title) dialogTitle = options.title
+        if (options.title !== undefined) dialogTitle = options.title
         if (options.message) dialogMessage = options.message
         if (options.confirmText) dialogConfirmText = options.confirmText
         if (options.cancelText) dialogCancelText = options.cancelText

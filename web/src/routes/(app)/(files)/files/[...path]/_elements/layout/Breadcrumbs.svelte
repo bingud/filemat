@@ -99,7 +99,7 @@
                         <button class="rounded py-1 px-2 hover:bg-neutral-300 dark:hover:bg-neutral-800">...</button>
                     </Popover.Trigger>
                     <Popover.Content preventScroll={true} align="start" sideOffset={8}>
-                        <div class="min-w-[20rem] w-fit max-w-[min(100vw,40rem)] rounded-lg bg-neutral-300 dark:bg-neutral-800 py-2">
+                        <div class="min-w-[20rem] w-fit max-w-[min(100vw,40rem)] rounded-lg bg-neutral-300 dark:bg-neutral-800 py-2 flex flex-col">
                             {#each breadcrumbState.hidden as segment}
                                 {@render breadcrumbButton(
                                     segment, {

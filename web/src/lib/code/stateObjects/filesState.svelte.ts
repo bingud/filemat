@@ -320,6 +320,7 @@ class FileUiStateClasss {
     fileSortingMenuPopoverOpen = $state(false)
 
     visibilityManager = $state(new VisibilityManager())
+    searchVisibilityManager = $state(new VisibilityManager())
 
     toggleSidebar() {
         this.detailsOpen = !this.detailsOpen

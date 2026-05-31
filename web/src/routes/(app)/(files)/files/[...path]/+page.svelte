@@ -80,6 +80,7 @@
     $effect(() => {
         if (filesState.scroll.container) {
             filesState.ui.visibilityManager.setScrollContainer(filesState.scroll.container)
+            filesState.ui.searchVisibilityManager.setScrollContainer(filesState.scroll.container)
         }
     })
 

@@ -6,7 +6,7 @@
 
     // Component state
     let dialogType = $state('text')
-    let dialogTitle = $state('Enter Text')
+    let dialogTitle: string | null = $state('Enter Text')
     let dialogMessage = $state('Please enter your text:')
     let dialogConfirmText = $state('Confirm')
     let dialogCancelText = $state('Cancel')
@@ -19,7 +19,7 @@
     
     // Public API - returns a Promise that resolves to string (input text) or null (cancel/close)
     export function show(options: {
-        title?: string,
+        title?: string | null,
         message?: string,
         confirmText?: string,
         cancelText?: string,
@@ -27,7 +27,7 @@
         defaultValue?: string,
         type?: "text" | "password" | "number",
     } = {}) {
-        if (options.title) dialogTitle = options.title
+        if (options.title !== undefined) dialogTitle = options.title
         if (options.message) dialogMessage = options.message
         if (options.confirmText) dialogConfirmText = options.confirmText
         if (options.cancelText) dialogCancelText = options.cancelText

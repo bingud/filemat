@@ -8,7 +8,7 @@ class ConfirmDialogState {
     isOpen: boolean = $state(false)
 
     show(options: {
-        title?: string,
+        title?: string | null,
         message?: string,
         confirmText?: string,
         cancelText?: string,

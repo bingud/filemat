@@ -11,7 +11,7 @@
         class: classes,
     }: {
         children: snippet,
-        title?: string,
+        title?: string | null,
         description?: string,
         onOpenChange?: (state: boolean) => any,
         isOpen: boolean,
@@ -29,17 +29,17 @@
             class="
                 fixed translate-x-[-50%] translate-y-[-50%] left-[50%] top-[50%] z-dialog
                 flex flex-col gap-4 p-6 bg-surface sm:rounded-sm
-                w-[30rem] max-w-[min(42rem,95vw)] max-h-[95svh]
+                w-[30rem] max-w-[min(42rem,95vw)] max-h-[95svh] min-w-0
                 {classes || ""}
             "
         >
             {#if title}
-                <Dialog.Title class="text-lg font-semibold text-neutral-800 dark:text-neutral-50">
+                <Dialog.Title class="min-w-0 text-lg font-semibold text-neutral-800 dark:text-neutral-50">
                     {title}
                 </Dialog.Title>
             {/if}
             {#if description}
-                <Dialog.Description class="text-sm">
+                <Dialog.Description class="min-w-0 text-sm max-w-full whitespace-pre-wrap break-all">
                     {description}
                 </Dialog.Description>
             {/if}

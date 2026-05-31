@@ -29,10 +29,12 @@ export type FileEntryHandlerProps = {
 
 export type FileListProps = FileContextMenuProps & FileEntryHandlerProps & {
     sortedEntries: typeof filesState.data.sortedEntries
+    visibilityManager: VisibilityManager
 }
 
 export type FileEntryProps = FileEntryHandlerProps & {
     entry: FullFileMetadata
+    visibilityManager: VisibilityManager
     entryOnContextMenu: (e: MouseEvent, entry: FullFileMetadata) => void
     entryMenuOnClick: (button: HTMLButtonElement, entry: FullFileMetadata) => void
 }

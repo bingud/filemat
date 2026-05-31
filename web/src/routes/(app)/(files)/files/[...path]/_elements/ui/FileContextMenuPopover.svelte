@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { parentFromPath } from "$lib/code/util/codeUtil.svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
@@ -9,6 +10,7 @@
     import CopyIcon from "$lib/component/icons/CopyIcon.svelte";
     import DownloadIcon from "$lib/component/icons/DownloadIcon.svelte";
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
+    import EyeIcon from "$lib/component/icons/EyeIcon.svelte";
     import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
     import MinusIcon from "$lib/component/icons/MinusIcon.svelte";
@@ -51,6 +53,18 @@
         }
         closeFileContextMenuPopover()
     }
+
+    async function showPathDialog(path: string) {
+        const copied = await confirmDialogState.show({
+            title: null,
+            message: path,
+            confirmText: "Copy",
+            cancelText: "Close"
+        })
+        if (copied) {
+            navigator.clipboard.writeText(path)
+        }
+    }
 </script>
 
 
@@ -82,6 +96,16 @@
                     </div>
                     <span>Open containing folder</span>
                 </a>
+
+                <button 
+                    on:click={(e) => { showPathDialog(menuEntry.path); closeFileContextMenuPopover() }} 
+                    class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2"
+                >
+                    <div class="size-5 flex-shrink-0">
+                        <EyeIcon />
+                    </div>
+                    <span>View path</span>
+            </button>
             {/if}
 
             <button 

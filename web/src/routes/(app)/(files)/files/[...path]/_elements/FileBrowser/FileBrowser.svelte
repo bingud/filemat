@@ -32,6 +32,7 @@
             // Clean up listener when component unmounts
             window.removeEventListener('keydown', handleKeyDown)
             filesState.ui.visibilityManager.destroy()
+            filesState.ui.searchVisibilityManager.destroy()
         }
     })
 
@@ -348,6 +349,7 @@
     >
         <FileList
             sortedEntries={filesState.data.sortedEntries}
+            visibilityManager={filesState.ui.visibilityManager}
             {event_dragStart}
             {event_dragOver}
             {event_dragLeave}
@@ -400,6 +402,7 @@
         >
             <FileList
                 sortedEntries={filesState.search.sortedEntries}
+                visibilityManager={filesState.ui.searchVisibilityManager}
                 {event_dragStart}
                 {event_dragOver}
                 {event_dragLeave}

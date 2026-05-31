@@ -7,9 +7,14 @@
     import FileThumbnail from "./FileThumbnail.svelte";
     import type { RowPreviewSize } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
+    import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
+    import CustomDialog from "$lib/component/popover/CustomDialog.svelte";
+    import ConfirmDialog from "$lib/component/popover/ConfirmDialog.svelte";
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
 
     let {
         entry,
+        visibilityManager,
         event_dragStart,
         event_dragOver,
         event_dragLeave,
@@ -33,10 +38,10 @@
     
     let isUnopenable = $derived(!entry || (isFolder(entry) && !entry.isExecutable) || (entry.isSymlink && !appState.followSymlinks))
 
-    let isVisible = $derived(appState.settings.alwaysRenderPreviews || filesState.ui.visibilityManager.visibleEntryPaths.has(entry.path))
-
-    const observeEntry = filesState.ui.visibilityManager.observeEntry
-    const observeSkeleton = filesState.ui.visibilityManager.observeSkeleton
+    let isVisible = $derived(appState.settings.alwaysRenderPreviews || visibilityManager.visibleEntryPaths.has(entry.path))
+    
+    const observeEntry = visibilityManager.observeEntry
+    const observeSkeleton = visibilityManager.observeSkeleton
 </script>
 
 
@@ -78,7 +83,7 @@
         <div class="h-full flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
             <div class="!h-full !aspect-square overflow-hidden min-h-0 fill-neutral-500 stroke-neutral-500 xflex-shrink-0 flex items-center justify-center pointer-events-none">
                 {#if entry.filename}
-                    <FileThumbnail {entry} size={size.pixelSize} isLarge={false}></FileThumbnail>
+                    <FileThumbnail {entry} {visibilityManager} size={size.pixelSize} isLarge={false}></FileThumbnail>
                 {/if}
             </div>
             <p class="truncate" title={entry.filename}>
@@ -86,6 +91,20 @@
             </p>
         </div>
     </div>
+
+    <!-- {#if filesState.isSearchOpen}
+        <button
+            type="button"
+            tabindex="-1"
+            title="Show path"
+            on:click|stopPropagation|preventDefault={(e) => { showPathDialog(entry.path) }}
+            class="flex items-center justify-center h-full min-h-0"
+        >
+            <div class="size-5 shrink-0 flex items-center justify-center fill-neutral-500 dark:fill-neutral-400 opacity-70 hover:opacity-100">
+                <InfoIcon />
+            </div>
+        </button>
+    {/if} -->
 
     <!-- Last Modified -->
     <div class="h-full text-right whitespace-nowrap max-sm:hidden flex items-center justify-end opacity-70 ">
@@ -115,6 +134,9 @@
         use:observeSkeleton={entry.path}
     >
         <span class="row-skeleton-filename">{entry.filename}</span>
+        <!-- {#if filesState.isSearchOpen}
+            <span aria-hidden="true"></span>
+        {/if} -->
     </div>
 {/if}
 

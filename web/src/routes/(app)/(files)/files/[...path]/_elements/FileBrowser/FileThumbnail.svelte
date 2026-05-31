@@ -2,6 +2,7 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
+    import type { VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
     import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
@@ -11,15 +12,17 @@
 
     let {
         entry,
+        visibilityManager,
         size,
         isLarge,
     }: {
         entry: FullFileMetadata,
+        visibilityManager: VisibilityManager,
         size: number,
         isLarge: boolean,
     } = $props()
 
-    const loadFilePreview = filesState.ui.visibilityManager.getAction()
+    const loadFilePreview = visibilityManager.getAction()
 
     const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
     const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``

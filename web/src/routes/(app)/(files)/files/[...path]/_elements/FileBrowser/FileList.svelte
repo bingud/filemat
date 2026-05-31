@@ -11,6 +11,7 @@
 
     let {
         sortedEntries,
+        visibilityManager,
         event_dragStart,
         event_dragOver,
         event_dragLeave,
@@ -42,7 +43,7 @@
     // Reorder the image loading queue whenever the sort order changes
     explicitEffect(() => [sortedEntries], () => {
         const paths = sortedEntries?.map(e => e.path) || []
-        filesState.ui.visibilityManager.reorderQueue(paths)
+        visibilityManager.reorderQueue(paths)
     })
 
     // Pre-register headless images for all entries when loadAllPreviews is enabled,
@@ -50,7 +51,7 @@
     explicitEffect(() => [sortedEntries, appState.settings.loadAllPreviews, filesState.ui.previewSize], () => {
         if (!appState.settings.loadAllPreviews || !sortedEntries) return
         const size = filesState.ui.previewSize as GridPreviewSize
-        filesState.ui.visibilityManager.preloadAllPreviews(sortedEntries, size.pixelSize)
+        visibilityManager.preloadAllPreviews(sortedEntries, size.pixelSize)
     })
 
     function closeContextMenu() {
@@ -112,6 +113,10 @@
                 </span>
             </button>
 
+            <!-- {#if filesState.isSearchOpen}
+                <span aria-hidden="true"></span>
+            {/if} -->
+
             <button
                 on:click={() => changeSortingMode("modified")}
                 class="whitespace-nowrap max-lg:hidden text-right flex items-center gap-1 justify-end"
@@ -141,7 +146,7 @@
         {#key config.preview}
             {@const size = filesState.ui.previewSize as RowPreviewSize}
 
-            {#each sortedEntries as entry (entry.filename)}
+            {#each sortedEntries as entry (entry.path)}
                 <div 
                     style:--icon-padding="{size.iconPadding}rem" 
                     style:--menu-icon-padding="{size.menuIconPadding}rem"
@@ -149,6 +154,7 @@
                 >
                     <RowFileEntry
                         {entry}
+                        {visibilityManager}
                         {event_dragStart}
                         {event_dragOver}
                         {event_dragLeave}
@@ -176,9 +182,10 @@
                 grid-template-columns: repeat(auto-fill, minmax(min(var(--min-width),100%), 1fr));
             "
         >
-            {#each sortedEntries as entry (entry.filename)}
+            {#each sortedEntries as entry (entry.path)}
                 <GridFileEntry
                     {entry}
+                    {visibilityManager}
                     {event_dragStart}
                     {event_dragOver}
                     {event_dragLeave}
@@ -224,6 +231,10 @@
 
 <style lang="postcss">
     :global(.file-row-grid) {
-        @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_9.6rem_4.2rem_2.5rem];
+        @apply grid grid-cols-[minmax(0,1fr)_2.5rem] sm:grid-cols-[minmax(0,1fr)_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_8.8rem_4.2rem_2.5rem];
     }
+
+    /* :global(.file-row-grid--search) {
+        @apply grid grid-cols-[minmax(0,1fr)_1.25rem_2.5rem] sm:grid-cols-[minmax(0,1fr)_1.25rem_9.6rem_2.5rem] md:grid-cols-[minmax(0,1fr)_1.25rem_8.8rem_4.2rem_2.5rem];
+    } */
 </style>

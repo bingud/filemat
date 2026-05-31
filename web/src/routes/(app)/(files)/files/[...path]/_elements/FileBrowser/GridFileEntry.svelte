@@ -10,6 +10,7 @@
 
     let {
         entry,
+        visibilityManager,
         event_dragStart,
         event_dragOver,
         event_dragLeave,
@@ -34,10 +35,10 @@
     
     let isUnopenable = $derived(!entry || (isFolder(entry) && !entry.isExecutable) || (entry.isSymlink && !appState.followSymlinks))
 
-    let isVisible = $derived(appState.settings.alwaysRenderPreviews || filesState.ui.visibilityManager.visibleEntryPaths.has(entry.path))
+    let isVisible = $derived(appState.settings.alwaysRenderPreviews || visibilityManager.visibleEntryPaths.has(entry.path))
     
-    const observeEntry = filesState.ui.visibilityManager.observeEntry
-    const observeSkeleton = filesState.ui.visibilityManager.observeSkeleton
+    const observeEntry = visibilityManager.observeEntry
+    const observeSkeleton = visibilityManager.observeSkeleton
 </script>
 
 {#if isVisible}
@@ -69,7 +70,7 @@
         <div class="entry-preview relative flex flex-col w-full">
             <div class="h-full fill-neutral-500 stroke-neutral-500 shrink-0 flex items-center justify-center pointer-events-none">
                 {#if entry.filename}
-                    <FileThumbnail {entry} size={size.pixelSize} isLarge={true}></FileThumbnail>
+                    <FileThumbnail {entry} {visibilityManager} size={size.pixelSize} isLarge={true}></FileThumbnail>
                 {/if}
             </div>
 
