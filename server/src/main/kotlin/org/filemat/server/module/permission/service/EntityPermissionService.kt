@@ -317,6 +317,10 @@ class EntityPermissionService(
         return pathTree.resolveEffectivePermissions(canonicalPath.pathString, userId, roles)
     }
 
+    fun removeAllPermissionsForUser(userId: Ulid) {
+        pathTree.removeAllPermissionsForUser(userId)
+    }
+
     /**
      * Initialize permission tree from database
      */

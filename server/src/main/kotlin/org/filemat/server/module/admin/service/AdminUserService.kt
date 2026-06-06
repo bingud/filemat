@@ -13,13 +13,18 @@ import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.dto.RequestMeta
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
+import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.MfaService
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
+import org.filemat.server.module.permission.model.hasSufficientPermissionsFor
+import org.filemat.server.module.permission.service.EntityPermissionService
 import org.filemat.server.module.role.service.UserRoleService
+import org.filemat.server.module.savedFile.SavedFileService
 import org.filemat.server.module.user.model.PublicUser
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.PublicUserRepository
@@ -38,7 +43,10 @@ class AdminUserService(
     private val userService: UserService,
     private val authService: AuthService,
     private val passwordEncoder: PasswordEncoder,
-    private val mfaService: MfaService
+    private val mfaService: MfaService,
+    private val entityService: EntityService,
+    private val savedFileService: SavedFileService,
+    private val entityPermissionService: EntityPermissionService,
 ) {
     fun updateProperty(meta: RequestMeta, property: String, value: String): Result<Unit> {
         // Check if user exists
@@ -239,5 +247,80 @@ class AdminUserService(
                 )
             }
         }
+    }
+
+    fun deleteUser(admin: Principal, adminIp: String?, targetUserId: Ulid): Result<Unit> {
+        if (admin.userId == targetUserId) return Result.reject("You cannot delete your own account.")
+
+        val targetUser = getUser(targetUserId).let {
+            if (it.notFound) return Result.notFound()
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+
+        val targetPrincipal = authService.getPrincipalByUserId(targetUserId, cacheInMemory = false).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+
+        if (!admin.getPermissions().hasSufficientPermissionsFor(targetPrincipal.getPermissions())) {
+            return Result.reject("Cannot delete a user with higher permissions than you have.")
+        }
+
+        userRoleService.getRolesByUserId(targetUserId).let {
+            if (it.isNotSuccessful) return it.cast()
+            if (it.value.any { role -> role.roleId == Props.Roles.adminRoleId }) {
+                val adminUsers = userRoleService.getRoleUsers(Props.Roles.adminRoleId)
+                val adminCount = if (adminUsers.isSuccessful) adminUsers.value.size else 0
+                if (adminCount <= 1) return Result.reject("Cannot delete the last admin user.")
+            }
+        }
+
+        val ownedEntities = try {
+            entityService.getByOwnerUserId(targetUserId)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.DELETE_USER,
+                description = "Failed to load owned file entities before user deletion.",
+                message = e.stackTraceToString(),
+                initiatorId = admin.userId,
+                targetId = targetUserId,
+            )
+            return Result.error("Failed to delete user.")
+        }
+
+        try {
+            userRepositoryInterface.deleteById(targetUserId)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.DELETE_USER,
+                description = "Failed to delete user from database.",
+                message = e.stackTraceToString(),
+                initiatorId = admin.userId,
+                initiatorIp = adminIp,
+                targetId = targetUserId,
+            )
+            return Result.error("Failed to delete user.")
+        }
+
+        authService.logoutUserByUserId(targetUserId).onFailure { return it }
+        authService.removePrincipalFromMemory(targetUserId)
+        savedFileService.removeAllByUserIdFromCache(targetUserId)
+        entityPermissionService.removeAllPermissionsForUser(targetUserId)
+        entityService.clearOwnerFromCache(ownedEntities)
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.DELETE_USER,
+            description = "Deleted user account: ${targetUser.username}",
+            message = "User '${admin.username}' deleted user '${targetUser.username}'.",
+            initiatorId = admin.userId,
+            initiatorIp = adminIp,
+            targetId = targetUserId,
+        )
+
+        return Result.ok()
     }
 }

@@ -1,4 +1,5 @@
 import { addRoleToUser } from "$lib/code/admin/roles"
+import { deleteUser as deleteUserRequest } from "$lib/code/admin/users"
 import type { AccountProperty, FullPublicUser, PublicAccountProperty } from "$lib/code/auth/types"
 import { rolesToPermissions } from "$lib/code/module/permissions"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
@@ -8,6 +9,7 @@ import type { ulid } from "$lib/code/types/types"
 import { formData, handleErr, handleException, lockFunction, removeString, safeFetch } from "$lib/code/util/codeUtil.svelte"
 import { getRole } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
+import { goto } from "$app/navigation"
 import { userPageState as state, userPageState } from "./state.svelte"
 
 
@@ -254,5 +256,29 @@ export async function resetUserMfa(user: typeof state.user) {
         toast.success(`2FA was reset.`)
         user.mfaTotpStatus = false
         user.mfaTotpRequired = enforceMfa
+    }
+}
+
+export async function deleteUser() {
+    if (state.deletingUser || !state.user) return
+
+    const user = state.user
+    if (auth.principal!.userId === user.userId) return
+
+    const confirmation = await confirmDialogState.show({
+        title: `Delete user?`,
+        message: `Are you sure you want to permanently delete user '${user.username}'? This cannot be undone.`
+    })
+    if (!confirmation) return
+
+    state.deletingUser = true
+    try {
+        const result = await deleteUserRequest(user.userId)
+        if (result) {
+            toast.success(`User '${user.username}' was deleted.`)
+            goto(`/settings/users`)
+        }
+    } finally {
+        state.deletingUser = false
     }
 }

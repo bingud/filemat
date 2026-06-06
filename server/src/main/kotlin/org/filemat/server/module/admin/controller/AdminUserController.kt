@@ -190,4 +190,24 @@ class AdminUserController(
         return ok(serialized)
     }
 
+    @PostMapping("/delete")
+    fun adminDeleteUserMapping(
+        request: HttpServletRequest,
+        @RequestParam("userId") rawUserId: String,
+    ): ResponseEntity<String> {
+        val admin = request.getPrincipal()!!
+        val userId = parseUlidOrNull(rawUserId) ?: return bad("Invalid user ID.", "validation")
+
+        adminUserService.deleteUser(
+            admin = admin,
+            adminIp = request.realIp(),
+            targetUserId = userId,
+        ).let {
+            if (it.notFound) return notFound()
+            if (it.hasError) return internal(it.error)
+            if (it.rejected) return bad(it.error)
+            return ok("ok")
+        }
+    }
+
 }
