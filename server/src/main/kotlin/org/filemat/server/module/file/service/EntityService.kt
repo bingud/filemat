@@ -84,6 +84,14 @@ class EntityService(
             entity.path?.let { pathMap.remove(it) }
         }
     }
+
+    fun clearOwnerFromCache(ownedEntities: List<FilesystemEntity>) {
+        ownedEntities.forEach { entity ->
+            map_put(entity.copy(ownerId = null))
+        }
+    }
+
+    fun getByOwnerUserId(userId: Ulid): List<FilesystemEntity> = entityRepository.getByOwnerUserId(userId)
     fun map_getByPath(path: String): FilesystemEntity? {
         mapLock.read {
             return pathMap[path]?.let { entityId ->

@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS files (
     inode INTEGER,
     is_filesystem_supported INTEGER NOT NULL,
     owner_user_id TEXT,
-    FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_files_path ON files(path);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_files_inode ON files(inode);
@@ -122,5 +122,7 @@ CREATE TABLE IF NOT EXISTS saved_files (
    user_id TEXT NOT NULL,
    path TEXT NOT NULL,
    created_date INTEGER NOT NULL,
-   PRIMARY KEY (user_id, path)
+   PRIMARY KEY (user_id, path),
+   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
+CREATE INDEX IF NOT EXISTS idx_saved_files_user_id ON saved_files(user_id);

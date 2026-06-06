@@ -273,4 +273,13 @@ class SavedFileService(
     }
 
     fun isSaved(userId: Ulid, path: String) = exists(userId, path).valueOrNull == true
+
+    fun removeAllByUserIdFromCache(userId: Ulid) {
+        if (!useMap) return
+
+        val userFiles = fileMap.remove(userId) ?: return
+        userFiles.keys.forEach { path ->
+            removeFromReverseMap(path, userId)
+        }
+    }
 }

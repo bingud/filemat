@@ -253,4 +253,8 @@ class AuthService(
 
         return Result.ok()
     }
+
+    fun removePrincipalFromMemory(userId: Ulid) {
+        principalMap.remove(userId)
+    }
 }

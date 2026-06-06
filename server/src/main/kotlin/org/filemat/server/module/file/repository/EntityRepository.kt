@@ -25,6 +25,9 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
     @Query("SELECT * FROM files WHERE inode = :inode")
     fun getByInode(inode: Long): FilesystemEntity?
 
+    @Query("SELECT * FROM files WHERE owner_user_id = :userId")
+    fun getByOwnerUserId(userId: Ulid): List<FilesystemEntity>
+
     @Modifying
     @Query("UPDATE files SET path = :path, inode = :inode WHERE entity_id = :entityId")
     fun updateInodeAndPath(entityId: Ulid, inode: Long?, path: String?): Int

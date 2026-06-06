@@ -300,6 +300,25 @@ class EntityPermissionTree() {
     }
 
     /**
+     * Removes all direct user permissions for a user from the tree and inverted index.
+     */
+    fun removeAllPermissionsForUser(userId: Ulid) {
+        treeLock.write {
+            permissionsIndexLock.write {
+                userPermissionsIndex.remove(userId)
+                removeUserFromNodeRecursive(root, userId)
+            }
+        }
+    }
+
+    private fun removeUserFromNodeRecursive(node: Node, userId: Ulid) {
+        node.userPermissions.remove(userId)
+        for (child in node.children.values) {
+            removeUserFromNodeRecursive(child, userId)
+        }
+    }
+
+    /**
      * Recursively removes a permission by ID from the tree.
      * Returns true if found and removed.
      */

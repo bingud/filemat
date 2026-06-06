@@ -68,7 +68,8 @@ enum class UserAction(val index: Int) {
     GENERATE_ADMIN_OTP(59),
     UPDATE_HOME_FOLDER_PATH(60),
     UPDATE_UPLOAD_FOLDER_PATH(61),
-    UPDATE_THUMBNAIL_CACHE_SETTING(62);
+    UPDATE_THUMBNAIL_CACHE_SETTING(62),
+    DELETE_USER(63);
 
     companion object {
         init {

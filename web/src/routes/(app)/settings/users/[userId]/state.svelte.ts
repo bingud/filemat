@@ -8,11 +8,14 @@ class UserPageState {
     selectingRoles = $state(false)
     selectedRoles: ulid[] = $state([])
     removingRoles = $state(false)
+    deletingUser = $state(false)
 
     reset() {
         this.user = null
         this.selectedRoles = []
         this.selectingRoles = false
+        this.removingRoles = false
+        this.deletingUser = false
     }
 }
 
