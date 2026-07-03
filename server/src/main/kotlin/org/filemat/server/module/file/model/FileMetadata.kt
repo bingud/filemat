@@ -28,6 +28,10 @@ data class FileMetadata(
     override val size: Long,
     override val isExecutable: Boolean,
     override val isWritable: Boolean,
+    val isHidden: Boolean? = null,
+    val isSystem: Boolean? = null,
+    val isArchive: Boolean? = null,
+    val isReadOnly: Boolean? = null,
 ) : AbstractFileMetadata()
 
 
@@ -40,6 +44,10 @@ data class FullFileMetadata(
     override val size: Long,
     override val isExecutable: Boolean,
     override val isWritable: Boolean,
+    val isHidden: Boolean? = null,
+    val isSystem: Boolean? = null,
+    val isArchive: Boolean? = null,
+    val isReadOnly: Boolean? = null,
     override val permissions: Collection<FilePermission>,
     override val isSaved: Boolean?,
 ) : AbstractFullFileMetadata() {
@@ -53,6 +61,10 @@ data class FullFileMetadata(
                 size = m.size,
                 isExecutable = m.isExecutable,
                 isWritable = m.isWritable,
+                isHidden = m.isHidden,
+                isSystem = m.isSystem,
+                isArchive = m.isArchive,
+                isReadOnly = m.isReadOnly,
                 permissions = permissions,
                 isSaved = isSaved,
             )

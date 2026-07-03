@@ -1,6 +1,6 @@
 <script lang="ts">
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { doRequest, entriesOf, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { doRequest, entriesOf, formatDuration, formData, handleErr, handleException, normalizeFilePath, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import { prefixSlash } from "$lib/code/util/uiUtil";
     import CodeChunk from "$lib/component/CodeChunk.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
@@ -72,7 +72,9 @@
             return
         }
 
-        visibilities = json
+        visibilities = Object.fromEntries(
+            entriesOf(json as VisibilityMap).map(([path, isExposed]) => [normalizeFilePath(path), isExposed])
+        )
     }
 
     async function verifyAuthCode() {
@@ -173,8 +175,9 @@
 
         if (loading) return
         loading = true
+        const normalizedPath = normalizeFilePath(newFile.path)
         const response = await safeFetch(`/api/v1/admin/system/add-file-visibility`, {
-            body: formData({ auth_code: verifiedCode.code, path: newFile.path, isExposed: newFile.isExposed })
+            body: formData({ auth_code: verifiedCode.code, path: normalizedPath, isExposed: newFile.isExposed })
         })
         loading = false
 
@@ -194,7 +197,7 @@
             return
         }
 
-        visibilities[newFile.path] = newFile.isExposed
+        visibilities[normalizedPath] = newFile.isExposed
         newFile.reset()
     }
 
@@ -204,6 +207,7 @@
     }
 
     async function deleteConfiguration(path: string) {
+        path = normalizeFilePath(path)
         if (!verifiedCode) {
             openLogin()
             return

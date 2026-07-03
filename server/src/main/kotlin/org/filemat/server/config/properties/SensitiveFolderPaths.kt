@@ -2,6 +2,7 @@ package org.filemat.server.config.properties
 
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
+import org.filemat.server.common.platform.Platform
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.config.Props
 
@@ -16,7 +17,7 @@ object SensitiveFolderPaths {
      *
      * Contains stars as wildcards.
      */
-    private val fullList = setOf(
+    private val linuxList = setOf(
         "/etc/shadow",           // Contains password hashes (non-readable without proper rights)
         "/etc/sudoers",          // Critical for controlling sudo access
         "/etc/ssh",              // Houses SSH configuration and host keys
@@ -29,9 +30,30 @@ object SensitiveFolderPaths {
         "/var/lib/postgresql",   // PostgreSQL data files, if applicable
         "/var/lib/docker",       // Docker’s internal data and images
         "/var/run/docker.sock",  // Docker socket, which can grant root-equivalent access
-    ).filterNot { State.App.nonSensitiveFolders.contains(it) }
+    )
+
+    private val windowsList = setOf(
+        "C:/Windows/System32/config",         // Registry hives
+        "C:/Windows/System32/config/SAM",     // Local account hashes
+        "C:/Windows/System32/config/SECURITY",
+        "C:/Windows/System32/config/SYSTEM",
+        "C:/Windows/NTDS",                    // Domain controller database, if present
+        "C:/System Volume Information",
+        "C:/${'$'}Recycle.Bin",
+        "C:/Users/*/AppData/Roaming/Microsoft/Credentials",
+        "C:/Users/*/AppData/Roaming/Microsoft/Protect",
+        "C:/Users/*/.ssh",
+        "C:/Users/*/.gnupg",
+        "C:/Users/*/AppData/Local/Microsoft/Edge/User Data",
+        "C:/Users/*/AppData/Local/Google/Chrome/User Data",
+        "C:/ProgramData/Microsoft/Crypto/RSA/MachineKeys",
+    )
+
+    private val fullList = (if (Platform.isWindows) windowsList else linuxList)
+        .map { it.normalizePath() }
+        .filterNot { State.App.nonSensitiveFolders.contains(it) }
         .toHashSet()
-        .also { if (!State.App.allowReadDataFolder) it.add(Props.dataFolder) }
+        .also { if (!State.App.allowReadDataFolder) it.add(Props.dataFolderPath.toString().normalizePath()) }
 
 
     private val regexList: List<Regex> by lazy {

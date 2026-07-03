@@ -4,6 +4,7 @@ import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.Principal
@@ -53,10 +54,11 @@ class SavedFileService(
     private fun addToMap(file: SavedFile) {
         if (!useMap) return
 
+        val key = pathKey(file.path)
         val map = fileMap.getOrPut(file.userId) { ConcurrentHashMap() }
-        map.put(file.path, file)
+        map.put(key, file)
 
-        addToReverseMap(file.path, file.userId)
+        addToReverseMap(key, file.userId)
     }
 
     private fun addToReverseMap(path: String, userId: Ulid) {
@@ -98,16 +100,18 @@ class SavedFileService(
         if (!useMap) return
 
         // Identify all keys that are either the exact path or a child of that path
+        val oldKey = pathKey(oldPath)
+        val newKey = pathKey(newPath)
         val affectedPaths = pathToUserIdMap.keys.filter {
-            it == oldPath || it.startsWith("$oldPath/")
+            it == oldKey || it.startsWith("$oldKey/")
         }
 
         affectedPaths.forEach { currentPath ->
             // Calculate the new path for this specific entry
             val targetPath = if (currentPath == oldPath) {
-                newPath
+                newKey
             } else {
-                newPath + currentPath.substring(oldPath.length)
+                newKey + currentPath.substring(oldKey.length)
             }
 
             // Move users from old key to new key in reverse map
@@ -122,7 +126,8 @@ class SavedFileService(
             userIdsToMove.forEach { userId ->
                 fileMap[userId]?.let { userFiles ->
                     val file = userFiles.remove(currentPath) ?: return@let
-                    userFiles[targetPath] = file.copy(path = targetPath)
+                    val displayPath = newPath + currentPath.substring(oldKey.length)
+                    userFiles[targetPath] = file.copy(path = displayPath, pathKey = targetPath)
                 }
             }
         }
@@ -130,7 +135,7 @@ class SavedFileService(
 
     fun changePath(path: FilePath, newPath: FilePath): Result<Unit> {
         try {
-            savedFileRepository.updatePath(path.pathString, newPath.pathString)
+            savedFileRepository.updatePath(path.pathString, path.pathKey, newPath.pathString, newPath.pathKey)
             changePathInMap(path.pathString, newPath.pathString)
 
             return Result.ok()
@@ -192,7 +197,7 @@ class SavedFileService(
     }
 
     fun addSavedFile(user: Principal, path: FilePath): Result<SavedFile> {
-        val file = SavedFile(user.userId, path.pathString, unixNow())
+        val file = SavedFile(user.userId, path.pathString, path.pathKey, unixNow())
 
         exists(user.userId, path.pathString).let {
             if (it.isNotSuccessful) return it.cast()
@@ -203,6 +208,7 @@ class SavedFileService(
             savedFileRepository.create(
                 userId = file.userId,
                 path = file.path,
+                pathKey = file.pathKey ?: pathKey(file.path),
                 createdDate = file.createdDate
             )
         } catch (e: Exception) {
@@ -226,7 +232,7 @@ class SavedFileService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        removeFromMap(path.pathString, user?.userId)
+        removeFromMap(pathKey(path.pathString), user?.userId)
 
         return Result.ok()
     }
@@ -234,9 +240,9 @@ class SavedFileService(
     private fun remove(path: String, userId: Ulid?): Result<Unit> {
         return try {
             if (userId != null) {
-                savedFileRepository.removeByUserId(userId, path)
+                savedFileRepository.removeByUserId(userId, pathKey(path))
             } else {
-                savedFileRepository.remove(path)
+                savedFileRepository.remove(pathKey(path))
             }
             return Result.ok()
         } catch (e: Exception) {
@@ -254,12 +260,12 @@ class SavedFileService(
     fun exists(userId: Ulid, path: String): Result<Boolean> {
         if (useMap) {
             return Result.ok(
-                fileMap.get(userId)?.containsKey(path) == true
+                fileMap.get(userId)?.containsKey(pathKey(path)) == true
             )
         }
 
         return try {
-            savedFileRepository.exists(userId, path).toResult()
+            savedFileRepository.exists(userId, pathKey(path)).toResult()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -273,6 +279,8 @@ class SavedFileService(
     }
 
     fun isSaved(userId: Ulid, path: String) = exists(userId, path).valueOrNull == true
+
+    private fun pathKey(path: String): String = PathPolicy.toPathKey(path)!!
 
     fun removeAllByUserIdFromCache(userId: Ulid) {
         if (!useMap) return

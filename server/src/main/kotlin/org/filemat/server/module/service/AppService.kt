@@ -1,6 +1,7 @@
 package org.filemat.server.module.service
 
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.platform.Platform
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.config.Props
 import org.filemat.server.module.log.model.LogType
@@ -12,8 +13,6 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.attribute.UserPrincipal
-import java.nio.file.attribute.UserPrincipalLookupService
 
 /**
  * Service for application utilities
@@ -35,10 +34,13 @@ class AppService(private val settingService: SettingService, private val logServ
             val path = Paths.get(Props.setupCodeFile)
             Files.deleteIfExists(path)
 
-            val perms = PosixFilePermissions.fromString("rwxrwx---")
-            val attr = PosixFilePermissions.asFileAttribute(perms)
-
-            Files.createFile(path, attr)
+            if (Platform.isPosix) {
+                val perms = PosixFilePermissions.fromString("rwxrwx---")
+                val attr = PosixFilePermissions.asFileAttribute(perms)
+                Files.createFile(path, attr)
+            } else {
+                Files.createFile(path)
+            }
             Files.write(path, code.toByteArray(), StandardOpenOption.WRITE)
         } catch (e: Exception) {
             logService.error(

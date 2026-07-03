@@ -3,6 +3,7 @@ package org.filemat.server.module.file.service.file
 import kotlinx.coroutines.flow.Flow
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.*
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
@@ -192,7 +193,13 @@ class FileService(
 
                     val sharePathStr = it.value.path ?: return Result.notFound()
                     val sharePath = FilePath.of(sharePathStr)
-                    val fullPath = sharePath.path.resolve(path.pathString.removePrefix("/"))
+                    fileSecurityService.verifyEntityInode(sharePath, UserAction.GET_SHARED_FILE).let { verifyResult ->
+                        if (verifyResult.isNotSuccessful) return verifyResult.cast()
+                    }
+                    val fullPath = PathPolicy.resolveContainedRelative(sharePath.path, path.pathString.removePrefix("/")).let { resolved ->
+                        if (resolved.isNotSuccessful) return resolved.cast()
+                        resolved.value
+                    }
                     return@let FilePath.ofAlreadyNormalized(fullPath)
                 }
         } else null

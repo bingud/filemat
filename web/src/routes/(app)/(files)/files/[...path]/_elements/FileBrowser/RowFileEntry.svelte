@@ -1,6 +1,6 @@
 <script lang="ts">
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { encodeUrlFilePath, formatBytesRounded, formatUnixMillis, isFolder } from "$lib/code/util/codeUtil.svelte";
+    import { filePathDomKey, formatBytesRounded, formatUnixMillis, isFolder } from "$lib/code/util/codeUtil.svelte";
     import ThreeDotsIcon from "$lib/component/icons/ThreeDotsIcon.svelte";
     import { onMount } from "svelte";
     import { getFilePagePath, type FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
@@ -50,7 +50,9 @@
     on:click={(e) => entryOnClick(e, entry)}
     on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
     draggable={entry.permissions?.includes("MOVE")}
-    data-entry-path={entry.path} rel="noopener noreferrer"
+    data-entry-path={entry.path}
+    data-entry-key={filePathDomKey(entry.path)}
+    rel="noopener noreferrer"
     style="height: {size.height}rem;"
     class="
         file-row-grid gap-x-2 items-center select-none group outline-0 min-h-0
@@ -129,6 +131,7 @@
 {:else}
     <div
         data-entry-path={entry.path}
+        data-entry-key={filePathDomKey(entry.path)}
         style="height: {size.height}rem;"
         class="file-row-grid gap-x-2 items-center py-1 pl-2 pr-1"
         use:observeSkeleton={entry.path}

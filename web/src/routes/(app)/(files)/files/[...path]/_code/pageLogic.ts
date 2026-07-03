@@ -1,9 +1,8 @@
-import { goto } from "$app/navigation"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { addSuffix, filenameFromPath, formData, handleErr, parentFromPath, safeFetch } from "$lib/code/util/codeUtil.svelte"
+import { filenameFromPath, formData, handleErr, normalizeFilePath, parentFromPath, resolvePath, safeFetch } from "$lib/code/util/codeUtil.svelte"
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
@@ -49,6 +48,7 @@ export async function loadPageData(
         bodyParams?: Record<string, string>
     }
 ): Promise<null | "no-permission"> {
+    filePath = normalizeFilePath(filePath)
     filesState.lastFilePathLoaded = filePath
     if (!options.silent && !options.parentFolderOnly) filesState.metaLoading = true
 
@@ -108,7 +108,7 @@ export async function loadPageData(
                 filesState.data.folderMeta = meta
 
                 data.entries?.forEach((entry) => {
-                    const linkPath = `${addSuffix(filePath, "/")}${entry.filename!}`
+                    const linkPath = resolvePath(filePath, entry.filename!)
                     entry.path = linkPath
                 })
                 filesState.data.entries = data.entries || null
@@ -180,8 +180,8 @@ export function handleKeyDown(event: KeyboardEvent) {
         const currentPath = filesState.path
         if (currentPath === "/") return
 
-        const parentPath = currentPath.slice(0, currentPath.lastIndexOf("/"))
-        goto(`/files${parentPath}`)
+        const parentPath = parentFromPath(currentPath)
+        navigateToFilePath(parentPath, filesState.meta.pagePath)
     }
 }
 
@@ -203,7 +203,7 @@ export async function handleNewFile() {
     })
     if (!filename) return
 
-    const newPath = `${path}/${filename}`
+    const newPath = resolvePath(path, filename)
 
     const response = await safeFetch(`/api/v1/file/create-blank`, {
         body: formData({path: newPath})

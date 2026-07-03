@@ -2,7 +2,7 @@
     import { getFileData } from '$lib/code/module/files'
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte'
-    import { explicitEffect } from '$lib/code/util/codeUtil.svelte'
+    import { explicitEffect, normalizeFilePath } from '$lib/code/util/codeUtil.svelte'
     import { Dialog } from '$lib/component/bits-ui-wrapper'
     import ChevronDownIcon from '$lib/component/icons/ChevronDownIcon.svelte'
     import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte'
@@ -39,7 +39,7 @@
         
         const folder = selectedFolderPath || ""
         const divider = folder === "/" ? "" : "/" 
-        return folder + divider + filenameInput.replaceAll("/", "")
+        return folder + divider + filenameInput.replace(/[\\/]+/g, "")
     })
 
     let initialFolder: string | null = $state(null)
@@ -59,21 +59,22 @@
         
         // Parse initialSelection
         if (options.initialSelection) {
+            const initialSelection = normalizeFilePath(options.initialSelection)
             if (hideFilenameInput || options.defaultFilename) {
                 // Filename hidden or provided separately - initialSelection is the folder
-                initialFolder = options.initialSelection
+                initialFolder = initialSelection
             } else {
                 // No filename provided - parse it from initialSelection
-                const lastSlash = options.initialSelection.lastIndexOf(`/`)
+                const lastSlash = initialSelection.lastIndexOf(`/`)
                 if (lastSlash === 0) {
                     initialFolder = `/`
-                    filenameInput = options.initialSelection.substring(1)
+                    filenameInput = initialSelection.substring(1)
                 } else if (lastSlash > 0) {
-                    initialFolder = options.initialSelection.substring(0, lastSlash)
-                    filenameInput = options.initialSelection.substring(lastSlash + 1)
+                    initialFolder = initialSelection.substring(0, lastSlash)
+                    filenameInput = initialSelection.substring(lastSlash + 1)
                 } else {
                     initialFolder = `/`
-                    filenameInput = options.initialSelection
+                    filenameInput = initialSelection
                 }
             }
         }
@@ -142,7 +143,8 @@
         }, 300)
     }
 
-    function syncFromAddressBar(fullPath: string) {
+    function syncFromAddressBar(inputPath: string) {
+        const fullPath = normalizeFilePath(inputPath || "/")
         let folder = "/"
         let file = ""
 
@@ -175,6 +177,7 @@
 
     function selectFolderByPath(path: string) {
         if (!folderTree) return
+        path = normalizeFilePath(path)
         deselectAllNodes(folderTree)
 
         if (path === "/" || path === "") {
@@ -196,6 +199,7 @@
     }
 
     function getParentPath(path: string): string {
+        path = normalizeFilePath(path)
         const segments = path.split(`/`).filter(s => s.length > 0)
         const parentSegments = segments.slice(0, -1)
         return parentSegments.length === 0 ? `/` : `/` + parentSegments.join(`/`)
@@ -215,7 +219,7 @@
 
         // Determine folder and parent to expand
         // If no initialFolder, default to root
-        const folder = initialFolder || `/`
+        const folder = normalizeFilePath(initialFolder || `/`)
         const parent = getParentPath(folder)
         
         // Build skeleton and select the folder
@@ -237,6 +241,7 @@
 
     function findNodeByPath(path: string): FolderNode | null {
         if (!folderTree) return null
+        path = normalizeFilePath(path)
         if (path === "/") return folderTree
 
         const segments = path.split('/').filter(s => s.length > 0)
@@ -253,6 +258,7 @@
 
     function buildSkeleton(path: string) {
         if (!folderTree) return
+        path = normalizeFilePath(path)
         
         const segments = path.split('/').filter(s => s.length > 0)
         let currentNode = folderTree

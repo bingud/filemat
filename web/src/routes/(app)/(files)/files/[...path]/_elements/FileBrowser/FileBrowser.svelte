@@ -41,7 +41,7 @@
         const selectedEntryPath = filesState.selectedEntries.selectedPositions.getChild(filesState.path)
         if (!selectedEntryPath) return
 
-        const filename = filesState.path === "/" ? `${selectedEntryPath}` : `${filesState.path}/${selectedEntryPath}`
+        const filename = resolvePath(filesState.path, selectedEntryPath)
         
         if (filesState.data.entries?.some(v => v.path === filename)) {
             filesState.selectedEntries.setSelected(filename)

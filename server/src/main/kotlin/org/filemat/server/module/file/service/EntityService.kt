@@ -5,6 +5,7 @@ import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
@@ -26,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
-import kotlin.io.path.pathString
 
 /**
  * Service for file entities in the database
@@ -53,7 +53,7 @@ class EntityService(
     fun map_put(entity: FilesystemEntity, lock: Boolean = true) {
         val action = {
             entity.path?.let { path ->
-                val currentOwnerId = pathMap[path]
+                val currentOwnerId = pathMap[pathKey(path)]
                 check(currentOwnerId == null || currentOwnerId == entity.entityId) {
                     "Path cache collision: '$path' is already owned by $currentOwnerId"
                 }
@@ -61,11 +61,11 @@ class EntityService(
 
             val previousEntity = entityMap.put(entity.entityId, entity)
             if (previousEntity != null) {
-                previousEntity.path?.let { pathMap.remove(it, previousEntity.entityId) }
+                previousEntity.path?.let { pathMap.remove(pathKey(it), previousEntity.entityId) }
             }
 
             if (entity.path != null) {
-                pathMap.put(entity.path, entity.entityId)
+                pathMap.put(pathKey(entity.path), entity.entityId)
             }
         }
 
@@ -81,7 +81,7 @@ class EntityService(
     fun map_remove(entityId: Ulid) {
         mapLock.write {
             val entity = entityMap.remove(entityId) ?: return
-            entity.path?.let { pathMap.remove(it) }
+            entity.path?.let { pathMap.remove(pathKey(it)) }
         }
     }
 
@@ -94,14 +94,14 @@ class EntityService(
     fun getByOwnerUserId(userId: Ulid): List<FilesystemEntity> = entityRepository.getByOwnerUserId(userId)
     fun map_getByPath(path: String): FilesystemEntity? {
         mapLock.read {
-            return pathMap[path]?.let { entityId ->
+            return pathMap[pathKey(path)]?.let { entityId ->
                 entityMap[entityId]
             }
         }
     }
 
     fun getEntityIdByPath(path: FilePath, action: UserAction): Result<Ulid> {
-        pathMap[path.pathString]?.let { return it.toResult() }
+        pathMap[path.pathKey]?.let { return it.toResult() }
         getByPath(path.pathString, action).let {
             if (it.isNotSuccessful) return it.cast()
             return it.value.entityId.toResult()
@@ -162,14 +162,8 @@ class EntityService(
     }
 
     fun create(canonicalPath: FilePath, ownerId: Ulid?, userAction: UserAction): Result<FilesystemEntity> {
-        val isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
+        val identity = filesystemService.getFileIdentity(canonicalPath.path, followSymbolicLinks = false)
             ?: return Result.notFound()
-
-        val inode = if (isFilesystemSupported == true) {
-            // Get the Inode of file or symlink due to path-based permissions
-            filesystemService.getInode(canonicalPath.path, false)
-                ?: return Result.notFound()
-        } else null
 
         val existingEntity = getByPath(canonicalPath.pathString, userAction)
         if (existingEntity.notFound == false) return Result.reject("A file with this path has already been indexed.")
@@ -178,8 +172,10 @@ class EntityService(
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
             path = canonicalPath.pathString,
-            inode = inode,
-            isFilesystemSupported = isFilesystemSupported,
+            pathKey = canonicalPath.pathKey,
+            inode = identity.inode,
+            fileKey = identity.fileKey,
+            isFilesystemSupported = identity.isStable,
             ownerId = ownerId,
         )
 
@@ -195,7 +191,9 @@ class EntityService(
             entityRepository.insert(
                 entityId = entity.entityId,
                 path = entity.path,
+                pathKey = entity.pathKey,
                 inode = entity.inode,
+                fileKey = entity.fileKey,
                 isFilesystemSupported = entity.isFilesystemSupported,
                 ownerId = entity.ownerId,
             )
@@ -222,15 +220,14 @@ class EntityService(
         newPath: FilePath?,
         userAction: UserAction
     ): Result<Unit> {
-        val oldBase = path.path
-
         if (newPath != null && (path == newPath || newPath.startsWith(path))) return Result.error("Cannot move a folder into itself.")
 
         // Do all operations in a DB transaction
         return runCatching {
             transactionTemplate.execute<Result<Unit>> { status ->
+                val oldBasePath = path.pathString
                 // Get entities that start with the current path
-                val entities = getAllByPathPrefix(oldBase.pathString, userAction).let {
+                val entities = getAllByPathPrefix(oldBasePath, userAction).let {
                     if (it.isNotSuccessful) return@execute it.cast()
                     it.value
                 }.sortedBy { it.path?.length }
@@ -239,7 +236,7 @@ class EntityService(
                 data class NewPair(val entity: FilesystemEntity, val newPath: String?)
                 val newEntities: List<NewPair> = entities.map { entity: FilesystemEntity ->
                     val suffix = entity.path!!
-                        .removePrefix(oldBase.pathString)
+                        .removePrefix(oldBasePath)
                         .trimStart('/')
 
                     val newEntityPath = newPath?.let { "$it/$suffix" }?.removeSuffix("/")
@@ -260,7 +257,7 @@ class EntityService(
                         override fun afterCommit() {
                             mapLock.write {
                                 newEntities.forEach { entity: NewPair ->
-                                    val newEntity = entity.entity.copy(path = entity.newPath)
+                                    val newEntity = entity.entity.copy(path = entity.newPath, pathKey = pathKeyOrNull(entity.newPath))
 
                                     map_put(entity = newEntity, lock = false)
                                     updatePermissionPath(entity = entity.entity, newPath = entity.newPath)
@@ -277,7 +274,8 @@ class EntityService(
 
     fun getAllByPathPrefix(prefix: String, userAction: UserAction): Result<List<FilesystemEntity>> {
         try {
-            return entityRepository.getAllByPathPrefix(prefix).toResult()
+            val prefixKey = pathKey(prefix)
+            return entityRepository.getAllByPathPrefix(prefixKey).toResult()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -297,9 +295,9 @@ class EntityService(
         }
 
         try {
-            entityRepository.updatePath(entityId, newPath)
+            entityRepository.updatePath(entityId, newPath, pathKeyOrNull(newPath))
 
-            val newEntity = entity.copy(path = newPath)
+            val newEntity = entity.copy(path = newPath, pathKey = pathKeyOrNull(newPath))
             if (updateEntityMap) map_put(newEntity)
         } catch (e: Exception) {
             logService.error(
@@ -333,7 +331,7 @@ class EntityService(
             map_getByPath(path)?.let { return it.toResult() }
 
             // Get from DB
-            val result = entityRepository.getByPath(path) ?: return Result.notFound()
+            val result = entityRepository.getByPathKey(pathKey(path)) ?: return Result.notFound()
             map_put(result)
 
             return result.toResult()
@@ -381,6 +379,20 @@ class EntityService(
         }
     }
 
+    fun getByFileKey(fileKey: String, userAction: UserAction): Result<FilesystemEntity> {
+        return try {
+            entityRepository.getByFileKey(fileKey)?.toResult() ?: Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to get file by identity key from database.",
+                message = e.stackTraceToString()
+            )
+            Result.error("Failed to get file from database.")
+        }
+    }
+
     fun getById(entityId: Ulid, userAction: UserAction): Result<FilesystemEntity> {
         return try {
             entityMap[entityId]?.let { return it.toResult() }
@@ -400,5 +412,8 @@ class EntityService(
             Result.error("Failed to get file from database.")
         }
     }
+
+    private fun pathKey(path: String): String = PathPolicy.toPathKey(path)!!
+    private fun pathKeyOrNull(path: String?): String? = PathPolicy.toPathKey(path)
 
 }

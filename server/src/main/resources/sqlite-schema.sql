@@ -45,13 +45,17 @@ CREATE INDEX IF NOT EXISTS idx_permissions_role_id ON permissions(role_id);
 CREATE TABLE IF NOT EXISTS files (
     entity_id TEXT PRIMARY KEY,
     path TEXT,
+    path_key TEXT,
     inode INTEGER,
+    file_key TEXT,
     is_filesystem_supported INTEGER NOT NULL,
     owner_user_id TEXT,
     FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_files_path ON files(path);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_files_path_key ON files(path_key);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_files_inode ON files(inode);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_files_file_key ON files(file_key);
 
 CREATE TABLE IF NOT EXISTS auth_token (
     auth_token TEXT PRIMARY KEY,
@@ -114,15 +118,18 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
 
 CREATE TABLE IF NOT EXISTS folder_visibility (
     path TEXT PRIMARY KEY,
+    path_key TEXT,
     is_exposed INTEGER NOT NULL,
     created_date INTEGER NOT NULL
 ) STRICT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_folder_visibility_path_key ON folder_visibility(path_key);
 
 CREATE TABLE IF NOT EXISTS saved_files (
    user_id TEXT NOT NULL,
    path TEXT NOT NULL,
+   path_key TEXT NOT NULL,
    created_date INTEGER NOT NULL,
-   PRIMARY KEY (user_id, path),
+   PRIMARY KEY (user_id, path_key),
    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) STRICT;
 CREATE INDEX IF NOT EXISTS idx_saved_files_user_id ON saved_files(user_id);

@@ -50,8 +50,10 @@ dependencies {
 	implementation("org.bytedeco:javacv:1.5.11")
 	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:linux-x86_64")
 	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:linux-arm64")
+	runtimeOnly("org.bytedeco:ffmpeg:7.1-1.5.11:windows-x86_64")
 	runtimeOnly("org.bytedeco:opencv:4.10.0-1.5.11:linux-x86_64")
 	runtimeOnly("org.bytedeco:opencv:4.10.0-1.5.11:linux-arm64")
+	runtimeOnly("org.bytedeco:opencv:4.10.0-1.5.11:windows-x86_64")
 	implementation("com.drewnoakes:metadata-extractor:2.18.0")
 
 	implementation("net.coobird:thumbnailator:0.4.21")

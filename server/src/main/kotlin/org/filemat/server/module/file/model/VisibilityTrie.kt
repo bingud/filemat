@@ -1,5 +1,7 @@
 package org.filemat.server.module.file.model
 
+import org.filemat.server.common.platform.PathPolicy
+
 class VisibilityTrie {
     private val root = TrieNode()
 
@@ -14,7 +16,7 @@ class VisibilityTrie {
 
     fun insert(path: String, isExposed: Boolean) {
         var node = root
-        val parts = path.split("/").filter { it.isNotEmpty() }
+        val parts = segments(path)
         for (part in parts) {
             node = node.children.getOrPut(part) { TrieNode() }
         }
@@ -33,7 +35,7 @@ class VisibilityTrie {
         var lastKnownVisibility = if (root.hasRule) root.isExposed else null
         var lastKnownVisibilityIndex = if (root.hasRule) -1 else null
 
-        val parts = path.split("/").filter { it.isNotEmpty() }
+        val parts = segments(path)
         parts.forEachIndexed { index, part ->
             // Update from the current node’s rule before moving on
             // (We already did this for the root outside the loop.)
@@ -80,7 +82,7 @@ class VisibilityTrie {
 
     fun hasExplicitRule(path: String): Boolean {
         var node = root
-        val parts = path.split("/").filter { it.isNotEmpty() }
+        val parts = segments(path)
         for (part in parts) {
             node = node.children[part] ?: return false
         }
@@ -106,10 +108,15 @@ class VisibilityTrie {
             return !node.hasRule && node.children.isEmpty()
         }
 
-        val parts = path.split("/").filter { it.isNotEmpty() }
+        val parts = segments(path)
         dfs(root, parts, 0)
     }
 
+    private fun segments(path: String): List<String> {
+        return PathPolicy.toPathKey(path)!!
+            .split("/")
+            .filter { it.isNotEmpty() }
+    }
 
     private class TrieNode {
         val children = mutableMapOf<String, TrieNode>()

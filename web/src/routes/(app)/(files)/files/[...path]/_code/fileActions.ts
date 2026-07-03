@@ -79,10 +79,7 @@ export async function handleNewFolder() {
     const folderName = prompt("Enter folder name:")
     if (!folderName) return
 
-    const currentPath = filesState.path === '/' ? '' : filesState.path
-    const targetPath = `${currentPath}/${folderName}`
-    console.log(`targetPath`, targetPath)
-    console.log(`currentPath`, currentPath)
+    const targetPath = resolvePath(filesState.path, folderName)
 
     const response = await safeFetch('/api/v1/folder/create', {
         method: 'POST',

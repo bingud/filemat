@@ -4,6 +4,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
@@ -88,11 +89,16 @@ class FileMetadataService(
         val canonicalSharePathResult = resolvePath(rawSharePath)
         if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
         val canonicalSharePath = canonicalSharePathResult.value
+        fileService.verifyEntityInode(canonicalSharePath, UserAction.GET_SHARED_FILE).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
         // Get path of requested file
-        val canonicalPath = FilePath.ofAlreadyNormalized(
-            canonicalSharePath.path.resolve(rawPath.path.toString().removePrefix("/"))
-        )
+        val containedPath = PathPolicy.resolveContainedRelative(canonicalSharePath.path, rawPath.pathString.removePrefix("/")).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        val canonicalPath = FilePath.ofAlreadyNormalized(containedPath)
 
         val lock = fileLockService.getLock(canonicalPath.path, LockType.READ)
         if (!lock.successful) return Result.reject("This file is currently being modified.")
@@ -119,7 +125,7 @@ class FileMetadataService(
                     val relativePath = canonicalPath.path.relativize(Path.of(entry.path))
                     val newPath = rawPath.path.resolve(relativePath)
 
-                    entry.copy(path = newPath.toString())
+                    entry.copy(path = PathPolicy.toStorageString(newPath))
                 }
 
                 return Result.ok(metadata to entries)

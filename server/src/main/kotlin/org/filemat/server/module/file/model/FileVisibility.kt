@@ -20,6 +20,8 @@ data class FileVisibility(
     @Id
     @Column("path")
     override val path: String,
+    @Column("path_key")
+    val pathKey: String? = null,
     @Column("is_exposed")
     override val isExposed: Boolean,
     @Column("created_date")

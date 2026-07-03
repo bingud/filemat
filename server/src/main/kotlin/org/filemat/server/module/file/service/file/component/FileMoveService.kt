@@ -2,6 +2,7 @@ package org.filemat.server.module.file.service.file.component
 
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
@@ -30,7 +31,7 @@ class FileMoveService(
         val canonicalPath = FilePath.ofAlreadyNormalized(sourceParent.path.resolve(rawPath.path.fileName))
 
         // Safety checks
-        if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
+        if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("Cannot move root folder.")
 
         // Get the target parent folder
         val rawDestinationParentPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent)
@@ -43,6 +44,9 @@ class FileMoveService(
             }
 
         // Get the target path
+        PathPolicy.validateFileName(rawDestinationPath.path.fileName.toString()).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
         val canonicalDestinationPath = FilePath.ofAlreadyNormalized(destinationParentPath.path.resolve(rawDestinationPath.path.fileName))
 
         // Check if file is being moved into itself

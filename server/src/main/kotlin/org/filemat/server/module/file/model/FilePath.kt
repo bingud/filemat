@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.model
 
 import org.filemat.server.common.util.getNormalizedPath
+import org.filemat.server.common.platform.PathPolicy
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -11,20 +12,21 @@ data class FilePath(
     private val normalizedPath: Path? = null,
 ) {
     val path: Path by lazy { normalizedPath ?: originalInputPath.getNormalizedPath() }
-    val pathString: String by lazy { path.toString() }
+    val pathString: String by lazy { PathPolicy.toStorageString(path) }
+    val pathKey: String by lazy { PathPolicy.toPathKey(pathString)!! }
 
     override fun toString() = pathString
     override fun equals(other: Any?): Boolean {
-        return other is FilePath && this.pathString == other.pathString
+        return other is FilePath && this.pathKey == other.pathKey
     }
 
     override fun hashCode(): Int {
-        return pathString.hashCode()
+        return pathKey.hashCode()
     }
 
-    fun startsWith(other: FilePath) = this.path.startsWith(other.path)
-    fun startsWith(other: Path) = this.path.startsWith(other)
-    fun startsWith(other: String) = this.path.startsWith(other)
+    fun startsWith(other: FilePath) = PathPolicy.startsWith(this.path, other.path)
+    fun startsWith(other: Path) = PathPolicy.startsWith(this.path, other)
+    fun startsWith(other: String) = PathPolicy.startsWith(this.path, FilePath.of(other).path)
 
     fun exists(vararg options: LinkOption) = this.path.exists(*options)
 

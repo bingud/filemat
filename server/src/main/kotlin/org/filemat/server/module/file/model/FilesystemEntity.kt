@@ -13,8 +13,12 @@ data class FilesystemEntity(
     val entityId: Ulid,
     @Column("path")
     val path: String?,
+    @Column("path_key")
+    val pathKey: String?,
     @Column("inode")
     val inode: Long?,
+    @Column("file_key")
+    val fileKey: String?,
     @Column("is_filesystem_supported")
     val isFilesystemSupported: Boolean,
     @Column("owner_user_id")

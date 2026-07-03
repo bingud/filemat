@@ -18,7 +18,7 @@
     import NewTabIcon from "$lib/component/icons/NewTabIcon.svelte";
     import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
     import { option_downloadSelectedFiles } from "../../_code/fileActions";
-    import type { FileContextMenuProps } from "../../_code/fileBrowserUtil.svelte";
+    import { getFilePagePath, type FileContextMenuProps } from "../../_code/fileBrowserUtil.svelte";
 
     let {
         entryMenuButton,
@@ -73,7 +73,7 @@
     <Popover.Content customAnchor={entryMenuButton} align="start" >
         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-popover select-none">
             <a 
-                href={`${filesState.meta.pagePath}${menuEntry.path}`}
+                href={getFilePagePath(menuEntry.path, filesState.meta.pagePath)}
                 on:click={close}
                 on:auxclick={close}
                 target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
@@ -86,7 +86,7 @@
 
             {#if filesState.meta.type === "allShared" || filesState.isSearchOpen || filesState.meta.type === "saved"}
                 <a 
-                    href={`${filesState.meta.pagePath}${parentFromPath(menuEntry.path)}`}
+                    href={getFilePagePath(parentFromPath(menuEntry.path), filesState.meta.pagePath)}
                     on:click={close}
                     on:auxclick={close}
                     class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"

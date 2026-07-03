@@ -2,6 +2,7 @@ package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
@@ -85,7 +86,7 @@ class FileVisibilityService(
 
             val now = unixNow()
             paths.forEach {
-                fileVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)
+                fileVisibilityRepository.insertOrReplace(it.path, pathKey(it.path), it.isExposed, now)
                 visibilityTrie.insert(it.path, it.isExposed)
             }
             return Result.ok(Unit)
@@ -102,7 +103,7 @@ class FileVisibilityService(
 
     fun removePath(path: String, userAction: UserAction): Result<Unit> {
         try {
-            fileVisibilityRepository.remove(path)
+            fileVisibilityRepository.remove(pathKey(path))
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -121,4 +122,6 @@ class FileVisibilityService(
      * Create new folder visibility configurations
      */
     fun insertPath(path: IFileVisibility, userAction: UserAction): Result<Unit> = insertPaths(listOf(path), userAction)
+
+    private fun pathKey(path: String): String = PathPolicy.toPathKey(path)!!
 }

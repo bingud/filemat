@@ -5,6 +5,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.getPathRelationship
 import org.filemat.server.common.util.resolvePath
@@ -164,8 +165,8 @@ class FileContentService(
                 result.value
             }.also {
                 // Loop prevention: checks if source contains target or target contains source
-                if (currentSource.startsWith(it.path)) return failedCount + 1
-                if (it.path.startsWith(currentSource)) return failedCount + 1
+                if (PathPolicy.startsWith(currentSource, it.path)) return failedCount + 1
+                if (PathPolicy.startsWith(it.path, currentSource)) return failedCount + 1
             }
         } else null
 
@@ -178,7 +179,7 @@ class FileContentService(
                 try {
                     // Add directory entry to Zip (must end in /)
                     if (currentZipPath != null) {
-                        val dirEntryName = currentZipPath.toString().let { if (it.endsWith("/")) it else "$it/" }
+                        val dirEntryName = toZipEntryName(currentZipPath).let { if (it.endsWith("/")) it else "$it/" }
                         zip.putNextEntry(ZipEntry(dirEntryName))
                         zip.closeEntry()
                     }
@@ -222,7 +223,7 @@ class FileContentService(
 
             // 5. Write File to Zip
             try {
-                val entryName = currentZipPath?.toString() ?: currentSource.fileName.toString()
+                val entryName = currentZipPath?.let { toZipEntryName(it) } ?: currentSource.fileName.toString()
                 zip.putNextEntry(ZipEntry(entryName))
 
                 val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
@@ -238,6 +239,12 @@ class FileContentService(
 
             return@tryWithLock failedCount
         }.onFailure { failedCount + 1 }
+    }
+
+    private fun toZipEntryName(path: Path): String {
+        return path.toString()
+            .replace('\\', '/')
+            .trimStart('/')
     }
 
     data class EditFileResult(val modifiedDate: Long, val size: Long)
@@ -302,6 +309,9 @@ class FileContentService(
         try {
             // Get folder canonical path
             val folderName = rawPath.path.fileName
+            PathPolicy.validateFileName(folderName.toString()).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
             val canonicalPath = FilePath.ofAlreadyNormalized(canonicalParent.path.resolve(folderName))
 
             // Check if folder already exists
@@ -344,6 +354,9 @@ class FileContentService(
         try {
             // Get folder canonical path
             val filename = rawPath.path.fileName
+            PathPolicy.validateFileName(filename.toString()).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
             val canonicalPath = FilePath.ofAlreadyNormalized(canonicalParent.path.resolve(filename))
 
             // Check if folder already exists

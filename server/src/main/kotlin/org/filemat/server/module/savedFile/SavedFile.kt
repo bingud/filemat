@@ -2,6 +2,7 @@ package org.filemat.server.module.savedFile
 
 import com.github.f4b6a3.ulid.Ulid
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import org.filemat.server.config.UlidSerializer
 import org.springframework.data.relational.core.mapping.Column
@@ -15,6 +16,9 @@ data class SavedFile(
     val userId: Ulid,
     @Column("path")
     val path: String,
+    @Transient
+    @Column("path_key")
+    val pathKey: String? = null,
     @Column("created_date")
     val createdDate: Long,
 )

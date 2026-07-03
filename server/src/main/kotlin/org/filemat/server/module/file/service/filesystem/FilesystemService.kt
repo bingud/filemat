@@ -3,13 +3,15 @@ package org.filemat.server.module.file.service.filesystem
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FileUtils
+import org.filemat.server.common.platform.Platform
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
 import org.filemat.server.module.file.service.filesystem.fileOperation.*
 import org.springframework.stereotype.Service
 import java.nio.file.*
-import java.nio.file.attribute.PosixFileAttributes
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.DosFileAttributes
 import kotlin.io.path.*
 
 
@@ -66,7 +68,7 @@ class FilesystemService(
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {
-        val attributes: PosixFileAttributes = readAttributes(path.path, followSymbolicLinks = false)
+        val attributes: BasicFileAttributes = readAttributes(path.path, followSymbolicLinks = false)
             ?: return null
 
         val type = when {
@@ -82,6 +84,8 @@ class FilesystemService(
         val creationTime = attributes.creationTime().toMillis()
         val modificationTime = attributes.lastModifiedTime().toMillis()
 
+        val dosAttributes = if (Platform.isWindows) readDosAttributes(path.path, followSymbolicLinks = false) else null
+
         return FileMetadata(
             path = path.pathString,
             modifiedDate = modificationTime,
@@ -89,19 +93,33 @@ class FilesystemService(
             fileType = type,
             size = attributes.size(),
             isExecutable = Files.isExecutable(path.path),
-            isWritable = Files.isWritable(path.path),
+            isWritable = Files.isWritable(path.path) && dosAttributes?.isReadOnly != true,
+            isHidden = dosAttributes?.isHidden,
+            isSystem = dosAttributes?.isSystem,
+            isArchive = dosAttributes?.isArchive,
+            isReadOnly = dosAttributes?.isReadOnly,
         )
     }
 
     /**
      * Returns basic file attributes of path
      */
-    fun readAttributes(path: Path, followSymbolicLinks: Boolean): PosixFileAttributes? {
+    fun readAttributes(path: Path, followSymbolicLinks: Boolean): BasicFileAttributes? {
         return runCatching {
             if (followSymbolicLinks) {
-                Files.readAttributes(path, PosixFileAttributes::class.java)
+                Files.readAttributes(path, BasicFileAttributes::class.java)
             } else {
-                Files.readAttributes(path, PosixFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            }
+        }.getOrNull()
+    }
+
+    fun readDosAttributes(path: Path, followSymbolicLinks: Boolean): DosFileAttributes? {
+        return runCatching {
+            if (followSymbolicLinks) {
+                Files.readAttributes(path, DosFileAttributes::class.java)
+            } else {
+                Files.readAttributes(path, DosFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
             }
         }.getOrNull()
     }
@@ -150,5 +168,7 @@ class FilesystemService(
      * Returns inode number for input path
      */
     fun getInode(path: Path, followSymbolicLinks: Boolean) = FileUtils.getInode(path, followSymbolicLinks)
+
+    fun getFileIdentity(path: Path, followSymbolicLinks: Boolean) = FileUtils.getFileIdentity(path, followSymbolicLinks)
 
 }

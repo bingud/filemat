@@ -1,6 +1,7 @@
 package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.platform.Platform
 import org.filemat.server.config.properties.NonDeletableSystemPaths
 import org.filemat.server.config.properties.SensitiveFolderPaths
 import java.nio.file.Path
@@ -11,12 +12,22 @@ import java.nio.file.Path
 object Props {
 
     const val appName = "Filemat"
-    const val dataFolder = "/var/lib/filemat"
-    val dataFolderPath = Path.of(dataFolder)
+    val dataFolder: String = System.getenv("FM_DATA_DIR")
+        ?: if (Platform.isWindows) {
+            Path.of(System.getenv("ProgramData") ?: System.getProperty("user.home"), appName).toString()
+        } else {
+            "/var/lib/filemat"
+        }
+    val dataFolderPath: Path = Path.of(dataFolder).toAbsolutePath().normalize()
+    val databaseFilePath: Path = dataFolderPath.resolve("filemat-server.db")
 
-    const val setupCodeFile = "$dataFolder/setup-code.txt"
-    const val authCodeFile = "$dataFolder/auth-code.txt"
-    const val defaultUploadFolderPath = "/tmp/filemat"
+    val setupCodeFile: String = dataFolderPath.resolve("setup-code.txt").toString()
+    val authCodeFile: String = dataFolderPath.resolve("auth-code.txt").toString()
+    val defaultUploadFolderPath: String = if (Platform.isWindows) {
+        dataFolderPath.resolve("uploads").toString()
+    } else {
+        "/tmp/filemat"
+    }
 
     val sensitiveFolders = SensitiveFolderPaths
     val nonDeletableFolders = NonDeletableSystemPaths

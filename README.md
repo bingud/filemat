@@ -5,7 +5,8 @@
 [Installation](<#installation> "Installation")  
 [Configuration](<#configuration> "Configuration")  
 [Usage recommendations](<#usage-recommendations> "Usage recommendations")  
-[Technical details](<#technical-details> "Technical details")  
+ [Technical details](<#technical-details> "Technical details")  
+ [Native Windows beta](</docs/windows-native.md> "Native Windows beta")  
 
 ## What is Filemat?
 
@@ -30,7 +31,7 @@ Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org
 
 ## Requirements
 
-- Linux
+- Linux, or native Windows beta
 - Java 17
 - (Or just Docker)
 
@@ -47,7 +48,7 @@ Filemat is currently not available on `apt`.
 
 ### \- Running normally
 
-Make sure your machine has Linux and Java 17 installed.  
+Make sure your machine has Linux or Windows and Java 17 installed. Native Windows support is beta; see the [Windows runtime guide](/docs/windows-native.md).  
 Download the JAR file from the releases section.  
   
 Use this command to run the file with Java (change the filename according to the JAR file you downloaded):  
@@ -60,7 +61,7 @@ Use this command to run the file with Java (change the filename according to the
 
 ### \- Environment variables
 
-Input multiple values by putting a colon in between (`/one:/two`)
+Input multiple path values as a JSON array. Legacy separator strings use the OS path separator (`:` on Linux, `;` on Windows).
 
 | Name                                                                 | Description                                                          | Default value                                                        | Example value                                                        |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |

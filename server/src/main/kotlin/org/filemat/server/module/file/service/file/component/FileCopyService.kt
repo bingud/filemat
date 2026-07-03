@@ -3,6 +3,7 @@ package org.filemat.server.module.file.service.file.component
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.isFileStoreMatching
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
@@ -30,7 +31,7 @@ class FileCopyService(private val fileService: FileService, private val filesyst
                 result.value
             }
 
-        if (canonicalPath.pathString == "/") return Result.reject("Cannot copy root folder.")
+        if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("Cannot copy root folder.")
 
         val rawParentDestinationPath = FilePath.of(rawDestinationPath.path.parent.pathString)
 
@@ -66,6 +67,9 @@ class FileCopyService(private val fileService: FileService, private val filesyst
         }
 
         // Get destination path
+        PathPolicy.validateFileName(rawDestinationPath.path.fileName.toString()).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
         val canonicalDestinationPath = FilePath.ofAlreadyNormalized(
             canonicalParentDestinationPath.path.resolve(rawDestinationPath.path.fileName)
         )

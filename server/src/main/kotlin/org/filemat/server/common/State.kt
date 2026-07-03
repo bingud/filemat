@@ -2,8 +2,10 @@ package org.filemat.server.common
 
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.normalizePath
+import org.filemat.server.common.util.parseJsonOrNull
 import org.filemat.server.module.role.model.Role
 import java.time.Duration
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.properties.Delegates
 
@@ -90,7 +92,10 @@ fun List<String>.print_forceDeletable() = println("Folders that were made deleta
 
 private fun String?.parseFileList(also: (List<String>) -> Any): HashSet<String> {
     this ?: return hashSetOf()
-    return this.split(":")
+    val parsed = this.parseJsonOrNull<List<String>>()
+        ?: this.split(File.pathSeparator)
+
+    return parsed
         .map { it.normalizePath() }
         .also { also(it) }
         .toHashSet()

@@ -8,6 +8,7 @@ import kotlinx.serialization.json.*
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.config.Props
 import org.filemat.server.config.TransactionTemplateConfig
 import org.filemat.server.module.auth.model.Principal
@@ -215,10 +216,8 @@ fun runDev(block: () -> Unit) {
 /**
  * Fully normalizes a path, makes it absolute
  */
-fun String.getNormalizedPath(): Path = Paths.get("/").resolve(this.trimStart('/')).normalize()
-fun Path.getNormalizedPath(): Path =
-    if (this.isAbsolute) normalize()
-    else Paths.get("/").resolve(this).normalize()
+fun String.getNormalizedPath(): Path = PathPolicy.normalizeInputPath(this)
+fun Path.getNormalizedPath(): Path = PathPolicy.normalizePath(this)
 
 fun String.normalizePath() = this.getNormalizedPath().toString()
 

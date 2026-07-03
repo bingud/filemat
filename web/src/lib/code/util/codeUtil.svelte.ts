@@ -117,17 +117,7 @@ export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boo
  * Appends a filename to a directory path
  */
 export function appendFilename(path: string, filename: string): string {
-    // ensure directory path ends with a single slash
-    const normalizedPath = path.endsWith('/')
-        ? path
-        : path + '/'
-
-    // strip leading slash from filename if present
-    const normalizedFilename = filename.startsWith('/')
-        ? filename.substring(1)
-        : filename
-
-    return normalizedPath + normalizedFilename
+    return resolvePath(path, filename)
 }
 
 /**
@@ -310,6 +300,34 @@ export function prependIfMissing(str: string, prefix: string) {
 }  
 
 /**
+ * Keeps client-side file paths in the virtual `/a/b` format regardless of host OS.
+ */
+export function normalizeFilePath(path: string): string {
+    const slashPath = path.replace(/\\/g, "/").replace(/\/+/g, "/")
+    const trimmedPath = slashPath.length > 1
+        ? slashPath.replace(/\/+$/, "")
+        : slashPath
+
+    return prependIfMissing(trimmedPath || "/", "/")
+}
+
+export function filePathDomKey(path: string): string {
+    return encodeURIComponent(normalizeFilePath(path))
+}
+
+export function cssEscape(value: string): string {
+    if (typeof CSS !== "undefined" && CSS.escape) {
+        return CSS.escape(value)
+    }
+
+    return value.replace(/[\0-\x1F\x7F]|^-?\d|^-$|[^\w-]/g, (char) => {
+        const codePoint = char.codePointAt(0)
+        if (codePoint === undefined || codePoint === 0) return "\uFFFD"
+        return `\\${codePoint.toString(16)} `
+    })
+}
+
+/**
  * Iterates through an object
  */
 export function forEachObject<K extends string | number | symbol, V>(obj: Record<K, V>, block: (key: K, value: V) => any): void {
@@ -340,9 +358,9 @@ export function letterS(count: number): "s" | "" {
  * Resolve a path from a parent and filename
  */
 export function resolvePath(inputFolder: string, inputFilename: string): string {
-    const folder = inputFolder.replace(/\/+$/, '')
-    const file = inputFilename.replace(/^\/+/, '')
-    return `${folder}/${file}`
+    const folder = normalizeFilePath(inputFolder)
+    const file = inputFilename.replace(/\\/g, "/").replace(/^\/+/, "")
+    return normalizeFilePath(`${folder === "/" ? "" : folder}/${file}`)
 }
 
 /**
@@ -406,20 +424,24 @@ export function includesAny<T>(list: T[], items: T[]): boolean {
  * Returns filename from a file path
  */
 export function filenameFromPath(path: string): string {
-    return path.substring(path.lastIndexOf("/") + 1);
+    const normalized = normalizeFilePath(path)
+    return normalized.substring(normalized.lastIndexOf("/") + 1);
 }
 
 /**
  * Checks if a file path is a descendant of a given parent directory
  */
 export function isChildOf(path: string, parent: string): boolean {
+    const normalizedPath = normalizeFilePath(path)
+    const normalizedInputParent = normalizeFilePath(parent)
+
     // ensure parent ends with slash
-    const normalizedParent = parent.endsWith('/')
-        ? parent
-        : parent + '/'
+    const normalizedParent = normalizedInputParent.endsWith('/')
+        ? normalizedInputParent
+        : normalizedInputParent + '/'
     // must start with parent path and not be exactly equal
-    return path !== parent
-        && path.startsWith(normalizedParent)
+    return normalizedPath !== normalizedInputParent
+        && normalizedPath.startsWith(normalizedParent)
 }
 
 
@@ -428,17 +450,19 @@ export function isChildOf(path: string, parent: string): boolean {
  */
 export function parentFromPath(path: string): string {
     // strip trailing slash if any
-    const normalized = path.endsWith('/') 
-        ? path.slice(0, -1) 
-        : path
+    const normalizedPath = normalizeFilePath(path)
+    const normalized = normalizedPath.endsWith('/') && normalizedPath !== "/"
+        ? normalizedPath.slice(0, -1)
+        : normalizedPath
     const idx = normalized.lastIndexOf('/')
-    return idx !== -1
+    return idx > 0
         ? normalized.substring(0, idx)
-        : ''
+        : '/'
 }
 
 export function appendTrailingSlash(path: string): string {
-    return path + (path === "/" ? "" : "/")
+    const normalized = normalizeFilePath(path)
+    return normalized + (normalized === "/" ? "" : "/")
 }
 
 /**
@@ -736,8 +760,8 @@ export function printStack() {
 }
 
 export function isPathDirectChild(parent: string, child: string): boolean {
-    const p = parent.replace(/\/+$/, '')
-    const c = child.replace(/\/+$/, '')
+    const p = normalizeFilePath(parent).replace(/\/+$/, '')
+    const c = normalizeFilePath(child).replace(/\/+$/, '')
     const rel = c.slice(p.length)
     return c.startsWith(p + '/') && !rel.slice(1).includes('/')
 }
@@ -907,7 +931,12 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 export function encodeUrlFilePath(str: string): string {
-    return str.split('/').map(encodeURIComponent).join('/')
+    return normalizeFilePath(str).split('/').map(encodeURIComponent).join('/')
+}
+
+export function getFileRoutePath(path: string, pagePath: string): string {
+    const normalizedPagePath = pagePath.replace(/\/+$/, "")
+    return `${normalizedPagePath}${encodeUrlFilePath(path)}`
 }
 
 export function calculateFilesSize(list: FileMetadata[]): number {

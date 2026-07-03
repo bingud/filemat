@@ -1,7 +1,7 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { filenameFromPath, generateRandomNumber, isFolder, keysOf, normalizeFilePath, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { SvelteSet } from "svelte/reactivity"
 import { VisibilityManager } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
@@ -32,7 +32,7 @@ class FilesState {
         if (appState.currentPath.files || appState.currentPath.sharedFiles) {
             let path = page.params.path
             if (!path) return "/"
-            return prependIfMissing(path, "/")
+            return normalizeFilePath(path)
         } else {
             return "/"
         }

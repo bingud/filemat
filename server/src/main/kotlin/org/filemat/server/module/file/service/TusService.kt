@@ -8,6 +8,7 @@ import me.desair.tus.server.upload.UploadInfo
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.wrappers.BufferedResponseWrapper
 import org.filemat.server.common.util.classes.wrappers.RequestPathOverrideWrapper
@@ -244,13 +245,17 @@ class TusService(
      */
     private fun handleUploadedFile(user: Principal, info: UploadInfo): Result<String> {
         // Get the current uploaded file location
-        val sourceFolder = "${State.App.uploadFolderPath}/uploads/${info.id}"
-        val uploadLocation = "$sourceFolder/data".toFilePath()
+        val sourceFolderPath = Path.of(State.App.uploadFolderPath).resolve("uploads").resolve(info.id.toString())
+        val sourceFolder = FilePath.ofAlreadyNormalized(sourceFolderPath)
+        val uploadLocation = FilePath.ofAlreadyNormalized(sourceFolderPath.resolve("data"))
 
         // Get destination paths
         val rawDestinationPath = info.metadata["path"]?.toFilePath() ?: return Result.error("Destination path is not in upload metadata.")
         val rawDestinationParent = getParentFromPath(rawDestinationPath)
         val filename = getFilenameFromPath(rawDestinationPath.path)
+        PathPolicy.validateFileName(filename).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
         // Resolve the destination parent folder
         val destinationParent = let {
@@ -302,7 +307,7 @@ class TusService(
         if (fileMoved.isNotSuccessful) return Result.error("Failed to move the file from the uploads folder. ${fileMoved.errorOrNull ?: ""}")
 
         // Delete the TUS upload folder
-        filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
+        filesystem.deleteFile(user = user, target = sourceFolder, ignorePermissions = true)
 
         // Create an entity
         entityService.create(

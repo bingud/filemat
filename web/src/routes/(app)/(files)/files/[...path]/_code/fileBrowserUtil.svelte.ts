@@ -4,7 +4,7 @@ import type { GridPreviewSize, RowPreviewSize } from "$lib/code/config/values"
 import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { cssEscape, filePathDomKey, filenameFromPath, getFileRoutePath, normalizeFilePath } from "$lib/code/util/codeUtil.svelte"
 import { SvelteSet } from "svelte/reactivity"
 
 export type FileContextMenuProps = {
@@ -348,8 +348,6 @@ export class VisibilityManager {
      * the headless image is replaced and the browser serves the data from the service worker cache.
      */
     preloadAllPreviews(entries: FullFileMetadata[], pixelSize: number) {
-        const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
-
         let added = false
         for (const entry of entries) {
             // Skip entries that already have a registered image (real or headless)
@@ -359,7 +357,12 @@ export class VisibilityManager {
             if (format !== `image` && format !== `video`) continue
 
             const endpoint = format === `image` ? `image-thumbnail` : `video-preview`
-            const src = `/api/v1/file/${endpoint}?size=${pixelSize}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`
+            const params = new URLSearchParams()
+            params.set("size", `${pixelSize}`)
+            params.set("path", normalizeFilePath(entry.path))
+            params.set("modified", `${entry.modifiedDate}`)
+            if (filesState.getIsShared()) params.set("shareToken", filesState.meta.shareToken)
+            const src = `/api/v1/file/${endpoint}?${params.toString()}`
 
             const img = document.createElement(`img`)
             img.setAttribute(`data-src`, src)
@@ -681,19 +684,18 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
 
 export function openEntry(path: string) {
     if (filesState.metaLoading) return
-    goto(getFilePagePath(path, filesState.meta.pagePath))
+    goto(getFilePagePath(normalizeFilePath(path), filesState.meta.pagePath))
 }
 
 export function getFilePagePath(path: string, pagePath: string) {
-    const slash = path.startsWith('/') ? '' : '/'
-    return `${pagePath}${slash}${encodeUrlFilePath(path)}`
+    return getFileRoutePath(path, pagePath)
 }
 
 export function scrollSelectedEntryIntoView(path: string | null = null) {
     setTimeout(() => {
         const targetPath = filesState.selectedEntries.singlePath || path
         if (targetPath) {
-            const selector = `[data-entry-path="${targetPath.replace(/"/g, '\\"')}"]`
+            const selector = `[data-entry-key=${cssEscape(filePathDomKey(targetPath))}]`
             const element = document.querySelector(selector) as HTMLAnchorElement
             if (element) {
                 element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })

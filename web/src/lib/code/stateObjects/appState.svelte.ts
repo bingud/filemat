@@ -2,7 +2,7 @@ import { page } from "$app/state"
 import { untrack } from "svelte"
 import type { Role } from "../auth/types"
 import type { ulid, ValuesOf } from "../types/types"
-import { entriesOf } from "../util/codeUtil.svelte"
+import { entriesOf, getFileRoutePath } from "../util/codeUtil.svelte"
 import { auth } from "./authState.svelte"
 
 export const filePagePaths = {
@@ -89,7 +89,7 @@ class AppState {
             state[name] = matches
         })
 
-        state["home"] = current === `/files${auth.principal?.homeFolderPath}`
+        state["home"] = current === getFileRoutePath(auth.principal?.homeFolderPath ?? "/", "/files")
 
         return state as Record<ValuesOf<typeof sitePaths> | "home", boolean>
     })

@@ -7,6 +7,7 @@
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
     import { getFilePagePath, openEntry } from '../../_code/fileBrowserUtil.svelte';
     import CopyIcon from '$lib/component/icons/CopyIcon.svelte';
+    import { normalizeFilePath } from '$lib/code/util/codeUtil.svelte'
 
     // Context menu for breadcrumb buttons
     let contextMenuButton: HTMLElement | null = $state(null)
@@ -38,13 +39,17 @@
     }
 
     function option_details(segment: Segment) {
-        filesState.selectedEntries.setSelected(segment.path === "" ? `/` : `/${segment.path}`)
+        filesState.selectedEntries.setSelected(segmentFilePath(segment))
         filesState.ui.detailsOpen = true
         closeContextMenu()
     }
     function option_copyPath(segment: Segment) {
-        navigator.clipboard.writeText("/" + segment.path)
+        navigator.clipboard.writeText(segmentFilePath(segment))
         closeContextMenu()
+    }
+
+    function segmentFilePath(segment: Segment) {
+        return normalizeFilePath(segment.path)
     }
 
     function closeContextMenu() {
@@ -76,12 +81,12 @@
             o: { classes: string, withPopup: Boolean, isClickable: boolean }
         )}
             <a 
-                href="{getFilePagePath(segment.path, filesState.meta.pagePath)}" 
+                href={getFilePagePath(segmentFilePath(segment), filesState.meta.pagePath)} 
                 title={segment.name} 
                 on:click={(e) => {
                     if (o.isClickable) { 
                         filesState.search.clear()
-                        openEntry(`/${segment.path}`)
+                        openEntry(segmentFilePath(segment))
                         e.preventDefault()
                     }
                 }}

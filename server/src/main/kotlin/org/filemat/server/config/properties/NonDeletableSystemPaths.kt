@@ -1,7 +1,9 @@
 package org.filemat.server.config.properties
 
 import kotlinx.serialization.json.Json
+import org.filemat.server.common.platform.Platform
 import org.filemat.server.common.util.normalizePath
+import org.filemat.server.config.Props
 
 /**
  * Defines core system folders that should generally be non-deletable.
@@ -11,7 +13,7 @@ object NonDeletableSystemPaths {
     /**
      * List of critical system folders that should not be deleted.
      */
-    private val protectedList = setOf(
+    private val linuxProtectedList = setOf(
         "/",                   // The root directory itself
         "/bin",                // Essential user command binaries
         "/sbin",               // Essential system binaries
@@ -30,6 +32,20 @@ object NonDeletableSystemPaths {
         "/root",               // Home directory for the root user
         "/home"                // Contains users' home directories (parent folder)
     )
+
+    private val windowsProtectedList = setOf(
+        "C:/",
+        "C:/Windows",
+        "C:/Windows/System32",
+        "C:/Program Files",
+        "C:/Program Files (x86)",
+        "C:/ProgramData",
+        "C:/System Volume Information",
+        "C:/${'$'}Recycle.Bin",
+        Props.dataFolderPath.toString(),
+    )
+
+    private val protectedList = if (Platform.isWindows) windowsProtectedList else linuxProtectedList
 
     private val protectedSetNormalized = protectedList.map { it.normalizePath() }.toHashSet()
 

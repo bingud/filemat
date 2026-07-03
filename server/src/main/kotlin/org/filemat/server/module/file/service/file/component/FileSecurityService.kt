@@ -3,6 +3,7 @@ package org.filemat.server.module.file.service.file.component
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getEffectiveFilePermissions
@@ -210,7 +211,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
 
     fun isPathEditable(canonicalPath: FilePath): String? {
         if (!State.App.allowWriteDataFolder) {
-            if (canonicalPath.path.startsWith(Props.dataFolderPath)) return "Cannot edit ${Props.appName} data folder."
+            if (PathPolicy.startsWith(canonicalPath.path, Props.dataFolderPath)) return "Cannot edit ${Props.appName} data folder."
         }
         return null
     }
@@ -237,7 +238,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
      * Handles file conflicts like moved files. Can reassign inode or path of an entity.
      */
     fun verifyEntityInode(path: FilePath, userAction: UserAction): Result<Unit> {
-        val lock = verifyLocks.computeIfAbsent(path.pathString) { ReentrantLock() }
+        val lock = verifyLocks.computeIfAbsent(path.pathKey) { ReentrantLock() }
         lock.lock()
         try {
             // Get indexed entity
@@ -245,35 +246,21 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             if (entityResult.hasError) return entityResult.cast()
             val entity = entityResult.valueOrNull
 
-            // Do not do inode check on unsupported filesystem.
-            if (entity != null && (!entity.isFilesystemSupported || entity.inode == null)) {
-                val exists = filesystemService.exists(path.path, followSymbolicLinks = false)
-                return if (exists) Result.ok() else Result.reject("Path does not exist.")
+            if (entity == null) {
+                return Result.ok()
             }
 
-            val newInode = filesystemService.getInode(path.path, followSymbolicLinks = false)
-            // Inode matches normally
-            if (entity?.inode == newInode) return Result.ok()
+            val identity = filesystemService.getFileIdentity(path.path, followSymbolicLinks = false)
+                ?: return entityService.move(path = path, newPath = null, userAction = userAction)
 
-            // Handle if a file with a different inode exists on the path
-            if (newInode != null) {
-                val existingEntityR = entityService.getByInode(newInode, userAction)
-
-                // Check if this inode was already in the database
-                if (existingEntityR.isSuccessful) {
-                    // Dangling entity exists with this inode.
-                    // Associate this path to it.
-                    val existingEntity = existingEntityR.value
-
-                    return entityService.updatePath(existingEntity.entityId, path.pathString, existingEntity, userAction)
-                } else if (existingEntityR.hasError){
-                    return existingEntityR.cast()
-                } else if (existingEntityR.notFound) {
-                    return Result.ok()
-                }
+            if (!entity.isFilesystemSupported || entity.fileKey == null || !identity.isStable || identity.fileKey == null) {
+                return Result.reject("This filesystem cannot provide stable file identity for this indexed file.")
             }
 
-            // Path has unexpected Inode, so remove the path from the entity in database.
+            if (entity.fileKey == identity.fileKey) return Result.ok()
+
+            // A different file now lives at this path. Detach the old entity so the
+            // replacement does not inherit permissions or shares.
             return entityService.move(
                 path = path,
                 newPath = null,
@@ -281,7 +268,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             )
         } finally {
             lock.unlock()
-            verifyLocks.remove(path.pathString, lock)
+            verifyLocks.remove(path.pathKey, lock)
         }
     }
 }

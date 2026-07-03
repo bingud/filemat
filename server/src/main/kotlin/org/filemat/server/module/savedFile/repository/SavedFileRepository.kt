@@ -9,20 +9,20 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface SavedFileRepository : CrudRepository<SavedFile, Ulid> {
-    @Query("SELECT EXISTS(SELECT 1 FROM saved_files WHERE user_id = :userId && path = :path)")
-    fun exists(userId: Ulid, path: String): Boolean
+    @Query("SELECT EXISTS(SELECT 1 FROM saved_files WHERE user_id = :userId AND path_key = :pathKey)")
+    fun exists(userId: Ulid, pathKey: String): Boolean
 
     @Modifying
-    @Query("INSERT INTO saved_files (user_id, path, created_date) VALUES (:userId, :path, :createdDate)")
-    fun create(userId: Ulid, path: String, createdDate: Long)
+    @Query("INSERT INTO saved_files (user_id, path, path_key, created_date) VALUES (:userId, :path, :pathKey, :createdDate)")
+    fun create(userId: Ulid, path: String, pathKey: String, createdDate: Long)
 
     @Modifying
-    @Query("DELETE FROM saved_files WHERE path = :path")
-    fun remove(path: String): Int
+    @Query("DELETE FROM saved_files WHERE path_key = :pathKey")
+    fun remove(pathKey: String): Int
 
     @Modifying
-    @Query("DELETE FROM saved_files WHERE user_id = :userId AND path = :path")
-    fun removeByUserId(userId: Ulid, path: String): Int
+    @Query("DELETE FROM saved_files WHERE user_id = :userId AND path_key = :pathKey")
+    fun removeByUserId(userId: Ulid, pathKey: String): Int
 
     @Query("SELECT * FROM saved_files WHERE user_id = :userId")
     fun getAll(userId: Ulid): List<SavedFile>
@@ -30,10 +30,11 @@ interface SavedFileRepository : CrudRepository<SavedFile, Ulid> {
     @Modifying
     @Query(
         """
-        UPDATE saved_files 
-        SET path = CONCAT(:newPath, SUBSTRING(path, LENGTH(:path) + 1)) 
-        WHERE path = :path OR path LIKE CONCAT(:path, '/%')
+        UPDATE saved_files
+        SET path = CONCAT(:newPath, SUBSTRING(path, LENGTH(:path) + 1)),
+            path_key = CONCAT(:newPathKey, SUBSTRING(path_key, LENGTH(:pathKey) + 1))
+        WHERE path_key = :pathKey OR path_key LIKE CONCAT(:pathKey, '/%')
     """
     )
-    fun updatePath(path: String, newPath: String): Int
+    fun updatePath(path: String, pathKey: String, newPath: String, newPathKey: String): Int
 }

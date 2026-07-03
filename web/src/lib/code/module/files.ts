@@ -2,7 +2,7 @@ import * as tus from "tus-js-client";
 import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
-import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getFileRoutePath, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, normalizeFilePath, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
 import { uploadState } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
@@ -20,6 +20,7 @@ export async function getFileData(
     signal: AbortSignal | undefined,
     options: { foldersOnly?: boolean, silent?: boolean, shareToken?: string }
 ): Promise<Result<FileData>> {
+    path = normalizeFilePath(path)
     const body = formData({ path: path, foldersOnly: options.foldersOnly || false })
     if (options.shareToken) {
         body.append("shareToken", options.shareToken)
@@ -71,6 +72,7 @@ export async function getFileListFromCustomEndpoint({
     silent: boolean
     bodyParams?: Record<string, string>
 }): Promise<Result<FullFileMetadata[]>> {
+    path = normalizeFilePath(path)
     const body = formData({ path: path, foldersOnly: false })
     if (bodyParams) {
         entriesOf(bodyParams).forEach(([k, v]) => {
@@ -118,6 +120,7 @@ export async function streamFileContent(
         signal: AbortSignal
     }
 ): Promise<Blob | null> {
+    path = normalizeFilePath(path)
     const body = formData({ path: path })
     if (options.shareToken) {
         body.append("shareToken", options.shareToken)
@@ -235,12 +238,12 @@ export function startTusUpload(file: File) {
     uploadState.panelOpen = true
 
     // Construct the full target path
-    const currentPath = filesState.path === '/' ? '' : filesState.path
+    const currentPath = filesState.path === "/" ? "/" : filesState.path
     const inputFilename = file.name
 
     const entries = filesState.data.entries!.map(v => v.filename!)
     const targetFilename = getUniqueFilename(inputFilename, entries)
-    const targetPath = `${currentPath}/${targetFilename}`
+    const targetPath = resolvePath(currentPath, targetFilename)
 
     console.log(`Attempting to upload ${file.name} to ${targetPath}`)
 
@@ -309,7 +312,7 @@ export function startTusUpload(file: File) {
             try {
                 const uploadedFile = upload.file as File
 
-                const uploadFolder = targetPath.substring(0, targetPath.lastIndexOf('/')) || "/"
+                const uploadFolder = parentFromPath(targetPath)
                 const actualUploadedPath = actualFilename ? (`${uploadFolder === "/" ? "/" : `${uploadFolder}/`}${actualFilename}`) : null
 
                 // Add the uploaded file to entries if it belongs in the current folder
@@ -387,7 +390,7 @@ function startUploadFromQueue() {
 
 export async function deleteFiles(entries: FileMetadata[]) {
     if (!entries.length) return
-    const paths = entries.map(v => v.path)
+    const paths = entries.map(v => normalizeFilePath(v.path))
     const serialized = JSON.stringify(paths)
     
     const removeToast = persistentToast_loading(`Deleting file${letterS(entries.length)}...`)
@@ -451,7 +454,7 @@ export async function deleteFiles(entries: FileMetadata[]) {
 
 
 export async function downloadFilesAsZip(paths: string[], shareToken: string | undefined = undefined) {
-    const serializedList = JSON.stringify(paths)
+    const serializedList = JSON.stringify(paths.map(normalizeFilePath))
 
     const body = formData({ pathList: serializedList })
     if (shareToken) {
@@ -528,6 +531,8 @@ export async function downloadFiles(
 
 
 export async function moveFile(path: string, newPath: string) {
+    path = normalizeFilePath(path)
+    newPath = normalizeFilePath(newPath)
     const isRename = parentFromPath(path) === parentFromPath(newPath)
 
     const removeToast = isRename === false ? persistentToast_loading("Moving file...") : () => {}
@@ -563,6 +568,8 @@ export async function moveFile(path: string, newPath: string) {
 }
 
 export async function copyFile(path: string, newPath: string) {
+    path = normalizeFilePath(path)
+    newPath = normalizeFilePath(newPath)
     const removeToast = persistentToast_loading("Copying file...")
 
     const response = await safeFetch(`/api/v1/file/copy`, {
@@ -622,6 +629,8 @@ export async function copyFile(path: string, newPath: string) {
 }
 
 export async function moveMultipleFiles(newParentPath: string, paths: string[]) {
+    newParentPath = normalizeFilePath(newParentPath)
+    paths = paths.map(normalizeFilePath)
     const removeToast = persistentToast_loading("Moving files...")
     
     const response = await safeFetch(`/api/v1/file/move-multiple`, { 
@@ -688,6 +697,7 @@ export async function getFileLastModifiedDate(
         shareToken?: string,
     }
 ): Promise<number | null> {
+    path = normalizeFilePath(path)
     const response = await safeFetch(`/api/v1/file/last-modified-date`, { 
         body: formData({ path: path, shareToken: shareToken })
     })
@@ -722,5 +732,5 @@ export async function getFileLastModifiedDate(
 }
 
 export function navigateToFilePath(path: string, pagePath: string) {
-    return goto(`${pagePath}/${path}`)
+    return goto(getFileRoutePath(path, pagePath))
 }

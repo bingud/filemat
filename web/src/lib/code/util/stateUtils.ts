@@ -6,7 +6,7 @@ import { clientState } from "../stateObjects/clientState.svelte";
 import { filesState } from "../stateObjects/filesState.svelte";
 import { confirmDialogState, folderSelectorState, inputDialogState } from "../stateObjects/subState/utilStates.svelte";
 import type { ulid } from "../types/types";
-import { debounceFunction, encodeUrlFilePath } from "./codeUtil.svelte";
+import { debounceFunction, normalizeFilePath } from "./codeUtil.svelte";
 
 
 export function getRole(id: ulid): Role | null {
@@ -154,13 +154,17 @@ export function isUserInAnyInput() {
 }
 
 export function getContentUrl(path: string, encodeParam: boolean = true): string {
-    const pathParam = `path=${encodeParam ? encodeUrlFilePath(path) : path}`
-    const shareTokenParam = filesState.getIsShared() ? `shareToken=${filesState.meta.shareToken}` : ``
-    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
+    const params = new URLSearchParams()
+    params.set("path", normalizeFilePath(path))
+    if (filesState.getIsShared()) params.set("shareToken", filesState.meta.shareToken)
+
+    return `${config.fileContentUrlPathPrefix}?${params.toString()}`
 }
 
 export function getZipContentUrl(path: string, encodeParam: boolean = false): string {
-    const pathParam = `path=${encodeParam ? encodeUrlFilePath(path) : path}`
-    const shareTokenParam = filesState.getIsShared() ? `shareToken=${filesState.meta.shareToken}` : ``
-    return `/api/v1/file/zip-multiple-content?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
+    const params = new URLSearchParams()
+    params.set("path", normalizeFilePath(path))
+    if (filesState.getIsShared()) params.set("shareToken", filesState.meta.shareToken)
+
+    return `/api/v1/file/zip-multiple-content?${params.toString()}`
 }

@@ -1,6 +1,7 @@
 package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.platform.PathPolicy
 import org.filemat.server.common.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -95,7 +96,7 @@ class EntityPermissionTree() {
      */
     private fun getOrCreateTreePath(path: String): Node {
         treeLock.write {
-            val trim = path.trim('/')
+            val trim = PathPolicy.toPathKey(path)!!.trim('/')
             val segments = trim.split('/')
             var current = root
 
@@ -141,8 +142,9 @@ class EntityPermissionTree() {
      * Returns the node for the input path.
      */
     private fun findNode(path: String, getClosestNode: Boolean = false): Node? {
-        if (path == "/") return root
-        val segments = path.trim('/').split('/')
+        val key = PathPolicy.toPathKey(path)!!
+        if (key == "/") return root
+        val segments = key.trim('/').split('/')
         var current = root
 
 
@@ -191,7 +193,7 @@ class EntityPermissionTree() {
             if (findNode(newPath, getClosestNode = false) != null) return false
 
             // split newPath into parent path and new name
-            val trimmed = newPath.trim('/')
+            val trimmed = PathPolicy.toPathKey(newPath)!!.trim('/')
             val segments = if (trimmed.isBlank()) emptyList() else trimmed.split('/')
             val newName = segments.lastOrNull().orEmpty()
             val parentPath = "/" + segments.dropLast(1).joinToString("/")

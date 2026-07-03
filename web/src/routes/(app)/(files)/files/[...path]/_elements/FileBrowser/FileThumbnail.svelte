@@ -3,7 +3,7 @@
     import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
-    import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, normalizeFilePath } from "$lib/code/util/codeUtil.svelte";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
@@ -22,15 +22,23 @@
         isLarge: boolean,
     } = $props()
 
-    const loadFilePreview = visibilityManager.getAction()
+    const loadFilePreview = $derived(visibilityManager.getAction())
 
-    const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
-    const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
-
+    const format = $derived(getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path)))
     let imageLoadFailed = $state(false)
 
     function onImageError() {
         imageLoadFailed = true
+    }
+
+    function getPreviewUrl(endpoint: string) {
+        const params = new URLSearchParams()
+        params.set("size", `${size}`)
+        params.set("path", normalizeFilePath(entry.path))
+        params.set("modified", `${entry.modifiedDate}`)
+        if (filesState.getIsShared()) params.set("shareToken", filesState.meta.shareToken)
+
+        return `/api/v1/file/${endpoint}?${params.toString()}`
     }
 </script>
 
@@ -39,21 +47,21 @@
 {#key size}
     {#if format === "image" && !imageLoadFailed}
         <img 
-            on:error={onImageError} 
+            onerror={onImageError} 
             use:loadFilePreview={entry.path} 
             alt=""
-            data-src="/api/v1/file/image-thumbnail?size={size}&path={encodeUrlFilePath(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" 
+            data-src={getPreviewUrl("image-thumbnail")} 
             class="h-full w-full object-contain opacity-0" 
-            on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}
+            onload={(e) => { e.currentTarget.classList.remove("opacity-0") }}
         >
     {:else if format === "video" && !imageLoadFailed}
         <div class="relative flex h-full w-full items-center justify-center">
             <img
-                on:load={(e) => e.currentTarget.classList.remove("opacity-0")}
-                on:error={onImageError}
+                onload={(e) => e.currentTarget.classList.remove("opacity-0")}
+                onerror={onImageError}
                 use:loadFilePreview={entry.path}
                 alt=""
-                data-src="/api/v1/file/video-preview?size={size}&path={encodeUrlFilePath(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}"
+                data-src={getPreviewUrl("video-preview")}
                 class="h-full w-full object-contain opacity-0"
             >
             {#if isLarge}

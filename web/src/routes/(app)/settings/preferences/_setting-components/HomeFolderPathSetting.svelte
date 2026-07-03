@@ -1,6 +1,6 @@
 <script lang="ts">
     import { auth } from "$lib/code/stateObjects/authState.svelte";
-    import { formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { formData, handleErr, normalizeFilePath, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import { onMount } from "svelte";
 
     let isLoading = $state(false)
@@ -17,8 +17,9 @@
         isLoading = true
 
         try {
+            const normalizedPath = normalizeFilePath(pathInput || "/")
             const response = await safeFetch(`/api/v1/user/update-home-folder-path`, {
-                body: formData({ path: pathInput })
+                body: formData({ path: normalizedPath })
             })
             if (response.failed) {
                     handleErr({
@@ -40,7 +41,7 @@
                 return
             }
 
-            if (auth.principal) auth.principal.homeFolderPath = text
+            if (auth.principal) auth.principal.homeFolderPath = normalizeFilePath(text)
             console.log(`Changed home path:`, text)
         } finally {
             isLoading = false
