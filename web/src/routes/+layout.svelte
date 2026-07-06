@@ -11,8 +11,9 @@
     import { page } from '$app/state';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
     import ConfirmDialog from '$lib/component/popover/ConfirmDialog.svelte';
-    import { confirmDialogState, inputDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
+    import { confirmDialogState, inputDialogState, uploadConflictDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
     import InputDialog from '$lib/component/popover/InputDialog.svelte';
+    import UploadConflictDialog from '$lib/component/popover/UploadConflictDialog.svelte';
     import { onUserIdleChange } from '$lib/code/util/stateUtils';
     import { Tooltip } from 'bits-ui';
 
@@ -99,6 +100,7 @@
 <!-- Confirmation Dialog -->
 <ConfirmDialog bind:this={confirmDialogState.element} />
 <InputDialog bind:this={inputDialogState.element}></InputDialog>
+<UploadConflictDialog bind:this={uploadConflictDialogState.element}></UploadConflictDialog>
 
 
 {#if dev}

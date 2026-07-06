@@ -317,6 +317,29 @@ class EntityService(
         return Result.ok(Unit)
     }
 
+    fun updateInode(entityId: Ulid, newInode: Long?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
+        val entity = existingEntity ?: let {
+            val entityR = getById(entityId, userAction)
+            if (entityR.isNotSuccessful) return Result.error(entityR.error)
+            entityR.value
+        }
+
+        try {
+            entityRepository.updateInode(entityId, newInode)
+            map_put(entity.copy(inode = newInode))
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to update file inode in database.",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to update file inode in database.")
+        }
+
+        return Result.ok(Unit)
+    }
+
     private fun updatePermissionPath(entity: FilesystemEntity, newPath: String?) {
         if (entity.path != null) {
             if (newPath != null) {

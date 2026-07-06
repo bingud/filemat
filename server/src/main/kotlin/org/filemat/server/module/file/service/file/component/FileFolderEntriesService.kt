@@ -118,7 +118,7 @@ class FileFolderEntriesService(
 
             // Check folder permissions
             if (!Files.isExecutable(canonicalPath.path)) {
-                return Result.error("Insufficient permissions to open folder.")
+                return Result.error("Missing permission to open this folder.")
             }
 
             // List entries

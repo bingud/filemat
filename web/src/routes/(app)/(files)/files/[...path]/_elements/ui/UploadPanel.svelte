@@ -24,7 +24,7 @@
     }
 
     function uploadCloseButton(up: FileUpload) {
-        if (up.status === "success" || up.status === "canceled") {
+        if (up.status === "success" || up.status === "canceled" || up.status === "skipped") {
             delete uploadState.all[up.path]
         } else {
             if (up.action === "canceling") return
@@ -74,16 +74,17 @@
             {#if counts.uploading > 0}<span>{counts.uploading} uploading</span><span class="last:hidden">,</span>{/if}
             {#if counts.successful > 0}<span>{counts.successful} uploaded</span><span class="last:hidden">,</span>{/if}
             {#if counts.failed > 0}<span>{counts.failed} failed</span><span class="last:hidden">,</span>{/if}
+            {#if counts.skipped > 0}<span>{counts.skipped} skipped</span><span class="last:hidden">,</span>{/if}
             {#if counts.paused > 0}<span>{counts.paused} paused</span><span class="last:hidden">,</span>{/if}
             {#if counts.queued > 0}<span>{counts.queued} queued</span><span class="last:hidden">,</span>{/if}
         </div>
 
         <div class="flex items-center gap-3">
-            <button on:click={toggleExpanded} class="aspect-square p-2 h-[2rem] rounded dark:hover:bg-neutral-700 disabled:opacity-50" class:rotate-180={!uploadState.panelExpanded}>
+            <button on:click={toggleExpanded} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700 disabled:opacity-50" class:rotate-180={!uploadState.panelExpanded}>
                 <ChevronDownIcon />
             </button>
 
-            <button on:click={close} disabled={counts.uploading > 0} class="aspect-square p-2 h-[2rem] rounded dark:hover:bg-neutral-700 disabled:opacity-50">
+            <button on:click={close} disabled={counts.uploading > 0} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700 disabled:opacity-50">
                 <CloseIcon />
             </button>
         </div>
@@ -93,9 +94,9 @@
     {#if uploadState.panelExpanded}
         <div class="panel-content flex flex-col w-full overflow-auto custom-scrollbar">
             {#each uploadState.list as up}
-                <div class="w-full flex justify-between items-center px-3 h-[2.5rem] gap-3">
-                    <div class="flex items-center h-full flex-grow min-w-0 overflow-hidden">
-                        <p class="truncate max-w-full">{filenameFromPath(up.actualPath || up.path)}</p>
+                <div class="w-full flex justify-between items-center px-3 h-10 gap-3">
+                    <div class="flex items-center h-full grow min-w-0 overflow-hidden">
+                        <p class="truncate max-w-full">{up.displayPath || filenameFromPath(up.actualPath || up.path)}</p>
                     </div>
                     
                     <div class="h-full flex items-center gap-3">
@@ -110,19 +111,21 @@
                                     <p class="text-red-400">Failed</p>
                                 {:else if up.status === "canceled"}
                                     <p>Canceled</p>
+                                {:else if up.status === "skipped"}
+                                    <p>Skipped</p>
                                 {/if}
                             </div>
                         {/if}
 
                         <!-- Buttons -->
-                        <div class="w-[4.1rem] gap-[0.1rem] h-[2rem] flex justify-end">
+                        <div class="w-[4.1rem] gap-[0.1rem] h-8 flex justify-end">
                             {#if up.status === "failed"}
-                                <button on:click={() => { retryUpload(up) }} class="size-[2rem] p-2 dark:hover:bg-neutral-800 rounded">
+                                <button on:click={() => { retryUpload(up) }} class="size-8 p-2 dark:hover:bg-neutral-800 rounded">
                                     <RetryIcon></RetryIcon>
                                 </button>
                             {/if}
 
-                            <button on:click={() => { uploadCloseButton(up) }} class="size-[2rem] p-2 dark:hover:bg-neutral-800 rounded">
+                            <button on:click={() => { uploadCloseButton(up) }} class="size-8 p-2 dark:hover:bg-neutral-800 rounded">
                                 <CloseIcon></CloseIcon>
                             </button>
                         </div>

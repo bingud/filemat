@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { uploadDroppedFolders } from '$lib/code/module/folderUpload'
     import CloudUploadIcon from '$lib/component/icons/CloudUploadIcon.svelte';
     import { onMount, onDestroy, createEventDispatcher } from 'svelte'
 
@@ -37,18 +38,28 @@
     }
 
     // Handler for when files are dropped anywhere on the document
-    const handleDocumentDrop = (e: DragEvent) => {
+    const handleDocumentDrop = async (e: DragEvent) => {
         e.preventDefault()
-        
-        const files = e.dataTransfer?.files
-        const isFromPage = e.dataTransfer?.getData('isFromPage')
-        if (files && files.length > 0 && !isFromPage) {
-            dispatch('filesDropped', { files })
-        }
-        
-        // Hide dropzone and reset counter after drop
+
+        // Hide immediately. Folder traversal/preflight can take time, and the overlay
+        // should not stay mounted while upload preparation continues.
         isVisible = false
         dragCounter = 0
+        
+        try {
+            const files = e.dataTransfer?.files
+            const isFromPage = e.dataTransfer?.getData('isFromPage')
+            const handledFolderDrop = e.dataTransfer && !isFromPage
+                ? await uploadDroppedFolders(e.dataTransfer)
+                : false
+
+            if (!handledFolderDrop && files && files.length > 0 && !isFromPage) {
+                dispatch('filesDropped', { files })
+            }
+        } finally {
+            isVisible = false
+            dragCounter = 0
+        }
     }
 
     // Handler for dragging over the specific dropzone card (necessary to allow drop on it)
@@ -73,7 +84,7 @@
 </script>
 
 {#if isVisible}
-    <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-9999">
         <div 
             class="
                 w-[60vw] h-[60vh] max-w-[800px] max-h-[600px] min-w-[300px] min-h-[200px] md:w-[60vw] md:h-[60vh] sm:w-[90vw] sm:h-[50vh] sm:min-w-[280px] sm:min-h-[180px] 

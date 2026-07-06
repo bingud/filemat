@@ -1,11 +1,14 @@
 import { forEachObject, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { Upload } from "tus-js-client"
 
-type fileUploadStatus = "paused" | "uploading" | "success" | "failed" | "canceled" | "queued"
+type fileUploadStatus = "paused" | "uploading" | "success" | "failed" | "canceled" | "queued" | "skipped"
 
 export type FileUpload = {
     path: string,
     actualPath: string | null,
+    displayPath: string | null,
+    batchId: string | null,
+    relativePath: string | null,
     percentage: number,
     status: fileUploadStatus,
     action: "canceling" | null,
@@ -31,6 +34,7 @@ export class UploadState {
         let failed = 0
         let paused = 0
         let queued = 0
+        let skipped = 0
         let total = 0
 
         forEachObject(this.all, (k, v) => {
@@ -41,6 +45,7 @@ export class UploadState {
             else if (v.status === "failed") { failed++ }
             else if (v.status === "paused") { paused++ }
             else if (v.status === "queued") { queued++ }
+            else if (v.status === "skipped") { skipped++ }
         })
 
         return {
@@ -50,6 +55,7 @@ export class UploadState {
             canceled: canceled,
             paused: paused,
             queued: queued,
+            skipped: skipped,
             total: total,
         }
     })
@@ -58,7 +64,16 @@ export class UploadState {
         return this.all[path]
     }
 
-    addUpload(path: string, upload: Upload, status: fileUploadStatus): boolean {
+    addUpload(
+        path: string,
+        upload: Upload,
+        status: fileUploadStatus,
+        options: {
+            displayPath?: string | null,
+            batchId?: string | null,
+            relativePath?: string | null,
+        } = {}
+    ): boolean {
         this.panelExpanded = true
         
         const existing = this.all[path]
@@ -67,6 +82,9 @@ export class UploadState {
         this.all[path] = {
             path: path,
             actualPath: null,
+            displayPath: options.displayPath || null,
+            batchId: options.batchId || null,
+            relativePath: options.relativePath || null,
             percentage: 0,
             bytesTotal: (upload.file as File).size,
             bytesUploaded: 0,

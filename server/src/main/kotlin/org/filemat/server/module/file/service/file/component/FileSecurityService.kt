@@ -259,6 +259,18 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             if (newInode != null) {
                 val existingEntityR = entityService.getByInode(newInode, userAction)
 
+                if (entity != null) {
+                    if (existingEntityR.isSuccessful && existingEntityR.value.entityId != entity.entityId) {
+                        entityService.updateInode(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
+                            if (it.isNotSuccessful) return it.cast()
+                        }
+                    } else if (existingEntityR.hasError) {
+                        return existingEntityR.cast()
+                    }
+
+                    return entityService.updateInode(entity.entityId, newInode, entity, userAction)
+                }
+
                 // Check if this inode was already in the database
                 if (existingEntityR.isSuccessful) {
                     // Dangling entity exists with this inode.
