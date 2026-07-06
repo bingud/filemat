@@ -10,6 +10,20 @@ import { persistentToast_loading } from "../util/uiUtil";
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
+export const UPLOAD_CONCURRENCY_LIMIT = 1
+const SNAPSHOT_BEFORE_UPLOAD_MAX_BYTES = 64 * 1024 * 1024
+
+export type TusUploadOptions = {
+    targetPath?: string,
+    targetFilename?: string,
+    metadata?: Record<string, string>,
+    displayPath?: string,
+    batchId?: string,
+    relativePath?: string,
+    refreshCurrentFolderOnSuccess?: boolean,
+    onSuccess?: () => void,
+    snapshotBeforeUpload?: boolean,
+}
 
 /**
  * Fetches file metadata (and folder entries if the file is a folder)
@@ -231,7 +245,30 @@ export function uploadWithTus(isMultiple: boolean = true) {
 /**
  * Initiate a TUS file upload
  */
-export function startTusUpload(file: File) {
+export function startTusUpload(file: File, options: TusUploadOptions = {}) {
+    if (options.snapshotBeforeUpload && file.size <= SNAPSHOT_BEFORE_UPLOAD_MAX_BYTES) {
+        file.arrayBuffer()
+            .then(buffer => {
+                const snapshot = new File([buffer], file.name, {
+                    type: file.type,
+                    lastModified: file.lastModified,
+                })
+                internalStartTusUpload(snapshot, options)
+            })
+            .catch(error => {
+                handleException(
+                    `Failed to snapshot file before upload.`,
+                    `Failed to prepare "${file.name}" for upload. The file may have changed while it was being read.`,
+                    error,
+                )
+            })
+        return
+    }
+
+    internalStartTusUpload(file, options)
+}
+
+function internalStartTusUpload(file: File, options: TusUploadOptions = {}) {
     uploadState.panelOpen = true
 
     // Construct the full target path
@@ -239,8 +276,8 @@ export function startTusUpload(file: File) {
     const inputFilename = file.name
 
     const entries = filesState.data.entries!.map(v => v.filename!)
-    const targetFilename = getUniqueFilename(inputFilename, entries)
-    const targetPath = `${currentPath}/${targetFilename}`
+    const targetFilename = options.targetFilename || getUniqueFilename(inputFilename, entries)
+    const targetPath = options.targetPath || `${currentPath}/${targetFilename}`
 
     console.log(`Attempting to upload ${file.name} to ${targetPath}`)
 
@@ -252,6 +289,7 @@ export function startTusUpload(file: File) {
         retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
         metadata: {
             path: targetPath,
+            ...(options.metadata || {}),
         },
         chunkSize: 3072 * 1024, // 3 MB chunk
         onAfterResponse: (response) => {
@@ -282,7 +320,10 @@ export function startTusUpload(file: File) {
                 const res = (error as tus.DetailedError).originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
                 const text = res?.responseText
                 const json = parseJson(text || "")
-                const message = json?.message || text || "Failed to upload file."
+                const fileChanged = isUploadFileChangedError(error)
+                const message = fileChanged
+                    ? `Failed to upload "${file.name}" because the local file changed while it was being uploaded.`
+                    : json?.message || text || "Failed to upload file."
 
                 const isCustomError = json?.error === "custom"
                 handleException(`Failed to upload file with TUS. Is custom error: ${isCustomError}`, message, error)
@@ -313,7 +354,7 @@ export function startTusUpload(file: File) {
                 const actualUploadedPath = actualFilename ? (`${uploadFolder === "/" ? "/" : `${uploadFolder}/`}${actualFilename}`) : null
 
                 // Add the uploaded file to entries if it belongs in the current folder
-                if (filesState.path === uploadFolder) {
+                if (!options.refreshCurrentFolderOnSuccess && filesState.path === uploadFolder) {
                     filesState.data.entries?.push({
                         path: actualUploadedPath || targetPath,
                         filename: actualFilename || targetFilename,
@@ -333,9 +374,15 @@ export function startTusUpload(file: File) {
                 if (state) {
                     state.status = "success"
                 }
+
+                if (options.refreshCurrentFolderOnSuccess) {
+                    options.onSuccess?.()
+                }
             } finally { startUploadFromQueue() }
         },
         onShouldRetry: (err, retryAttempt, options) => {
+            if (isUploadFileChangedError(err)) return false
+
             // Try to extract JSON from the failed response
             const originalResponse = err.originalResponse?.getUnderlyingObject() as XMLHttpRequest | null
             if (originalResponse) {
@@ -362,13 +409,18 @@ export function startTusUpload(file: File) {
     const currentlyUploadedCount = currentlyUploadedFiles.length
 
     // Check whether to queue or start upload
-    if (currentlyUploadedCount < 1) {
-        if (!uploadState.addUpload(targetPath, upload, "uploading")) return
+    if (currentlyUploadedCount < UPLOAD_CONCURRENCY_LIMIT) {
+        if (!uploadState.addUpload(targetPath, upload, "uploading", options)) return
         // Start the upload
         upload.start()
     } else {
-        if (!uploadState.addUpload(targetPath, upload, "queued")) return
+        if (!uploadState.addUpload(targetPath, upload, "queued", options)) return
     }
+}
+
+function isUploadFileChangedError(error: unknown): boolean {
+    const text = `${(error as Error | undefined)?.message || ""} ${error || ""}`.toLowerCase()
+    return text.includes("err_upload_file_changed") || text.includes("upload_file_changed")
 }
 
 function startUploadFromQueue() {
@@ -722,5 +774,5 @@ export async function getFileLastModifiedDate(
 }
 
 export function navigateToFilePath(path: string, pagePath: string) {
-    return goto(`${pagePath}/${path}`)
+    return goto(`${pagePath}${path}`)
 }

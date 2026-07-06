@@ -5,7 +5,7 @@
   import FolderIcon from "$lib/component/icons/FolderIcon.svelte";
   import PlusIcon from "$lib/component/icons/PlusIcon.svelte";
   import { handleNewFolder } from "../../_code/fileActions";
-  import { handleNewFile, handleUpload } from "../../_code/pageLogic";
+  import { handleNewFile, handleUpload, handleUploadFolder } from "../../_code/pageLogic";
 
 
 </script>
@@ -23,22 +23,31 @@
     <Popover.Content preventScroll={true} align="end" class="relative z-popover">
         <div class="w-[14rem] surface-popover-container">
             <button on:click={handleUpload} class="surface-popover-button">
-                <div class="size-5 flex-shrink-0">
+                <div class="size-5 shrink-0">
                     <PlusIcon />
                 </div>
-                <span>Upload</span>
+                <span>Upload files</span>
             </button>
-            <button on:click={handleNewFolder} class="surface-popover-button">
-                <div class="size-5 flex-shrink-0">
+            <button on:click={handleUploadFolder} class="surface-popover-button">
+                <div class="size-5 shrink-0">
                     <FolderIcon />
                 </div>
-                <span>Folder</span>
+                <span>Upload folder</span>
+            </button>
+
+            <hr class="basic-hr my-2">
+
+            <button on:click={handleNewFolder} class="surface-popover-button">
+                <div class="size-5 shrink-0">
+                    <FolderIcon />
+                </div>
+                <span>Empty folder</span>
             </button>
             <button on:click={handleNewFile} class="surface-popover-button">
-                <div class="size-5 flex-shrink-0">
+                <div class="size-5 shrink-0">
                     <FileIcon />
                 </div>
-                <span>File</span>
+                <span>Empty file</span>
             </button>
         </div>
     </Popover.Content>

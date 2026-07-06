@@ -38,7 +38,8 @@ class TusService(
     @Lazy private val filesystem: FilesystemService,
     private val fileService: FileService,
     private val entityService: EntityService,
-    private val logService: LogService
+    private val logService: LogService,
+    @Lazy private val folderUploadService: FolderUploadService,
 ) {
     val uploadLock = ReentrantReadWriteLock()
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -165,6 +166,32 @@ class TusService(
         }
         val meta = parseTusHttpHeader(rawMeta)
 
+        val folderUploadSessionId = meta["folderUploadSessionId"]
+        val relativePath = meta["relativePath"]
+        if (folderUploadSessionId != null || relativePath != null) {
+            if (folderUploadSessionId == null || relativePath == null) {
+                response.respond(400, "Invalid folder upload metadata")
+                return false
+            }
+
+            folderUploadService.validateTusUploadStart(
+                user = user,
+                sessionId = folderUploadSessionId,
+                relativePath = relativePath,
+            ).let {
+                if (it.notFound) {
+                    response.respond(400, "Folder upload session expired.")
+                    return false
+                }
+                if (it.isNotSuccessful) {
+                    response.respond(400, it.errorOrNull ?: "Invalid folder upload session.")
+                    return false
+                }
+            }
+
+            return true
+        }
+
         // Get user inputted upload destination
         val rawPath = meta["path"]?.toFilePath()
         if (rawPath == null) {
@@ -221,6 +248,8 @@ class TusService(
                 if (result.isNotSuccessful) {
                     if (result.notFound) {
                         response.respond(400, "Target folder does not exist.")
+                    } else if (result.errorOrNull?.startsWith(FolderUploadService.CONFLICT_PREFIX) == true) {
+                        response.respond(409, result.error.removePrefix(FolderUploadService.CONFLICT_PREFIX), "conflict")
                     } else if (result.hasError) {
                         response.respond(500, result.error)
                     } else {
@@ -242,10 +271,31 @@ class TusService(
      *
      * @return the file path where the file was uploaded
      */
-    private fun handleUploadedFile(user: Principal, info: UploadInfo): Result<String> {
+    private fun handleUploadedFile(user: Principal, info: UploadInfo): Result<String?> {
         // Get the current uploaded file location
         val sourceFolder = "${State.App.uploadFolderPath}/uploads/${info.id}"
         val uploadLocation = "$sourceFolder/data".toFilePath()
+
+        val folderUploadSessionId = info.metadata["folderUploadSessionId"]
+        val relativePath = info.metadata["relativePath"]
+        if (folderUploadSessionId != null || relativePath != null) {
+            if (folderUploadSessionId == null || relativePath == null) {
+                return Result.reject("Invalid folder upload metadata.")
+            }
+
+            val finalized = folderUploadService.finalizeTusUpload(
+                user = user,
+                sessionId = folderUploadSessionId,
+                relativePath = relativePath,
+                uploadLocation = uploadLocation,
+            ).let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
+
+            filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
+            return Result.ok(finalized.actualFilename)
+        }
 
         // Get destination paths
         val rawDestinationPath = info.metadata["path"]?.toFilePath() ?: return Result.error("Destination path is not in upload metadata.")
@@ -309,14 +359,19 @@ class TusService(
             canonicalPath = destinationPath,
             ownerId = user.userId,
             userAction = UserAction.UPLOAD_FILE,
-        )
+        ).let {
+            if (it.hasError) {
+                filesystem.deleteFile(user = user, target = destinationPath, ignorePermissions = true)
+                return Result.error(it.error)
+            }
+        }
 
         return Result.ok(actualFilename)
     }
 
-    private fun HttpServletResponse.respond(code: Int, message: String) {
+    private fun HttpServletResponse.respond(code: Int, message: String, error: String = "custom") {
         this.status = code
-        val json = """ {"message":"$message","error":"custom"} """
+        val json = """ {"message":"$message","error":"$error"} """
         this.writer.write(json)
     }
 }

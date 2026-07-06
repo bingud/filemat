@@ -1,5 +1,6 @@
 import { goto } from "$app/navigation"
 import type { FullFileMetadata } from "$lib/code/auth/types"
+import { uploadFolderWithTus } from "$lib/code/module/folderUpload"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
@@ -191,15 +192,20 @@ export function handleUpload() {
     uploadWithTus()
 }
 
+export function handleUploadFolder() {
+    filesState.ui.newFilePopoverOpen = false
+    uploadFolderWithTus()
+}
+
 export async function handleNewFile() {
     const path = filesState.path
     filesState.ui.newFilePopoverOpen = false
 
     const filename = await inputDialogState.show({
-        title: "Create a blank file",
+        title: "Create an empty file",
         confirmText: "Create",
         cancelText: "Cancel",
-        message: "Enter the new filename:",
+        message: "Enter the new empty file name:",
     })
     if (!filename) return
 
@@ -210,7 +216,7 @@ export async function handleNewFile() {
     })
     if (response.failed) {
         handleErr({
-            description: "Failed to create a blank file.",
+            description: "Failed to create an empty file.",
             exception: response.exception
         })
         return
@@ -220,8 +226,8 @@ export async function handleNewFile() {
     const status = response.code
     if (status.failed) {
         handleErr({
-            description: "Failed to create a blank file.",
-            notification: json.message || "Failed to create a blank file.",
+            description: "Failed to create an empty file.",
+            notification: json.message || "Failed to create an empty file.",
             isServerDown: status.serverDown
         })
     }

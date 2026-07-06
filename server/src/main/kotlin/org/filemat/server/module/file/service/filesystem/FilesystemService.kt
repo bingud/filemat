@@ -10,6 +10,7 @@ import org.filemat.server.module.file.service.filesystem.fileOperation.*
 import org.springframework.stereotype.Service
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
+import java.util.UUID
 import kotlin.io.path.*
 
 
@@ -52,6 +53,38 @@ class FilesystemService(
             Result.ok()
         } catch (e: Exception) {
             Result.error("Failed to create file.")
+        }
+    }
+
+    fun replaceFileContentsAtomically(source: FilePath, destination: FilePath): Result<Unit> {
+        val replacementTemp = destination.path.resolveSibling(".filemat-replace-${destination.path.fileName}-${UUID.randomUUID()}.tmp")
+
+        return try {
+            try {
+                Files.move(source.path, replacementTemp, StandardCopyOption.REPLACE_EXISTING)
+            } catch (e: Exception) {
+                Files.copy(source.path, replacementTemp, StandardCopyOption.REPLACE_EXISTING)
+                Files.deleteIfExists(source.path)
+            }
+
+            try {
+                Files.move(
+                    replacementTemp,
+                    destination.path,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE,
+                )
+            } catch (e: AtomicMoveNotSupportedException) {
+                Files.move(replacementTemp, destination.path, StandardCopyOption.REPLACE_EXISTING)
+            }
+
+            Result.ok()
+        } catch (e: NoSuchFileException) {
+            Result.notFound()
+        } catch (e: Exception) {
+            Result.error("Failed to replace file contents.")
+        } finally {
+            runCatching { Files.deleteIfExists(replacementTemp) }
         }
     }
 
