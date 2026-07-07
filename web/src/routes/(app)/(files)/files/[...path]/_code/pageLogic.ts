@@ -230,6 +230,7 @@ export async function handleNewFile() {
             notification: json.message || "Failed to create an empty file.",
             isServerDown: status.serverDown
         })
+        return
     }
 
     if (filesState.path !== path) return

@@ -93,15 +93,37 @@ export async function uploadDroppedFolders(dataTransfer: DataTransfer): Promise<
         .map(item => (item as any).webkitGetAsEntry?.() as FileSystemEntryLike | null)
         .filter((entry): entry is FileSystemEntryLike => !!entry)
 
-    const directoryEntries = entries.filter(entry => entry.isDirectory) as FileSystemDirectoryEntryLike[]
-    if (!directoryEntries.length) return false
+    const hasDirectory = entries.some(entry => entry.isDirectory)
+    if (!hasDirectory) return false
 
     const files: FolderUploadFile[] = []
     const directories: string[] = []
     const skippedUnsupported: string[] = []
 
-    for (const entry of directoryEntries) {
-        await collectDirectoryEntry(entry, entry.name, files, directories, skippedUnsupported)
+    for (const entry of entries) {
+        if (entry.isDirectory) {
+            await collectDirectoryEntry(entry as FileSystemDirectoryEntryLike, entry.name, files, directories, skippedUnsupported)
+            continue
+        }
+
+        if (entry.isFile) {
+            const file = await readFileEntry(entry as FileSystemFileEntryLike)
+            const normalizedFilePath = normalizeBrowserRelativePath(entry.name)
+            if (!file || !normalizedFilePath) {
+                skippedUnsupported.push(entry.name)
+                continue
+            }
+
+            files.push({
+                file,
+                relativePath: normalizedFilePath,
+                size: file.size,
+                lastModified: file.lastModified,
+            })
+            continue
+        }
+
+        skippedUnsupported.push(entry.name)
     }
 
     const batch = batchFromCollectedEntries(files, directories, skippedUnsupported)
@@ -213,7 +235,8 @@ function batchFromCollectedEntries(files: FolderUploadFile[], directories: strin
     if (!files.length && !directories.length) return null
 
     const roots = new Set([...files.map(file => file.relativePath.split(`/`)[0]), ...directories.map(directory => directory.split(`/`)[0])])
-    const rootName = roots.size === 1 ? Array.from(roots)[0] : `Dropped folders`
+    const hasTopLevelFiles = files.some(file => !file.relativePath.includes(`/`))
+    const rootName = roots.size === 1 ? Array.from(roots)[0] : (hasTopLevelFiles ? `Dropped items` : `Dropped folders`)
 
     if (roots.size > 1) {
         files = files.map(file => ({ ...file, relativePath: `${rootName}/${file.relativePath}` }))

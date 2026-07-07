@@ -246,25 +246,6 @@ export function uploadWithTus(isMultiple: boolean = true) {
  * Initiate a TUS file upload
  */
 export function startTusUpload(file: File, options: TusUploadOptions = {}) {
-    if (options.snapshotBeforeUpload && file.size <= SNAPSHOT_BEFORE_UPLOAD_MAX_BYTES) {
-        file.arrayBuffer()
-            .then(buffer => {
-                const snapshot = new File([buffer], file.name, {
-                    type: file.type,
-                    lastModified: file.lastModified,
-                })
-                internalStartTusUpload(snapshot, options)
-            })
-            .catch(error => {
-                handleException(
-                    `Failed to snapshot file before upload.`,
-                    `Failed to prepare "${file.name}" for upload. The file may have changed while it was being read.`,
-                    error,
-                )
-            })
-        return
-    }
-
     internalStartTusUpload(file, options)
 }
 
@@ -288,8 +269,8 @@ function internalStartTusUpload(file: File, options: TusUploadOptions = {}) {
         endpoint: "/api/v1/file/upload",
         retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
         metadata: {
-            path: targetPath,
             ...(options.metadata || {}),
+            path: targetPath,
         },
         chunkSize: 3072 * 1024, // 3 MB chunk
         onAfterResponse: (response) => {
@@ -404,6 +385,9 @@ function internalStartTusUpload(file: File, options: TusUploadOptions = {}) {
         startUploadFromQueue()
     }
 
+    const rawStart = upload.start.bind(upload)
+    upload.start = () => startUploadWithOptionalSnapshot(upload, file, options, targetPath, rawStart)
+
     // Get count of currently uploading files
     const currentlyUploadedFiles = uploadState.list.filter(v => v.status === "uploading")
     const currentlyUploadedCount = currentlyUploadedFiles.length
@@ -416,6 +400,43 @@ function internalStartTusUpload(file: File, options: TusUploadOptions = {}) {
     } else {
         if (!uploadState.addUpload(targetPath, upload, "queued", options)) return
     }
+}
+
+function startUploadWithOptionalSnapshot(
+    upload: tus.Upload,
+    file: File,
+    options: TusUploadOptions,
+    targetPath: string,
+    rawStart: () => void,
+) {
+    if (!options.snapshotBeforeUpload || file.size > SNAPSHOT_BEFORE_UPLOAD_MAX_BYTES) {
+        rawStart()
+        return
+    }
+
+    file.arrayBuffer()
+        .then(buffer => {
+            const snapshot = new File([buffer], file.name, {
+                type: file.type,
+                lastModified: file.lastModified,
+            })
+            const uploadWithFile = upload as unknown as { file: File }
+            uploadWithFile.file = snapshot
+            rawStart()
+        })
+        .catch(error => {
+            handleException(
+                `Failed to snapshot file before upload.`,
+                `Failed to prepare "${file.name}" for upload. The file may have changed while it was being read.`,
+                error,
+            )
+
+            const state = uploadState.all[targetPath]
+            if (state) {
+                state.status = "failed"
+            }
+            startUploadFromQueue()
+        })
 }
 
 function isUploadFileChangedError(error: unknown): boolean {

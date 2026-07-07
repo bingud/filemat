@@ -1,5 +1,6 @@
 <script lang="ts">
     import { uploadDroppedFolders } from '$lib/code/module/folderUpload'
+    import { handleException } from '$lib/code/util/codeUtil.svelte'
     import CloudUploadIcon from '$lib/component/icons/CloudUploadIcon.svelte';
     import { onMount, onDestroy, createEventDispatcher } from 'svelte'
 
@@ -49,11 +50,23 @@
         try {
             const files = e.dataTransfer?.files
             const isFromPage = e.dataTransfer?.getData('isFromPage')
-            const handledFolderDrop = e.dataTransfer && !isFromPage
-                ? await uploadDroppedFolders(e.dataTransfer)
-                : false
+            let handledFolderDrop = false
+            let folderDropFailed = false
 
-            if (!handledFolderDrop && files && files.length > 0 && !isFromPage) {
+            if (e.dataTransfer && !isFromPage) {
+                try {
+                    handledFolderDrop = await uploadDroppedFolders(e.dataTransfer)
+                } catch (error) {
+                    folderDropFailed = true
+                    handleException(
+                        'Folder drop upload failed.',
+                        'Failed to read the dropped folder. Try using the upload folder picker instead.',
+                        error,
+                    )
+                }
+            }
+
+            if (!handledFolderDrop && !folderDropFailed && files && files.length > 0 && !isFromPage) {
                 dispatch('filesDropped', { files })
             }
         } finally {

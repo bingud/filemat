@@ -60,12 +60,9 @@ class FilesystemService(
         val replacementTemp = destination.path.resolveSibling(".filemat-replace-${destination.path.fileName}-${UUID.randomUUID()}.tmp")
 
         return try {
-            try {
-                Files.move(source.path, replacementTemp, StandardCopyOption.REPLACE_EXISTING)
-            } catch (e: Exception) {
-                Files.copy(source.path, replacementTemp, StandardCopyOption.REPLACE_EXISTING)
-                Files.deleteIfExists(source.path)
-            }
+            // Keep the original TUS source in place until the destination swap succeeds.
+            // If the final move fails, the caller can still clean up or retry with source intact.
+            Files.copy(source.path, replacementTemp, StandardCopyOption.REPLACE_EXISTING)
 
             try {
                 Files.move(
@@ -77,6 +74,7 @@ class FilesystemService(
             } catch (e: AtomicMoveNotSupportedException) {
                 Files.move(replacementTemp, destination.path, StandardCopyOption.REPLACE_EXISTING)
             }
+            runCatching { Files.deleteIfExists(source.path) }
 
             Result.ok()
         } catch (e: NoSuchFileException) {
