@@ -23,8 +23,10 @@ import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
+import kotlin.concurrent.withLock
 import kotlin.concurrent.write
 import kotlin.io.path.pathString
 
@@ -49,6 +51,9 @@ class EntityService(
     private val entityMap = ConcurrentHashMap<Ulid, FilesystemEntity>()
     private val pathMap = ConcurrentHashMap<String, Ulid>()
     private val mapLock = ReentrantReadWriteLock()
+    private val repairLock = ReentrantLock()
+
+    fun <T> withEntityRepairLock(block: () -> T): T = repairLock.withLock(block)
 
     fun map_put(entity: FilesystemEntity, lock: Boolean = true) {
         val action = {

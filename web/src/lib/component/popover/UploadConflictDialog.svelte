@@ -1,6 +1,6 @@
 <script lang="ts">
     import { uploadConflictDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
-    import CustomDialog from "./CustomDialog.svelte"
+    import CustomDialog from "$lib/component/popover/CustomDialog.svelte"
 
     type UploadConflictResolution = "overwrite" | "skip" | "keep-both"
 

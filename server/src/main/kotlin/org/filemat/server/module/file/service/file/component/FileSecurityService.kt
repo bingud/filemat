@@ -257,40 +257,46 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
 
             // Handle if a file with a different inode exists on the path
             if (newInode != null) {
-                val existingEntityR = entityService.getByInode(newInode, userAction)
+                return entityService.withEntityRepairLock {
+                    val existingEntityR = entityService.getByInode(newInode, userAction)
 
-                if (entity != null) {
-                    if (existingEntityR.isSuccessful && existingEntityR.value.entityId != entity.entityId) {
-                        entityService.updateInode(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
-                            if (it.isNotSuccessful) return it.cast()
+                    if (entity != null) {
+                        if (existingEntityR.isSuccessful && existingEntityR.value.entityId != entity.entityId) {
+                            entityService.updateInode(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
+                                if (it.isNotSuccessful) return@withEntityRepairLock it.cast()
+                            }
+                        } else if (existingEntityR.hasError) {
+                            return@withEntityRepairLock existingEntityR.cast()
                         }
-                    } else if (existingEntityR.hasError) {
-                        return existingEntityR.cast()
+
+                        return@withEntityRepairLock entityService.updateInode(entity.entityId, newInode, entity, userAction)
                     }
 
-                    return entityService.updateInode(entity.entityId, newInode, entity, userAction)
-                }
+                    // Check if this inode was already in the database
+                    if (existingEntityR.isSuccessful) {
+                        // Dangling entity exists with this inode.
+                        // Associate this path to it.
+                        val existingEntity = existingEntityR.value
 
-                // Check if this inode was already in the database
-                if (existingEntityR.isSuccessful) {
-                    // Dangling entity exists with this inode.
-                    // Associate this path to it.
-                    val existingEntity = existingEntityR.value
+                        return@withEntityRepairLock entityService.updatePath(existingEntity.entityId, path.pathString, existingEntity, userAction)
+                    } else if (existingEntityR.hasError){
+                        return@withEntityRepairLock existingEntityR.cast()
+                    } else if (existingEntityR.notFound) {
+                        return@withEntityRepairLock Result.ok()
+                    }
 
-                    return entityService.updatePath(existingEntity.entityId, path.pathString, existingEntity, userAction)
-                } else if (existingEntityR.hasError){
-                    return existingEntityR.cast()
-                } else if (existingEntityR.notFound) {
-                    return Result.ok()
+                    Result.ok()
                 }
             }
 
             // Path has unexpected Inode, so remove the path from the entity in database.
-            return entityService.move(
-                path = path,
-                newPath = null,
-                userAction = userAction,
-            )
+            return entityService.withEntityRepairLock {
+                entityService.move(
+                    path = path,
+                    newPath = null,
+                    userAction = userAction,
+                )
+            }
         } finally {
             lock.unlock()
             verifyLocks.remove(path.pathString, lock)

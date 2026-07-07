@@ -57,6 +57,8 @@ class FolderUploadService(
     private val sessions = ConcurrentHashMap<String, FolderUploadSession>()
 
     private val sessionTtlMillis = 48L * 60L * 60L * 1000L
+    private val maxActiveSessions = 128
+    private val maxActiveSessionsPerUser = 16
     private val maxFiles = 20_000
     private val maxDirectories = 20_000
     private val maxTotalBytes = 1024L * 1024L * 1024L * 1024L
@@ -157,6 +159,9 @@ class FolderUploadService(
      */
     fun createSession(user: Principal, request: FolderUploadSessionRequest): Result<FolderUploadSessionResponse> {
         cleanupExpiredSessions()
+        validateSessionQuota(user).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
         val normalized = normalizeManifest(request.manifest).let {
             if (it.isNotSuccessful) return it.cast()
@@ -239,7 +244,7 @@ class FolderUploadService(
                     ?: request.defaultResolution
                     ?: return Result.reject("Missing resolution for ${file.relativePath}.")
             } else {
-                request.defaultResolution ?: FolderUploadResolution.KEEP_BOTH
+                FolderUploadResolution.KEEP_BOTH
             }
 
             if (conflict != null && !conflict.allowedResolutions.contains(resolution)) {
@@ -274,6 +279,7 @@ class FolderUploadService(
             sessionFiles[file.relativePath] = FolderUploadSessionFilePlan(
                 relativePath = file.relativePath,
                 targetPath = targetPath,
+                expectedSize = file.size,
                 resolution = resolution,
             )
         }
@@ -304,13 +310,22 @@ class FolderUploadService(
      * Called from TUS POST before chunk upload starts. It rejects stale sessions,
      * wrong users, or relative paths that are not part of the stored plan.
      */
-    fun validateTusUploadStart(user: Principal, sessionId: String, relativePath: String): Result<Unit> {
+    fun validateTusUploadStart(user: Principal, sessionId: String, relativePath: String, uploadLength: Long?): Result<Unit> {
         val session = getSession(sessionId).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
         if (session.userId != user.userId) return Result.reject("This upload session does not belong to the current user.")
-        if (!session.files.containsKey(relativePath)) return Result.reject("This file is not part of the upload session.")
+
+        synchronized(session) {
+            val plan = session.files[relativePath] ?: return Result.reject("This file is not part of the upload session.")
+            if (uploadLength == null) return Result.reject("Folder upload is missing upload size.")
+            if (uploadLength != plan.expectedSize) return Result.reject("Folder upload size does not match the upload manifest.")
+            if (plan.status != FolderUploadSessionFileStatus.PENDING) return Result.reject("This file upload has already been started.")
+
+            plan.status = FolderUploadSessionFileStatus.RESERVED
+        }
+
         return Result.ok(Unit)
     }
 
@@ -326,7 +341,12 @@ class FolderUploadService(
         if (session.userId != user.userId) return Result.reject("This upload session does not belong to the current user.")
         val plan = session.files[relativePath] ?: return Result.reject("This file is not part of the upload session.")
 
-        val lock = fileLockService.getLock(plan.targetPath.path, LockType.WRITE)
+        val lockPath = if (plan.resolution == FolderUploadResolution.KEEP_BOTH) {
+            plan.targetPath.path.parent ?: plan.targetPath.path
+        } else {
+            plan.targetPath.path
+        }
+        val lock = fileLockService.getLock(lockPath, LockType.WRITE)
         if (!lock.successful) return Result.reject("This file is currently being modified.")
 
         try {
@@ -335,11 +355,13 @@ class FolderUploadService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-            return when (plan.resolution) {
+            val result = when (plan.resolution) {
                 FolderUploadResolution.SKIP -> Result.ok(FolderUploadFinalizeResult(actualFilename = null, skipped = true))
                 FolderUploadResolution.KEEP_BOTH -> finalizeKeepBoth(user, uploadLocation, plan.targetPath)
                 FolderUploadResolution.OVERWRITE -> finalizeOverwrite(user, uploadLocation, plan.targetPath)
             }
+            if (result.isSuccessful) markSessionFileCompleted(session, relativePath)
+            return result
         } finally {
             lock.unlock()
         }
@@ -397,6 +419,12 @@ class FolderUploadService(
     // entity, but update its inode immediately so later reads do not trigger repair
     // logic that tries to move a stale inode entity onto this occupied path.
     private fun updatePreservedOverwriteEntity(canonicalPath: FilePath): Result<Unit> {
+        return entityService.withEntityRepairLock {
+            updatePreservedOverwriteEntityUnlocked(canonicalPath)
+        }
+    }
+
+    private fun updatePreservedOverwriteEntityUnlocked(canonicalPath: FilePath): Result<Unit> {
         val pathEntity = entityService.getByPath(canonicalPath.pathString, UserAction.UPLOAD_FILE).let {
             if (it.notFound) return Result.ok(Unit)
             if (it.isNotSuccessful) return it.cast()
@@ -450,6 +478,12 @@ class FolderUploadService(
     // entity before inserting so SQLite's unique inode constraint is not hit after
     // the file was already written successfully.
     private fun indexUploadedPath(user: Principal, canonicalPath: FilePath): Result<Unit> {
+        return entityService.withEntityRepairLock {
+            indexUploadedPathUnlocked(user, canonicalPath)
+        }
+    }
+
+    private fun indexUploadedPathUnlocked(user: Principal, canonicalPath: FilePath): Result<Unit> {
         entityService.getByPath(canonicalPath.pathString, UserAction.UPLOAD_FILE).let {
             if (it.isSuccessful) return Result.ok(Unit)
             if (it.hasError) return it.cast()
@@ -580,6 +614,28 @@ class FolderUploadService(
         return Result.ok(session)
     }
 
+    private fun validateSessionQuota(user: Principal): Result<Unit> {
+        if (sessions.size >= maxActiveSessions) {
+            return Result.reject("Too many active folder uploads. Try again later.")
+        }
+
+        val userSessions = sessions.values.count { it.userId == user.userId }
+        if (userSessions >= maxActiveSessionsPerUser) {
+            return Result.reject("You have too many active folder uploads. Wait for one to finish and try again.")
+        }
+
+        return Result.ok(Unit)
+    }
+
+    private fun markSessionFileCompleted(session: FolderUploadSession, relativePath: String) {
+        synchronized(session) {
+            session.files[relativePath]?.status = FolderUploadSessionFileStatus.COMPLETED
+            if (session.files.values.all { it.status.isTerminal }) {
+                sessions.remove(session.sessionId, session)
+            }
+        }
+    }
+
     private fun cleanupExpiredSessions() {
         val now = unixNowMillis()
         sessions.entries.removeIf { it.value.expiresAt <= now }
@@ -633,9 +689,23 @@ class FolderUploadService(
             }
         }
 
-        val totalBytes = files.sumOf { it.size }
-        val totalPathBytes = directoryPaths.sumOf { it.toByteArray(Charsets.UTF_8).size.toLong() } +
-            files.sumOf { it.relativePath.toByteArray(Charsets.UTF_8).size.toLong() }
+        val totalBytes = cappedSum(
+            values = files.map { it.size },
+            limit = maxTotalBytes,
+            error = "Selected folder is too large.",
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        val totalPathBytes = cappedSum(
+            values = directoryPaths.map { it.toByteArray(Charsets.UTF_8).size.toLong() } +
+                files.map { it.relativePath.toByteArray(Charsets.UTF_8).size.toLong() },
+            limit = maxTotalPathBytes,
+            error = "Selected folder has too many path characters.",
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
 
         return Result.ok(
             NormalizedManifest(
@@ -659,6 +729,15 @@ class FolderUploadService(
         if (manifest.summary.totalBytes > maxTotalBytes) return Result.reject("Selected folder is too large.")
         if (manifest.summary.totalPathBytes > maxTotalPathBytes) return Result.reject("Selected folder has too many path characters.")
         return Result.ok(Unit)
+    }
+
+    private fun cappedSum(values: List<Long>, limit: Long, error: String): Result<Long> {
+        var total = 0L
+        values.forEach { value ->
+            if (value < 0 || total > limit - value) return Result.reject(error)
+            total += value
+        }
+        return Result.ok(total)
     }
 
     // Reject path traversal, absolute paths, empty segments, and platform-specific
@@ -803,8 +882,17 @@ class FolderUploadService(
     private data class FolderUploadSessionFilePlan(
         val relativePath: String,
         val targetPath: FilePath,
+        val expectedSize: Long,
         val resolution: FolderUploadResolution,
+        var status: FolderUploadSessionFileStatus = FolderUploadSessionFileStatus.PENDING,
     )
+
+    private enum class FolderUploadSessionFileStatus(val isTerminal: Boolean) {
+        PENDING(false),
+        RESERVED(false),
+        COMPLETED(true),
+        CANCELED(true),
+    }
 
     companion object {
         const val CONFLICT_PREFIX = "__CONFLICT__"

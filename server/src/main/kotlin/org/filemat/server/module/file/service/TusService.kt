@@ -178,6 +178,7 @@ class TusService(
                 user = user,
                 sessionId = folderUploadSessionId,
                 relativePath = relativePath,
+                uploadLength = request.getHeader("Upload-Length")?.toLongOrNull(),
             ).let {
                 if (it.notFound) {
                     response.respond(400, "Folder upload session expired.")
