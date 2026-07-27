@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { uploadDroppedFolders } from '$lib/code/module/folderUpload'
+    import { uploadDroppedFolders } from '$lib/code/module/files/folderUpload'
     import { handleException } from '$lib/code/util/codeUtil.svelte'
     import CloudUploadIcon from '$lib/component/icons/CloudUploadIcon.svelte';
     import { onMount, onDestroy, createEventDispatcher } from 'svelte'

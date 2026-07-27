@@ -1,7 +1,8 @@
 <script lang="ts">
 	import ChevronUpIcon from './../../../../../../../lib/component/icons/ChevronUpIcon.svelte';
-    import { retryTusUpload } from "$lib/code/module/files";
+    import { cancelUpload, resumeIncompleteUpload, retryTusUpload } from "$lib/code/module/files/files";
     import { uploadState, type FileUpload } from "$lib/code/stateObjects/subState/uploadState.svelte";
+    import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { filenameFromPath, forEachObject, formatBytes } from "$lib/code/util/codeUtil.svelte";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
@@ -10,11 +11,12 @@
     const counts = $derived(uploadState.counts)
 
     function close() {
+        if (uploadState.hasBlockingUploads) return
         uploadState.panelOpen = false
 
         const uploads = uploadState.all
         forEachObject(uploads, (k, v) => {
-            if (v.status !== "uploading") {
+            if (v.status !== "uploading" && v.status !== "incomplete" && v.status !== "queued") {
                 uploadState.removeUpload(k)
             }
         })
@@ -24,27 +26,40 @@
         uploadState.panelExpanded = !uploadState.panelExpanded
     }
 
-    function uploadCloseButton(up: FileUpload) {
+    async function uploadCloseButton(up: FileUpload) {
         if (up.status === "success" || up.status === "canceled" || up.status === "skipped") {
             delete uploadState.all[up.path]
-        } else {
-            if (up.action === "canceling") return
-            up.action = "canceling"
-
-            // Cancel, delete partial upload
-            up.upload.abort(true).then(() => {
-                uploadState.removeUpload(up.path)
-
-                const onAbort = (up.upload as any).onAbort
-                if (onAbort && typeof onAbort === "function") {
-                    onAbort()
-                }
-            })
+            return
         }
+
+        if (up.status === "incomplete") {
+            await cancelUpload(up)
+            return
+        }
+
+        if (up.action === "canceling") return
+        await cancelUpload(up)
     }
 
     function retryUpload(up: FileUpload) {
         retryTusUpload(up)
+    }
+
+    function resumeUpload(up: FileUpload) {
+        resumeIncompleteUpload(up)
+    }
+
+    async function showUploadPathDialog(up: FileUpload) {
+        const path = up.actualPath || up.path
+        const copied = await confirmDialogState.show({
+            title: null,
+            message: path,
+            confirmText: `Copy`,
+            cancelText: `Close`,
+        })
+        if (copied) {
+            navigator.clipboard.writeText(path)
+        }
     }
 </script>
 
@@ -73,6 +88,7 @@
     <div class="panel-header w-full flex items-center justify-between px-3 py-2 bg-surface-content">
         <div class="">
             {#if counts.uploading > 0}<span>{counts.uploading} uploading</span><span class="last:hidden">,</span>{/if}
+            {#if counts.incomplete > 0}<span>{counts.incomplete} incomplete</span><span class="last:hidden">,</span>{/if}
             {#if counts.successful > 0}<span>{counts.successful} uploaded</span><span class="last:hidden">,</span>{/if}
             {#if counts.failed > 0}<span>{counts.failed} failed</span><span class="last:hidden">,</span>{/if}
             {#if counts.skipped > 0}<span>{counts.skipped} skipped</span><span class="last:hidden">,</span>{/if}
@@ -85,7 +101,7 @@
                 <ChevronDownIcon />
             </button>
 
-            <button on:click={close} disabled={counts.uploading > 0} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700 disabled:opacity-50">
+            <button on:click={close} disabled={uploadState.hasBlockingUploads} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700 disabled:opacity-50">
                 <CloseIcon />
             </button>
         </div>
@@ -97,13 +113,26 @@
             {#each uploadState.list as up}
                 <div class="w-full flex justify-between items-center px-3 h-10 gap-3">
                     <div class="flex items-center h-full grow min-w-0 overflow-hidden">
-                        <p class="truncate max-w-full">{up.displayPath || filenameFromPath(up.actualPath || up.path)}</p>
+                        <button
+                            type="button"
+                            class="truncate max-w-full text-left hover:underline"
+                            on:click={() => { showUploadPathDialog(up) }}
+                        >
+                            {up.displayPath || filenameFromPath(up.actualPath || up.path)}
+                        </button>
                     </div>
                     
                     <div class="h-full flex items-center gap-3">
                         <!-- Upload status -->
                         {#if up.status === "uploading"}
                             <p class="whitespace-nowrap">{formatBytes(up.bytesUploaded)} / {formatBytes(up.bytesTotal)}</p>
+                        {:else if up.status === "incomplete"}
+                            <button
+                                on:click={() => { resumeUpload(up) }}
+                                class="whitespace-nowrap text-sm hover:underline"
+                            >
+                                {formatBytes(up.bytesUploaded)} / {formatBytes(up.bytesTotal)} (paused)
+                            </button>
                         {:else}
                             <div class="xw-[6rem] text-end">
                                 {#if up.status === "success"}

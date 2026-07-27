@@ -30,7 +30,7 @@
         updateScreenSize()
 
         window.addEventListener('beforeunload', (e) => {
-            if (uploadState.counts.uploading > 0) {
+            if (uploadState.hasBlockingUploads) {
                 e.preventDefault()
                 e.returnValue = ""
             }

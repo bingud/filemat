@@ -9,6 +9,7 @@
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
     import { page } from '$app/state';
     import { loadPreferenceSettings } from '$lib/code/module/settings';
+    import { syncIncompleteTusUploads } from '$lib/code/module/files/tusIncompleteUploads';
 
     let { children } = $props()
     let mounted: boolean | null = $state(null)
@@ -36,6 +37,7 @@
 
             mounted = true
             startStateAutoSync()
+            await syncIncompleteTusUploads()
         })()
 
         window.addEventListener("beforeunload", beforeUnload)
@@ -46,7 +48,7 @@
     })
 
     function beforeUnload(e: BeforeUnloadEvent) {
-        if (uploadState.counts.uploading > 0 || uploadState.counts.queued > 0) {
+        if (uploadState.hasBlockingUploads) {
             e.preventDefault()
             e.returnValue = ""
         }

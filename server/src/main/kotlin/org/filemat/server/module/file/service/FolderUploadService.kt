@@ -411,6 +411,71 @@ class FolderUploadService(
         }
     }
 
+    /**
+     * Finalize a TUS upload after the folder session is gone (e.g. tab refresh).
+     * Uses metadata.path + optional metadata.resolution from the TUS upload.
+     */
+    fun finalizeResumedUpload(
+        user: Principal,
+        uploadLocation: FilePath,
+        targetPath: FilePath,
+        resolution: FolderUploadResolution?,
+    ): Result<FolderUploadFinalizeResult> {
+        val lockPath = if (resolution == FolderUploadResolution.KEEP_BOTH) {
+            targetPath.path.parent ?: targetPath.path
+        } else {
+            targetPath.path
+        }
+        val lock = fileLockService.getLock(lockPath, LockType.WRITE)
+        if (!lock.successful) return Result.reject("This file is currently being modified.")
+
+        try {
+            val destinationParent = FilePath.ofAlreadyNormalized(targetPath.path.parent)
+            fileService.isAllowedToEditFile(user, destinationParent).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+
+            return when (resolution) {
+                FolderUploadResolution.OVERWRITE -> finalizeOverwrite(user, uploadLocation, targetPath)
+                FolderUploadResolution.KEEP_BOTH -> finalizeKeepBoth(user, uploadLocation, targetPath)
+                FolderUploadResolution.SKIP -> Result.ok(FolderUploadFinalizeResult(actualFilename = null, skipped = true))
+                null -> finalizeNewOrUnique(user, uploadLocation, targetPath)
+            }
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun finalizeNewOrUnique(
+        user: Principal,
+        uploadLocation: FilePath,
+        plannedTarget: FilePath,
+    ): Result<FolderUploadFinalizeResult> {
+        val filename = getFilenameFromPath(plannedTarget.path)
+        val splitName = filename.splitByLast(".")
+        val baseName = splitName.first
+        val extension = splitName.second?.let { ".$it" } ?: ""
+
+        var counter = 0
+        var candidatePath: Path
+        var candidateName: String
+        do {
+            val suffix = if (counter == 0) "" else " ($counter)"
+            candidateName = "$baseName$suffix$extension"
+            candidatePath = plannedTarget.path.parent.resolve(candidateName)
+            counter++
+        } while (candidatePath.exists(LinkOption.NOFOLLOW_LINKS))
+
+        val destinationPath = FilePath.ofAlreadyNormalized(candidatePath)
+        moveUploadedFile(user, uploadLocation, destinationPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+        createEntityOrRollback(user, destinationPath).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+        return Result.ok(FolderUploadFinalizeResult(actualFilename = candidateName))
+    }
+
     // Recompute the numbered name at write time so a concurrent upload cannot take
     // the candidate that was originally planned during session creation.
     private fun finalizeKeepBoth(user: Principal, uploadLocation: FilePath, plannedTarget: FilePath): Result<FolderUploadFinalizeResult> {

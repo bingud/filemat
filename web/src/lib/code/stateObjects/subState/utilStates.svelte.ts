@@ -13,8 +13,23 @@ class ConfirmDialogState {
         message?: string,
         confirmText?: string,
         cancelText?: string,
+        alternateText: string,
+    }): Promise<boolean | "alternate"> | undefined
+    show(options?: {
+        title?: string | null,
+        message?: string,
+        confirmText?: string,
+        cancelText?: string,
+        alternateText?: null,
+    }): Promise<boolean> | undefined
+    show(options: {
+        title?: string | null,
+        message?: string,
+        confirmText?: string,
+        cancelText?: string,
+        alternateText?: string | null,
     } = {}) {
-        return this.element?.show(options)
+        return this.element?.show(options as any)
     }
 }
 
