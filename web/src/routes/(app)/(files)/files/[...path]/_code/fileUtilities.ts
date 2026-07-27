@@ -1,5 +1,5 @@
 import type { EntityPermission, Role } from "$lib/code/auth/types"
-import { streamFileContent } from "$lib/code/module/files"
+import { streamFileContent } from "$lib/code/module/files/files"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 
 export type EntityPermissionMeta = { permission: EntityPermission & { permissionType: "USER"} ; username: string; role: null}  |

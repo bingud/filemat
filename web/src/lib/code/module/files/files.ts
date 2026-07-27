@@ -1,12 +1,30 @@
-import * as tus from "tus-js-client";
-import { filesState } from "../stateObjects/filesState.svelte";
-import type { FileMetadata, FullFileMetadata } from "../auth/types";
-import type { FileCategory } from "../data/files";
-import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
-import { uploadState, type FileUpload, type TusUploadOptions } from "../stateObjects/subState/uploadState.svelte";
-import { toast } from "@jill64/svelte-toast";
-import { goto } from "$app/navigation";
-import { persistentToast_loading } from "../util/uiUtil";
+import {
+    clearIncompleteUpload,
+    findIncompleteByPath,
+    headTusUpload,
+    listStoredTusUploads,
+    removeStoredTusUpload,
+    TUS_UPLOAD_ENDPOINT,
+    terminateTusUpload,
+    tryFinalizeCompleteTusUpload,
+} from "$lib/code/module/files/tusIncompleteUploads"
+import {
+    deleteUploadFileHandle,
+    fileFromStoredHandle,
+    getUploadFileHandle,
+    putUploadFileHandle,
+    supportsOpenFilePicker,
+} from "$lib/code/module/files/uploadFileHandleStore"
+import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
+import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
+import type { FileCategory } from "$lib/code/data/files"
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+import { uploadState, type FileUpload, type PreviousTusUpload, type TusUploadOptions } from "$lib/code/stateObjects/subState/uploadState.svelte"
+import { toast } from "@jill64/svelte-toast"
+import { goto } from "$app/navigation"
+import { persistentToast_loading } from "$lib/code/util/uiUtil"
+import * as tus from "tus-js-client"
 
 
 export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | null }
@@ -205,7 +223,24 @@ export async function getBlobContent(blob: Blob, fileCategory: FileCategory): Pr
 /**
  * Initiate a file upload with TUS.
  */
-export function uploadWithTus(isMultiple: boolean = true) {
+export async function uploadWithTus(isMultiple: boolean = true) {
+    if (supportsOpenFilePicker()) {
+        try {
+            const showOpenFilePicker = (window as any).showOpenFilePicker as (options?: any) => Promise<any[]>
+            const handles = await showOpenFilePicker({
+                multiple: isMultiple,
+                excludeAcceptAllOption: false,
+            })
+            for (const handle of handles || []) {
+                const file = await handle.getFile() as File
+                startTusUpload(file, { fileHandle: handle })
+            }
+        } catch {
+            // User cancelled the picker (or the API failed). Do not open a second picker.
+        }
+        return
+    }
+
     const input = document.createElement('input')
     input.type = 'file'
     input.style.display = 'none'
@@ -235,31 +270,89 @@ export function uploadWithTus(isMultiple: boolean = true) {
 /**
  * Initiate a TUS file upload
  */
-export function startTusUpload(file: File, options: TusUploadOptions = {}) {
+export async function startTusUpload(file: File, options: TusUploadOptions = {}) {
     uploadState.panelOpen = true
 
     // Construct the full target path
     const currentPath = filesState.path === '/' ? '' : filesState.path
     const inputFilename = file.name
 
-    const entries = filesState.data.entries!.map(v => v.filename!)
-    const targetFilename = options.targetFilename || getUniqueFilename(inputFilename, entries)
+    const targetFilename = options.targetFilename || getUniqueFilename(
+        inputFilename,
+        (filesState.data.entries ?? []).map(v => v.filename!),
+    )
     const targetPath = options.targetPath || `${currentPath}/${targetFilename}`
 
+    // Folder sessions already resolved conflicts; a leftover incomplete for the same
+    // path must not open Continue/Restart dialogs. Clear local state immediately and
+    // terminate the old server upload in the background so we never block the batch.
+    if (options.metadata?.folderUploadSessionId) {
+        const incomplete = findIncompleteByPath(targetPath)
+        if (incomplete) {
+            uploadState.removeUpload(targetPath)
+            void removeStoredTusUpload(incomplete.urlStorageKey)
+            void terminateTusUpload(incomplete.uploadUrl)
+            void deleteUploadFileHandle(targetPath, incomplete.uploadUrl, incomplete.urlStorageKey)
+        }
+    } else {
+        const conflictDecision = await resolveIncompletePathConflict(targetPath)
+        if (conflictDecision === `abort`) return
+        if (conflictDecision === `continue`) {
+            const incomplete = findIncompleteByPath(targetPath)
+            if (incomplete) {
+                if (options.fileHandle) {
+                    await putUploadFileHandle(targetPath, options.fileHandle)
+                    if (incomplete.uploadUrl) await putUploadFileHandle(incomplete.uploadUrl, options.fileHandle)
+                }
+                await resumeIncompleteUpload(incomplete, file)
+            }
+            return
+        }
+    }
+
+    beginTusUpload(file, options, targetPath, targetFilename)
+}
+
+function beginTusUpload(
+    file: File,
+    options: TusUploadOptions,
+    targetPath: string,
+    targetFilename: string,
+    previousUpload: PreviousTusUpload | null = null,
+) {
     console.log(`Attempting to upload ${file.name} to ${targetPath}`)
+
+    if (options.fileHandle) {
+        void putUploadFileHandle(targetPath, options.fileHandle)
+    }
 
     // Get the actual uploaded filename from the server
     let actualFilename: string | null = null
 
     const upload = new tus.Upload(file, {
-        endpoint: "/api/v1/file/upload",
+        endpoint: TUS_UPLOAD_ENDPOINT,
         retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
         metadata: {
             ...(options.metadata || {}),
             path: targetPath,
         },
         chunkSize: 3072 * 1024, // 3 MB chunk
-        onAfterResponse: (response) => {
+        removeFingerprintOnSuccess: true,
+        onUploadUrlAvailable: () => {
+            const handle = options.fileHandle
+            if (!handle) return
+            // Persist under path immediately; also under upload URL once known.
+            void putUploadFileHandle(targetPath, handle)
+            if (upload.url) {
+                void putUploadFileHandle(upload.url, handle)
+            }
+            const state = uploadState.get(targetPath)
+            if (state) {
+                state.uploadUrl = upload.url
+                state.fileHandle = handle
+            }
+        },
+        onAfterResponse: (_req, response) => {
             // Get the actual uploaded filename from the server
             // If the file already exists, the server will add a number to the end of the filename
             const res = response.getUnderlyingObject() as XMLHttpRequest | null
@@ -298,6 +391,12 @@ export function startTusUpload(file: File, options: TusUploadOptions = {}) {
                 const state = uploadState.all[targetPath]
                 if (state) {
                     state.status = "failed"
+                }
+
+                // Permanent failures should not become "incomplete" after refresh.
+                // Transient/network failures keep tus localStorage so the upload can resume.
+                if (isCustomError || fileChanged) {
+                    void forgetPersistedTusUpload(upload, targetPath, previousUpload)
                 }
             } finally { startUploadFromQueue() }
         },
@@ -341,6 +440,7 @@ export function startTusUpload(file: File, options: TusUploadOptions = {}) {
                 if (state) {
                     state.status = "success"
                 }
+                deleteUploadFileHandle(targetPath, upload.url, previousUpload?.uploadUrl, previousUpload?.urlStorageKey)
 
                 if (options.refreshCurrentFolderOnSuccess) {
                     options.onSuccess?.()
@@ -367,6 +467,10 @@ export function startTusUpload(file: File, options: TusUploadOptions = {}) {
         },
     });
 
+    if (previousUpload) {
+        upload.resumeFromPreviousUpload(previousUpload as any)
+    }
+
     (upload as any).onAbort = () => {
         startUploadFromQueue()
     }
@@ -380,11 +484,255 @@ export function startTusUpload(file: File, options: TusUploadOptions = {}) {
 
     // Check whether to queue or start upload
     if (currentlyUploadedCount < UPLOAD_CONCURRENCY_LIMIT) {
-        if (!uploadState.addUpload(targetPath, upload, "uploading", options)) return
+        if (!uploadState.addUpload(targetPath, upload, "uploading", options, {
+            uploadUrl: upload.url || previousUpload?.uploadUrl || null,
+            urlStorageKey: previousUpload?.urlStorageKey || null,
+            previousUpload,
+        })) return
         // Start the upload
         upload.start()
     } else {
-        if (!uploadState.addUpload(targetPath, upload, "queued", options)) return
+        if (!uploadState.addUpload(targetPath, upload, "queued", options, {
+            uploadUrl: upload.url || previousUpload?.uploadUrl || null,
+            urlStorageKey: previousUpload?.urlStorageKey || null,
+            previousUpload,
+        })) return
+    }
+}
+
+async function resolveIncompletePathConflict(targetPath: string): Promise<"proceed" | "continue" | "abort"> {
+    let incomplete = findIncompleteByPath(targetPath)
+    if (!incomplete?.uploadUrl) return `proceed`
+
+    const head = await headTusUpload(incomplete.uploadUrl)
+    if (!head.ok) {
+        await removeStoredTusUpload(incomplete.urlStorageKey)
+        uploadState.removeUpload(targetPath)
+        return `proceed`
+    }
+
+    const choice = await confirmDialogState.show({
+        title: `Incomplete upload found`,
+        message: `An incomplete upload already exists for this file.`,
+        confirmText: `Resume upload`,
+        alternateText: `New upload`,
+        cancelText: `Cancel`,
+    })
+
+    if (choice === true) return `continue`
+    if (choice === `alternate`) {
+        await clearIncompleteUpload(incomplete)
+        return `proceed`
+    }
+    return `abort`
+}
+
+/**
+ * Pick a local file for resume (File System Access API when available, else input).
+ * When a handle is returned, caller can persist it for later resumes.
+ */
+export function pickFileForResume(acceptName?: string): Promise<{ file: File, handle?: FileSystemFileHandle } | null> {
+    if (supportsOpenFilePicker()) {
+        const showOpenFilePicker = (window as any).showOpenFilePicker as (options?: any) => Promise<any[]>
+        return showOpenFilePicker({
+            multiple: false,
+            excludeAcceptAllOption: false,
+        }).then(async handles => {
+            const handle = handles?.[0]
+            if (!handle) return null
+            const file = await handle.getFile() as File
+            return { file, handle }
+        }).catch(() => null)
+    }
+
+    return new Promise(resolve => {
+        const input = document.createElement(`input`)
+        input.type = `file`
+        input.style.display = `none`
+        if (acceptName) {
+            // Hint only; user can still pick any file.
+            input.title = `Select ${acceptName}`
+        }
+        input.onchange = () => {
+            const file = input.files?.[0] || null
+            document.body.removeChild(input)
+            resolve(file ? { file } : null)
+        }
+        input.oncancel = () => {
+            document.body.removeChild(input)
+            resolve(null)
+        }
+        document.body.appendChild(input)
+        input.click()
+    })
+}
+
+function fileMatchesPreviousUpload(file: File, previous: PreviousTusUpload | null, expectedSize: number): boolean {
+    if (previous?.size != null && previous.size !== file.size) return false
+    if (expectedSize > 0 && file.size !== expectedSize) return false
+    // keep-both remaps target path; prefer original name from relativePath when present.
+    const originalName = previous?.metadata?.relativePath
+        ? filenameFromPath(previous.metadata.relativePath)
+        : null
+    if (originalName && file.name !== originalName) return false
+    return true
+}
+
+/**
+ * Resume an incomplete upload after the user reattaches the local file.
+ */
+export async function resumeIncompleteUpload(fileUpload: FileUpload, preselectedFile?: File) {
+    if (fileUpload.status !== `incomplete`) return
+
+    const previous = fileUpload.previousUpload
+    if (!previous?.uploadUrl) {
+        handleErr({
+            description: `Incomplete upload is missing upload URL`,
+            notification: `Cannot resume this upload. Please restart it.`,
+        })
+        return
+    }
+
+    // Bytes already on server: tus would emit success without PATCH/finalize.
+    // Force an empty PATCH so the server re-runs finalize instead.
+    const head = await headTusUpload(previous.uploadUrl)
+    if (
+        head.ok
+        && head.offset != null
+        && head.length != null
+        && head.length > 0
+        && head.offset >= head.length
+    ) {
+        const finalized = await tryFinalizeCompleteTusUpload(previous.uploadUrl, head.offset)
+        if (finalized.ok) {
+            await removeStoredTusUpload(previous.urlStorageKey)
+            await deleteUploadFileHandle(fileUpload.path, previous.uploadUrl, previous.urlStorageKey)
+            fileUpload.status = `success`
+            if (finalized.actualFilename) {
+                const uploadFolder = fileUpload.path.substring(0, fileUpload.path.lastIndexOf(`/`)) || `/`
+                fileUpload.actualPath = uploadFolder === `/`
+                    ? `/${finalized.actualFilename}`
+                    : `${uploadFolder}/${finalized.actualFilename}`
+            }
+            fileUpload.options.onSuccess?.()
+            toast.success(`Upload finalized.`)
+            return
+        }
+        if (finalized.notFound) {
+            await removeStoredTusUpload(previous.urlStorageKey)
+            await deleteUploadFileHandle(fileUpload.path, previous.uploadUrl, previous.urlStorageKey)
+            uploadState.removeUpload(fileUpload.path)
+            handleErr({
+                description: `Complete TUS upload missing during finalize`,
+                notification: finalized.message || `This incomplete upload no longer exists on the server.`,
+            })
+            return
+        }
+        handleErr({
+            description: `Failed to finalize complete TUS upload`,
+            notification: finalized.message || `Failed to finalize the upload. Try again or restart it.`,
+        })
+        return
+    }
+
+    let file = preselectedFile || null
+    let fileHandle: FileSystemFileHandle | undefined = fileUpload.fileHandle || undefined
+
+    if (!file) {
+        // Use in-memory handle first (loaded at sync) so requestPermission stays close to the click.
+        if (!fileHandle) {
+            const storedHandle =
+                await getUploadFileHandle(fileUpload.path)
+                || await getUploadFileHandle(previous.uploadUrl)
+                || await getUploadFileHandle(previous.urlStorageKey)
+            if (storedHandle) fileHandle = storedHandle as FileSystemFileHandle
+        }
+
+        if (fileHandle) {
+            file = await fileFromStoredHandle(fileHandle)
+            if (!file) {
+                // Permission denied or handle stale — clear and fall through to picker.
+                fileHandle = undefined
+                fileUpload.fileHandle = null
+            }
+        }
+    }
+
+    if (!file) {
+        const picked = await pickFileForResume(filenameFromPath(fileUpload.path))
+        if (!picked) return
+        file = picked.file
+        fileHandle = picked.handle
+    }
+
+    if (!fileMatchesPreviousUpload(file, previous, fileUpload.bytesTotal)) {
+        handleErr({
+            description: `Picked file does not match incomplete upload`,
+            notification: `That file does not match the incomplete upload. Pick the original file to continue.`,
+        })
+        return
+    }
+
+    const options: TusUploadOptions = {
+        ...fileUpload.options,
+        targetPath: fileUpload.path,
+        targetFilename: filenameFromPath(fileUpload.path),
+        snapshotBeforeUpload: false,
+        fileHandle,
+    }
+
+    if (fileHandle) {
+        fileUpload.fileHandle = fileHandle
+        void putUploadFileHandle(fileUpload.path, fileHandle)
+        if (previous.uploadUrl) void putUploadFileHandle(previous.uploadUrl, fileHandle)
+        if (previous.urlStorageKey) void putUploadFileHandle(previous.urlStorageKey, fileHandle)
+    }
+
+    beginTusUpload(file, options, fileUpload.path, filenameFromPath(fileUpload.path), previous)
+}
+
+async function forgetPersistedTusUpload(
+    upload: tus.Upload,
+    targetPath: string,
+    previousUpload: PreviousTusUpload | null,
+) {
+    const url = upload.url || previousUpload?.uploadUrl || null
+    if (previousUpload?.urlStorageKey) {
+        await removeStoredTusUpload(previousUpload.urlStorageKey)
+    } else if (url) {
+        const stored = await listStoredTusUploads()
+        const match = stored.find(entry => entry.uploadUrl === url)
+        if (match) await removeStoredTusUpload(match.urlStorageKey)
+    }
+    await deleteUploadFileHandle(targetPath, url, previousUpload?.urlStorageKey)
+}
+
+export async function cancelUpload(fileUpload: FileUpload) {
+    if (fileUpload.action === `canceling`) return
+    fileUpload.action = `canceling`
+
+    if (fileUpload.status === `incomplete` || !fileUpload.upload) {
+        await clearIncompleteUpload(fileUpload)
+        startUploadFromQueue()
+        return
+    }
+
+    try {
+        await fileUpload.upload.abort(true)
+    } catch {
+        await terminateTusUpload(fileUpload.uploadUrl || fileUpload.upload.url)
+        await removeStoredTusUpload(fileUpload.urlStorageKey)
+    }
+    await deleteUploadFileHandle(
+        fileUpload.path,
+        fileUpload.uploadUrl,
+        fileUpload.upload.url,
+        fileUpload.urlStorageKey,
+    )
+    uploadState.removeUpload(fileUpload.path)
+    const onAbort = (fileUpload.upload as any)?.onAbort
+    if (onAbort && typeof onAbort === `function`) {
+        onAbort()
     }
 }
 
@@ -439,6 +787,11 @@ function startUploadFromQueue() {
     if (!uploads.length) return
 
     const first = uploads[0]
+    if (!first.upload) {
+        first.status = "failed"
+        startUploadFromQueue()
+        return
+    }
     first.upload.start()
     first.status = "uploading"
 }
@@ -448,8 +801,49 @@ function startUploadFromQueue() {
  * Reusing the spent Upload instance is unreliable: it keeps a stale URL/source
  * and exhausted retry state, which can make manual retry silently do nothing.
  */
-export function retryTusUpload(fileUpload: FileUpload) {
+export async function retryTusUpload(fileUpload: FileUpload) {
     if (fileUpload.status !== "failed" && fileUpload.status !== "canceled") return
+    if (!fileUpload.upload) return
+
+    const previous = fileUpload.previousUpload
+    const uploadUrl = fileUpload.uploadUrl || fileUpload.upload.url || previous?.uploadUrl || null
+    if (uploadUrl) {
+        const head = await headTusUpload(uploadUrl)
+        if (
+            head.ok
+            && head.offset != null
+            && head.length != null
+            && head.length > 0
+            && head.offset >= head.length
+        ) {
+            // Bytes already on server — re-run finalize instead of a fake tus success.
+            const finalized = await tryFinalizeCompleteTusUpload(uploadUrl, head.offset)
+            if (finalized.ok) {
+                if (previous?.urlStorageKey) await removeStoredTusUpload(previous.urlStorageKey)
+                await deleteUploadFileHandle(fileUpload.path, uploadUrl, previous?.urlStorageKey)
+                fileUpload.status = `success`
+                if (finalized.actualFilename) {
+                    const uploadFolder = fileUpload.path.substring(0, fileUpload.path.lastIndexOf(`/`)) || `/`
+                    fileUpload.actualPath = uploadFolder === `/`
+                        ? `/${finalized.actualFilename}`
+                        : `${uploadFolder}/${finalized.actualFilename}`
+                }
+                fileUpload.options.onSuccess?.()
+                toast.success(`Upload finalized.`)
+                return
+            }
+            if (finalized.notFound) {
+                if (previous?.urlStorageKey) await removeStoredTusUpload(previous.urlStorageKey)
+                await deleteUploadFileHandle(fileUpload.path, uploadUrl, previous?.urlStorageKey)
+            } else {
+                handleErr({
+                    description: `Failed to finalize complete TUS upload on retry`,
+                    notification: finalized.message || `Failed to finalize the upload. Try again.`,
+                })
+                return
+            }
+        }
+    }
 
     const file = fileUpload.upload.file as File
     const options: TusUploadOptions = {

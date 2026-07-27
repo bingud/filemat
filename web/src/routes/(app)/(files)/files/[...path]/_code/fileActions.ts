@@ -1,5 +1,5 @@
 import { filePermissionMeta } from "$lib/code/data/permissions";
-import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles } from "$lib/code/module/files";
+import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles } from "$lib/code/module/files/files";
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
 import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";

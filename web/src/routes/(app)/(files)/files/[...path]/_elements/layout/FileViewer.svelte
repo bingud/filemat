@@ -1,6 +1,6 @@
 <script lang="ts">
     import { isFileCategory, isTextFileCategory, type FileCategory } from "$lib/code/data/files";
-    import { getBlobContent } from "$lib/code/module/files";
+    import { getBlobContent } from "$lib/code/module/files/files";
     import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
     import { uiState } from "$lib/code/stateObjects/uiState.svelte";
     import Loader from "$lib/component/Loader.svelte";

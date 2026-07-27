@@ -15,7 +15,8 @@
 
     let conflicts: UploadConflictDialogConflict[] = $state([])
     let resolutions: Record<string, UploadConflictResolution> = $state({})
-    let resolvePromise: ((value: Record<string, UploadConflictResolution> | null) => void) | null = $state(null)
+    // Do not put the resolver in $state — Svelte 5 state proxies break function values.
+    let resolvePromise: ((value: Record<string, UploadConflictResolution> | null) => void) | null = null
     let visibleLimit = $state(50)
     let dialogTitle = $state(`1 file already exists`)
 
@@ -23,6 +24,10 @@
         conflicts: UploadConflictDialogConflict[],
         title?: string,
     }): Promise<Record<string, UploadConflictResolution> | null> {
+        // Settle any previous open dialog so a stale close event cannot resolve the new promise.
+        resolvePromise?.(null)
+        resolvePromise = null
+
         conflicts = options.conflicts
         resolutions = {}
         visibleLimit = 50
@@ -56,22 +61,25 @@
         }
     }
 
-    function confirm() {
-        resolvePromise?.(resolutions)
+    function settle(value: Record<string, UploadConflictResolution> | null) {
+        const resolve = resolvePromise
         resolvePromise = null
         uploadConflictDialogState.isOpen = false
+        resolve?.(value)
+    }
+
+    function confirm() {
+        settle({ ...resolutions })
     }
 
     function cancel() {
-        resolvePromise?.(null)
-        resolvePromise = null
-        uploadConflictDialogState.isOpen = false
+        settle(null)
     }
 
-    function handleClose() {
-        if (uploadConflictDialogState.isOpen) {
-            cancel()
-        }
+    function handleClose(open: boolean) {
+        // Ignore open transitions and stale closes after settle().
+        if (open || !resolvePromise) return
+        settle(null)
     }
 
     function resolutionButtonClass(isSelected: boolean) {

@@ -2,7 +2,7 @@ import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { uploadConflictDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
 import { formData, handleErr, handleException, parentFromPath, safeFetch } from "$lib/code/util/codeUtil.svelte"
 import { toast } from "@jill64/svelte-toast"
-import { getFileData, startTusUpload } from "./files"
+import { getFileData, startTusUpload } from "$lib/code/module/files/files"
 
 export type FolderUploadResolution = "overwrite" | "skip" | "keep-both"
 
@@ -179,8 +179,19 @@ async function startFolderUploadBatch(batch: FolderUploadBatch) {
 
     if (!session?.sessionId) return
 
-    if (session.skippedFiles.length) {
-        toast.plain(`${session.skippedFiles.length} file${session.skippedFiles.length === 1 ? `` : `s`} skipped.`)
+    const queuedFiles = session.queuedFiles || []
+    const skippedFiles = session.skippedFiles || []
+
+    if (skippedFiles.length) {
+        toast.plain(`${skippedFiles.length} file${skippedFiles.length === 1 ? `` : `s`} skipped.`)
+    }
+
+    if (!queuedFiles.length) {
+        handleErr({
+            description: `Folder upload session returned no queued files`,
+            notification: `No files were queued for upload.`,
+        })
+        return
     }
 
     const filesByRelativePath = new Map(batch.files.map(file => [file.relativePath, file]))
@@ -200,16 +211,19 @@ async function startFolderUploadBatch(batch: FolderUploadBatch) {
         }, 250)
     }
 
-    for (const queuedFile of session.queuedFiles) {
+    let started = 0
+    for (const queuedFile of queuedFiles) {
         const uploadFile = filesByRelativePath.get(queuedFile.relativePath)
         if (!uploadFile) continue
 
-        startTusUpload(uploadFile.file, {
+        started++
+        void startTusUpload(uploadFile.file, {
             targetPath: queuedFile.targetPath,
             targetFilename: queuedFile.targetPath.substring(queuedFile.targetPath.lastIndexOf(`/`) + 1),
             metadata: {
                 folderUploadSessionId: session.sessionId,
                 relativePath: queuedFile.relativePath,
+                resolution: String(queuedFile.resolution || `keep-both`),
             },
             displayPath: queuedFile.relativePath,
             batchId: session.sessionId,
@@ -217,6 +231,13 @@ async function startFolderUploadBatch(batch: FolderUploadBatch) {
             refreshCurrentFolderOnSuccess: true,
             onSuccess: scheduleRefresh,
             snapshotBeforeUpload: true,
+        })
+    }
+
+    if (!started) {
+        handleErr({
+            description: `Folder upload queued files did not match local batch paths`,
+            notification: `Failed to start folder upload files.`,
         })
     }
 }

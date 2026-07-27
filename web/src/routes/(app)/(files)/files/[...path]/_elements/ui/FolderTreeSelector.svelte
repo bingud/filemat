@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getFileData } from '$lib/code/module/files'
+    import { getFileData } from '$lib/code/module/files/files'
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte'
     import { explicitEffect } from '$lib/code/util/codeUtil.svelte'

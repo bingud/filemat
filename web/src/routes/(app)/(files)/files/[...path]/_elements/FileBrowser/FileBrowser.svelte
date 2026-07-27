@@ -5,7 +5,7 @@
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte"
-    import { copyFile, deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files"
+    import { copyFile, deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files/files"
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte"
     import { appState } from '$lib/code/stateObjects/appState.svelte'

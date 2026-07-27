@@ -13,6 +13,7 @@ import org.filemat.server.common.util.classes.wrappers.BufferedResponseWrapper
 import org.filemat.server.common.util.classes.wrappers.RequestPathOverrideWrapper
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FolderUploadResolution
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
@@ -20,13 +21,10 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
-import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
-import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
-import kotlin.io.path.exists
 import kotlin.properties.Delegates
 
 
@@ -280,94 +278,75 @@ class TusService(
         val relativePath = info.metadata["relativePath"]
         if (folderUploadSessionId != null || relativePath != null) {
             if (folderUploadSessionId == null || relativePath == null) {
-                return Result.reject("Invalid folder upload metadata.")
+                // Prefer path-based resume finalize when folder metadata is incomplete but path exists.
+                if (info.metadata["path"] == null) {
+                    return Result.reject("Invalid folder upload metadata.")
+                }
+            } else {
+                val folderResult = folderUploadService.finalizeTusUpload(
+                    user = user,
+                    sessionId = folderUploadSessionId,
+                    relativePath = relativePath,
+                    uploadLocation = uploadLocation,
+                )
+                if (folderResult.isSuccessful) {
+                    filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
+                    return Result.ok(folderResult.value.actualFilename)
+                }
+                // Session gone after tab refresh — fall through to path + resolution metadata.
+                if (!folderResult.notFound) {
+                    return folderResult.cast()
+                }
             }
-
-            val finalized = folderUploadService.finalizeTusUpload(
-                user = user,
-                sessionId = folderUploadSessionId,
-                relativePath = relativePath,
-                uploadLocation = uploadLocation,
-            ).let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }
-
-            filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
-            return Result.ok(finalized.actualFilename)
         }
 
-        // Get destination paths
-        val rawDestinationPath = info.metadata["path"]?.toFilePath() ?: return Result.error("Destination path is not in upload metadata.")
+        return finalizeByPathMetadata(user, info, uploadLocation, sourceFolder)
+    }
+
+    /**
+     * Session-less finalize using TUS metadata.path and optional metadata.resolution.
+     */
+    private fun finalizeByPathMetadata(
+        user: Principal,
+        info: UploadInfo,
+        uploadLocation: FilePath,
+        sourceFolder: String,
+    ): Result<String?> {
+        val rawDestinationPath = info.metadata["path"]?.toFilePath()
+            ?: return Result.error("Destination path is not in upload metadata.")
+
+        val resolution = when (info.metadata["resolution"]?.lowercase()) {
+            "overwrite" -> FolderUploadResolution.OVERWRITE
+            "keep-both" -> FolderUploadResolution.KEEP_BOTH
+            "skip" -> FolderUploadResolution.SKIP
+            else -> null
+        }
+
+        // Resolve destination so symlinks / canonical parents match the rest of the app.
         val rawDestinationParent = getParentFromPath(rawDestinationPath)
         val filename = getFilenameFromPath(rawDestinationPath.path)
-
-        // Resolve the destination parent folder
-        val destinationParent = let {
-            resolvePath(rawDestinationParent).let { result ->
-                if (result.isNotSuccessful) return result.cast()
-                result.value
-            }
+        val destinationParent = resolvePath(rawDestinationParent).let { result ->
+            if (result.isNotSuccessful) return result.cast()
+            result.value
         }
-
-        // Get the resolved destination path
-        val uncheckedDestinationPath = if (destinationParent == rawDestinationParent) {
-            rawDestinationPath.path
+        val targetPath = if (destinationParent == rawDestinationParent) {
+            rawDestinationPath
         } else {
-            destinationParent.path.resolve(filename)
+            FilePath.ofAlreadyNormalized(destinationParent.path.resolve(filename))
         }
 
-        // Add a number to the filename if it already exists
-        val (destinationPath, actualFilename) = let {
-            // Extract base name and extension
-            val splitName = filename.splitByLast(".")
-            val baseName = splitName.first
-            val extension = splitName.second?.let { ".$it" } ?: ""
-
-            // Try “name.ext”, “name (1).ext”, “name (2).ext”, …
-            var counter = 0
-            var candidatePath: Path
-            var candidateName: String
-            do {
-                val suffix = if (counter == 0) "" else " ($counter)"
-                candidateName = "$baseName$suffix$extension"
-                candidatePath = uncheckedDestinationPath.parent.resolve(candidateName)
-                counter++
-            } while (candidatePath.exists(LinkOption.NOFOLLOW_LINKS))
-
-            FilePath.ofAlreadyNormalized(candidatePath) to candidateName
-        }
-
-        fileService.isAllowedToEditFile(user, destinationParent).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
-
-        // Move the file to the target folder
-        val fileMoved = filesystem.moveFile(
+        val finalized = folderUploadService.finalizeResumedUpload(
             user = user,
-            source = uploadLocation,
-            destination = destinationPath,
-            ignorePermissions = true
-        )
-        if (fileMoved.isNotSuccessful) return Result.error("Failed to move the file from the uploads folder. ${fileMoved.errorOrNull ?: ""}")
-
-        // Delete the TUS upload folder
-        filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
-
-        // Create an entity
-        fileService.ensureEntityIndexed(
-            path = destinationPath,
-            ownerId = user.userId,
-            userAction = UserAction.UPLOAD_FILE,
-            reusePathEntity = false,
+            uploadLocation = uploadLocation,
+            targetPath = targetPath,
+            resolution = resolution,
         ).let {
-            if (it.isNotSuccessful) {
-                filesystem.deleteFile(user = user, target = destinationPath, ignorePermissions = true)
-                return Result.error(it.errorOrNull ?: "Failed to index uploaded file.")
-            }
+            if (it.isNotSuccessful) return it.cast()
+            it.value
         }
 
-        return Result.ok(actualFilename)
+        filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
+        return Result.ok(finalized.actualFilename)
     }
 
     private fun HttpServletResponse.respond(code: Int, message: String, error: String = "custom") {
