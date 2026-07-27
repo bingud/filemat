@@ -27,21 +27,26 @@ async function withStore<T>(
     run: (store: IDBObjectStore) => IDBRequest<T> | void,
 ): Promise<T | undefined> {
     const db = await openDb()
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, mode)
-        const store = tx.objectStore(STORE_NAME)
-        let request: IDBRequest<T> | undefined
-        try {
-            const result = run(store)
-            if (result) request = result
-        } catch (error) {
-            reject(error)
-            return
-        }
-        tx.oncomplete = () => resolve(request?.result)
-        tx.onerror = () => reject(tx.error || new Error(`Handle store transaction failed`))
-        tx.onabort = () => reject(tx.error || new Error(`Handle store transaction aborted`))
-    })
+    try {
+        return await new Promise<T | undefined>((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, mode)
+            const store = tx.objectStore(STORE_NAME)
+            let request: IDBRequest<T> | undefined
+            try {
+                const result = run(store)
+                if (result) request = result
+            } catch (error) {
+                reject(error)
+                return
+            }
+            tx.oncomplete = () => resolve(request?.result)
+            tx.onerror = () => reject(tx.error || new Error(`Handle store transaction failed`))
+            tx.onabort = () => reject(tx.error || new Error(`Handle store transaction aborted`))
+        })
+    } finally {
+        // Close after the transaction settles — closing earlier can abort it.
+        db.close()
+    }
 }
 
 export async function putUploadFileHandle(key: string, handle: FileSystemFileHandleLike) {
