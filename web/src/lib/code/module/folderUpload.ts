@@ -33,6 +33,7 @@ type FolderUploadConflict = {
     incomingType: "file" | "directory" | "other",
     existingType: "file" | "directory" | "other",
     allowedResolutions: FolderUploadResolution[],
+    message?: string | null,
 }
 
 type FolderUploadPreflightResponse = {
@@ -42,11 +43,12 @@ type FolderUploadPreflightResponse = {
 }
 
 type FolderUploadSessionResponse = {
-    sessionId: string,
+    sessionId: string | null,
     queuedFiles: { relativePath: string, targetPath: string, resolution: FolderUploadResolution }[],
     skippedFiles: string[],
     createdDirectories: string[],
     expiresAt: number,
+    unresolvedConflicts?: FolderUploadConflict[],
 }
 
 type FileSystemEntryLike = {
@@ -159,11 +161,26 @@ async function startFolderUploadBatch(batch: FolderUploadBatch) {
         resolutions = resolved
     }
 
-    const session = await requestSession(manifest, resolutions, preflight.conflicts.length ? undefined : `keep-both`)
-    if (!session) return
+    let session: FolderUploadSessionResponse | null = null
+    while (true) {
+        session = await requestSession(manifest, resolutions, preflight.conflicts.length ? undefined : `keep-both`)
+        if (!session) return
+
+        const unresolved = session.unresolvedConflicts || []
+        if (!unresolved.length) break
+
+        const resolved = await uploadConflictDialogState.show({
+            conflicts: unresolved,
+            title: unresolved.length === 1 ? `Cannot overwrite 1 file` : `Cannot overwrite ${unresolved.length} files`,
+        })
+        if (!resolved) return
+        resolutions = { ...resolutions, ...resolved }
+    }
+
+    if (!session?.sessionId) return
 
     if (session.skippedFiles.length) {
-        toast.plain(`${session.skippedFiles.length} file${session.skippedFiles.length === 1 ? "" : "s"} skipped.`)
+        toast.plain(`${session.skippedFiles.length} file${session.skippedFiles.length === 1 ? `` : `s`} skipped.`)
     }
 
     const filesByRelativePath = new Map(batch.files.map(file => [file.relativePath, file]))

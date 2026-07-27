@@ -8,6 +8,7 @@ import org.filemat.server.common.model.toResult
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
+import org.filemat.server.module.file.service.file.component.FileSecurityService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
@@ -42,7 +43,8 @@ class EntityService(
     @Lazy private val entityPermissionService: EntityPermissionService,
     @Lazy private val filesystemService: FilesystemService,
     platformTransactionManager: PlatformTransactionManager,
-    @Lazy private val fileShareService: FileShareService
+    @Lazy private val fileShareService: FileShareService,
+    @Lazy private val fileSecurityService: FileSecurityService,
 ) {
     private val transactionTemplate = TransactionTemplate(platformTransactionManager).apply {
         isolationLevel = TransactionDefinition.ISOLATION_REPEATABLE_READ
@@ -142,11 +144,19 @@ class EntityService(
                 it.value
             }
 
-        val newEntity = create(canonicalPath = canonicalDestinationPath, ownerId = sourceEntity.ownerId, userAction = userAction)
-            .let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }
+        fileSecurityService.ensureEntityIndexed(
+            path = canonicalDestinationPath,
+            ownerId = sourceEntity.ownerId,
+            userAction = userAction,
+            reusePathEntity = false,
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        val newEntity = getByPath(canonicalDestinationPath.pathString, userAction).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
 
         val permissions = entityPermissionService.getAllEntityPermissions(canonicalPath)
 
@@ -340,6 +350,29 @@ class EntityService(
                 message = e.stackTraceToString()
             )
             return Result.error("Failed to update file inode in database.")
+        }
+
+        return Result.ok(Unit)
+    }
+
+    fun updateOwner(entityId: Ulid, ownerId: Ulid?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
+        val entity = existingEntity ?: let {
+            val entityR = getById(entityId, userAction)
+            if (entityR.isNotSuccessful) return Result.error(entityR.error)
+            entityR.value
+        }
+
+        try {
+            entityRepository.updateOwner(entityId, ownerId)
+            map_put(entity.copy(ownerId = ownerId))
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to update file entity owner in database.",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to update file owner in database.")
         }
 
         return Result.ok(Unit)

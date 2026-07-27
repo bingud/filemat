@@ -37,7 +37,6 @@ import kotlin.properties.Delegates
 class TusService(
     @Lazy private val filesystem: FilesystemService,
     private val fileService: FileService,
-    private val entityService: EntityService,
     private val logService: LogService,
     @Lazy private val folderUploadService: FolderUploadService,
 ) {
@@ -356,14 +355,15 @@ class TusService(
         filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
 
         // Create an entity
-        entityService.create(
-            canonicalPath = destinationPath,
+        fileService.ensureEntityIndexed(
+            path = destinationPath,
             ownerId = user.userId,
             userAction = UserAction.UPLOAD_FILE,
+            reusePathEntity = false,
         ).let {
-            if (it.hasError) {
+            if (it.isNotSuccessful) {
                 filesystem.deleteFile(user = user, target = destinationPath, ignorePermissions = true)
-                return Result.error(it.error)
+                return Result.error(it.errorOrNull ?: "Failed to index uploaded file.")
             }
         }
 
