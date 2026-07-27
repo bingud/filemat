@@ -246,10 +246,6 @@ export function uploadWithTus(isMultiple: boolean = true) {
  * Initiate a TUS file upload
  */
 export function startTusUpload(file: File, options: TusUploadOptions = {}) {
-    internalStartTusUpload(file, options)
-}
-
-function internalStartTusUpload(file: File, options: TusUploadOptions = {}) {
     uploadState.panelOpen = true
 
     // Construct the full target path
