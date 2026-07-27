@@ -8,7 +8,6 @@ import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.user.model.UserAction
@@ -17,7 +16,7 @@ import kotlin.io.path.isSymbolicLink
 import kotlin.io.path.pathString
 
 @Service
-class FileCopyService(private val fileService: FileService, private val filesystemService: FilesystemService, private val entityService: EntityService) {
+class FileCopyService(private val fileService: FileService, private val filesystemService: FilesystemService) {
 
     fun copyFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<FullFileMetadata> {
         val isSymlink = rawPath.path.isSymbolicLink()
@@ -80,12 +79,14 @@ class FileCopyService(private val fileService: FileService, private val filesyst
             if (it.isNotSuccessful) return it.cast()
         }
 
-        // Create entity
-        entityService.create(
-            canonicalPath = canonicalDestinationPath,
+        fileService.ensureEntityIndexed(
+            path = canonicalDestinationPath,
             ownerId = user.userId,
             userAction = UserAction.COPY_FILE,
-        )
+            reusePathEntity = false,
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
         val fileMeta = fileService.getFullMetadata(
             user = user,

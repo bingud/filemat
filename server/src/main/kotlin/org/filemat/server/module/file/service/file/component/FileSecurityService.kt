@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.file.component
 
+import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -235,71 +236,149 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
      * Verifies whether a file exists.
      *
      * Handles file conflicts like moved files. Can reassign inode or path of an entity.
+     * Does not create entities for unindexed paths.
      */
     fun verifyEntityInode(path: FilePath, userAction: UserAction): Result<Unit> {
+        return withVerifyPathLock(path) {
+            repairEntityInode(path = path, userAction = userAction, reusePathEntity = true)
+        }
+    }
+
+    /**
+     * Ensures that a file has a DB entity.
+     *
+     * [reusePathEntity] = true keeps the path entity identity (overwrite / claim path slot).
+     * [reusePathEntity] = false is for new objects: reconnect by inode only; orphan a path entity
+     * whose inode does not match, then create a new entity if still missing.
+     *
+     * Holds the path verify lock across repair and create to avoid unique-inode races.
+     */
+    fun ensureEntityIndexed(
+        path: FilePath,
+        ownerId: Ulid?,
+        userAction: UserAction,
+        reusePathEntity: Boolean = false,
+    ): Result<Unit> {
+        return withVerifyPathLock(path) {
+            repairEntityInode(path = path, userAction = userAction, reusePathEntity = reusePathEntity).let {
+                if (it.isNotSuccessful) return@withVerifyPathLock it
+            }
+
+            entityService.getByPath(path.pathString, userAction).let {
+                if (it.hasError) return@withVerifyPathLock it.cast()
+                if (it.isSuccessful) return@withVerifyPathLock Result.ok()
+            }
+
+            entityService.withEntityRepairLock {
+                entityService.getByPath(path.pathString, userAction).let {
+                    if (it.hasError) return@withEntityRepairLock it.cast()
+                    if (it.isSuccessful) return@withEntityRepairLock Result.ok()
+                }
+
+                entityService.create(
+                    canonicalPath = path,
+                    ownerId = ownerId,
+                    userAction = userAction,
+                ).let {
+                    if (it.isSuccessful || it.rejected) return@withEntityRepairLock Result.ok()
+                    it.cast()
+                }
+            }
+        }
+    }
+
+    private fun <T> withVerifyPathLock(path: FilePath, block: () -> T): T {
         val lock = verifyLocks.computeIfAbsent(path.pathString) { ReentrantLock() }
         lock.lock()
         try {
-            // Get indexed entity
-            val entityResult = entityService.getByPath(path.pathString, UserAction.NONE)
-            if (entityResult.hasError) return entityResult.cast()
-            val entity = entityResult.valueOrNull
-
-            // Do not do inode check on unsupported filesystem.
-            if (entity != null && (!entity.isFilesystemSupported || entity.inode == null)) {
-                val exists = filesystemService.exists(path.path, followSymbolicLinks = false)
-                return if (exists) Result.ok() else Result.reject("Path does not exist.")
-            }
-
-            val newInode = filesystemService.getInode(path.path, followSymbolicLinks = false)
-            // Inode matches normally
-            if (entity?.inode == newInode) return Result.ok()
-
-            // Handle if a file with a different inode exists on the path
-            if (newInode != null) {
-                return entityService.withEntityRepairLock {
-                    val existingEntityR = entityService.getByInode(newInode, userAction)
-
-                    if (entity != null) {
-                        if (existingEntityR.isSuccessful && existingEntityR.value.entityId != entity.entityId) {
-                            entityService.updateInode(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
-                                if (it.isNotSuccessful) return@withEntityRepairLock it.cast()
-                            }
-                        } else if (existingEntityR.hasError) {
-                            return@withEntityRepairLock existingEntityR.cast()
-                        }
-
-                        return@withEntityRepairLock entityService.updateInode(entity.entityId, newInode, entity, userAction)
-                    }
-
-                    // Check if this inode was already in the database
-                    if (existingEntityR.isSuccessful) {
-                        // Dangling entity exists with this inode.
-                        // Associate this path to it.
-                        val existingEntity = existingEntityR.value
-
-                        return@withEntityRepairLock entityService.updatePath(existingEntity.entityId, path.pathString, existingEntity, userAction)
-                    } else if (existingEntityR.hasError){
-                        return@withEntityRepairLock existingEntityR.cast()
-                    } else if (existingEntityR.notFound) {
-                        return@withEntityRepairLock Result.ok()
-                    }
-
-                    Result.ok()
-                }
-            }
-
-            // Path has unexpected Inode, so remove the path from the entity in database.
-            return entityService.withEntityRepairLock {
-                entityService.move(
-                    path = path,
-                    newPath = null,
-                    userAction = userAction,
-                )
-            }
+            return block()
         } finally {
             lock.unlock()
             verifyLocks.remove(path.pathString, lock)
+        }
+    }
+
+    /**
+     * Tries to repair dangling entities and match them with a file. Caller must hold [withVerifyPathLock].
+     */
+    private fun repairEntityInode(path: FilePath, userAction: UserAction, reusePathEntity: Boolean): Result<Unit> {
+        val entityResult = entityService.getByPath(path.pathString, UserAction.NONE)
+        if (entityResult.hasError) return entityResult.cast()
+        val entity = entityResult.valueOrNull
+
+        // Do not do inode check on unsupported filesystem.
+        if (entity != null && (!entity.isFilesystemSupported || entity.inode == null)) {
+            val exists = filesystemService.exists(path.path, followSymbolicLinks = false)
+            return if (exists) Result.ok() else Result.reject("Path does not exist.")
+        }
+
+        val newInode = filesystemService.getInode(path.path, followSymbolicLinks = false)
+        // Inode matches normally
+        if (entity?.inode == newInode) return Result.ok()
+
+        // Handle if a file with a different inode exists on the path
+        if (newInode != null) {
+            return entityService.withEntityRepairLock {
+                val existingEntityR = entityService.getByInode(newInode, userAction)
+                if (existingEntityR.hasError) return@withEntityRepairLock existingEntityR.cast()
+
+                // Re-read path entity under the repair lock to close races with concurrent indexers.
+                val pathEntityResult = entityService.getByPath(path.pathString, userAction)
+                if (pathEntityResult.hasError) return@withEntityRepairLock pathEntityResult.cast()
+                val pathEntity = pathEntityResult.valueOrNull
+
+                if (pathEntity != null) {
+                    if (pathEntity.inode == newInode) return@withEntityRepairLock Result.ok()
+
+                    if (reusePathEntity) {
+                        if (existingEntityR.isSuccessful && existingEntityR.value.entityId != pathEntity.entityId) {
+                            entityService.updateInode(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
+                                if (it.isNotSuccessful) return@withEntityRepairLock it.cast()
+                            }
+                        }
+                        return@withEntityRepairLock entityService.updateInode(pathEntity.entityId, newInode, pathEntity, userAction)
+                    }
+
+                    // New object at this path: orphan the stale path entity instead of reusing it.
+                    entityService.updatePath(
+                        entityId = pathEntity.entityId,
+                        newPath = null,
+                        existingEntity = pathEntity,
+                        userAction = userAction,
+                    ).let {
+                        if (it.isNotSuccessful) return@withEntityRepairLock it.cast()
+                    }
+                }
+
+                // No entity at path (or just orphaned): reconnect a dangling inode entity if one exists.
+                if (existingEntityR.isSuccessful) {
+                    val inodeEntity = existingEntityR.value
+                    if (inodeEntity.path != path.pathString) {
+                        return@withEntityRepairLock entityService.updatePath(
+                            entityId = inodeEntity.entityId,
+                            newPath = path.pathString,
+                            existingEntity = inodeEntity,
+                            userAction = userAction,
+                        )
+                    }
+                    return@withEntityRepairLock Result.ok()
+                }
+
+                if (existingEntityR.notFound) {
+                    return@withEntityRepairLock Result.ok()
+                }
+
+                Result.ok()
+            }
+        }
+
+        // Path has unexpected Inode, so remove the path from the entity in database.
+        return entityService.withEntityRepairLock {
+            entityService.move(
+                path = path,
+                newPath = null,
+                userAction = userAction,
+            )
         }
     }
 }

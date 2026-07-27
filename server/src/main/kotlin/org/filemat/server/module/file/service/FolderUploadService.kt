@@ -125,13 +125,21 @@ class FolderUploadService(
             when (existingType) {
                 null -> Unit
                 FolderUploadEntryType.FILE,
-                FolderUploadEntryType.OTHER -> conflicts += FolderUploadConflict(
-                    relativePath = file.relativePath,
-                    targetPath = target.toString(),
-                    incomingType = FolderUploadEntryType.FILE,
-                    existingType = existingType,
-                    allowedResolutions = listOf(FolderUploadResolution.OVERWRITE, FolderUploadResolution.SKIP, FolderUploadResolution.KEEP_BOTH),
-                )
+                FolderUploadEntryType.OTHER -> {
+                    val canOverwrite = fileService.isAllowedToDeleteFile(user, target).isSuccessful
+                    conflicts += FolderUploadConflict(
+                        relativePath = file.relativePath,
+                        targetPath = target.toString(),
+                        incomingType = FolderUploadEntryType.FILE,
+                        existingType = existingType,
+                        allowedResolutions = buildList {
+                            if (canOverwrite) add(FolderUploadResolution.OVERWRITE)
+                            add(FolderUploadResolution.SKIP)
+                            add(FolderUploadResolution.KEEP_BOTH)
+                        },
+                        message = if (canOverwrite) null else "Cannot overwrite without permission to delete.",
+                    )
+                }
                 FolderUploadEntryType.DIRECTORY -> conflicts += FolderUploadConflict(
                     relativePath = file.relativePath,
                     targetPath = target.toString(),
@@ -191,6 +199,7 @@ class FolderUploadService(
         val createdDirectories = mutableListOf<String>()
         val directoryRemaps = mutableListOf<DirectoryRemap>()
         val skippedPrefixes = mutableListOf<String>()
+        val unresolvedConflicts = mutableListOf<FolderUploadConflict>()
 
         // Directory-level decisions affect whole subtrees. A keep-both decision
         // remaps the entire incoming branch to the numbered destination folder.
@@ -216,6 +225,40 @@ class FolderUploadService(
                     FolderUploadResolution.OVERWRITE -> return Result.reject("Cannot overwrite a file with a folder.")
                 }
             }
+
+        // Validate file resolutions first. Overwrite without DELETE is collected and
+        // returned so the client can re-prompt without aborting the whole batch.
+        normalized.files.forEach { file ->
+            if (skippedPrefixes.any { file.relativePath.startsWith(it) }) return@forEach
+
+            val conflict = conflictByRelativePath[file.relativePath] ?: return@forEach
+            val resolution = resolutionByRelativePath[file.relativePath]
+                ?: request.defaultResolution
+                ?: return Result.reject("Missing resolution for ${file.relativePath}.")
+
+            if (resolution == FolderUploadResolution.OVERWRITE) {
+                val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps)
+                val canOverwrite = conflict.allowedResolutions.contains(FolderUploadResolution.OVERWRITE)
+                    && fileService.isAllowedToDeleteFile(user, baseTarget).isSuccessful
+                if (!canOverwrite) {
+                    unresolvedConflicts += conflict.copy(
+                        allowedResolutions = listOf(FolderUploadResolution.SKIP, FolderUploadResolution.KEEP_BOTH),
+                        message = "Cannot overwrite without permission to delete.",
+                    )
+                    return@forEach
+                }
+            } else if (!conflict.allowedResolutions.contains(resolution)) {
+                return Result.reject("Resolution $resolution is not allowed for ${file.relativePath}.")
+            }
+        }
+
+        if (unresolvedConflicts.isNotEmpty()) {
+            return Result.ok(
+                FolderUploadSessionResponse(
+                    unresolvedConflicts = unresolvedConflicts.distinctBy { it.relativePath },
+                )
+            )
+        }
 
         val targetDirectories = normalized.directories
             .filter { relativePath -> skippedPrefixes.none { prefix -> relativePath == prefix.removeSuffix("/") || relativePath.startsWith(prefix) } }
@@ -256,9 +299,10 @@ class FolderUploadService(
                 return@forEach
             }
 
+            val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps)
+
             // Keep-both names are computed now for the session response, and again
             // under lock at final write time to handle races.
-            val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps)
             val targetPath = if (resolution == FolderUploadResolution.KEEP_BOTH && baseTarget.exists(LinkOption.NOFOLLOW_LINKS)) {
                 resolveKeepBothPath(baseTarget)
             } else {
@@ -386,8 +430,8 @@ class FolderUploadService(
         return Result.ok(FolderUploadFinalizeResult(actualFilename = getFilenameFromPath(finalTarget.path)))
     }
 
-    // Overwrite preserves the existing Filemat entity. If the destination vanished
-    // after preflight, treat it as a normal create at the intended path.
+    // Overwrite keeps the path entity, claims ownership, and requires DELETE.
+    // If the destination vanished after preflight, treat it as a normal create.
     private fun finalizeOverwrite(user: Principal, uploadLocation: FilePath, plannedTarget: FilePath): Result<FolderUploadFinalizeResult> {
         val exists = plannedTarget.exists(LinkOption.NOFOLLOW_LINKS)
         if (exists && !plannedTarget.path.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
@@ -404,57 +448,38 @@ class FolderUploadService(
             return Result.ok(FolderUploadFinalizeResult(actualFilename = getFilenameFromPath(plannedTarget.path)))
         }
 
+        fileService.isAllowedToDeleteFile(user, plannedTarget).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
         filesystemService.replaceFileContentsAtomically(source = uploadLocation, destination = plannedTarget).let {
             if (it.isNotSuccessful) return it.cast()
         }
-        updatePreservedOverwriteEntity(plannedTarget).let {
-            if (it.isNotSuccessful) return it.cast()
-        }
-        thumbnailService.deleteCacheForPath(plannedTarget)
 
-        return Result.ok(FolderUploadFinalizeResult(actualFilename = getFilenameFromPath(plannedTarget.path)))
-    }
-
-    // Atomic replacement can give the existing path a new inode. Keep the existing
-    // entity, but update its inode immediately so later reads do not trigger repair
-    // logic that tries to move a stale inode entity onto this occupied path.
-    private fun updatePreservedOverwriteEntity(canonicalPath: FilePath): Result<Unit> {
-        return entityService.withEntityRepairLock {
-            updatePreservedOverwriteEntityUnlocked(canonicalPath)
-        }
-    }
-
-    private fun updatePreservedOverwriteEntityUnlocked(canonicalPath: FilePath): Result<Unit> {
-        val pathEntity = entityService.getByPath(canonicalPath.pathString, UserAction.UPLOAD_FILE).let {
-            if (it.notFound) return Result.ok(Unit)
-            if (it.isNotSuccessful) return it.cast()
-            it.value
+        fileService.ensureEntityIndexed(
+            path = plannedTarget,
+            ownerId = user.userId,
+            userAction = UserAction.UPLOAD_FILE,
+            reusePathEntity = true,
+        ).let {
+            if (it.isNotSuccessful) return Result.error(it.errorOrNull ?: "Failed to index overwritten file.")
         }
 
-        val newInode = filesystemService.getInode(canonicalPath.path, followSymbolicLinks = false)
-            ?: return Result.ok(Unit)
-        if (pathEntity.inode == newInode) return Result.ok(Unit)
-
-        entityService.getByInode(newInode, UserAction.UPLOAD_FILE).let {
-            if (it.hasError) return it.cast()
-            if (it.isSuccessful && it.value.entityId != pathEntity.entityId) {
-                entityService.updateInode(
-                    entityId = it.value.entityId,
-                    newInode = null,
-                    existingEntity = it.value,
-                    userAction = UserAction.UPLOAD_FILE,
-                ).let { updateResult ->
-                    if (updateResult.isNotSuccessful) return updateResult.cast()
-                }
+        entityService.getByPath(plannedTarget.pathString, UserAction.UPLOAD_FILE).let { entityResult ->
+            if (entityResult.isNotSuccessful) return Result.error(entityResult.errorOrNull ?: "Failed to load overwritten file entity.")
+            entityService.updateOwner(
+                entityId = entityResult.value.entityId,
+                ownerId = user.userId,
+                existingEntity = entityResult.value,
+                userAction = UserAction.UPLOAD_FILE,
+            ).let {
+                if (it.isNotSuccessful) return Result.error(it.errorOrNull ?: "Failed to update overwritten file owner.")
             }
         }
 
-        return entityService.updateInode(
-            entityId = pathEntity.entityId,
-            newInode = newInode,
-            existingEntity = pathEntity,
-            userAction = UserAction.UPLOAD_FILE,
-        )
+        thumbnailService.deleteCacheForPath(plannedTarget)
+
+        return Result.ok(FolderUploadFinalizeResult(actualFilename = getFilenameFromPath(plannedTarget.path)))
     }
 
     private fun moveUploadedFile(user: Principal, uploadLocation: FilePath, target: FilePath): Result<Unit> {
@@ -467,72 +492,15 @@ class FolderUploadService(
     }
 
     private fun createEntityOrRollback(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        indexUploadedPath(user, canonicalPath).let {
+        fileService.ensureEntityIndexed(
+            path = canonicalPath,
+            ownerId = user.userId,
+            userAction = UserAction.UPLOAD_FILE,
+            reusePathEntity = false,
+        ).let {
             if (it.isSuccessful) return Result.ok(Unit)
             filesystemService.deleteFile(user = user, target = canonicalPath, ignorePermissions = true)
             return Result.error(it.errorOrNull ?: "Failed to index uploaded file.")
-        }
-    }
-
-    // A moved upload can match an existing detached entity by inode. Reconnect that
-    // entity before inserting so SQLite's unique inode constraint is not hit after
-    // the file was already written successfully.
-    private fun indexUploadedPath(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        return entityService.withEntityRepairLock {
-            indexUploadedPathUnlocked(user, canonicalPath)
-        }
-    }
-
-    private fun indexUploadedPathUnlocked(user: Principal, canonicalPath: FilePath): Result<Unit> {
-        entityService.getByPath(canonicalPath.pathString, UserAction.UPLOAD_FILE).let {
-            if (it.isSuccessful) return Result.ok(Unit)
-            if (it.hasError) return it.cast()
-        }
-
-        val inode = filesystemService.getInode(canonicalPath.path, followSymbolicLinks = false)
-        if (inode != null) {
-            entityService.getByInode(inode, UserAction.UPLOAD_FILE).let { inodeEntityResult ->
-                if (inodeEntityResult.hasError) return inodeEntityResult.cast()
-
-                if (inodeEntityResult.isSuccessful) {
-                    val inodeEntity = inodeEntityResult.value
-                    if (inodeEntity.path != canonicalPath.pathString) {
-                        entityService.getByPath(canonicalPath.pathString, UserAction.UPLOAD_FILE).let { pathEntityResult ->
-                            if (pathEntityResult.hasError) return pathEntityResult.cast()
-                            if (pathEntityResult.isSuccessful && pathEntityResult.value.entityId != inodeEntity.entityId) {
-                                entityService.updatePath(
-                                    entityId = pathEntityResult.value.entityId,
-                                    newPath = null,
-                                    existingEntity = pathEntityResult.value,
-                                    userAction = UserAction.UPLOAD_FILE,
-                                ).let {
-                                    if (it.isNotSuccessful) return it.cast()
-                                }
-                            }
-                        }
-
-                        entityService.updatePath(
-                            entityId = inodeEntity.entityId,
-                            newPath = canonicalPath.pathString,
-                            existingEntity = inodeEntity,
-                            userAction = UserAction.UPLOAD_FILE,
-                        ).let {
-                            if (it.isNotSuccessful) return it.cast()
-                        }
-                    }
-
-                    return Result.ok(Unit)
-                }
-            }
-        }
-
-        entityService.create(
-            canonicalPath = canonicalPath,
-            ownerId = user.userId,
-            userAction = UserAction.UPLOAD_FILE,
-        ).let {
-            if (it.isSuccessful || it.rejected) return Result.ok(Unit)
-            return it.cast()
         }
     }
 
@@ -548,12 +516,13 @@ class FolderUploadService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        entityService.create(
-            canonicalPath = path,
+        fileService.ensureEntityIndexed(
+            path = path,
             ownerId = user.userId,
             userAction = UserAction.CREATE_FOLDER,
+            reusePathEntity = false,
         ).let {
-            if (it.isNotSuccessful && !it.rejected) return it.cast()
+            if (it.isNotSuccessful) return it.cast()
         }
 
         createdDirectories += path.pathString

@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service.file
 
 import kotlinx.coroutines.flow.Flow
+import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.*
@@ -181,6 +182,18 @@ class FileService(
 
     fun verifyEntityInode(path: FilePath, userAction: UserAction): Result<Unit>
             = fileSecurityService.verifyEntityInode(path = path, userAction = userAction)
+
+    fun ensureEntityIndexed(
+        path: FilePath,
+        ownerId: Ulid?,
+        userAction: UserAction,
+        reusePathEntity: Boolean = false,
+    ): Result<Unit> = fileSecurityService.ensureEntityIndexed(
+        path = path,
+        ownerId = ownerId,
+        userAction = userAction,
+        reusePathEntity = reusePathEntity,
+    )
 
     // --- Utilities ---
 

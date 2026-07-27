@@ -41,6 +41,10 @@ interface EntityRepository : CrudRepository<FilesystemEntity, Ulid> {
     fun updateInode(entityId: Ulid, inode: Long?): Int
 
     @Modifying
+    @Query("UPDATE files SET owner_user_id = :ownerId WHERE entity_id = :entityId")
+    fun updateOwner(entityId: Ulid, ownerId: Ulid?): Int
+
+    @Modifying
     @Query("INSERT INTO files (entity_id, path, inode, is_filesystem_supported, owner_user_id) VALUES (:entityId, :path, :inode, :isFilesystemSupported, :ownerId)")
     fun insert(
         entityId: Ulid,

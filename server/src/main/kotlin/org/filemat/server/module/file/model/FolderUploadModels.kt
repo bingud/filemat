@@ -67,6 +67,7 @@ data class FolderUploadConflict(
     val incomingType: FolderUploadEntryType,
     val existingType: FolderUploadEntryType,
     val allowedResolutions: List<FolderUploadResolution>,
+    val message: String? = null,
 )
 
 @Serializable
@@ -93,11 +94,12 @@ data class FolderUploadPreflightResponse(
 
 @Serializable
 data class FolderUploadSessionResponse(
-    val sessionId: String,
-    val queuedFiles: List<FolderUploadSessionFile>,
-    val skippedFiles: List<String>,
-    val createdDirectories: List<String>,
-    val expiresAt: Long,
+    val sessionId: String? = null,
+    val queuedFiles: List<FolderUploadSessionFile> = emptyList(),
+    val skippedFiles: List<String> = emptyList(),
+    val createdDirectories: List<String> = emptyList(),
+    val expiresAt: Long = 0,
+    val unresolvedConflicts: List<FolderUploadConflict> = emptyList(),
 )
 
 @Serializable

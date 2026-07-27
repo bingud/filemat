@@ -214,17 +214,18 @@ class FileShareService(
             }
 
         // Get entity
-        val existingEntity = entityService.getByPath(canonicalPath.pathString, UserAction.SHARE_FILE)
-            .let {
-                if (!it.notFound && it.isNotSuccessful) return it.cast()
-                if (it.isSuccessful) return@let it.value
-                null
-            }
-        val entity = existingEntity ?: entityService.create(canonicalPath, null, UserAction.SHARE_FILE)
-            .let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }
+        fileService.ensureEntityIndexed(
+            path = canonicalPath,
+            ownerId = null,
+            userAction = UserAction.SHARE_FILE,
+            reusePathEntity = true,
+        ).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+        val entity = entityService.getByPath(canonicalPath.pathString, UserAction.SHARE_FILE).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
 
         val share = FileShare(
             shareId = sharePath,

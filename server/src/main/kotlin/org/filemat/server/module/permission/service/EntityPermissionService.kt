@@ -143,7 +143,7 @@ class EntityPermissionService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-            // Verify / validate the file
+            // Verify / validate the file without creating yet (owner check first).
             fileService.verifyEntityInode(path = canonicalPath, userAction = action).let {
                 if (it.isNotSuccessful) return it.cast()
             }
@@ -168,11 +168,22 @@ class EntityPermissionService(
         }
         if (existingPermission != null) return Result.reject("This ${mode.name.lowercase()} already has a permission.")
 
-        val entity = existingEntity
-            ?: entityService.create(canonicalPath = canonicalPath, userId ?: user!!.userId, action).let {
+        val entity = if (existingEntity != null) {
+            existingEntity
+        } else {
+            fileService.ensureEntityIndexed(
+                path = canonicalPath,
+                ownerId = userId ?: user!!.userId,
+                userAction = action,
+                reusePathEntity = true,
+            ).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+            entityService.getByPath(path = canonicalPath.pathString, userAction = action).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
+        }
 
         val permission = EntityPermission(
             permissionId = UlidCreator.getUlid(),

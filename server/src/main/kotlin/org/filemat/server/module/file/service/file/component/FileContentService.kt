@@ -13,7 +13,6 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.FileService
@@ -33,7 +32,6 @@ class FileContentService(
     private val fileService: FileService,
     private val fileLockService: FileLockService,
     private val filesystemService: FilesystemService,
-    private val entityService: EntityService
 ) {
 
     /**
@@ -313,11 +311,14 @@ class FileContentService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-            entityService.create(
-                canonicalPath = canonicalPath,
+            fileService.ensureEntityIndexed(
+                path = canonicalPath,
                 ownerId = user.userId,
                 userAction = UserAction.CREATE_FOLDER,
-            )
+                reusePathEntity = false,
+            ).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
 
             return Result.ok()
         } finally {
@@ -355,11 +356,14 @@ class FileContentService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-            entityService.create(
-                canonicalPath = canonicalPath,
+            fileService.ensureEntityIndexed(
+                path = canonicalPath,
                 ownerId = user.userId,
                 userAction = UserAction.CREATE_FILE,
-            )
+                reusePathEntity = false,
+            ).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
 
             val newMeta = fileService.getFullMetadata(user, canonicalPath, canonicalPath).let {
                 if (it.hasError) return Result.error("File was created, but failed to load file metadata: ${it.error}")
