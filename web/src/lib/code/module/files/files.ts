@@ -233,7 +233,8 @@ export async function uploadWithTus(isMultiple: boolean = true) {
             })
             for (const handle of handles || []) {
                 const file = await handle.getFile() as File
-                startTusUpload(file, { fileHandle: handle })
+                // Await so incomplete-upload confirm dialogs cannot stack/race.
+                await startTusUpload(file, { fileHandle: handle })
             }
         } catch {
             // User cancelled the picker (or the API failed). Do not open a second picker.
@@ -246,14 +247,15 @@ export async function uploadWithTus(isMultiple: boolean = true) {
     input.style.display = 'none'
     input.multiple = isMultiple
 
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
         const files = (e.target as HTMLInputElement).files
         if (!files || files.length === 0) {
             return
         }
 
         for (const file of files) {
-            startTusUpload(file)
+            // Await so incomplete-upload confirm dialogs cannot stack/race.
+            await startTusUpload(file)
         }
 
         // Clean up the input element
@@ -578,6 +580,98 @@ function fileMatchesPreviousUpload(file: File, previous: PreviousTusUpload | nul
     return true
 }
 
+function isClientProgressComplete(fileUpload: FileUpload, previous?: PreviousTusUpload | null): boolean {
+    const total = fileUpload.bytesTotal || previous?.size || 0
+    if (total <= 0) return false
+    return fileUpload.bytesUploaded >= total
+}
+
+/**
+ * Mark an upload done after finalize (or after the TUS temp was already deleted
+ * because finalize succeeded and the client missed the response).
+ */
+async function markUploadFinalized(
+    fileUpload: FileUpload,
+    opts: {
+        uploadUrl?: string | null
+        urlStorageKey?: string | null
+        actualFilename?: string | null
+        assumedAlreadyFinalized?: boolean
+    } = {},
+) {
+    await removeStoredTusUpload(opts.urlStorageKey)
+    await deleteUploadFileHandle(fileUpload.path, opts.uploadUrl, opts.urlStorageKey)
+    fileUpload.status = `success`
+    if (opts.actualFilename) {
+        const uploadFolder = fileUpload.path.substring(0, fileUpload.path.lastIndexOf(`/`)) || `/`
+        fileUpload.actualPath = uploadFolder === `/`
+            ? `/${opts.actualFilename}`
+            : `${uploadFolder}/${opts.actualFilename}`
+    }
+    fileUpload.options.onSuccess?.()
+    toast.success(opts.assumedAlreadyFinalized ? `Upload already completed.` : `Upload finalized.`)
+}
+
+/**
+ * When bytes are fully on the server, finalize (or treat a gone upload as already finalized).
+ * @returns true if the upload was resolved (success or hard failure that should stop retry/resume)
+ */
+async function resolveCompleteServerUpload(
+    fileUpload: FileUpload,
+    uploadUrl: string,
+    previous: PreviousTusUpload | null,
+): Promise<boolean> {
+    const head = await headTusUpload(uploadUrl)
+
+    // Temp upload already deleted after a successful finalize the client never saw.
+    if (!head.ok) {
+        if (isClientProgressComplete(fileUpload, previous)) {
+            await markUploadFinalized(fileUpload, {
+                uploadUrl,
+                urlStorageKey: previous?.urlStorageKey,
+                assumedAlreadyFinalized: true,
+            })
+            return true
+        }
+        return false
+    }
+
+    if (
+        head.offset == null
+        || head.length == null
+        || head.length <= 0
+        || head.offset < head.length
+    ) {
+        return false
+    }
+
+    const finalized = await tryFinalizeCompleteTusUpload(uploadUrl, head.offset)
+    if (finalized.ok) {
+        await markUploadFinalized(fileUpload, {
+            uploadUrl,
+            urlStorageKey: previous?.urlStorageKey,
+            actualFilename: finalized.actualFilename,
+        })
+        return true
+    }
+
+    // Finalize already ran and wiped the TUS folder — do not start a duplicate upload.
+    if (finalized.notFound) {
+        await markUploadFinalized(fileUpload, {
+            uploadUrl,
+            urlStorageKey: previous?.urlStorageKey,
+            assumedAlreadyFinalized: true,
+        })
+        return true
+    }
+
+    handleErr({
+        description: `Failed to finalize complete TUS upload`,
+        notification: finalized.message || `Failed to finalize the upload. Try again or restart it.`,
+    })
+    return true
+}
+
 /**
  * Resume an incomplete upload after the user reattaches the local file.
  */
@@ -595,43 +689,7 @@ export async function resumeIncompleteUpload(fileUpload: FileUpload, preselected
 
     // Bytes already on server: tus would emit success without PATCH/finalize.
     // Force an empty PATCH so the server re-runs finalize instead.
-    const head = await headTusUpload(previous.uploadUrl)
-    if (
-        head.ok
-        && head.offset != null
-        && head.length != null
-        && head.length > 0
-        && head.offset >= head.length
-    ) {
-        const finalized = await tryFinalizeCompleteTusUpload(previous.uploadUrl, head.offset)
-        if (finalized.ok) {
-            await removeStoredTusUpload(previous.urlStorageKey)
-            await deleteUploadFileHandle(fileUpload.path, previous.uploadUrl, previous.urlStorageKey)
-            fileUpload.status = `success`
-            if (finalized.actualFilename) {
-                const uploadFolder = fileUpload.path.substring(0, fileUpload.path.lastIndexOf(`/`)) || `/`
-                fileUpload.actualPath = uploadFolder === `/`
-                    ? `/${finalized.actualFilename}`
-                    : `${uploadFolder}/${finalized.actualFilename}`
-            }
-            fileUpload.options.onSuccess?.()
-            toast.success(`Upload finalized.`)
-            return
-        }
-        if (finalized.notFound) {
-            await removeStoredTusUpload(previous.urlStorageKey)
-            await deleteUploadFileHandle(fileUpload.path, previous.uploadUrl, previous.urlStorageKey)
-            uploadState.removeUpload(fileUpload.path)
-            handleErr({
-                description: `Complete TUS upload missing during finalize`,
-                notification: finalized.message || `This incomplete upload no longer exists on the server.`,
-            })
-            return
-        }
-        handleErr({
-            description: `Failed to finalize complete TUS upload`,
-            notification: finalized.message || `Failed to finalize the upload. Try again or restart it.`,
-        })
+    if (await resolveCompleteServerUpload(fileUpload, previous.uploadUrl, previous)) {
         return
     }
 
@@ -807,42 +865,8 @@ export async function retryTusUpload(fileUpload: FileUpload) {
 
     const previous = fileUpload.previousUpload
     const uploadUrl = fileUpload.uploadUrl || fileUpload.upload.url || previous?.uploadUrl || null
-    if (uploadUrl) {
-        const head = await headTusUpload(uploadUrl)
-        if (
-            head.ok
-            && head.offset != null
-            && head.length != null
-            && head.length > 0
-            && head.offset >= head.length
-        ) {
-            // Bytes already on server — re-run finalize instead of a fake tus success.
-            const finalized = await tryFinalizeCompleteTusUpload(uploadUrl, head.offset)
-            if (finalized.ok) {
-                if (previous?.urlStorageKey) await removeStoredTusUpload(previous.urlStorageKey)
-                await deleteUploadFileHandle(fileUpload.path, uploadUrl, previous?.urlStorageKey)
-                fileUpload.status = `success`
-                if (finalized.actualFilename) {
-                    const uploadFolder = fileUpload.path.substring(0, fileUpload.path.lastIndexOf(`/`)) || `/`
-                    fileUpload.actualPath = uploadFolder === `/`
-                        ? `/${finalized.actualFilename}`
-                        : `${uploadFolder}/${finalized.actualFilename}`
-                }
-                fileUpload.options.onSuccess?.()
-                toast.success(`Upload finalized.`)
-                return
-            }
-            if (finalized.notFound) {
-                if (previous?.urlStorageKey) await removeStoredTusUpload(previous.urlStorageKey)
-                await deleteUploadFileHandle(fileUpload.path, uploadUrl, previous?.urlStorageKey)
-            } else {
-                handleErr({
-                    description: `Failed to finalize complete TUS upload on retry`,
-                    notification: finalized.message || `Failed to finalize the upload. Try again.`,
-                })
-                return
-            }
-        }
+    if (uploadUrl && await resolveCompleteServerUpload(fileUpload, uploadUrl, previous)) {
+        return
     }
 
     const file = fileUpload.upload.file as File

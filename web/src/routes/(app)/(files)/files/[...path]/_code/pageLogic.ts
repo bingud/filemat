@@ -12,12 +12,13 @@ import { sharedFilesPageState } from "../../../shared-files/state.svelte"
 import { inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
 
 
-export function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
+export async function event_filesDropped(e: CustomEvent<{ files: FileList }>) {
     const files = Array.from(e.detail.files)
-    
-    files.forEach(file => {
-        startTusUpload(file)
-    })
+
+    // Await sequentially so incomplete-upload confirm dialogs cannot stack/race.
+    for (const file of files) {
+        await startTusUpload(file)
+    }
 }
 
 // Scrolling position
