@@ -1,6 +1,6 @@
 import { auth } from "$lib/code/stateObjects/authState.svelte"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
-import { delay, handleErr, handleException, isServerDown, parseJson, unixNow } from "../util/codeUtil.svelte"
+import { delay, handleErr, handleException, safeFetch, unixNow } from "../util/codeUtil.svelte"
 import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
 import { clientState } from "../stateObjects/clientState.svelte"
@@ -30,101 +30,27 @@ export async function fetchState(
         if (!options || options.followSymlinks) body.append("followSymlinks", "true")
         if (stateHashCode) body.append("rawStateHashCode", stateHashCode.toString())
 
-        const response = await fetch(`/api/v1/state/select`, {
-            method: "POST", credentials: "same-origin", body: body
-        })
-        const status = response.status
-        const text = await response.text()
-        if (text === "up-to-date") return true
+        const response = await safeFetch(`/api/v1/state/select`, { body })
+        if (response.failed) {
+            handleException("Exception when fetching state", "An error occurred while loading state.", response.exception)
+            return false
+        }
 
-        const json = parseJson(text)
+        if (response.content === "up-to-date") return true
 
-        if (status === 200) {
-            const data = json as state
+        const status = response.code
+        const json = response.json()
 
-            if (!options) {
-                const newHashCode = data.hashCode
-                if (newHashCode) {
-                    appState.stateHashCode = newHashCode
-                }
-            }
-
-            if (!options || options.principal) {
-                const status = data.principal.status
-                
-                if (status === 200) {
-                    const principal = data.principal.value
-                    auth.principal = principal
-                    auth.authenticated = true
-                } else if (status === 401) {
-                    auth.principal = null
-                    auth.authenticated = false
-                } else {
-                    handleErr({
-                        description: `Status ${status} for principal when fetching state.`,
-                        notification: `Failed to load your account (${status})`
-                    })
-                    return false
-                }
-            }
-            if (!options || options.roles) {
-                const status = data.roles.status
-
-                if (status === 200) {
-                    const roleList = data.roles.value
-                    appState.roleList = roleList
-                } else if (status === 401) {
-                    appState.roleList = null
-                } else {
-                    handleErr({
-                        description: `Status ${status} for role list when fetching state.`,
-                        notification: `Failed to load roles (${status})`
-                    })
-                    return false
-                }
-            }
-            if (!options || options.app) {
-                const status = data.app.status
-
-                if (status === 200) {
-                    const app = data.app.value
-                    appState.isSetup = app.isSetup
-                    appState.followSymlinks = app.followSymlinks
-                } else {
-                    handleErr({
-                        description: `Status ${status} for app state when fetching state.`,
-                        notification: `Failed to load Filemat state (${status})`
-                    })
-                    return false
-                }
-            }
-            if (!options || options.systemRoleIds) {
-                const status = data.systemRoleIds.status
-
-                if (status === 200) {
-                    const ids = data.systemRoleIds.value
-                    appState.systemRoleIds = ids
-                } else {
-                    handleErr({
-                        description: `Status ${status} for system role IDs when fetching state.`,
-                        notification: `Failed to load system roles (${status})`
-                    })
-                }
-            }
-
-            if (!options) {
-                appState.lastFullStateRefresh = unixNow()
-            }
-
-            console.log(`Loaded state.`)
-            return true
-        } else if (isServerDown(status)) {
+        if (status.serverDown) {
             handleErr({
                 description: `Server is ${status} while fetching state`,
                 notification: "Server is unavailable.",
+                isServerDown: true,
             })
             return false
-        } else {
+        }
+
+        if (status.failed) {
             const error = json as ErrorResponse
             handleErr({
                 description: `Failed to load state (${status})`,
@@ -132,6 +58,85 @@ export async function fetchState(
             })
             return false
         }
+
+        const data = json as state
+
+        if (!options) {
+            const newHashCode = data.hashCode
+            if (newHashCode) {
+                appState.stateHashCode = newHashCode
+            }
+        }
+
+        if (!options || options.principal) {
+            const status = data.principal.status
+            
+            if (status === 200) {
+                const principal = data.principal.value
+                auth.principal = principal
+                auth.authenticated = true
+            } else if (status === 401) {
+                auth.principal = null
+                auth.authenticated = false
+            } else {
+                handleErr({
+                    description: `Status ${status} for principal when fetching state.`,
+                    notification: `Failed to load your account (${status})`
+                })
+                return false
+            }
+        }
+        if (!options || options.roles) {
+            const status = data.roles.status
+
+            if (status === 200) {
+                const roleList = data.roles.value
+                appState.roleList = roleList
+            } else if (status === 401) {
+                appState.roleList = null
+            } else {
+                handleErr({
+                    description: `Status ${status} for role list when fetching state.`,
+                    notification: `Failed to load roles (${status})`
+                })
+                return false
+            }
+        }
+        if (!options || options.app) {
+            const status = data.app.status
+
+            if (status === 200) {
+                const app = data.app.value
+                appState.isSetup = app.isSetup
+                appState.followSymlinks = app.followSymlinks
+            } else {
+                handleErr({
+                    description: `Status ${status} for app state when fetching state.`,
+                    notification: `Failed to load Filemat state (${status})`
+                })
+                return false
+            }
+        }
+        if (!options || options.systemRoleIds) {
+            const status = data.systemRoleIds.status
+
+            if (status === 200) {
+                const ids = data.systemRoleIds.value
+                appState.systemRoleIds = ids
+            } else {
+                handleErr({
+                    description: `Status ${status} for system role IDs when fetching state.`,
+                    notification: `Failed to load system roles (${status})`
+                })
+            }
+        }
+
+        if (!options) {
+            appState.lastFullStateRefresh = unixNow()
+        }
+
+        console.log(`Loaded state.`)
+        return true
     } catch (e) {
         handleException("Exception when fetching state", "An error occurred while loading state.", e)
         return false

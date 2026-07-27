@@ -3,7 +3,7 @@ import { filesState } from "../stateObjects/filesState.svelte";
 import type { FileMetadata, FullFileMetadata } from "../auth/types";
 import type { FileCategory } from "../data/files";
 import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "../util/codeUtil.svelte";
-import { uploadState } from "../stateObjects/subState/uploadState.svelte";
+import { uploadState, type FileUpload, type TusUploadOptions } from "../stateObjects/subState/uploadState.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { goto } from "$app/navigation";
 import { persistentToast_loading } from "../util/uiUtil";
@@ -13,17 +13,7 @@ export type FileData = { meta: FullFileMetadata, entries: FullFileMetadata[] | n
 export const UPLOAD_CONCURRENCY_LIMIT = 1
 const SNAPSHOT_BEFORE_UPLOAD_MAX_BYTES = 64 * 1024 * 1024
 
-export type TusUploadOptions = {
-    targetPath?: string,
-    targetFilename?: string,
-    metadata?: Record<string, string>,
-    displayPath?: string,
-    batchId?: string,
-    relativePath?: string,
-    refreshCurrentFolderOnSuccess?: boolean,
-    onSuccess?: () => void,
-    snapshotBeforeUpload?: boolean,
-}
+export type { TusUploadOptions }
 
 /**
  * Fetches file metadata (and folder entries if the file is a folder)
@@ -451,6 +441,32 @@ function startUploadFromQueue() {
     const first = uploads[0]
     first.upload.start()
     first.status = "uploading"
+}
+
+/**
+ * Retry a failed upload by creating a fresh tus.Upload.
+ * Reusing the spent Upload instance is unreliable: it keeps a stale URL/source
+ * and exhausted retry state, which can make manual retry silently do nothing.
+ */
+export function retryTusUpload(fileUpload: FileUpload) {
+    if (fileUpload.status !== "failed" && fileUpload.status !== "canceled") return
+
+    const file = fileUpload.upload.file as File
+    const options: TusUploadOptions = {
+        ...fileUpload.options,
+        targetPath: fileUpload.path,
+        targetFilename: filenameFromPath(fileUpload.path),
+    }
+
+    // Drop the spent Upload so we don't resume from its dead URL/source.
+    try {
+        fileUpload.upload.abort(false)
+    } catch {
+        // ignore abort errors on already-failed uploads
+    }
+    uploadState.removeUpload(fileUpload.path)
+
+    startTusUpload(file, options)
 }
 
 

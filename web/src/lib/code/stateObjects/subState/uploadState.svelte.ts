@@ -3,6 +3,18 @@ import { Upload } from "tus-js-client"
 
 type fileUploadStatus = "paused" | "uploading" | "success" | "failed" | "canceled" | "queued" | "skipped"
 
+export type TusUploadOptions = {
+    targetPath?: string,
+    targetFilename?: string,
+    metadata?: Record<string, string>,
+    displayPath?: string,
+    batchId?: string,
+    relativePath?: string,
+    refreshCurrentFolderOnSuccess?: boolean,
+    onSuccess?: () => void,
+    snapshotBeforeUpload?: boolean,
+}
+
 export type FileUpload = {
     path: string,
     actualPath: string | null,
@@ -15,6 +27,8 @@ export type FileUpload = {
     bytesTotal: number,
     bytesUploaded: number,
     upload: Upload,
+    /** Original options used to create this upload; needed for a fresh retry. */
+    options: TusUploadOptions,
 }
 
 export class UploadState {
@@ -68,11 +82,7 @@ export class UploadState {
         path: string,
         upload: Upload,
         status: fileUploadStatus,
-        options: {
-            displayPath?: string | null,
-            batchId?: string | null,
-            relativePath?: string | null,
-        } = {}
+        options: TusUploadOptions = {}
     ): boolean {
         this.panelExpanded = true
         
@@ -91,6 +101,7 @@ export class UploadState {
             status: status,
             action: null,
             upload: upload,
+            options: options,
         }
         return true
     }

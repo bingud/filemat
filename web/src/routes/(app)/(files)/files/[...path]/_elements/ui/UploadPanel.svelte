@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ChevronUpIcon from './../../../../../../../lib/component/icons/ChevronUpIcon.svelte';
+    import { retryTusUpload } from "$lib/code/module/files";
     import { uploadState, type FileUpload } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { filenameFromPath, forEachObject, formatBytes } from "$lib/code/util/codeUtil.svelte";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
@@ -43,7 +44,7 @@
     }
 
     function retryUpload(up: FileUpload) {
-        up.upload.start()
+        retryTusUpload(up)
     }
 </script>
 

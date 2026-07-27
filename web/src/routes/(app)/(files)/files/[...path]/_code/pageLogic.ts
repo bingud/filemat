@@ -160,6 +160,7 @@ export async function reloadCurrentFolder() {
 
         // Folder modification date has not changed
         // Local folder is up to date
+        if (actualModifiedDate == null) return
         if (modifiedDate === actualModifiedDate) return
 
         await loadPageData(meta.path, { urlPath: filesState.meta.fileEntriesUrlPath, parentFolderOnly: true, silent: true, fileDataType: "object", shareToken: shareToken, bodyParams })
