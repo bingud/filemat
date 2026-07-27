@@ -28,7 +28,7 @@
             {#snippet child({props})}
                 <button {...props} class="
                     {isLocationBar 
-                        ? 'file-action-button gap-2 px-4! whitespace-nowrap'
+                        ? 'file-action-button w-auto! gap-2 px-4! whitespace-nowrap'
                         : 'basic-button flex items-center gap-2'
                     }
                 ">
