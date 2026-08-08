@@ -133,9 +133,6 @@ export async function loadPageData(
                 })
             }
         }
-
-        // Select this entry at the parent level
-        filesState.selectedEntries.saveSelectedState(data.meta.path, true)
     } else if (options.fileDataType === "array") {
         const data = dataResult as FullFileMetadata[]
         filesState.data.entries = data

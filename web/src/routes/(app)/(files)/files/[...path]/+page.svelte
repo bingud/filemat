@@ -1,6 +1,6 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isPathDirectChild as isPathDirectChildOf, letterS, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isPathDirectChild as isPathDirectChildOf, letterS, parentFromPath, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -109,37 +109,43 @@
             ? filesState.search.entries?.find(m => m.path === newPath) || null
             : null
         
-        // Mark as searched file only if new file is child
+        // Opening a file hit from search (keep search UI)
         const isSearchedFile = filesState.isSearchOpen && newMeta && isFile(newMeta) && !filesState.data.fileMeta
-        // Mark as searched parent folder if the new path is the searched folder
+        // Navigating to the folder that the search was run in
         const isSearchedParent = filesState.isSearchOpen && filesState.search.searchPath === newPath
 
         filesState.abort()
+        // Leave search only when leaving search context entirely
         if (!isSearchedFile && !isSearchedParent) filesState.search.clear()
 
-        // Check relationship of the opened file
         const folderMeta = filesState.data.folderMeta
+        // New path is a direct child of the folder we already have loaded
         const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
+        // New path is that same already-loaded folder
         const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
 
+        // Child navigations start scrolled to top
         if (pathIsChild) {
             delete filesState.scroll.pathPositions[newPath]
         }
 
+        // How much cached state to drop for this navigation
         if (!isSearchedFile) {
             if (pathIsParentFolder || isSearchedParent) {
+                // Back to folder: drop open-file content, keep folder entries
                 filesState.clearOpenState()
             } else if (pathIsChild && filesState.data.fileMeta != null) {
+                // Sibling/other child file: drop file bytes only, keep folder list
                 filesState.clearFileData()
             } else if (!pathIsChild && !pathIsParentFolder) {
+                // Unrelated path: full reset
                 filesState.clearAllState()
             }
         }
 
         const shareToken = filesState.getIsShared() ? filesState.meta.shareToken : undefined
 
-        // Do not load page data if navigating back to current parent folder
-        // Use existing state
+        // Skip fetch when returning to the already-loaded folder (reuse entries)
         if (pathIsParentFolder === false && !isSearchedParent) {
             const bodyParams = stateMeta.type === "allShared" ? { getAll: `${sharedFilesPageState.showAll}` } : undefined
 
@@ -153,11 +159,21 @@
                 }
 
                 if (pathIsChild && !filesState.data.fileMeta) {
+                    // Opened a child folder: don't keep that folder path as a selected entry
                     filesState.selectedEntries.unselect(newPath, true)
+                    // Still remember it under the parent for restore when navigating back up
+                    filesState.selectedEntries.saveSelectedState(newPath, true)
+                } else if (filesState.data.fileMeta) {
+                    // Opened a file: keep it selected in the list (+ tree via setSelected)
+                    filesState.selectedEntries.setSelected(filesState.data.fileMeta.path)
+                } else if (filesState.data.folderMeta) {
+                    // Opened a folder: remember it under its parent for restore-on-up
+                    filesState.selectedEntries.saveSelectedState(filesState.data.folderMeta.path, true)
                 }
                 recoverScrollPosition()
             })
 
+            // Only poll folder listings, not while jumping between child files
             if (!pathIsChild) pollingInterval?.reset()
         } else { queueMicrotask(recoverScrollPosition) }
 
@@ -180,16 +196,21 @@
         }
     })
 
-    // Unselect entry when path changes
+    // Drop selection when it doesn't belong to the current directory scope
     explicitEffect(() => [ 
         filesState.selectedEntries.singlePath,
-        filesState.path
+        filesState.path,
+        filesState.data.fileMeta
     ], () => {
         const selected = filesState.selectedEntries.singlePath
         const current = filesState.path || "/"
+        // File view: scope is the parent folder (so siblings stay valid)
+        const directory = filesState.data.fileMeta
+            ? (parentFromPath(current) || `/`)
+            : current
 
-        // if there’s a selection but it isn’t under the current directory, reset it
-        if (selected && !selected.startsWith(appendTrailingSlash(current)) && selected !== current) {
+        // Selection is outside this directory (and isn't the directory itself)
+        if (selected && !selected.startsWith(appendTrailingSlash(directory)) && selected !== directory) {
             filesState.selectedEntries.reset()
         }
     })

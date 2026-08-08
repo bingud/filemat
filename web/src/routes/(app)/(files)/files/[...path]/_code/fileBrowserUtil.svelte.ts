@@ -620,7 +620,9 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
     const entries = (filesState.isSearchOpen ? filesState.search.sortedEntries : filesState.data.sortedEntries)!
     if (entries.length < 1) return
 
-    const currentPath = filesState.selectedEntries.singlePath
+    // Prefer the open file path so viewer nav stays file-by-file even if selection was cleared
+    const currentPath = filesState.data.fileMeta?.path
+        ?? filesState.selectedEntries.singlePath
 
     let currentIndex = -1
     if (currentPath) {
