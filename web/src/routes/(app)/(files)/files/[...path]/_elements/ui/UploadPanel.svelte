@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { cancelUpload, pauseAllUploads, pauseUpload, resumeAllUploads, resumeUpload, retryTusUpload } from "$lib/code/module/files/files";
+    import { cancelAllUploads, cancelUpload, pauseAllUploads, pauseUpload, resumeAllUploads, resumeUpload, retryTusUpload } from "$lib/code/module/files/files";
     import { uploadState, type FileUpload } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { filenameFromPath, forEachObject, formatBytes } from "$lib/code/util/codeUtil.svelte";
@@ -13,10 +13,7 @@
     const showPauseAll = $derived(counts.uploading > 0 || counts.queued > 0)
     const showResumeAll = $derived(counts.paused > 0 || counts.incomplete > 0)
 
-    function close() {
-        if (uploadState.hasBlockingUploads) return
-        uploadState.panelOpen = false
-
+    function clearFinishedUploads() {
         const uploads = uploadState.all
         forEachObject(uploads, (k, v) => {
             if (
@@ -30,6 +27,31 @@
         })
     }
 
+    async function close() {
+        if (uploadState.hasBlockingUploads) {
+            const activeCount =
+                counts.uploading
+                + counts.queued
+                + counts.paused
+                + counts.incomplete
+            const confirmed = await confirmDialogState.show({
+                title: `Cancel all uploads?`,
+                message: activeCount === 1
+                    ? `This will cancel the active upload.`
+                    : `This will cancel ${activeCount} uploads.`,
+                confirmText: `Cancel uploads`,
+                cancelText: `Keep uploading`,
+            })
+            if (confirmed !== true) return
+            await cancelAllUploads()
+            uploadState.panelOpen = false
+            return
+        }
+
+        uploadState.panelOpen = false
+        clearFinishedUploads()
+    }
+
     function toggleExpanded() {
         uploadState.panelExpanded = !uploadState.panelExpanded
     }
@@ -40,12 +62,17 @@
             return
         }
 
-        if (up.status === "incomplete" || up.status === "paused") {
-            await cancelUpload(up)
-            return
-        }
-
         if (up.action === "canceling" || up.action === "pausing") return
+
+        const name = up.displayPath || filenameFromPath(up.actualPath || up.path)
+        const confirmed = await confirmDialogState.show({
+            title: `Cancel upload?`,
+            message: `Cancel upload of "${name}"?`,
+            confirmText: `Cancel upload`,
+            cancelText: `Keep`,
+        })
+        if (!confirmed) return
+
         await cancelUpload(up)
     }
 
@@ -135,7 +162,7 @@
                 <ChevronDownIcon />
             </button>
 
-            <button on:click={close} disabled={uploadState.hasBlockingUploads} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700 disabled:opacity-50">
+            <button on:click={close} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700">
                 <CloseIcon />
             </button>
         </div>

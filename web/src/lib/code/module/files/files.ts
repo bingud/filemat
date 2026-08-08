@@ -710,11 +710,10 @@ export async function pauseUpload(fileUpload: FileUpload) {
  * Resume a paused upload (same tab; Upload instance still available).
  */
 export function resumePausedUpload(fileUpload: FileUpload) {
-    if (fileUpload.status !== `paused`) return
-    if (!fileUpload.upload) {
-        fileUpload.status = `incomplete`
-        void resumeIncompleteUpload(fileUpload)
-        return
+    if (fileUpload.status !== `paused` || !fileUpload.upload) return
+
+    if (fileUpload.upload.url) {
+        fileUpload.uploadUrl = fileUpload.upload.url
     }
 
     const currentlyUploadedCount = uploadState.list.filter(v => v.status === `uploading`).length
@@ -863,9 +862,17 @@ export async function cancelUpload(fileUpload: FileUpload) {
     if (
         fileUpload.status === `incomplete`
         || fileUpload.status === `paused`
+        || fileUpload.status === `queued`
         || !fileUpload.upload
     ) {
         const uploadUrl = fileUpload.uploadUrl || fileUpload.upload?.url || null
+        if (fileUpload.upload) {
+            try {
+                await fileUpload.upload.abort(!!uploadUrl)
+            } catch {
+                // fall through to manual cleanup
+            }
+        }
         await terminateTusUpload(uploadUrl)
         await removeStoredTusUpload(fileUpload.urlStorageKey)
         await deleteUploadFileHandle(
@@ -894,6 +901,23 @@ export async function cancelUpload(fileUpload: FileUpload) {
     const onAbort = (fileUpload.upload as any)?.onAbort
     if (onAbort && typeof onAbort === `function`) {
         onAbort()
+    }
+}
+
+/** Cancel every non-finished upload and remove finished rows from the panel. */
+export async function cancelAllUploads() {
+    const list = [...uploadState.list]
+    for (const up of list) {
+        if (
+            up.status === `success`
+            || up.status === `canceled`
+            || up.status === `skipped`
+            || up.status === `failed`
+        ) {
+            uploadState.removeUpload(up.path)
+            continue
+        }
+        await cancelUpload(up)
     }
 }
 
@@ -947,11 +971,17 @@ function startUploadFromQueue() {
     
     if (!uploads.length) return
 
+    const currentlyUploadedCount = uploadState.list.filter(v => v.status === `uploading`).length
+    if (currentlyUploadedCount >= UPLOAD_CONCURRENCY_LIMIT) return
+
     const first = uploads[0]
     if (!first.upload) {
         first.status = "failed"
         startUploadFromQueue()
         return
+    }
+    if (first.upload.url) {
+        first.uploadUrl = first.upload.url
     }
     first.upload.start()
     first.status = "uploading"
