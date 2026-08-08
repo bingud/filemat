@@ -34,7 +34,7 @@ export type FileUpload = {
     relativePath: string | null,
     percentage: number,
     status: fileUploadStatus,
-    action: "canceling" | null,
+    action: "canceling" | "pausing" | null,
     bytesTotal: number,
     bytesUploaded: number,
     upload: Upload | null,
@@ -94,7 +94,10 @@ export class UploadState {
     })
 
     get hasBlockingUploads() {
-        return this.counts.uploading > 0 || this.counts.incomplete > 0 || this.counts.queued > 0
+        return this.counts.uploading > 0
+            || this.counts.incomplete > 0
+            || this.counts.paused > 0
+            || this.counts.queued > 0
     }
 
     get(path: string): FileUpload | null {
@@ -121,7 +124,11 @@ export class UploadState {
         const existing = this.all[path]
         if (existing && (existing.status === "uploading" || existing.status === "queued")) return false
 
-        const fileSize = upload ? (upload.file as File).size : (extras.bytesTotal ?? extras.previousUpload?.size ?? 0)
+        const fileSize = upload
+            ? (upload.file as File).size
+            : (extras.bytesTotal ?? extras.previousUpload?.size ?? 0)
+        const bytesUploaded = extras.bytesUploaded || 0
+        const bytesTotal = fileSize || extras.bytesTotal || 0
 
         this.all[path] = {
             path: path,
@@ -129,11 +136,11 @@ export class UploadState {
             displayPath: options.displayPath || null,
             batchId: options.batchId || null,
             relativePath: options.relativePath || null,
-            percentage: extras.bytesTotal
-                ? Number((((extras.bytesUploaded || 0) / extras.bytesTotal) * 100).toFixed(2))
+            percentage: bytesTotal
+                ? Number(((bytesUploaded / bytesTotal) * 100).toFixed(2))
                 : 0,
-            bytesTotal: fileSize,
-            bytesUploaded: extras.bytesUploaded || 0,
+            bytesTotal,
+            bytesUploaded,
             status: status,
             action: null,
             upload: upload,

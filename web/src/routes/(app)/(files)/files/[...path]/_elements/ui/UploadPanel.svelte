@@ -1,14 +1,17 @@
 <script lang="ts">
-	import ChevronUpIcon from './../../../../../../../lib/component/icons/ChevronUpIcon.svelte';
-    import { cancelUpload, resumeIncompleteUpload, retryTusUpload } from "$lib/code/module/files/files";
+    import { cancelUpload, pauseAllUploads, pauseUpload, resumeAllUploads, resumeUpload, retryTusUpload } from "$lib/code/module/files/files";
     import { uploadState, type FileUpload } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { filenameFromPath, forEachObject, formatBytes } from "$lib/code/util/codeUtil.svelte";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
+    import PauseIcon from "$lib/component/icons/PauseIcon.svelte";
+    import PlayIcon from "$lib/component/icons/PlayIcon.svelte";
     import RetryIcon from "$lib/component/icons/RetryIcon.svelte";
 
     const counts = $derived(uploadState.counts)
+    const showPauseAll = $derived(counts.uploading > 0 || counts.queued > 0)
+    const showResumeAll = $derived(counts.paused > 0 || counts.incomplete > 0)
 
     function close() {
         if (uploadState.hasBlockingUploads) return
@@ -16,7 +19,12 @@
 
         const uploads = uploadState.all
         forEachObject(uploads, (k, v) => {
-            if (v.status !== "uploading" && v.status !== "incomplete" && v.status !== "queued") {
+            if (
+                v.status !== "uploading"
+                && v.status !== "incomplete"
+                && v.status !== "paused"
+                && v.status !== "queued"
+            ) {
                 uploadState.removeUpload(k)
             }
         })
@@ -32,12 +40,12 @@
             return
         }
 
-        if (up.status === "incomplete") {
+        if (up.status === "incomplete" || up.status === "paused") {
             await cancelUpload(up)
             return
         }
 
-        if (up.action === "canceling") return
+        if (up.action === "canceling" || up.action === "pausing") return
         await cancelUpload(up)
     }
 
@@ -45,8 +53,12 @@
         retryTusUpload(up)
     }
 
-    function resumeUpload(up: FileUpload) {
-        resumeIncompleteUpload(up)
+    function onResumeUpload(up: FileUpload) {
+        resumeUpload(up)
+    }
+
+    function onPauseUpload(up: FileUpload) {
+        pauseUpload(up)
     }
 
     async function showUploadPathDialog(up: FileUpload) {
@@ -96,7 +108,29 @@
             {#if counts.queued > 0}<span>{counts.queued} queued</span><span class="last:hidden">,</span>{/if}
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1">
+            {#if showResumeAll}
+                <button
+                    type="button"
+                    title="Resume all"
+                    on:click={() => { resumeAllUploads() }}
+                    class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700"
+                >
+                    <PlayIcon />
+                </button>
+            {/if}
+
+            {#if showPauseAll}
+                <button
+                    type="button"
+                    title="Pause all"
+                    on:click={() => { pauseAllUploads() }}
+                    class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700"
+                >
+                    <PauseIcon />
+                </button>
+            {/if}
+
             <button on:click={toggleExpanded} class="aspect-square p-2 h-8 rounded dark:hover:bg-neutral-700 disabled:opacity-50" class:rotate-180={!uploadState.panelExpanded}>
                 <ChevronDownIcon />
             </button>
@@ -124,15 +158,8 @@
                     
                     <div class="h-full flex items-center gap-3">
                         <!-- Upload status -->
-                        {#if up.status === "uploading"}
+                        {#if up.status === "uploading" || up.status === "paused" || up.status === "incomplete" || up.status === "queued"}
                             <p class="whitespace-nowrap">{formatBytes(up.bytesUploaded)} / {formatBytes(up.bytesTotal)}</p>
-                        {:else if up.status === "incomplete"}
-                            <button
-                                on:click={() => { resumeUpload(up) }}
-                                class="whitespace-nowrap text-sm hover:underline"
-                            >
-                                {formatBytes(up.bytesUploaded)} / {formatBytes(up.bytesTotal)} (paused)
-                            </button>
                         {:else}
                             <div class="xw-[6rem] text-end">
                                 {#if up.status === "success"}
@@ -149,7 +176,22 @@
 
                         <!-- Buttons -->
                         <div class="w-[4.1rem] gap-[0.1rem] h-8 flex justify-end">
-                            {#if up.status === "failed"}
+                            {#if up.status === "uploading"}
+                                <button
+                                    on:click={() => { onPauseUpload(up) }}
+                                    disabled={up.action === "pausing"}
+                                    class="size-8 p-2 dark:hover:bg-neutral-800 rounded disabled:opacity-50"
+                                >
+                                    <PauseIcon />
+                                </button>
+                            {:else if up.status === "paused" || up.status === "incomplete"}
+                                <button
+                                    on:click={() => { onResumeUpload(up) }}
+                                    class="size-8 p-2 dark:hover:bg-neutral-800 rounded"
+                                >
+                                    <PlayIcon />
+                                </button>
+                            {:else if up.status === "failed"}
                                 <button on:click={() => { retryUpload(up) }} class="size-8 p-2 dark:hover:bg-neutral-800 rounded">
                                     <RetryIcon></RetryIcon>
                                 </button>

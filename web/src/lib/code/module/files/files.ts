@@ -338,7 +338,7 @@ function beginTusUpload(
             ...(options.metadata || {}),
             path: targetPath,
         },
-        chunkSize: 3072 * 1024, // 3 MB chunk
+        chunkSize: 64 * 1024 * 1024, // 128 MB chunk
         removeFingerprintOnSuccess: true,
         onUploadUrlAvailable: () => {
             const handle = options.fileHandle
@@ -374,7 +374,12 @@ function beginTusUpload(
                 if (isAborted) {
                     const state = uploadState.get(targetPath)
                     if (state) {
-                        state.status = "canceled"
+                        if (state.action === `pausing` || state.status === `paused`) {
+                            state.status = `paused`
+                            state.action = null
+                        } else {
+                            state.status = `canceled`
+                        }
                     }
                     return
                 }
@@ -480,25 +485,29 @@ function beginTusUpload(
     const rawStart = upload.start.bind(upload)
     upload.start = () => startUploadWithOptionalSnapshot(upload, file, options, targetPath, rawStart)
 
+    // Preserve progress already known for this path (e.g. incomplete after refresh).
+    // Otherwise queued resumes briefly show 0 MB until their request starts.
+    const existing = uploadState.get(targetPath)
+    const extras = {
+        uploadUrl: upload.url || previousUpload?.uploadUrl || null,
+        urlStorageKey: previousUpload?.urlStorageKey || existing?.urlStorageKey || null,
+        previousUpload,
+        bytesUploaded: existing?.bytesUploaded || 0,
+        bytesTotal: existing?.bytesTotal || file.size,
+        fileHandle: options.fileHandle || existing?.fileHandle || null,
+    }
+
     // Get count of currently uploading files
     const currentlyUploadedFiles = uploadState.list.filter(v => v.status === "uploading")
     const currentlyUploadedCount = currentlyUploadedFiles.length
 
     // Check whether to queue or start upload
     if (currentlyUploadedCount < UPLOAD_CONCURRENCY_LIMIT) {
-        if (!uploadState.addUpload(targetPath, upload, "uploading", options, {
-            uploadUrl: upload.url || previousUpload?.uploadUrl || null,
-            urlStorageKey: previousUpload?.urlStorageKey || null,
-            previousUpload,
-        })) return
+        if (!uploadState.addUpload(targetPath, upload, "uploading", options, extras)) return
         // Start the upload
         upload.start()
     } else {
-        if (!uploadState.addUpload(targetPath, upload, "queued", options, {
-            uploadUrl: upload.url || previousUpload?.uploadUrl || null,
-            urlStorageKey: previousUpload?.urlStorageKey || null,
-            previousUpload,
-        })) return
+        if (!uploadState.addUpload(targetPath, upload, "queued", options, extras)) return
     }
 }
 
@@ -673,8 +682,90 @@ async function resolveCompleteServerUpload(
 }
 
 /**
- * Resume an incomplete upload after the user reattaches the local file.
+ * Pause an in-flight upload by aborting the current request (keeps server bytes).
  */
+export async function pauseUpload(fileUpload: FileUpload) {
+    if (fileUpload.status !== `uploading` || !fileUpload.upload) return
+    if (fileUpload.action) return
+
+    fileUpload.action = `pausing`
+    if (fileUpload.upload.url) {
+        fileUpload.uploadUrl = fileUpload.upload.url
+    }
+
+    try {
+        await fileUpload.upload.abort(false)
+    } catch {
+        // Request may already be finished; still mark paused below.
+    }
+
+    if (fileUpload.status === `uploading` || fileUpload.action === `pausing`) {
+        fileUpload.status = `paused`
+        fileUpload.action = null
+        startUploadFromQueue()
+    }
+}
+
+/**
+ * Resume a paused upload (same tab; Upload instance still available).
+ */
+export function resumePausedUpload(fileUpload: FileUpload) {
+    if (fileUpload.status !== `paused`) return
+    if (!fileUpload.upload) {
+        fileUpload.status = `incomplete`
+        void resumeIncompleteUpload(fileUpload)
+        return
+    }
+
+    const currentlyUploadedCount = uploadState.list.filter(v => v.status === `uploading`).length
+    if (currentlyUploadedCount >= UPLOAD_CONCURRENCY_LIMIT) {
+        fileUpload.status = `queued`
+        return
+    }
+
+    fileUpload.status = `uploading`
+    fileUpload.upload.start()
+}
+
+/**
+ * Resume from the upload panel: paused uses the live Upload; incomplete reattaches the file.
+ */
+export async function resumeUpload(fileUpload: FileUpload) {
+    if (fileUpload.status === `paused`) {
+        resumePausedUpload(fileUpload)
+        return
+    }
+    if (fileUpload.status === `incomplete`) {
+        await resumeIncompleteUpload(fileUpload)
+    }
+}
+
+/** Pause every active upload; park queued ones so they do not auto-start. */
+export async function pauseAllUploads() {
+    const list = [...uploadState.list]
+    for (const up of list) {
+        if (up.status === `queued`) {
+            up.status = `paused`
+        }
+    }
+    for (const up of list) {
+        if (up.status === `uploading`) {
+            await pauseUpload(up)
+        }
+    }
+}
+
+/** Resume every paused/incomplete upload. */
+export async function resumeAllUploads() {
+    const list = [...uploadState.list]
+    for (const up of list) {
+        if (up.status === `paused` || up.status === `incomplete`) {
+            await resumeUpload(up)
+        }
+    }
+}
+
+/** Resume an incomplete upload after the user reattaches the local file. */
 export async function resumeIncompleteUpload(fileUpload: FileUpload, preselectedFile?: File) {
     if (fileUpload.status !== `incomplete`) return
 
@@ -769,8 +860,20 @@ export async function cancelUpload(fileUpload: FileUpload) {
     if (fileUpload.action === `canceling`) return
     fileUpload.action = `canceling`
 
-    if (fileUpload.status === `incomplete` || !fileUpload.upload) {
-        await clearIncompleteUpload(fileUpload)
+    if (
+        fileUpload.status === `incomplete`
+        || fileUpload.status === `paused`
+        || !fileUpload.upload
+    ) {
+        const uploadUrl = fileUpload.uploadUrl || fileUpload.upload?.url || null
+        await terminateTusUpload(uploadUrl)
+        await removeStoredTusUpload(fileUpload.urlStorageKey)
+        await deleteUploadFileHandle(
+            fileUpload.path,
+            uploadUrl,
+            fileUpload.urlStorageKey,
+        )
+        uploadState.removeUpload(fileUpload.path)
         startUploadFromQueue()
         return
     }

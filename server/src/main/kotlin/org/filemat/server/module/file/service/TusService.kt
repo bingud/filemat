@@ -50,6 +50,7 @@ class TusService(
                 .withUploadUri("/api/v1/file/upload")
                 .withStoragePath(State.App.uploadFolderPath)
                 .withUploadExpirationPeriod(Duration.ofHours(48).toMillis())
+                .withThreadLocalCache(true)
 
             startTusCleanupLoop()
             return true

@@ -175,7 +175,11 @@ export async function syncIncompleteTusUploads() {
         }
 
         const existing = uploadState.get(path)
-        if (existing && (existing.status === `uploading` || existing.status === `queued`)) {
+        if (existing && (
+            existing.status === `uploading`
+            || existing.status === `queued`
+            || existing.status === `paused`
+        )) {
             continue
         }
 
