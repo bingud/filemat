@@ -285,7 +285,7 @@ class EntityPermissionService(
             it.value
         }
 
-        fileService.isAllowedToAccessFile(user, canonicalPath, checkPermissionOnly = true).let {
+        fileService.hasPermissionToAccessFile(user = user, canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
 

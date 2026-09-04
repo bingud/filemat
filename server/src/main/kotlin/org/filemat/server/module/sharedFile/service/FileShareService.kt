@@ -394,11 +394,16 @@ class FileShareService(
 
     fun getByShareToken(shareToken: String, userAction: UserAction): Result<FileShare> {
         val shareId = tokenMap.getIfPresent(shareToken)
-        getSharesByShareId(shareId ?: shareToken, userAction)
-            .let {
-                if (it.notFound) return Result.reject("File does not exist, or your login expired.")
-                return it
-            }
+
+        val shareResult = getSharesByShareId(shareId ?: shareToken, userAction)
+        val share = shareResult.valueOrNull
+
+        // If share not found, or token does not match, reject
+        if (share == null || share.isPassword && shareId == null) {
+            return Result.reject("File does not exist, or your login expired.")
+        }
+
+        return shareResult
     }
 
     @Serializable

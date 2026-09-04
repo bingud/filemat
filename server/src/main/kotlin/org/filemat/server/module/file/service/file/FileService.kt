@@ -160,8 +160,11 @@ class FileService(
     fun getActualFilePermissions(user: Principal, canonicalPath: FilePath): Set<FilePermission>
             = fileSecurityService.getActualFilePermissions(user = user, canonicalPath = canonicalPath)
 
-    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, checkPermissionOnly: Boolean = false, ignorePermissions: Boolean? = null): Result<Unit>
-            = fileSecurityService.isAllowedToAccessFile(user = user, canonicalPath = canonicalPath, checkPermissionOnly = checkPermissionOnly, ignorePermissions = ignorePermissions)
+    fun hasPermissionToAccessFile(user: Principal?, canonicalPath: FilePath): Result<Unit>
+            = fileSecurityService.hasPermissionToAccessFile(user = user, canonicalPath = canonicalPath)
+
+    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit>
+        = fileSecurityService.isAllowedToAccessFile(user = user, canonicalPath = canonicalPath, ignorePermissions = ignorePermissions)
 
     fun isAllowedToEditFile(user: Principal, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit>
             = fileSecurityService.isAllowedToEditFile(user = user, canonicalPath = canonicalPath, ignorePermissions = ignorePermissions)
@@ -197,7 +200,7 @@ class FileService(
 
     // --- Utilities ---
 
-    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean): Result<FilePath> {
+    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean = true): Result<FilePath> {
         val sharedPath = if (shareToken != null) {
             entityService.getByShareToken(shareToken = shareToken)
                 .let {
@@ -211,9 +214,5 @@ class FileService(
         } else null
 
         return resolvePath(sharedPath ?: path)
-    }
-
-    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?): Result<FilePath> {
-        return resolvePathWithOptionalShare(path, shareToken, true)
     }
 }

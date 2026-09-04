@@ -24,10 +24,10 @@ import java.util.concurrent.locks.ReentrantLock
 @Service
 class FileSecurityService(private val fileVisibilityService: FileVisibilityService, private val entityPermissionService: EntityPermissionService, private val entityService: EntityService, private val filesystemService: FilesystemService) {
 
-    /**
+        /**
      * Fully verifies if a user is allowed to read a file
      */
-    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, checkPermissionOnly: Boolean = false, ignorePermissions: Boolean? = null): Result<Unit> {
+    fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
         // Share-link flows pass ignorePermissions=true after the path was scoped by [shareToken];
         // there may be no logged-in user, but blocked/sensitive paths must still be rejected.
         val ignorePerms = ignorePermissions ?: user?.let { hasAdminAccess(it) } ?: false
@@ -36,27 +36,30 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             return Result.reject("Unauthenticated")
         }
 
-        if (!checkPermissionOnly) {
-            // Deny blocked folder
-            isPathAllowed(canonicalPath = canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
+        // Deny blocked folder
+        isPathAllowed(canonicalPath = canonicalPath).let {
+            if (it.isNotSuccessful) return it.cast()
         }
 
         if (ignorePerms) {
             return Result.ok()
+        } else {
+            hasPermissionToAccessFile(user, canonicalPath).let {
+                if (it.isNotSuccessful) return it
+            }
         }
 
-        if (!ignorePerms) {
-            val u = user ?: return Result.reject("Unauthenticated")
-            // Verify the file location and handle conflicts
-            val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
-            if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
+        return Result.ok()
+    }
 
-            val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = u, permission = FilePermission.READ)
-            if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
-        }
+    fun hasPermissionToAccessFile(user: Principal?, canonicalPath: FilePath): Result<Unit> {
+        val u = user ?: return Result.reject("Unauthenticated")
+        // Verify the file location and handle conflicts
+        val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
+        if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
+        val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = u, permission = FilePermission.READ)
+        if (permissionResult == false) return Result.reject("You do not have permission to access this file.")
         return Result.ok()
     }
 
@@ -67,7 +70,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
         // Check access permissions
-        isAllowedToAccessFile(user, canonicalPath, ignorePerms).let {
+        isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePerms).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -88,7 +91,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
         // Check access permissions
-        isAllowedToAccessFile(user, canonicalPath, ignorePerms).let {
+        isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePerms).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -109,7 +112,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         val ignorePerms = ignorePermissions ?: hasAdminAccess(user)
 
         // Check access permissions
-        isAllowedToAccessFile(user, canonicalPath, ignorePerms).let {
+        isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePerms).let {
             if (it.isNotSuccessful) return it.cast()
         }
 

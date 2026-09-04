@@ -53,10 +53,8 @@ class FileContentService(
             path.value
         }
 
-        if (!ignorePermissions) {
-            fileService.isAllowedToAccessFile(user, canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
+        fileService.isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePermissions).let {
+            if (it.isNotSuccessful) return it.cast()
         }
 
         if (!Files.isRegularFile(canonicalPath.path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
