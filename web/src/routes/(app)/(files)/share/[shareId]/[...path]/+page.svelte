@@ -18,6 +18,7 @@
     const pageMeta: StateMetadata | undefined = $derived.by(() => {
         if (!shareId || passwordStatus == null || !shareMeta) return undefined
 
+        console.log(`Load page metadata`)
         return {
             type: "shared",
             fileEntriesUrlPath: "/api/v1/folder/file-and-folder-entries",
@@ -35,6 +36,9 @@
     explicitEffect(() => [shareId], () => {
         passwordInput = ''
         passwordStatus = undefined
+        shareToken = null
+        shareMeta = null
+        errorMessage = ""
 
         const id = shareId
         if (!id) return
@@ -50,35 +54,39 @@
     explicitEffect(() => [
         shareId,
         passwordStatus,
-        shareMeta
+        shareMeta,
+        shareToken
     ], () => {
         if (shareMeta && shareMeta.shareId === shareId) return
         if (passwordStatus == null) return
         if (!shareToken) return
 
+        console.log(`Load share metadata`)
         loadShareMetadata(shareToken)
     })
 
     async function loadPasswordStatus(shareId: string): Promise<boolean | null> {
+        console.log(`Load password status`)
+        
         const response = await safeFetch(`/api/v1/file/share/get-password-status`, {
             body: formData({ shareId: shareId })
         })
+
+        const errorText = `Failed to check if this file has a password.`
         if (response.failed) {
-            handleException(
-                `Failed to fetch password status of file share.`,
-                `Failed to check if this file has a password.`,
-                response.exception
-            )
+            handleException(errorText, null,response.exception)
+            errorMessage = errorText
             return null
         }
 
         if (response.code.failed) {
             const json = response.json()
             handleErr({
-                description: `Failed to fetch password status of file share.`,
-                notification: json.message || `Failed to check if this file has a password.`,
+                description: errorText,
+                notification: json.message || undefined,
                 isServerDown: response.code.serverDown
             })
+            errorMessage = errorText
             return null
         }
 
@@ -88,6 +96,8 @@
             shareToken = shareId
         }
 
+        errorMessage = ""
+        console.log(`Loaded password status`)
         return status
     }
 
@@ -100,9 +110,10 @@
         })
         loading = false
         if (response.failed) {
+            errorMessage = `Failed to verify password.`
             handleException(
                 `Failed to login to shared file.`,
-                `Failed to verify password.`,
+                errorMessage,
                 response.exception
             )
             return null
@@ -119,6 +130,8 @@
         }
 
         shareToken = response.content
+        errorMessage = ""
+        console.log(`Share login successful`)
     }
 
     async function loadShareMetadata(token: string) {
@@ -133,8 +146,9 @@
         if (shareToken !== token) return
 
         if (response.failed) {
+            errorMessage = `Failed to load shared file metadata.`
             handleErr({
-                notification: `Failed to load shared file metadata.`,
+                notification: errorMessage,
                 exception: response.exception
             })
             return null
@@ -145,7 +159,7 @@
             errorMessage = json.message || `Failed to load shared file metadata.`
             handleErr({
                 description: `Failed to load shared file metadata.`,
-                notification: json.message || `Failed to load shared file metadata.`,
+                notification: errorMessage,
                 isServerDown: response.code.serverDown
             })
             return null
@@ -153,34 +167,36 @@
 
         errorMessage = ""
         shareMeta = json
+        console.log(`Share metadata loaded`)
     }
 </script>
 
-{#if shareId && pageMeta}
-    {#if passwordStatus === false || shareToken}
+{#if errorMessage}
+    <div class="page flex flex-col items-center justify-center gap-4">
+        <p class="text-lg">{errorMessage}</p>
+        <button on:click={() => { window.location.reload() }} class="basic-button w-full">Reload</button>
+    </div>
+{:else if passwordStatus == null || (shareToken && !pageMeta)}
+    <div class="page flex items-center justify-center">
+        <Loader></Loader>
+    </div>
+{:else if shareId}
+    {#if (passwordStatus === false || shareToken) && pageMeta}
         <FilesPage meta={pageMeta}></FilesPage>
     {:else if passwordStatus === true}
         <div class="page flex-col items-center justify-center">
             <form on:submit={submit_login} class="flex flex-col gap-4">
-                <div class="flex flex-col gap2">
+                <div class="flex flex-col gap-2">
                     <label for="password">File Password</label>
-                    <input bind:value={passwordInput} id="password" type="password" class="basic-input">
+
+                    <input id="chrome-stfu" name="username" value="" autocomplete="username" class="fixed size-0 invisible" disabled>
+                    <input bind:value={passwordInput} id="password" type="password" class="basic-input" autocomplete="current-password">
                 </div>
                 
                 <button type="submit" class="basic-button w-full">Open file</button>
             </form>
         </div>
-    {:else if passwordStatus === null}
-        <p>Failed to check if this file has a password.</p>
     {/if}
-{:else if errorMessage}
-    <div class="page flex items-center justify-center">
-        <p class="text-lg">{errorMessage}</p>
-    </div>    
-{:else if !pageMeta}
-    <div class="page flex items-center justify-center">
-        <Loader></Loader>
-    </div>
 {:else}
     <p>Shared file link is invalid.</p>
 {/if}
