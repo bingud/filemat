@@ -1,7 +1,7 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, printStack, removeString, sortArrayAlphabetically, sortArrayByNumber, sortArrayByNumberDesc, sortFileMetadata, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, removeString, sortFileMetadata } from "$lib/code/util/codeUtil.svelte"
 import { SvelteSet } from "svelte/reactivity"
 import { VisibilityManager } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
@@ -12,6 +12,7 @@ import { appState } from "./appState.svelte"
 import { auth } from "./authState.svelte"
 import { config } from "../config/values"
 import { loadFilePreferenceSettings, setPreferenceSetting } from "../module/settings"
+import { textFileViewerState } from "../../../routes/(app)/(files)/files/[...path]/_code/textFileViewerState.svelte"
 
 type StateMetadataProps = { fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
 export type StateMetadata = { type: "files",                                                                            } & StateMetadataProps
@@ -473,14 +474,22 @@ class FileStateClass {
         return getFileCategoryFromFilename(filename)
     })
 
-    displayedFileCategory = $derived(this.originalFileCategory) as FileCategory | null
+    displayedFileCategory: FileCategory | null = $derived(this.originalFileCategory)
+
+    isTextual = $derived(this.displayedFileCategory === "text" || this.displayedFileCategory === "md")
 
     isEditable = $derived(
-        (this.displayedFileCategory === "text" || this.displayedFileCategory === "md" )
+        (this.isTextual)
         && !filesState.isShared
         && auth.authenticated 
         && (filesState.data.fileMeta && filesState.data.fileMeta.permissions!.includes("WRITE")) 
         && !filesState.data.isFileSymlink
+    )
+
+    isSearchable = $derived(
+        filesState.data.fileMeta
+        && this.isTextual 
+        && textFileViewerState.textEditor != null
     )
 
     clear() {

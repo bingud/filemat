@@ -27,7 +27,7 @@
     <!-- Right side -->
     <div class="h-full flex gap-2 p-2">
         {#if appState.filesStateNonce && !uiState.isDesktop}
-            {#if filesState.isFileListOpen}
+            {#if filesState.isFileListOpen || filesState.currentFile.isSearchable}
                 <FileSearchButton></FileSearchButton>
             {/if}
             

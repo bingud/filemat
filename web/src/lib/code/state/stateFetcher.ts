@@ -45,7 +45,6 @@ export async function fetchState(
             handleErr({
                 description: `Server is ${status} while fetching state`,
                 notification: "Server is unavailable.",
-                isServerDown: true,
             })
             return false
         }

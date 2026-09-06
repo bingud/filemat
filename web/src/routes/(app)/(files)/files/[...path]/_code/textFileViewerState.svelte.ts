@@ -7,7 +7,7 @@ import { ayuLight, barf } from "thememirror"
 class TextFileViewerState {
     isFileSavable = $state(false)
     textEditorContainer: HTMLElement | undefined = $state()
-    textEditor: EditorView | undefined
+    textEditor: EditorView | undefined = $state.raw()
     isFocused = $state(false)
     filePath: string | null = $state(null)
 

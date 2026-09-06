@@ -1,8 +1,8 @@
 import { getFileExtension } from "../util/codeUtil.svelte";
 
 
-const textFileCategoryList = ["html", "text", "md"]
-const fileCategoryList = [...textFileCategoryList, "image", "video", "audio", "pdf"] as const;
+const textFileCategoryList = ["html", "text", "md"] as const
+const fileCategoryList = [...textFileCategoryList, "image", "video", "audio", "pdf"] as const
 export type FileCategory = (typeof fileCategoryList)[number]
 export type TextFileCategory = (typeof textFileCategoryList)[number]
 

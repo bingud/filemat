@@ -334,7 +334,7 @@
                                 <NewFileButton />
                             {/if}
 
-                            {#if uiState.isDesktop && filesState.isFileListOpen && !filesState.isSearchOpen && (filesState.meta.type === "files" || filesState.isShared)}
+                            {#if uiState.isDesktop && (filesState.currentFile.isSearchable || (filesState.isFileListOpen && !filesState.isSearchOpen && (filesState.meta.type === "files" || filesState.isShared)))}
                                 <FileSearchButton />
                             {/if}
                             
