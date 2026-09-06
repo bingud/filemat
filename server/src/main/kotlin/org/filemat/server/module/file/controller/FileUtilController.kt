@@ -44,7 +44,7 @@ class FileUtilController(
         val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
         val ignorePermissions = shareToken != null
 
-        val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
+        val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken)
         val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
@@ -130,7 +130,7 @@ class FileUtilController(
         val path = FilePath.of(rawPath)
         val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
 
-        val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken, withPathContainsSymlink = true)
+        val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken)
         val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")

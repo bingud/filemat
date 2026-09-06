@@ -68,8 +68,9 @@ fun <T, P> Result<P>.cast(): Result<T> = this as Result<T>
 //@Suppress("UNCHECKED_CAST")
 //fun <T, P> Result<P>.cast(source: String?): Result<T> = (this as Result<T>).also { this.source = source }
 
-inline fun <T, R> Result<T>.onFailure(block: (Result<T>) -> R) {
+inline fun <T, R> Result<T>.onFailure(block: (Result<T>) -> R): Result<T> {
     if (this.isNotSuccessful) block(this)
+    return this
 }
 
 inline fun <T, R> Result<T>.handle(block: (Result<T>) -> R): T {

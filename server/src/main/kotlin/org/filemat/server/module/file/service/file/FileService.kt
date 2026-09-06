@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.model.onFailure
 import org.filemat.server.common.util.*
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
@@ -140,12 +141,14 @@ class FileService(
         canonicalPath: FilePath,
         text: String,
         isShared: Boolean = false,
+        shareRelativePath: FilePath? = null,
         userAction: UserAction
     ): Flow<Result<FullFileMetadata>> = fileEntryListsService.searchFiles(
         user = user,
         canonicalPath = canonicalPath,
         text = text,
         isShared = isShared,
+        shareRelativePath = shareRelativePath,
         userAction = userAction
     )
 
@@ -200,19 +203,16 @@ class FileService(
 
     // --- Utilities ---
 
-    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, withPathContainsSymlink: Boolean = true): Result<FilePath> {
-        val sharedPath = if (shareToken != null) {
-            entityService.getByShareToken(shareToken = shareToken)
-                .let {
-                    if (it.isNotSuccessful) return it.cast()
+    fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, existingEntity: FilesystemEntity? = null): Result<FilePath> {
+        if (shareToken != null) {
+            val entity = existingEntity ?: entityService.getByShareToken(shareToken = shareToken).onFailure { return it.cast() }.value
+            val sharePathStr = entity.path ?: return Result.notFound()
+            val sharePath = FilePath.of(sharePathStr)
+            val fullPath = sharePath.path.resolve(path.pathString.removePrefix("/"))
 
-                    val sharePathStr = it.value.path ?: return Result.notFound()
-                    val sharePath = FilePath.of(sharePathStr)
-                    val fullPath = sharePath.path.resolve(path.pathString.removePrefix("/"))
-                    return@let FilePath.ofAlreadyNormalized(fullPath)
-                }
-        } else null
+            return resolvePath(FilePath.ofAlreadyNormalized(fullPath))
+        }
 
-        return resolvePath(sharedPath ?: path)
+        return resolvePath(path)
     }
 }

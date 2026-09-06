@@ -93,8 +93,7 @@ class FileContentService(
         // 1. Resolve Initial Path
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(
             path = rawPath,
-            shareToken = shareToken,
-            withPathContainsSymlink = true
+            shareToken = shareToken
         )
 
         val canonicalPath = canonicalPathResult.let {

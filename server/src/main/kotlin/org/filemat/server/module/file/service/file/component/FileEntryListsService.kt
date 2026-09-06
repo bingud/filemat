@@ -43,6 +43,7 @@ class FileEntryListsService(
         canonicalPath: FilePath,
         text: String,
         isShared: Boolean = false,
+        shareRelativePath: FilePath? = null,
         userAction: UserAction
     ): Flow<Result<FullFileMetadata>> {
         val lowercaseText = text.lowercase()
@@ -58,7 +59,12 @@ class FileEntryListsService(
                         // Get metadata
                         fileService.getFullMetadata(user, filePath, filePath, ignorePermissions = isShared).let {
                             if (it.isNotSuccessful) return@mapNotNull null
-                            return@mapNotNull it
+                            val meta = it.value
+                            if (shareRelativePath == null) return@mapNotNull it
+
+                            val relativePath = canonicalPath.path.relativize(path)
+                            val clientPath = shareRelativePath.path.resolve(relativePath)
+                            return@mapNotNull Result.ok(meta.copy(path = clientPath.toString()))
                         }
                     } else return@mapNotNull null
                 } catch (e: Exception) {

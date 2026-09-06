@@ -12,6 +12,7 @@ import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
+import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileLockService
@@ -29,6 +30,7 @@ import java.nio.file.Path
 import java.time.Instant
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.pathString
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @RestController
@@ -78,7 +80,9 @@ class FileController(
             user = user,
             canonicalPath = resolvedPath,
             text = text,
-            userAction = UserAction.SEARCH_FILE
+            userAction = UserAction.SEARCH_FILE,
+            isShared = shareToken != null,
+            shareRelativePath = if (shareToken != null) path else null,
         )
 
         val body = StreamingResponseBody { out ->
@@ -87,7 +91,7 @@ class FileController(
                     // Start Heartbeat (runs concurrently)
                     val heartbeatJob = launch(Dispatchers.IO) {
                         while (isActive) { // Checks for cancellation
-                            delay(8_000)
+                            delay(8_000.milliseconds)
                             synchronized(writer) {
                                 writer.write("\n")
                                 writer.flush()
