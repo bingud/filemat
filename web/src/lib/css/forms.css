@@ -141,7 +141,7 @@ textarea::placeholder,
 }
 
 /* Block 8: Select with chevron background */
-select,
+/* select,
 .form-select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
     background-position: right 0.5rem center;
@@ -149,7 +149,7 @@ select,
     background-size: 1.5em 1.5em;
     @apply pr-10;
     print-color-adjust: exact;
-}
+} */
 
 /* Block 9: Select (multiple & size) reset */
 [multiple],

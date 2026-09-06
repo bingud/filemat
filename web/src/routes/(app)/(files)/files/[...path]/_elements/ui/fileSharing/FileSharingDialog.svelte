@@ -45,7 +45,7 @@
         linkInput = ''
 
         maxAgeInput = undefined
-        maxAgeUnit = 'hour'
+        maxAgeUnit = 'hours'
         maxAgeEnabled = true
 
         passwordEnabled = false
