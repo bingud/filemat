@@ -169,7 +169,11 @@
                     {#each entriesOf(viewableDateFields) as [field, name]}
                         <div class="detail-card">
                             <p class="detail-label">{name}</p>
-                            <p class="detail-content">{formatUnixTimestamp(user[field] as number)}</p>
+                            {#if user[field]}
+                                <p class="detail-content">{formatUnixTimestamp(user[field] as number)}</p>
+                            {:else}
+                                <p class="detail-content">Never</p>
+                            {/if}
                         </div>
                     {/each}
                     {#each entriesOf(viewableFields) as [field, name]}
