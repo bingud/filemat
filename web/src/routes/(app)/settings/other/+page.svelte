@@ -4,7 +4,7 @@
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import ClearThumbnailCacheSetting from "./_setting-components/ClearThumbnailCacheSetting.svelte";
 
-    const title = "Preferences"
+    const title = "Other Settings"
 
     $effect(() => {
         uiState.settings.title = title
