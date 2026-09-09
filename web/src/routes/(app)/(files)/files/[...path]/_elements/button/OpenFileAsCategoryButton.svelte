@@ -46,6 +46,9 @@
                     <button on:click={() => { openAsFileType("audio") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Audio</button>
                     <button on:click={() => { openAsFileType("md") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Markdown</button>
                     <button on:click={() => { openAsFileType("pdf") }} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">PDF</button>
+                    {#if filesState.data.contentUrl}
+                        <a href={filesState.data.contentUrl} class="w-full text-start px-4 py-1 hover:bg-neutral-300 dark:hover:bg-neutral-700">Raw Content</a>
+                    {/if}
                 </div>
             </Popover.Content>
         </Popover.Portal>
