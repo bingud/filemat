@@ -145,7 +145,7 @@
 </script>
 
 
-<div class="page flex-col items-center gap-12 pt-12">
+<div class="page flex-col items-center gap-12 pt-[15svh]">
     <h1>Login</h1>
 
     {#if phase === "login" || phase === "setup-mfa"}

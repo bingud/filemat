@@ -166,6 +166,11 @@
     }
 
     async function getSetupStatus() {
+        if (dev) {
+            alreadySetup = false
+            phase = 5
+            return
+        }
         try {
             const response = await fetch(`/api/v1/setup/status`, { method: "GET" })
             const text = await response.text()
@@ -207,7 +212,7 @@
     <Noindex />
 </svelte:head>
 
-<div class="page flex-col items-center gap-12 pt-6 md:pt-12">
+<div class="page flex-col items-center gap-12 p-6 md:pt-12 overflow-y-auto custom-scrollbar">
     {#if alreadySetup === false}
         {#if page.state.popupPhase == null}
             {#if phase === 1}
@@ -266,9 +271,9 @@
                     </div>
                 </div>
 
-                <div class="w-[35rem] max-w-full h-fit max-h-svh sm:max-h-fit sm:flex-grow flex flex-col gap-8 items-center sm:overflow-y-hidden py-12 border-y-2 border-neutral-200 dark:border-neutral-900">
-                    <div class="flex flex-col sm:flex-grow h-fit max-h-full sm:max-h-fit gap-2 overflow-y-auto custom-scrollbar gutter-stable-both px-6 w-full" class:hidden={!exposedFolders || exposedFolders.length < 1}>
-                        {#each exposedFolders as folder, index}
+                <div class="w-[35rem] max-w-full shrink-0 flex flex-col gap-8 items-center py-12 border-y-2 border-neutral-200 dark:border-neutral-900">
+                    <div class="flex flex-col w-full min-h-[8rem] max-h-[min(24rem,50svh)] gap-2 overflow-y-auto custom-scrollbar gutter-stable-both px-6" class:hidden={!exposedFolders || exposedFolders.length < 1}>
+                        {#each exposedFolders as folder, index (folder)}
                             <div class="flex flex-col sm:flex-row items-center gap-2 shrink-0">
                                 <input placeholder="Full folder path" class="sm:order-2 max-sm:w-full sm:flex-grow shrink-0 basic-input" bind:value={folder.path}>
                                 <div class="flex items-center justify-between w-full sm:contents">
@@ -320,7 +325,7 @@
                     </form>
                 </div>
             {:else if phase === 5}
-                <div class="flex flex-col items-center gap-6">
+                <div class="flex flex-col items-center gap-6 pt-[20svh]">
                     <h1 class="text-2xl font">Filemat was set up.</h1>
                     <a href="/" class="basic-input-button text-center">Continue</a>
                 </div>
@@ -354,7 +359,7 @@
             <div class="flex flex-col gap-6 shrink-0 max-w-full w-[30rem]">
                 <h1 class="mx-auto">Symbolic links</h1>
                 <p>Symbolic links are files which act as shortcuts to other files or folders.<br>If following symbolic links is disabled, a link pointing to a folder will show up as a normal file, instead of as the target folder.</p>
-                <p>You can toggle the following of symbolic links with this environtment variable: <CodeChunk>{envVars.FM_FOLLOW_SYMBOLIC_LINKS}</CodeChunk> by setting it to <CodeChunk>true</CodeChunk> or <CodeChunk>false</CodeChunk>.</p>
+                <p>You can toggle the following of symbolic links with this environment variable: <CodeChunk>{envVars.FM_FOLLOW_SYMBOLIC_LINKS}</CodeChunk> by setting it to <CodeChunk>true</CodeChunk> or <CodeChunk>false</CodeChunk>.</p>
             </div>
 
             <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] basic-input-button">Go back</button>
