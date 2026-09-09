@@ -26,11 +26,17 @@ export function getFileCategoryFromFilename(name: string): FileCategory | null {
 
 export const fileCategories: Record<string, FileCategory> = {
     // HTML and Web Files
-    "html": "html",
-    "htm": "html",
-    "xhtml": "html",
-    "mhtml": "html",
-    "php": "html",
+    // "html": "html",
+    // "htm": "html",
+    // "xhtml": "html",
+    // "mhtml": "html",
+    // "php": "html",
+
+    "html": "text",
+    "htm": "text",
+    "xhtml": "text",
+    "mhtml": "text",
+    "php": "text",
 
     // Text and Code Files
     "txt": "text",
