@@ -227,7 +227,7 @@
                 </div>
                 
                 <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={submit_1}>
-                    <input placeholder="Setup code (12 letters)" type="text" bind:value={codeInput} minlength="12" maxlength="12" required title="Enter the generated code." id="code-input" class="basic-input">
+                    <input placeholder="Setup code (12 letters)" type="text" bind:value={() => codeInput, (v) => codeInput = v.toUpperCase()} minlength="12" maxlength="12" required title="Enter the generated code." id="code-input" class="basic-input" autocapitalize="characters" spellcheck="false" autocomplete="off">
                     <button type="submit" class="basic-input-button" disabled={!codeInputValid}>{running ? "..." : "Continue"}</button>
                 </form>
 
