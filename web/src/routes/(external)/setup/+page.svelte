@@ -166,11 +166,6 @@
     }
 
     async function getSetupStatus() {
-        if (dev) {
-            alreadySetup = false
-            phase = 5
-            return
-        }
         try {
             const response = await fetch(`/api/v1/setup/status`, { method: "GET" })
             const text = await response.text()
@@ -326,7 +321,7 @@
                 </div>
             {:else if phase === 5}
                 <div class="flex flex-col items-center gap-6 pt-[20svh]">
-                    <h1 class="text-2xl font">Filemat was set up.</h1>
+                    <h1 class="text-2xl font">Filemat was set up!</h1>
                     <a href="/" class="basic-input-button text-center">Continue</a>
                 </div>
             {:else}
