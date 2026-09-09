@@ -145,8 +145,14 @@
 </script>
 
 
-<div class="page flex-col items-center gap-12 pt-[15svh]">
-    <h1>Login</h1>
+<div class="page relative flex-col items-center gap-12 pt-[15svh]">
+    <div class="flex flex-col items-center gap-8 sm:contents">
+        <div class="flex items-center gap-2.5 sm:gap-6 sm:absolute sm:top-16 sm:left-16">
+            <img src="/favicon.svg" alt="" class="size-7">
+            <p class="text-xl tracking-tight">Filemat</p>
+        </div>
+        <h1 class="text-2xl">Login</h1>
+    </div>
 
     {#if phase === "login" || phase === "setup-mfa"}
         <form class="flex flex-col gap-2 w-[15rem]" on:submit|preventDefault={() => { submit_password() }} title="Login to Filemat">
