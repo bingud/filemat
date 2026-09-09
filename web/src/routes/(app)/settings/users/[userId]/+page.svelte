@@ -153,7 +153,7 @@
                     {#if selectingRoles}
                         <button on:click={removeSelectedRoles} disabled={pageState.selectedRoles.length < 1 || pageState.removingRoles} class="size-fit text-sm py-2 px-3 rounded bg-neutral-300 dark:bg-neutral-800/60 hover:bg-neutral-300 dark:hover:bg-neutral-700 disabled:opacity-60">
                             {#if !pageState.removingRoles}
-                                Removes roles
+                                Remove roles
                             {:else}
                                 Removing...
                             {/if}
