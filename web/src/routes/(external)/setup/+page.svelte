@@ -312,8 +312,8 @@
                     <p>Choose where temporary uploaded files will be stored</p>
                     
                     <form class="flex flex-col gap-2 w-[20rem] max-w-full" on:submit|preventDefault={submit_4}>
-                        <label for="download-path-input">Folder path</label>
-                        <input type="text" bind:value={uploadPathInput} id="download-path-input" class="basic-input">
+                        <label for="upload-folder-path-input">Folder path</label>
+                        <input type="text" bind:value={uploadPathInput} id="upload-folder-path-input" class="basic-input">
                         <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
                         <p class="text-sm text-neutral-500">Files will appear in: <CodeChunk>{uploadPathInput}/uploads</CodeChunk></p>
                         <button type="submit" class="basic-input-button mt-4">{running ? "..." : "Continue"}</button>
