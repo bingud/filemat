@@ -50,7 +50,7 @@ export async function loadPageData(
         shareToken?: string,
         bodyParams?: Record<string, string>
     }
-): Promise<null | "no-permission"> {
+): Promise<null | "no-permission" | "not-exposed"> {
     filesState.lastFilePathLoaded = filePath
     if (!options.silent && !options.parentFolderOnly) filesState.metaLoading = true
 
@@ -69,6 +69,8 @@ export async function loadPageData(
     filesState.metaLoading = false
 
     if (result.isUnsuccessful) {
+        const errorMessage = result.error
+
         if (result.notFound) {
             if (filesState.path === "/") return null
             if (options.isRefresh) {
@@ -77,6 +79,7 @@ export async function loadPageData(
                 toast.error("This file was not found.")
             }
         } else if (result.isRejected) {
+            if (errorMessage?.includes("not exposed")) return "not-exposed"
             return "no-permission"
         }
 

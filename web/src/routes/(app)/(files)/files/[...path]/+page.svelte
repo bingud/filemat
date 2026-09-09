@@ -61,7 +61,8 @@
     const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
     let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
     
-    let lacksRootFolderPermission = $state(false)
+    let rootFolderError_lacksPermission = $state(false)
+    let rootFolderError_isNotExposed = $state(false)
 
     onMount(() => {
         window.addEventListener('keydown', handleKeyDown)
@@ -155,7 +156,9 @@
             
             dataStatusPromise.then((status) => {
                 if (status === "no-permission") {
-                    lacksRootFolderPermission = true
+                    rootFolderError_lacksPermission = true
+                } else if (status === "not-exposed") {
+                    rootFolderError_isNotExposed = true
                 }
 
                 if (pathIsChild && !filesState.data.fileMeta) {
@@ -388,7 +391,7 @@
                         <Loader></Loader>
                     </div>
                 {:else if !filesState.data.currentMeta && !stateMeta.isArrayOnly}
-                    {#if lacksRootFolderPermission}
+                    {#if rootFolderError_lacksPermission}
                         <div class="flex flex-col items-center justify-center size-full gap-4">
                             <p class="text-xl">Missing permission to view the root folder</p>
                             <p class="text-sm">
@@ -396,7 +399,11 @@
                                 <a href="/accessible-files" class="text-blue-300 hover:underline">Accessible to me</a>
                                 tab to view files you have access to.
                             </p>
-                        </div>                    
+                        </div>  
+                    {:else if rootFolderError_isNotExposed}
+                        <div class="flex flex-col items-center justify-center size-full gap-4">
+                            <p class="text-xl">The root folder has not been exposed.</p>
+                        </div>
                     {:else}
                         <div class="center">
                             <p class="text-xl">Could not open this file</p>
