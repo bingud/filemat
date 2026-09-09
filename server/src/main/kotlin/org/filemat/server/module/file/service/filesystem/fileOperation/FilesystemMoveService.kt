@@ -96,7 +96,7 @@ class FilesystemMoveService(
                 if (failedCount == 1) {
                     Result.error("Failed to rename file.")
                 } else {
-                    Result.error("Failed to rename $failedCount ${plural("files", failedCount)}.")
+                    Result.error("Failed to rename $failedCount ${plural("file", failedCount)}.")
                 }
             } else {
                 Result.error("Failed to move  $failedCount ${plural("file", failedCount)}.")
