@@ -360,7 +360,7 @@
             <button on:click={closePopup} title="Go back to setup" class="max-w-full w-[10rem] basic-input-button">Go back</button>
         {/if}
     {:else if alreadySetup === true}
-        <div class="flex flex-col gap-6 items-center">
+        <div class="flex flex-col gap-6 items-center pt-[20svh]">
             <h1 class="text-2xl">Filemat has already been set up.</h1>
             <a href="/" class="underline">Go to Filemat</a>
         </div>
