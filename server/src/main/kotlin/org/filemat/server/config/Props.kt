@@ -30,6 +30,8 @@ object Props {
 
         val userRoleIdString = userRoleId.toString()
         val adminRoleIdString = adminRoleId.toString()
+
+        fun isSystemRole(roleId: Ulid) = roleId == userRoleId || roleId == adminRoleId
     }
 
     /**

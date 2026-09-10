@@ -1,10 +1,12 @@
 package org.filemat.server.module.role.service
 
+import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.State
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.log.service.LogService
@@ -71,4 +73,83 @@ class RoleServiceTest {
         assertEquals("Cannot update role with higher permissions than you have.", result.error)
         verify(exactly = 0) { roleRepository.updatePermissions(any(), any()) }
     }
+
+    @Test
+    fun `remove rejects deleting the user system role`() {
+        assertSystemRoleCannotBeDeleted(Props.Roles.userRoleId, "user")
+    }
+
+    @Test
+    fun `remove rejects deleting the admin system role`() {
+        assertSystemRoleCannotBeDeleted(Props.Roles.adminRoleId, "admin")
+    }
+
+    @Test
+    fun `remove deletes a custom role`() {
+        val editorRoleId = UlidCreator.getUlid()
+        val targetRoleId = UlidCreator.getUlid()
+        val now = unixNow()
+
+        State.Auth.roleMap[editorRoleId] = Role(
+            roleId = editorRoleId,
+            name = "editor",
+            createdDate = now,
+            permissions = listOf(SystemPermission.EDIT_ROLES),
+        )
+        State.Auth.roleMap[targetRoleId] = Role(
+            roleId = targetRoleId,
+            name = "custom",
+            createdDate = now,
+            permissions = listOf(SystemPermission.EDIT_ROLES),
+        )
+
+        val result = roleService.remove(
+            user = principalWithRole(editorRoleId),
+            roleId = targetRoleId,
+            userAction = UserAction.DELETE_ROLE,
+        )
+
+        assertTrue(result.isSuccessful)
+        verify(exactly = 1) { roleRepository.deleteById(targetRoleId) }
+        verify(exactly = 1) { authService.removeRoleFromAllPrincipals(targetRoleId) }
+    }
+
+    private fun assertSystemRoleCannotBeDeleted(roleId: Ulid, name: String) {
+        val editorRoleId = UlidCreator.getUlid()
+        val now = unixNow()
+
+        State.Auth.roleMap[editorRoleId] = Role(
+            roleId = editorRoleId,
+            name = "editor",
+            createdDate = now,
+            permissions = SystemPermission.entries,
+        )
+        State.Auth.roleMap[roleId] = Role(
+            roleId = roleId,
+            name = name,
+            createdDate = now,
+            permissions = emptyList(),
+        )
+
+        val result = roleService.remove(
+            user = principalWithRole(editorRoleId),
+            roleId = roleId,
+            userAction = UserAction.DELETE_ROLE,
+        )
+
+        assertTrue(result.rejected)
+        assertEquals("Cannot delete a system role.", result.error)
+        verify(exactly = 0) { roleRepository.deleteById(any<Ulid>()) }
+    }
+
+    private fun principalWithRole(roleId: Ulid) = Principal(
+        userId = UlidCreator.getUlid(),
+        email = "e@test",
+        username = "editor",
+        mfaTotpStatus = false,
+        mfaTotpRequired = false,
+        isBanned = false,
+        roles = mutableListOf(roleId),
+        homeFolderPath = null,
+    )
 }

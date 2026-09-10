@@ -23,6 +23,12 @@
 
     // Role permission
     let highestRolePermissionLevel = $derived(role ? getMaxPermissionLevel(role.permissions) : null)
+    let isSystemRole = $derived(
+        role != null && (
+            role.roleId === appState.systemRoleIds?.admin ||
+            role.roleId === appState.systemRoleIds?.user
+        )
+    )
 
     // Adding user
     let addUsersButton: HTMLElement | undefined = $state()
@@ -187,7 +193,7 @@
      * Delete this role
      */
     async function delRole() {if (deletingRole) return; deletingRole = true; try {
-        if (!role) return
+        if (!role || isSystemRole) return
         if (!confirm(`Are you sure you want to delete role '${role.name}'?`)) return
         const result = await deleteRole(role?.roleId)
         if (result) await goto(`/settings/roles`)
@@ -197,14 +203,14 @@
 
 
 {#if role}
-    <div in:fade={{duration: 70}} class="page settings-margin flex-col gap-12">
+    <div in:fade={{duration: 70}} class="flex w-full settings-margin flex-col gap-12">
         <div class="flex flex-col gap-4 p-6 rounded-lg w-full bg-surface">
             <h1 class="text-lg">{role.name}</h1>
             <p class="dark:text-neutral-300">Created on: {formatUnixTimestamp(role.createdDate)}</p>
             {#if appState.systemRoleIds?.admin === role.roleId}
-                <p>This is a system role that was created automatically. It has all available permissions.</p>
+                <p>This is a system role that was created automatically. It has all available permissions and cannot be deleted.</p>
             {:else if appState.systemRoleIds?.user === role.roleId}
-                <p>This is a system role that was created automatically. Every user has this role.</p>
+                <p>This is a system role that was created automatically. Every user has this role. It cannot be deleted.</p>
             {/if}
         </div>
 
@@ -231,40 +237,6 @@
                 </div>
 
                 {#if highestRolePermissionLevel && hasPermissionLevel(highestRolePermissionLevel)}
-                    <!-- <Popover.Root bind:open={addUserPopoverOpen}>
-                        <Popover.Trigger class="basic-button" onclick={loadAllUserList}>
-                            Add users
-                        </Popover.Trigger>
-                        <Popover.Content preventScroll={true} align="end" class="relative z-popover">
-                            <div class="max-w-full w-[18rem] rounded-md bg-neutral-300 dark:bg-neutral-800 overflow-y-auto overflow-x-hidden max-h-[28rem] min-h-[2rem] h-fit scrollbar">
-                                {#if allUsers}
-                                    {#if !includesList(role.miniUsers.map(v=>v.userId), allUsers.map(v=>v.userId))}
-                                        <div class="flex flex-col gap-2 p-2">
-                                            {#each sortArrayAlphabetically(allUsers, v => v.username) as user}
-                                                {@const hasRole = role.miniUsers.map(v => v.userId).includes(user.userId)}
-                                                {#if !hasRole}
-                                                    <button disabled={addingUser} on:click={() => { addUser(user) }} class="rounded bg-neutral-300 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-700 text-left px-2 py-1 !w-full">{user.username}</button>
-                                                {/if}
-                                            {/each}
-                                        </div>
-                                    {:else}
-                                        <div class="center !h-[3rem]">
-                                            <p>All users have this role.</p>
-                                        </div>
-                                    {/if}
-                                {:else if allUsersLoading}
-                                    <div class="center !h-[3rem] py-2">
-                                        <Loader></Loader>
-                                    </div>
-                                {:else}
-                                    <div class="center !h-[3rem]">
-                                        <p class="">Failed to load list of users.</p>
-                                    </div>
-                                {/if}
-                            </div>
-                        </Popover.Content>
-                    </Popover.Root> -->
-
                     <Popover.Root bind:open={addUserPopoverOpen}>
                         <Popover.Trigger class="basic-button text-sm" onclick={loadAllUserList}>
                             Add users
@@ -355,12 +327,12 @@
         </div>
 
         <hr class="basic-hr max-w-full">
-        <p>ID:<br>{role.roleId}</p>
 
-        {#if canEditPermissions}
-
+        {#if canEditPermissions && !isSystemRole}
             <button on:click={delRole} class="basic-button hover:ring-2 ring-red-400">{#if !deletingRole}Delete role{:else}Deleting...{/if}</button>
         {/if}
+        
+        <p class="opacity-60">ID: {role.roleId}</p>
     </div>
 {:else if status === "failed"}
     <div class="py-4">

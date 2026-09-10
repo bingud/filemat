@@ -32,6 +32,10 @@ class RoleService(
         val role = State.Auth.roleMap[roleId]
             ?: return Result.notFound()
 
+        if (Props.Roles.isSystemRole(roleId)) {
+            return Result.reject("Cannot delete a system role.")
+        }
+
         // Check if user has permissions to delete role
         val userPermissions = user.getPermissions()
         val rolePermissions = role.permissions
