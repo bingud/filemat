@@ -166,7 +166,18 @@ class AdminUserService(
             userId = userId,
             roleId = Props.Roles.userRoleId,
             action = UserAction.CREATE_USER,
-        )
+        ).let {
+            if (it.isNotSuccessful) {
+                logService.error(
+                    type = LogType.SYSTEM,
+                    action = UserAction.CREATE_USER,
+                    description = "Created user '$username' but failed to assign the default user role.",
+                    message = it.errorOrNull ?: "No error message",
+                    initiatorId = admin.userId,
+                    targetId = userId,
+                )
+            }
+        }
 
         logService.info(
             type = LogType.AUDIT,
