@@ -45,7 +45,7 @@ fun Path.safeWalk(with: FileLockService? = null): Flow<Path> = flow {
         emit(this@safeWalk)
 
         // Traverse children if directory
-        if (Files.isDirectory(this@safeWalk)) {
+        if (Files.isDirectory(this@safeWalk, LinkOption.NOFOLLOW_LINKS)) {
             try {
                 // newDirectoryStream is lazy and allows catching access errors per directory
                 Files.newDirectoryStream(this@safeWalk).use { stream ->
@@ -76,6 +76,15 @@ fun getPathRelationship(path: Path, target: Path): PathRelationship {
         containsTarget = contains,
         isEqual = isInside && contains
     )
+}
+
+/**
+ * True when [path] is [root] or a descendant. Uses path components, so `/share` does not match `/share-extra`.
+ */
+fun isPathInside(path: Path, root: Path): Boolean {
+    val normalizedPath = path.normalize()
+    val normalizedRoot = root.normalize()
+    return normalizedPath.startsWith(normalizedRoot)
 }
 
 fun isFileStoreMatching(

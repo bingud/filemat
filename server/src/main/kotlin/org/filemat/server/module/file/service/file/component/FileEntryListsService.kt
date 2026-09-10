@@ -48,7 +48,7 @@ class FileEntryListsService(
     ): Flow<Result<FullFileMetadata>> {
         val lowercaseText = text.lowercase()
 
-        // Symlinks permanently disabled to prevent loops
+        // Directory symlinks are not followed (safeWalk uses NOFOLLOW_LINKS).
         return canonicalPath.path.safeWalk(with = fileLockService)
             .mapNotNull { path ->
                 try {

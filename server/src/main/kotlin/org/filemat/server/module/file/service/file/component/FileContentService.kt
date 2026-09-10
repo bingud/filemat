@@ -7,6 +7,7 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.getPathRelationship
+import org.filemat.server.common.util.isPathInside
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.safeStreamSkip
 import org.filemat.server.config.Props
@@ -90,6 +91,13 @@ class FileContentService(
         shareToken: String?
     ) {
         val isShared = shareToken != null
+        val confineToRoot: Path? = if (isShared) {
+            fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken).let {
+                if (it.isNotSuccessful) return
+                it.value.path
+            }
+        } else null
+
         // 1. Resolve Initial Path
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(
             path = rawPath,
@@ -123,7 +131,8 @@ class FileContentService(
             user = principal,
             protectedPath = if (isReadDataFolderProtected) Props.dataFolderPath else null,
             ignorePermissions = isShared,
-            copyResolvedSymlinks = copyResolvedSymlinks
+            copyResolvedSymlinks = copyResolvedSymlinks,
+            confineToRoot = confineToRoot,
         )
     }
 
@@ -135,6 +144,7 @@ class FileContentService(
         protectedPath: Path?,
         ignorePermissions: Boolean,
         copyResolvedSymlinks: Boolean,
+        confineToRoot: Path?,
     ): Int {
         var failedCount = 0
         val sourceFilePath = FilePath.ofAlreadyNormalized(currentSource)
@@ -144,6 +154,17 @@ class FileContentService(
 
         val isSymlink = Files.isSymbolicLink(currentSource)
         if (isSymlink && !copyResolvedSymlinks) return 0
+
+        val realPath = try {
+            if (copyResolvedSymlinks) currentSource.toRealPath()
+            else currentSource.toRealPath(LinkOption.NOFOLLOW_LINKS)
+        } catch (_: Exception) {
+            return failedCount + 1
+        }
+
+        if (confineToRoot != null && !isPathInside(realPath, confineToRoot)) {
+            return failedCount
+        }
 
         // 1. Determine Type (Dir vs Symlink)
         val isDirectory = if (copyResolvedSymlinks) {
@@ -164,10 +185,18 @@ class FileContentService(
             }
         } else null
 
+        val pathForAccess = resolvedPath ?: FilePath.ofAlreadyNormalized(realPath)
+
         return fileLockService.tryWithLock(
             currentSource to LockType.READ,
             resolvedPath?.path to LockType.READ,
         ) {
+            fileService.isAllowedToAccessFile(
+                user = user,
+                canonicalPath = pathForAccess,
+                ignorePermissions = ignorePermissions
+            ).let { if (it.isNotSuccessful) return@tryWithLock failedCount + 1 }
+
             // 3. Handle Directory Recursion
             if (isDirectory) {
                 try {
@@ -187,7 +216,8 @@ class FileContentService(
                                 user = user,
                                 protectedPath = protectedPath,
                                 ignorePermissions = ignorePermissions,
-                                copyResolvedSymlinks = copyResolvedSymlinks
+                                copyResolvedSymlinks = copyResolvedSymlinks,
+                                confineToRoot = confineToRoot,
                             )
                         }
                     }
@@ -197,25 +227,7 @@ class FileContentService(
                 return@tryWithLock failedCount
             }
 
-            // 4. Permission Checks
-            if (isSymlink == true) {
-                if (resolvedPath == null) return@tryWithLock failedCount + 1
-
-                fileService.isAllowedToAccessFile(
-                    user = user,
-                    canonicalPath = resolvedPath,
-                    ignorePermissions = ignorePermissions
-                ).let { if (it.isNotSuccessful) return@tryWithLock failedCount + 1 }
-
-            } else {
-                fileService.isAllowedToAccessFile(
-                    user = user,
-                    canonicalPath = sourceFilePath,
-                    ignorePermissions = ignorePermissions
-                ).let { if (it.isNotSuccessful) return@tryWithLock failedCount + 1 }
-            }
-
-            // 5. Write File to Zip
+            // 4. Write File to Zip
             try {
                 val entryName = currentZipPath?.toString() ?: currentSource.fileName.toString()
                 zip.putNextEntry(ZipEntry(entryName))
