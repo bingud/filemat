@@ -122,11 +122,8 @@ class FilesystemMoveService(
 
         if (isDirectory) {
             try {
-                // Ensure destination directory exists
-                if (Files.notExists(currentDest)) {
-                    Files.createDirectories(currentDest)
-                }
-
+                // Recurse first so nested MOVE grants can still succeed.
+                // Do not create dest yet: an unused folder should not appear at the destination.
                 Files.newDirectoryStream(currentSource).use { stream ->
                     for (child in stream) {
                         failedCount += moveRecursiveSafe(
@@ -145,36 +142,56 @@ class FilesystemMoveService(
         }
 
         // Check permissions (MOVE or RENAME)
-        if (isRename) {
+        val allowed = if (isRename) {
             fileService.isAllowedToRenameFile(user = user, canonicalPath = sourceFilePath, ignorePermissions = ignorePermissions)
-                .let { if (it.isNotSuccessful) return failedCount + 1 }
         } else {
             fileService.isAllowedToMoveFile(user = user, canonicalPath = sourceFilePath, ignorePermissions = ignorePermissions)
-                .let { if (it.isNotSuccessful) return failedCount + 1 }
+        }
+        if (allowed.isNotSuccessful) {
+            if (isDirectory) deleteUnusedDestination(currentDest)
+            return failedCount + 1
         }
 
         // Move file OR Delete empty source folder
         // If we had failures in children, we cannot delete this folder, so we count this folder as failed
         if (isDirectory && failedCount > 0) {
-            val sourcePath = FilePath.ofAlreadyNormalized(currentSource)
-            val destinationPath = FilePath.ofAlreadyNormalized(currentDest)
+            if (Files.exists(currentDest)) {
+                val sourcePath = FilePath.ofAlreadyNormalized(currentSource)
+                val destinationPath = FilePath.ofAlreadyNormalized(currentDest)
 
-            // Duplicate DB entity for the destination folder that was copied partially
-            entityService.duplicateEntity(
-                canonicalPath = sourcePath,
-                canonicalDestinationPath = destinationPath,
-                UserAction.DUPLICATE_ENTITY
-            ).let {
-                if (it.isNotSuccessful) {
-                    filesystemService.deleteFile(
-                        target = destinationPath,
-                        user = user,
-                        ignorePermissions = true
-                    )
+                // Duplicate DB entity for the destination folder that was copied partially
+                entityService.duplicateEntity(
+                    canonicalPath = sourcePath,
+                    canonicalDestinationPath = destinationPath,
+                    UserAction.DUPLICATE_ENTITY
+                ).let {
+                    if (it.isNotSuccessful) {
+                        filesystemService.deleteFile(
+                            target = destinationPath,
+                            user = user,
+                            ignorePermissions = true
+                        )
+                    }
                 }
             }
 
             return failedCount // Don't increment, just return existing failures
+        }
+
+        try {
+            if (isDirectory) {
+                if (Files.notExists(currentDest)) {
+                    Files.createDirectories(currentDest)
+                }
+            } else {
+                currentDest.parent?.let { parent ->
+                    if (Files.notExists(parent)) {
+                        Files.createDirectories(parent)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            return failedCount + 1
         }
 
         val moveResult = internal_moveOrCleanup(
@@ -204,9 +221,23 @@ class FilesystemMoveService(
             failedCount++
         }
 
-        if (moveResult.isNotSuccessful) failedCount++
-
         return failedCount
+    }
+
+    /**
+     * Removes a dest folder that was only created as scaffolding, when this node is not allowed
+     * to move and nothing actually landed in it.
+     */
+    private fun deleteUnusedDestination(dest: Path) {
+        try {
+            if (!Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS)) return
+            val empty = Files.newDirectoryStream(dest).use { stream ->
+                !stream.iterator().hasNext()
+            }
+            if (empty) Files.delete(dest)
+        } catch (_: Exception) {
+            // Best-effort cleanup; leftover dest is preferable to failing the whole move.
+        }
     }
 
     private fun internal_moveOrCleanup(

@@ -142,11 +142,8 @@ class FilesystemCopyService(
 
         if (isDirectory) {
             try {
-                // Ensure destination directory exists
-                if (Files.notExists(currentDest)) {
-                    Files.createDirectories(currentDest)
-                }
-
+                // Recurse first so nested READ grants can still succeed.
+                // Do not create dest yet: an unused folder should not appear at the destination.
                 Files.newDirectoryStream(currentSource).use { stream ->
                     for (child in stream) {
                         failedCount += copyRecursiveSafe(
@@ -163,8 +160,19 @@ class FilesystemCopyService(
                 return failedCount + 1
             }
 
-            // For directories, we just create the shell and recurse.
-            // We do not perform a "copy" action on the folder object itself.
+            if (failedCount > 0) {
+                deleteUnusedDestination(currentDest)
+                return failedCount
+            }
+
+            // Empty folder, or all children succeeded and already created dest.
+            try {
+                if (Files.notExists(currentDest)) {
+                    Files.createDirectories(currentDest)
+                }
+            } catch (e: Exception) {
+                return failedCount + 1
+            }
             return failedCount
         }
 
@@ -189,7 +197,16 @@ class FilesystemCopyService(
             }
         }
 
-        // Action: Copy file
+        try {
+            currentDest.parent?.let { parent ->
+                if (Files.notExists(parent)) {
+                    Files.createDirectories(parent)
+                }
+            }
+        } catch (e: Exception) {
+            return failedCount + 1
+        }
+
         val copyResult = internal_copy(
             source = currentSource,
             dest = currentDest,
@@ -199,6 +216,21 @@ class FilesystemCopyService(
         if (copyResult.isNotSuccessful) failedCount++
 
         return failedCount
+    }
+
+    /**
+     * Removes a dest folder that was only created as scaffolding, when nothing actually landed in it.
+     */
+    private fun deleteUnusedDestination(dest: Path) {
+        try {
+            if (!Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS)) return
+            val empty = Files.newDirectoryStream(dest).use { stream ->
+                !stream.iterator().hasNext()
+            }
+            if (empty) Files.delete(dest)
+        } catch (_: Exception) {
+            // Best-effort cleanup; leftover dest is preferable to failing the whole copy.
+        }
     }
 
     private fun internal_copy(
