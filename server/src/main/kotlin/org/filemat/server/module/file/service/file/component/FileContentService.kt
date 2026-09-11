@@ -7,7 +7,6 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.getPathRelationship
-import org.filemat.server.common.util.isPathInside
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.safeStreamSkip
 import org.filemat.server.config.Props
@@ -18,6 +17,7 @@ import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.io.BufferedInputStream
@@ -91,10 +91,10 @@ class FileContentService(
         shareToken: String?
     ) {
         val isShared = shareToken != null
-        val confineToRoot: Path? = if (isShared) {
+        val shareRoot: FilePath? = if (isShared) {
             fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken).let {
                 if (it.isNotSuccessful) return
-                it.value.path
+                it.value
             }
         } else null
 
@@ -132,7 +132,7 @@ class FileContentService(
             protectedPath = if (isReadDataFolderProtected) Props.dataFolderPath else null,
             ignorePermissions = isShared,
             copyResolvedSymlinks = copyResolvedSymlinks,
-            confineToRoot = confineToRoot,
+            shareRoot = shareRoot,
         )
     }
 
@@ -144,13 +144,17 @@ class FileContentService(
         protectedPath: Path?,
         ignorePermissions: Boolean,
         copyResolvedSymlinks: Boolean,
-        confineToRoot: Path?,
+        shareRoot: FilePath?,
     ): Int {
         var failedCount = 0
         val sourceFilePath = FilePath.ofAlreadyNormalized(currentSource)
 
         // Explicit protection check
         if (protectedPath != null && currentSource == protectedPath) return 1
+
+        if (shareRoot != null && resolveSharedDescendant(currentSource, shareRoot).isNotSuccessful) {
+            return failedCount
+        }
 
         val isSymlink = Files.isSymbolicLink(currentSource)
         if (isSymlink && !copyResolvedSymlinks) return 0
@@ -160,10 +164,6 @@ class FileContentService(
             else currentSource.toRealPath(LinkOption.NOFOLLOW_LINKS)
         } catch (_: Exception) {
             return failedCount + 1
-        }
-
-        if (confineToRoot != null && !isPathInside(realPath, confineToRoot)) {
-            return failedCount
         }
 
         // 1. Determine Type (Dir vs Symlink)
@@ -217,7 +217,7 @@ class FileContentService(
                                 protectedPath = protectedPath,
                                 ignorePermissions = ignorePermissions,
                                 copyResolvedSymlinks = copyResolvedSymlinks,
-                                confineToRoot = confineToRoot,
+                                shareRoot = shareRoot,
                             )
                         }
                     }

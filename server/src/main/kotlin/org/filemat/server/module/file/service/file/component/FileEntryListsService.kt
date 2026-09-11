@@ -6,10 +6,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.emptyFlow
+import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.safeWalk
+import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.FilePath
@@ -44,12 +47,24 @@ class FileEntryListsService(
         text: String,
         isShared: Boolean = false,
         shareRelativePath: FilePath? = null,
+        shareToken: String? = null,
         userAction: UserAction
     ): Flow<Result<FullFileMetadata>> {
         val lowercaseText = text.lowercase()
 
-        // Directory symlinks are not followed (safeWalk uses NOFOLLOW_LINKS).
-        return canonicalPath.path.safeWalk(with = fileLockService)
+        val walk = if (shareToken != null) {
+            val shareRoot = fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken)
+            if (shareRoot.isNotSuccessful) return emptyFlow()
+            canonicalPath.path.safeWalk(
+                with = fileLockService,
+                followDirectoryLinks = State.App.followSymlinks,
+                include = { resolveSharedDescendant(it, shareRoot.value).isSuccessful },
+            )
+        } else {
+            canonicalPath.path.safeWalk(with = fileLockService)
+        }
+
+        return walk
             .mapNotNull { path ->
                 try {
                     // Check searched text

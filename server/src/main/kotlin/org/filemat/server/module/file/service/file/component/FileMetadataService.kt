@@ -7,14 +7,13 @@ import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.savedFile.SavedFileService
-import org.filemat.server.module.user.model.UserAction
+import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.springframework.stereotype.Service
 import java.nio.file.Path
 
@@ -24,7 +23,6 @@ class FileMetadataService(
     private val filesystemService: FilesystemService,
     private val savedFileService: SavedFileService,
     private val fileLockService: FileLockService,
-    private val entityService: EntityService
 ) {
 
     /**
@@ -75,24 +73,14 @@ class FileMetadataService(
      * if file is a folder, also returns entries
      */
     fun getSharedFileOrFolderEntries(rawPath: FilePath, foldersOnly: Boolean = false, shareToken: String): Result<Pair<FileMetadata, List<FileMetadata>?>> {
-        val entity = entityService.getByShareToken(shareToken = shareToken, UserAction.GET_SHARED_FILE)
-            .let {
-                if (it.isNotSuccessful) return it.cast()
-                it.value
-            }
-
-        if (entity.path == null) return Result.notFound()
-        val rawSharePath = FilePath.of(entity.path)
-
-        // Resolve entity path
-        val canonicalSharePathResult = resolvePath(rawSharePath)
-        if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
-        val canonicalSharePath = canonicalSharePathResult.value
-
-        // Get path of requested file
-        val canonicalPath = FilePath.ofAlreadyNormalized(
-            canonicalSharePath.path.resolve(rawPath.path.toString().removePrefix("/"))
-        )
+        val shareRoot = fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        val canonicalPath = fileService.resolvePathWithOptionalShare(rawPath, shareToken).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
 
         val lock = fileLockService.getLock(canonicalPath.path, LockType.READ)
         if (!lock.successful) return Result.reject("This file is currently being modified.")
@@ -115,8 +103,11 @@ class FileMetadataService(
                 ).let {
                     if (it.isNotSuccessful) return it.cast()
                     it.value
-                }.map { entry ->
-                    val relativePath = canonicalPath.path.relativize(Path.of(entry.path))
+                }.mapNotNull { entry ->
+                    val entryPath = Path.of(entry.path)
+                    if (resolveSharedDescendant(entryPath, shareRoot).isNotSuccessful) return@mapNotNull null
+
+                    val relativePath = canonicalPath.path.relativize(entryPath)
                     val newPath = rawPath.path.resolve(relativePath)
 
                     entry.copy(path = newPath.toString())

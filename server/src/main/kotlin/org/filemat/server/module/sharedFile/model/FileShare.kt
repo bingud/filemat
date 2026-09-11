@@ -29,7 +29,17 @@ data class FileShare(
     @Column("password")
     @kotlinx.serialization.Transient
     val password: String? = null,
-)
+) {
+    companion object {
+        /**
+         * Whether shared-file operations may follow symlinks that point outside the shared root.
+         *
+         * In-tree symlinks still follow the system-wide [org.filemat.server.common.State.App.followSymlinks] setting.
+         * Hardcoded false for the foreseeable future: outbound symlink targets are never followed.
+         */
+        const val followSymlinks: Boolean = false
+    }
+}
 
 fun FileShare.isExpired(existingNow: Long? = null): Boolean {
     if (this.maxAge == 0L) return false

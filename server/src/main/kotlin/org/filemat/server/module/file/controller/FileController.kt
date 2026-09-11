@@ -83,6 +83,7 @@ class FileController(
             userAction = UserAction.SEARCH_FILE,
             isShared = shareToken != null,
             shareRelativePath = if (shareToken != null) path else null,
+            shareToken = shareToken,
         )
 
         val body = StreamingResponseBody { out ->

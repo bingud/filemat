@@ -36,22 +36,29 @@ object FileUtils {
 
 
 
-fun Path.safeWalk(with: FileLockService? = null): Flow<Path> = flow {
+fun Path.safeWalk(
+    with: FileLockService? = null,
+    followDirectoryLinks: Boolean = false,
+    include: (Path) -> Boolean = { true },
+): Flow<Path> = flow {
     val lock = with?.getLock(this@safeWalk, LockType.READ)
     if (lock?.successful == false) return@flow
 
     try {
+        if (!include(this@safeWalk)) return@flow
+
         // Emit the current path itself
         emit(this@safeWalk)
 
         // Traverse children if directory
-        if (Files.isDirectory(this@safeWalk, LinkOption.NOFOLLOW_LINKS)) {
+        val directoryOptions = if (followDirectoryLinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
+        if (Files.isDirectory(this@safeWalk, *directoryOptions)) {
             try {
                 // newDirectoryStream is lazy and allows catching access errors per directory
                 Files.newDirectoryStream(this@safeWalk).use { stream ->
                     for (path in stream) {
                         // Recursively walk children
-                        emitAll(path.safeWalk(with))
+                        emitAll(path.safeWalk(with = with, followDirectoryLinks = followDirectoryLinks, include = include))
                     }
                 }
             } catch (_: Exception) {
