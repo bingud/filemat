@@ -36,22 +36,77 @@ object FileUtils {
 
 
 
-fun Path.safeWalk(with: FileLockService? = null): Flow<Path> = flow {
+/**
+ * Real path used to detect directory cycles. Follows links/junctions; falls back to a normalized absolute path.
+ */
+fun Path.walkIdentity(): Path = try {
+    toRealPath()
+} catch (_: Exception) {
+    toAbsolutePath().normalize()
+}
+
+fun Path.isAlreadyWalked(ancestors: Set<Path>): Boolean {
+    if (ancestors.isEmpty()) return false
+    val identity = walkIdentity()
+    if (identity in ancestors) return true
+    return ancestors.any { ancestor ->
+        runCatching { Files.isSameFile(identity, ancestor) }.getOrDefault(false)
+    }
+}
+
+internal fun Set<Path>.plusWalkIdentity(path: Path): Set<Path> {
+    val identity = path.walkIdentity()
+    if (identity in this) return this
+    val next = LinkedHashSet<Path>(size + 1)
+    next.addAll(this)
+    next.add(identity)
+    return next
+}
+
+fun Path.safeWalk(
+    with: FileLockService? = null,
+    followDirectoryLinks: Boolean = false,
+    include: (Path) -> Boolean = { true },
+): Flow<Path> = safeWalk(
+    with = with,
+    followDirectoryLinks = followDirectoryLinks,
+    include = include,
+    ancestorRealPaths = emptySet(),
+)
+
+private fun Path.safeWalk(
+    with: FileLockService?,
+    followDirectoryLinks: Boolean,
+    include: (Path) -> Boolean,
+    ancestorRealPaths: Set<Path>,
+): Flow<Path> = flow {
     val lock = with?.getLock(this@safeWalk, LockType.READ)
     if (lock?.successful == false) return@flow
 
     try {
+        if (!include(this@safeWalk)) return@flow
+
         // Emit the current path itself
         emit(this@safeWalk)
 
         // Traverse children if directory
-        if (Files.isDirectory(this@safeWalk, LinkOption.NOFOLLOW_LINKS)) {
+        val directoryOptions = if (followDirectoryLinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
+        if (Files.isDirectory(this@safeWalk, *directoryOptions)) {
+            if (this@safeWalk.isAlreadyWalked(ancestorRealPaths)) return@flow
+            val childAncestors = ancestorRealPaths.plusWalkIdentity(this@safeWalk)
+
             try {
                 // newDirectoryStream is lazy and allows catching access errors per directory
                 Files.newDirectoryStream(this@safeWalk).use { stream ->
                     for (path in stream) {
-                        // Recursively walk children
-                        emitAll(path.safeWalk(with))
+                        emitAll(
+                            path.safeWalk(
+                                with = with,
+                                followDirectoryLinks = followDirectoryLinks,
+                                include = include,
+                                ancestorRealPaths = childAncestors,
+                            )
+                        )
                     }
                 }
             } catch (_: Exception) {

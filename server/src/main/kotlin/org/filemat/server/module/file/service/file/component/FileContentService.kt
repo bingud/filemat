@@ -7,9 +7,10 @@ import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.getPathRelationship
-import org.filemat.server.common.util.isPathInside
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.safeStreamSkip
+import org.filemat.server.common.util.isAlreadyWalked
+import org.filemat.server.common.util.plusWalkIdentity
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
@@ -18,6 +19,7 @@ import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.io.BufferedInputStream
@@ -91,10 +93,10 @@ class FileContentService(
         shareToken: String?
     ) {
         val isShared = shareToken != null
-        val confineToRoot: Path? = if (isShared) {
+        val shareRoot: FilePath? = if (isShared) {
             fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken).let {
                 if (it.isNotSuccessful) return
-                it.value.path
+                it.value
             }
         } else null
 
@@ -132,7 +134,8 @@ class FileContentService(
             protectedPath = if (isReadDataFolderProtected) Props.dataFolderPath else null,
             ignorePermissions = isShared,
             copyResolvedSymlinks = copyResolvedSymlinks,
-            confineToRoot = confineToRoot,
+            shareRoot = shareRoot,
+            ancestorRealPaths = emptySet(),
         )
     }
 
@@ -144,13 +147,18 @@ class FileContentService(
         protectedPath: Path?,
         ignorePermissions: Boolean,
         copyResolvedSymlinks: Boolean,
-        confineToRoot: Path?,
+        shareRoot: FilePath?,
+        ancestorRealPaths: Set<Path>,
     ): Int {
         var failedCount = 0
         val sourceFilePath = FilePath.ofAlreadyNormalized(currentSource)
 
         // Explicit protection check
         if (protectedPath != null && currentSource == protectedPath) return 1
+
+        if (shareRoot != null && resolveSharedDescendant(currentSource, shareRoot).isNotSuccessful) {
+            return failedCount
+        }
 
         val isSymlink = Files.isSymbolicLink(currentSource)
         if (isSymlink && !copyResolvedSymlinks) return 0
@@ -162,10 +170,6 @@ class FileContentService(
             return failedCount + 1
         }
 
-        if (confineToRoot != null && !isPathInside(realPath, confineToRoot)) {
-            return failedCount
-        }
-
         // 1. Determine Type (Dir vs Symlink)
         val isDirectory = if (copyResolvedSymlinks) {
             Files.isDirectory(currentSource)
@@ -173,17 +177,17 @@ class FileContentService(
             Files.isDirectory(currentSource, LinkOption.NOFOLLOW_LINKS)
         }
 
-        // 2. Resolve Symlink and Check for Loops
-        val resolvedPath = if (isSymlink == true) {
+        val resolvedPath = if (isSymlink) {
             resolvePath(sourceFilePath).let { result ->
                 if (result.isNotSuccessful) return failedCount + 1
                 result.value
-            }.also {
-                // Loop prevention: checks if source contains target or target contains source
-                if (currentSource.startsWith(it.path)) return failedCount + 1
-                if (it.path.startsWith(currentSource)) return failedCount + 1
             }
         } else null
+
+        val childAncestors = if (isDirectory) {
+            if (currentSource.isAlreadyWalked(ancestorRealPaths)) return failedCount
+            ancestorRealPaths.plusWalkIdentity(currentSource)
+        } else ancestorRealPaths
 
         val pathForAccess = resolvedPath ?: FilePath.ofAlreadyNormalized(realPath)
 
@@ -217,7 +221,8 @@ class FileContentService(
                                 protectedPath = protectedPath,
                                 ignorePermissions = ignorePermissions,
                                 copyResolvedSymlinks = copyResolvedSymlinks,
-                                confineToRoot = confineToRoot,
+                                shareRoot = shareRoot,
+                                ancestorRealPaths = childAncestors,
                             )
                         }
                     }

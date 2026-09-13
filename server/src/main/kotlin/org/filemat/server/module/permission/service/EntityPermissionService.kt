@@ -129,6 +129,7 @@ class EntityPermissionService(
         userId: Ulid? = null,
         existingCanonicalPath: FilePath? = null
     ): Result<EntityPermission> {
+        val action = UserAction.CREATE_ENTITY_PERMISSION
         if (ignorePermissions == false && user == null || ignorePermissions == true && userId == null) return Result.reject("Unauthenticated")
 
         val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath).let { result ->
@@ -136,13 +137,12 @@ class EntityPermissionService(
             result.value
         }
 
-        val action = UserAction.CREATE_ENTITY_PERMISSION
-        if (!ignorePermissions) {
-            // Check if user has file permission
-            fileService.isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
-                if (it.isNotSuccessful) return it.cast()
-            }
+        // Check if user has file permission
+        fileService.isAllowedToAccessFile(user = user, canonicalPath = canonicalPath, ignorePermissions = ignorePermissions).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
 
+        if (!ignorePermissions) {
             // Verify / validate the file without creating yet (owner check first).
             fileService.verifyEntityInode(path = canonicalPath, userAction = action).let {
                 if (it.isNotSuccessful) return it.cast()

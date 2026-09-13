@@ -12,6 +12,8 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.component.*
 import org.filemat.server.module.file.service.file.component.FileContentService.EditFileResult
 import org.filemat.server.module.permission.model.FilePermission
+import org.filemat.server.module.sharedFile.model.FileShare
+import org.filemat.server.module.sharedFile.resolveSharedFilePath
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
@@ -142,6 +144,7 @@ class FileService(
         text: String,
         isShared: Boolean = false,
         shareRelativePath: FilePath? = null,
+        shareToken: String? = null,
         userAction: UserAction
     ): Flow<Result<FullFileMetadata>> = fileEntryListsService.searchFiles(
         user = user,
@@ -149,6 +152,7 @@ class FileService(
         text = text,
         isShared = isShared,
         shareRelativePath = shareRelativePath,
+        shareToken = shareToken,
         userAction = userAction
     )
 
@@ -203,14 +207,25 @@ class FileService(
 
     // --- Utilities ---
 
+    /**
+     * Resolves a client path, scoping it under the shared root when [shareToken] is present.
+     *
+     * Every shared-file operation (listing, content, zip, search, thumbnails, last-modified, and future IO)
+     * must obtain filesystem paths through this function so share symlink policy is applied once:
+     * outbound targets are followed only when [FileShare.followSymlinks] is true; in-tree targets still
+     * require the system-wide follow-symlinks setting. Recursive walks must re-check descendants with
+     * [org.filemat.server.module.sharedFile.resolveSharedDescendant].
+     */
     fun resolvePathWithOptionalShare(path: FilePath, shareToken: String?, existingEntity: FilesystemEntity? = null): Result<FilePath> {
         if (shareToken != null) {
             val entity = existingEntity ?: entityService.getByShareToken(shareToken = shareToken).onFailure { return it.cast() }.value
             val sharePathStr = entity.path ?: return Result.notFound()
-            val sharePath = FilePath.of(sharePathStr)
-            val fullPath = sharePath.path.resolve(path.pathString.removePrefix("/"))
-
-            return resolvePath(FilePath.ofAlreadyNormalized(fullPath))
+            val shareRoot = resolvePath(FilePath.of(sharePathStr)).onFailure { return it.cast() }.value
+            return resolveSharedFilePath(
+                relativePath = path,
+                shareRoot = shareRoot,
+                followOutboundSymlinks = FileShare.followSymlinks,
+            )
         }
 
         return resolvePath(path)

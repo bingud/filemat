@@ -9,6 +9,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.sharedFile.resolveSharedFilePath
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -16,11 +17,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
@@ -137,6 +140,133 @@ class FileContentServiceTest {
         assertFalse(entries.containsKey("allowed/escape-file"))
     }
 
+    @Test
+    fun `shared zip includes in-tree symlink content and skips outbound targets`() {
+        State.App.followSymlinks = true
+        assumeFollowSymlinksHonored()
+
+        val shareRoot = Files.createDirectory(tempDir.resolve("share"))
+        val nested = Files.createDirectory(shareRoot.resolve("nested"))
+        val visible = Files.writeString(nested.resolve("hello.txt"), "from-nested")
+        val outside = Files.createDirectory(tempDir.resolve("outside"))
+        val secret = Files.writeString(outside.resolve("secret.txt"), "SHARED SECRET PAYLOAD")
+
+        createDirectoryLink(shareRoot.resolve("in-tree"), nested)
+        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("escape-file"), secret) }.isSuccess, "Could not create file symlink")
+        createDirectoryLink(shareRoot.resolve("escape-dir"), outside)
+
+        allow(shareRoot)
+        allow(nested)
+        allow(visible)
+        allow(outside)
+        allow(secret)
+
+        mockShareResolve(shareRoot)
+
+        val entries = zipEntries(FilePath.of("/"), shareToken = "share-token", zipRootName = shareRoot.fileName)
+
+        assertEquals("from-nested", entries["share/nested/hello.txt"])
+        assertEquals("from-nested", entries["share/in-tree/hello.txt"])
+        assertFalse(entries.values.any { it.contains("SHARED SECRET PAYLOAD") })
+        assertFalse(entries.keys.any { it.endsWith("secret.txt") })
+        assertFalse(entries.containsKey("share/escape-file"))
+    }
+
+    @Test
+    fun `shared zip skips bounce-back symlink that leaves the share`() {
+        State.App.followSymlinks = true
+        assumeFollowSymlinksHonored()
+
+        val shareRoot = Files.createDirectory(tempDir.resolve("share"))
+        val visible = Files.writeString(shareRoot.resolve("inside.txt"), "inside")
+        val outside = Files.createDirectory(tempDir.resolve("outside"))
+        val bounce = outside.resolve("bounce")
+        assumeTrue(runCatching { Files.createSymbolicLink(bounce, visible) }.isSuccess, "Could not create bounce target")
+        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("leave-and-return"), bounce) }.isSuccess, "Could not create bounce-back symlink")
+
+        allow(shareRoot)
+        allow(visible)
+        allow(outside)
+        allow(bounce)
+
+        mockShareResolve(shareRoot)
+
+        val entries = zipEntries(FilePath.of("/"), shareToken = "share-token", zipRootName = shareRoot.fileName)
+
+        assertEquals("inside", entries["share/inside.txt"])
+        assertFalse(entries.containsKey("share/leave-and-return"))
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    fun `zip does not recurse forever through a directory link to an ancestor`() {
+        State.App.followSymlinks = true
+        assumeFollowSymlinksHonored()
+
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        val hello = Files.writeString(folder.resolve("hello.txt"), "hi")
+        createDirectoryLink(folder.resolve("loop"), folder)
+
+        allow(folder)
+        allow(hello)
+
+        val entries = zipEntries(folder)
+
+        assertEquals("hi", entries["folder/hello.txt"])
+        assertFalse(entries.keys.any { it.replace('\\', '/').contains("/loop/") })
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    fun `zip does not recurse forever through sibling directory links`() {
+        State.App.followSymlinks = true
+        assumeFollowSymlinksHonored()
+
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        val a = Files.createDirectory(folder.resolve("a"))
+        val b = Files.createDirectory(folder.resolve("b"))
+        val hello = Files.writeString(a.resolve("hello.txt"), "from-a")
+        createDirectoryLink(a.resolve("to-b"), b)
+        createDirectoryLink(b.resolve("to-a"), a)
+
+        allow(folder)
+        allow(a)
+        allow(b)
+        allow(hello)
+
+        val entries = zipEntries(folder)
+
+        assertTrue(entries.values.any { it == "from-a" })
+        assertTrue(entries.keys.any { it.replace('\\', '/').endsWith("hello.txt") })
+    }
+
+    private fun mockShareResolve(shareRoot: Path) {
+        every { fileService.resolvePathWithOptionalShare(any(), any()) } answers {
+            val path = invocation.args[0] as FilePath
+            val token = invocation.args[1] as String?
+            if (token == null) {
+                Result.ok(path)
+            } else {
+                resolveSharedFilePath(
+                    relativePath = path,
+                    shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                )
+            }
+        }
+        every { fileService.resolvePathWithOptionalShare(any(), any(), any()) } answers {
+            val path = invocation.args[0] as FilePath
+            val token = invocation.args[1] as String?
+            if (token == null) {
+                Result.ok(path)
+            } else {
+                resolveSharedFilePath(
+                    relativePath = path,
+                    shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                )
+            }
+        }
+    }
+
     private fun allow(path: Path) {
         readable.add(path)
         readable.add(path.toRealPath())
@@ -149,14 +279,18 @@ class FileContentServiceTest {
     }
 
     private fun zipEntries(path: Path): Map<String, String> {
+        return zipEntries(FilePath.ofAlreadyNormalized(path), shareToken = null, zipRootName = path.fileName)
+    }
+
+    private fun zipEntries(path: FilePath, shareToken: String?, zipRootName: Path?): Map<String, String> {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
             service.addFileToZip(
                 zip = zip,
-                rawPath = FilePath.ofAlreadyNormalized(path),
-                existingBaseZipPath = path.fileName,
+                rawPath = path,
+                existingBaseZipPath = zipRootName,
                 principal = user,
-                shareToken = null,
+                shareToken = shareToken,
             )
         }
 

@@ -59,11 +59,8 @@ class FileFolderEntriesService(
         ignorePermissions: Boolean = false,
         metaMapper: (meta: FileMetadata, getFull: (meta: FileMetadata) -> FullFileMetadata?) -> T?
     ): Result<List<T>> {
-        val hasAdminAccess = user?.let { fileService.hasAdminAccess(user) } ?: false
-        if (!ignorePermissions) {
-            val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath = canonicalPath, ignorePermissions = hasAdminAccess)
-            if (isAllowed.isNotSuccessful) return isAllowed.cast()
-        }
+        val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath = canonicalPath, ignorePermissions = ignorePermissions)
+        if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         val followSymlinks = State.App.followSymlinks
 
@@ -79,13 +76,13 @@ class FileFolderEntriesService(
         val entries: List<T> = rawEntries.mapNotNull { meta: FileMetadata ->
             val entryPath = FilePath.of(meta.path)
 
-            val isPathAllowed = fileVisibilityService.isPathAllowed(entryPath) == null
-            if (!isPathAllowed) return@mapNotNull null
-
             fileService.isAllowedToAccessFile(
                 user = user,
                 canonicalPath = entryPath,
-            )
+                ignorePermissions = ignorePermissions
+            ).let {
+                if (it.isNotSuccessful) return@mapNotNull null
+            }
 
             val fullMeta: T? = metaMapper(meta) { mappedMeta ->
                 val permissions: Set<FilePermission> = user?.let { fileService.getActualFilePermissions(canonicalPath = entryPath, user = user) } ?: setOf(FilePermission.READ)

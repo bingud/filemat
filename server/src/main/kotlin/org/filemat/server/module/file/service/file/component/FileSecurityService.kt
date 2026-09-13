@@ -28,7 +28,8 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
      * Fully verifies if a user is allowed to read a file
      */
     fun isAllowedToAccessFile(user: Principal?, canonicalPath: FilePath, ignorePermissions: Boolean? = null): Result<Unit> {
-        // Share-link flows pass ignorePermissions=true after the path was scoped by [shareToken];
+        // Share-link flows pass ignorePermissions=true after the path was scoped by [shareToken]
+        // through FileService.resolvePathWithOptionalShare (share symlink policy + root confine).
         // there may be no logged-in user, but blocked/sensitive paths must still be rejected.
         val ignorePerms = ignorePermissions ?: user?.let { hasAdminAccess(it) } ?: false
 
