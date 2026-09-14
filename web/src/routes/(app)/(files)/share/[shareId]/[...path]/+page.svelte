@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page } from "$app/state";
+    import { clearStoredShareToken, getStoredShareToken, setStoredShareToken } from "$lib/code/module/files/shareTokenStorage";
     import type { StateMetadata } from "$lib/code/stateObjects/filesState.svelte";
     import { explicitEffect, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
@@ -11,9 +12,19 @@
 
     let passwordInput = $state('')
     let shareToken: string | null = $state(null)
+    let tokenFromStorage = false
     let loading = $state(false)
 
     let errorMessage = $state("")
+
+    function logoutShare() {
+        if (shareId) clearStoredShareToken(shareId)
+        shareToken = null
+        tokenFromStorage = false
+        shareMeta = null
+        passwordInput = ``
+        errorMessage = ``
+    }
 
     const pageMeta: StateMetadata | undefined = $derived.by(() => {
         if (!shareId || passwordStatus == null || !shareMeta) return undefined
@@ -28,6 +39,7 @@
             isArrayOnly: false,
             shareToken: shareToken ?? shareId,
             shareTopLevelFilename: shareMeta.topLevelFilename,
+            onLogout: passwordStatus === true ? logoutShare : undefined,
         }
     })
 
@@ -37,6 +49,7 @@
         passwordInput = ''
         passwordStatus = undefined
         shareToken = null
+        tokenFromStorage = false
         shareMeta = null
         errorMessage = ""
 
@@ -48,6 +61,14 @@
                 if (shareId !== id) return
 
                 passwordStatus = result
+                if (result === true) {
+                    const stored = getStoredShareToken(id)
+                    if (stored) {
+                        console.log(`Using share login token from localstorage.`)
+                        tokenFromStorage = true
+                        shareToken = stored
+                    }
+                }
             })
     })
 
@@ -129,6 +150,7 @@
             return null
         }
 
+        tokenFromStorage = false
         shareToken = response.content
         errorMessage = ""
         console.log(`Share login successful`)
@@ -156,6 +178,12 @@
 
         const json = response.json()
         if (response.code.failed) {
+            if (tokenFromStorage && shareId) {
+                clearStoredShareToken(shareId)
+                tokenFromStorage = false
+                shareToken = null
+                return null
+            }
             errorMessage = json.message || `Failed to load shared file metadata.`
             handleErr({
                 description: `Failed to load shared file metadata.`,
@@ -167,6 +195,10 @@
 
         errorMessage = ""
         shareMeta = json
+        if (passwordStatus === true && shareId) {
+            setStoredShareToken(shareId, token)
+            tokenFromStorage = false
+        }
         console.log(`Share metadata loaded`)
     }
 </script>
@@ -174,7 +206,7 @@
 {#if errorMessage}
     <div class="page flex flex-col items-center justify-center gap-4">
         <p class="text-lg">{errorMessage}</p>
-        <button on:click={() => { window.location.reload() }} class="basic-button w-full">Reload</button>
+        <button onclick={() => { window.location.reload() }} class="basic-button w-full">Reload</button>
     </div>
 {:else if passwordStatus == null || (shareToken && !pageMeta)}
     <div class="page flex items-center justify-center">
@@ -185,7 +217,7 @@
         <FilesPage meta={pageMeta}></FilesPage>
     {:else if passwordStatus === true}
         <div class="page flex-col items-center justify-center">
-            <form on:submit={submit_login} class="flex flex-col gap-4">
+            <form onsubmit={(e) => { e.preventDefault(); submit_login() }} class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
                     <label for="password">File Password</label>
 

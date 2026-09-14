@@ -7,6 +7,13 @@
     import SortAscendingIcon from "$lib/component/icons/SortAscendingIcon.svelte";
     import SortDescendingIcon from "$lib/component/icons/SortDescendingIcon.svelte";
 
+    const shortModeLabels: Record<FileSortingMode, string> = {
+        name: `Name`,
+        modified: `Mod.`,
+        size: `Size`,
+        created: `Creat.`,
+    }
+
     let mode = $derived(filesState.sortingMode)
 
     function setMode(newMode: FileSortingMode) {
@@ -24,7 +31,7 @@
 
 <Popover.Root bind:open={filesState.ui.fileSortingMenuPopoverOpen}>
     <Popover.Trigger title="Change file sorting mode." class="h-full flex items-center justify-center">
-        <div class="file-action-button w-auto! gap-2 px-4!">
+        <div class="file-action-button w-auto! gap-2 {filesState.isShared ? 'px-2! xs:px-4!' : 'px-4!'}">
             <div class="h-[1.2rem]">
                 {#if filesState.sortingDirection === "asc"}
                     <SortAscendingIcon></SortAscendingIcon>
@@ -32,7 +39,12 @@
                     <SortDescendingIcon></SortDescendingIcon>
                 {/if}
             </div>
-            <p class="capitalize">{mode}</p>
+            {#if filesState.isShared}
+                <p class="xs:hidden">{shortModeLabels[mode]}</p>
+                <p class="hidden xs:block capitalize">{mode}</p>
+            {:else}
+                <p class="capitalize">{mode}</p>
+            {/if}
         </div>
     </Popover.Trigger>
     <Popover.Content preventScroll={true} align="end" class="relative z-popover">

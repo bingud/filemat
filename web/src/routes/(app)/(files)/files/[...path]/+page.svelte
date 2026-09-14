@@ -32,6 +32,7 @@
     import { hasAnyPermission } from "$lib/code/module/permissions";
     import SharedFileScopeSwitchPopover from "./_elements/button/SharedFileScopeSwitchPopover.svelte";
     import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
+    import ShareLogoutButton from "./_elements/button/ShareLogoutButton.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import { openEntry } from "./_code/fileBrowserUtil.svelte";
     import OpenFileAsCategoryButton from "./_elements/button/OpenFileAsCategoryButton.svelte";
@@ -337,7 +338,7 @@
                                 <NewFileButton />
                             {/if}
 
-                            {#if uiState.isDesktop && (filesState.currentFile.isSearchable || (filesState.isFileListOpen && !filesState.isSearchOpen && (filesState.meta.type === "files" || filesState.isShared)))}
+                            {#if (uiState.isDesktop || filesState.isShared) && (filesState.currentFile.isSearchable || (filesState.isFileListOpen && !filesState.isSearchOpen && (filesState.meta.type === "files" || filesState.isShared)))}
                                 <FileSearchButton />
                             {/if}
                             
@@ -357,7 +358,11 @@
                                 <OpenFileAsCategoryButton location="bar" />
                             {/if}
 
-                            {#if uiState.isDesktop}
+                            {#if filesState.meta.type === `shared` && filesState.meta.onLogout}
+                                <ShareLogoutButton />
+                            {/if}
+
+                            {#if uiState.isDesktop || filesState.isShared}
                                 <FileDetailsButton></FileDetailsButton>
                             {/if}
                         </div>

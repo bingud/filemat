@@ -16,7 +16,7 @@ import { textFileViewerState } from "../../../routes/(app)/(files)/files/[...pat
 
 type StateMetadataProps = { fileEntriesUrlPath: string, pagePath: string, pageTitle: string, isArrayOnly: boolean }
 export type StateMetadata = { type: "files",                                                                            } & StateMetadataProps
-                          | { type: "shared",      shareId: string, shareToken: string, shareTopLevelFilename: string,  } & StateMetadataProps
+                          | { type: "shared",      shareId: string, shareToken: string, shareTopLevelFilename: string, onLogout?: () => void } & StateMetadataProps
                           | { type: "accessible",                                                                       } & StateMetadataProps
                           | { type: "allShared",                                                                        } & StateMetadataProps
                           | { type: "saved",                                                                            } & StateMetadataProps
