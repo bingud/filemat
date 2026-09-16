@@ -10,6 +10,7 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte';
     import { page } from '$app/state';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
+    import { downloadState } from '$lib/code/stateObjects/subState/downloadState.svelte';
     import ConfirmDialog from '$lib/component/popover/ConfirmDialog.svelte';
     import DownloadChooserDialog from '$lib/component/popover/DownloadChooserDialog.svelte';
     import { confirmDialogState, downloadChooserState, inputDialogState, uploadConflictDialogState } from '$lib/code/stateObjects/subState/utilStates.svelte';
@@ -31,7 +32,7 @@
         updateScreenSize()
 
         window.addEventListener('beforeunload', (e) => {
-            if (uploadState.hasBlockingUploads) {
+            if (uploadState.hasBlockingUploads || downloadState.hasBlockingDownloads) {
                 e.preventDefault()
                 e.returnValue = ""
             }

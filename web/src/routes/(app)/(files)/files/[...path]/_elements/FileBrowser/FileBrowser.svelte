@@ -4,7 +4,9 @@
     import { onMount } from "svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
+    import DownloadPanel from "../ui/DownloadPanel.svelte"
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte"
+    import { downloadState } from "$lib/code/stateObjects/subState/downloadState.svelte"
     import { copyFile, deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files/files"
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte"
@@ -433,16 +435,23 @@
 {/if}
 
 
-<!-- Upload panel -->
-{#if uploadState.count > 0 && uploadState.panelOpen}
+<!-- Transfer panels -->
+{#if (uploadState.count > 0 && uploadState.panelOpen) || (downloadState.count > 0 && downloadState.panelOpen)}
     <div class="
-        fixed z-overlay h-full w-full top-0 left-0 pb-4 pointer-events-none  flex items-end justify-end
+        fixed z-overlay h-full w-full top-0 left-0 pb-4 pointer-events-none flex flex-col items-end justify-end gap-2
         pr-[1rem] pl-[1rem]
         {filesState.ui.detailsOpen ? "lg:pr-[calc(1rem+var(--spacing-details-sidebar))]" : ""}
     ">
-        <div class="w-[36rem] h-fit max-h-full max-w-full pointer-events-auto">
-            <UploadPanel></UploadPanel>
-        </div>
+        {#if downloadState.count > 0 && downloadState.panelOpen}
+            <div class="w-[36rem] h-fit max-h-[50%] max-w-full pointer-events-auto">
+                <DownloadPanel></DownloadPanel>
+            </div>
+        {/if}
+        {#if uploadState.count > 0 && uploadState.panelOpen}
+            <div class="w-[36rem] h-fit max-h-[50%] max-w-full pointer-events-auto">
+                <UploadPanel></UploadPanel>
+            </div>
+        {/if}
     </div>
 {/if}
 

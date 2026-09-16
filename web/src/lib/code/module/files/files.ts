@@ -19,8 +19,9 @@ import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.s
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import type { FileCategory } from "$lib/code/data/files"
-import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isFolder, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, forEachObject, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isFile, isFolder, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { uploadState, type FileUpload, type PreviousTusUpload, type TusUploadOptions } from "$lib/code/stateObjects/subState/uploadState.svelte"
+import { downloadState, type FileDownload } from "$lib/code/stateObjects/subState/downloadState.svelte"
 import { toast } from "@jill64/svelte-toast"
 import { goto } from "$app/navigation"
 import { persistentToast_loading } from "$lib/code/util/uiUtil"
@@ -1104,86 +1105,329 @@ export function supportsDirectoryPicker(): boolean {
 
 /**
  * Streams selected files/folders into a local directory via the File System Access API.
- * Never buffers file bodies with `blob()`.
+ * Progress is shown in DownloadPanel (no blob buffering, no sticky toast).
  */
 export async function downloadFilesAsFolder(
     paths: string[],
     rootHandle: FileSystemDirectoryHandle,
     shareToken: string | undefined = undefined,
 ) {
-    const removeToast = persistentToast_loading(`Saving files...`)
-    let failedCount = 0
+    const jobAbort = new AbortController()
+    downloadState.jobAbort = jobAbort
+    downloadState.panelOpen = true
+    downloadState.panelExpanded = true
 
     try {
         for (const path of paths) {
-            failedCount += await writePathIntoDirectory(path, rootHandle, shareToken)
+            if (jobAbort.signal.aborted) break
+            await enqueuePathForDownload(path, rootHandle, shareToken, jobAbort.signal)
         }
+
+        await processDownloadQueue(jobAbort.signal)
     } catch (e) {
-        handleException(`Failed to save files to folder.`, `Failed to save files to folder.`, e)
-        removeToast()
-        return
+        if (!jobAbort.signal.aborted) {
+            handleException(`Failed to save files to folder.`, `Failed to save files to folder.`, e)
+        }
+    } finally {
+        if (downloadState.jobAbort === jobAbort) {
+            downloadState.jobAbort = null
+        }
     }
 
-    removeToast()
-
+    const failedCount = downloadState.counts.failed
     if (failedCount > 0) {
         handleErr({
             notification: `Failed to save ${failedCount} file${letterS(failedCount)}.`,
         })
-    } else {
-        toast.success(`Saved ${paths.length} item${letterS(paths.length)}.`)
     }
 }
 
-async function writePathIntoDirectory(
+async function enqueuePathForDownload(
     path: string,
     parentHandle: FileSystemDirectoryHandle,
     shareToken: string | undefined,
-): Promise<number> {
+    signal: AbortSignal,
+    jobId: string | null = null,
+): Promise<void> {
+    if (signal.aborted) return
+
+    // Listing is only needed when we don't already have this path's children.
+    // Files discovered inside a folder response are queued without another fetch.
     const entriesUrl = filesState.meta.fileEntriesUrlPath
-    const result = await getFileData(path, entriesUrl, undefined, {
+    const result = await getFileData(path, entriesUrl, signal, {
         shareToken,
         silent: true,
     })
 
+    if (signal.aborted) return
     if (result.isUnsuccessful || !result.value) {
-        return 1
+        const rootJobId = jobId ?? path
+        if (!jobId) {
+            downloadState.addJob(rootJobId, {
+                kind: `file`,
+                displayPath: filenameFromPath(path) || path,
+            })
+        }
+        downloadState.addFile(path, {
+            jobId: rootJobId,
+            displayPath: filenameFromPath(path),
+            status: `failed`,
+        })
+        return
     }
 
     const { meta, entries } = result.value
+    await enqueueFromMeta(meta, entries, parentHandle, shareToken, signal, jobId)
+}
+
+async function enqueueFromMeta(
+    meta: FileMetadata,
+    entries: FullFileMetadata[] | null | undefined,
+    parentHandle: FileSystemDirectoryHandle,
+    shareToken: string | undefined,
+    signal: AbortSignal,
+    jobId: string | null,
+): Promise<void> {
+    if (signal.aborted) return
+
     const name = meta.filename || filenameFromPath(meta.path)
-    if (!name) return 1
+    if (!name) {
+        const rootJobId = jobId ?? meta.path
+        if (!jobId) {
+            downloadState.addJob(rootJobId, {
+                kind: `file`,
+                displayPath: filenameFromPath(meta.path) || meta.path,
+            })
+        }
+        downloadState.addFile(meta.path, {
+            jobId: rootJobId,
+            displayPath: filenameFromPath(meta.path),
+            status: `failed`,
+        })
+        return
+    }
+
+    const isRoot = jobId === null
+    const currentJobId = jobId ?? meta.path
+
+    if (isRoot) {
+        downloadState.addJob(currentJobId, {
+            kind: isFolder(meta) ? `folder` : `file`,
+            displayPath: name,
+        })
+    }
 
     if (isFolder(meta)) {
         let dir: FileSystemDirectoryHandle
         try {
             dir = await parentHandle.getDirectoryHandle(name, { create: true })
         } catch {
-            return 1
+            downloadState.addFile(meta.path, {
+                jobId: currentJobId,
+                displayPath: name,
+                status: `failed`,
+            })
+            return
         }
 
-        if (!entries?.length) return 0
+        if (!entries?.length) return
 
-        let failed = 0
         for (const entry of entries) {
-            failed += await writePathIntoDirectory(entry.path, dir, shareToken)
+            if (signal.aborted) return
+            if (isFolder(entry)) {
+                // Need this folder's own listing for its children.
+                await enqueuePathForDownload(entry.path, dir, shareToken, signal, currentJobId)
+            } else if (isFile(entry)) {
+                await queueKnownFile(entry, dir, currentJobId)
+            }
+            // Skip unresolved / non-downloadable link types.
         }
-        return failed
+        return
+    }
+
+    if (isFile(meta)) {
+        await queueKnownFile(meta, parentHandle, currentJobId)
+        return
+    }
+
+    downloadState.addFile(meta.path, {
+        jobId: currentJobId,
+        displayPath: name,
+        status: `failed`,
+    })
+}
+
+async function queueKnownFile(
+    meta: FileMetadata,
+    parentHandle: FileSystemDirectoryHandle,
+    jobId: string,
+): Promise<void> {
+    const name = meta.filename || filenameFromPath(meta.path)
+    if (!name) {
+        downloadState.addFile(meta.path, {
+            jobId,
+            displayPath: filenameFromPath(meta.path),
+            status: `failed`,
+        })
+        return
     }
 
     try {
         const fileHandle = await parentHandle.getFileHandle(name, { create: true })
-        const writable = await fileHandle.createWritable()
-        const response = await fetch(getContentUrl(meta.path), { credentials: `same-origin` })
+        downloadState.addFile(meta.path, {
+            jobId,
+            displayPath: name,
+            bytesTotal: meta.size || 0,
+            fileHandle,
+            status: `queued`,
+        })
+    } catch {
+        downloadState.addFile(meta.path, {
+            jobId,
+            displayPath: name,
+            status: `failed`,
+        })
+    }
+}
+
+async function processDownloadQueue(signal: AbortSignal) {
+    const queued = valuesOf(downloadState.files).filter(d => d.status === `queued`)
+    for (const dl of queued) {
+        if (signal.aborted) {
+            if (dl.status === `queued`) dl.status = `canceled`
+            continue
+        }
+        await downloadOneQueuedFile(dl)
+    }
+
+    // Mark any remaining queued as canceled (e.g. cancel-all mid-loop)
+    forEachObject(downloadState.files, (_k, dl) => {
+        if (dl.status === `queued`) dl.status = `canceled`
+    })
+}
+
+async function downloadOneQueuedFile(dl: FileDownload) {
+    if (!dl.fileHandle) {
+        dl.status = `failed`
+        return
+    }
+
+    const abortController = new AbortController()
+    dl.abortController = abortController
+    dl.status = `downloading`
+    dl.bytesDownloaded = 0
+    dl.percentage = 0
+
+    let writable: FileSystemWritableFileStream | null = null
+    try {
+        writable = await dl.fileHandle.createWritable()
+        const response = await fetch(getContentUrl(dl.path), {
+            credentials: `same-origin`,
+            signal: abortController.signal,
+        })
         if (!response.ok || !response.body) {
             await writable.abort()
-            return 1
+            dl.status = `failed`
+            dl.abortController = null
+            return
         }
-        await response.body.pipeTo(writable)
-        return 0
-    } catch {
-        return 1
+
+        const headerLength = Number(response.headers.get(`Content-Length`))
+        if (Number.isFinite(headerLength) && headerLength > 0) {
+            dl.bytesTotal = headerLength
+        }
+
+        let loaded = 0
+        const total = dl.bytesTotal
+        const progress = new TransformStream<Uint8Array, Uint8Array>({
+            transform(chunk, controller) {
+                loaded += chunk.byteLength
+                dl.bytesDownloaded = loaded
+                dl.percentage = total
+                    ? Number(((loaded / total) * 100).toFixed(2))
+                    : 0
+                controller.enqueue(chunk)
+            },
+        })
+
+        await response.body.pipeThrough(progress).pipeTo(writable, {
+            signal: abortController.signal,
+        })
+        writable = null
+
+        if (abortController.signal.aborted) {
+            dl.status = `canceled`
+        } else {
+            dl.status = `success`
+            dl.bytesDownloaded = total || dl.bytesDownloaded
+            if (total) dl.percentage = 100
+        }
+    } catch (e) {
+        if (writable) {
+            try { await writable.abort() } catch { /* ignore */ }
+        }
+        if (abortController.signal.aborted || (e instanceof DOMException && e.name === `AbortError`)) {
+            dl.status = `canceled`
+        } else {
+            dl.status = `failed`
+        }
+    } finally {
+        dl.abortController = null
     }
+}
+
+export function cancelDownload(dl: FileDownload) {
+    if (dl.status === `success` || dl.status === `canceled`) {
+        downloadState.removeFile(dl.path)
+        return
+    }
+
+    if (dl.status === `queued`) {
+        dl.status = `canceled`
+        return
+    }
+
+    if (dl.status === `downloading`) {
+        dl.abortController?.abort()
+        dl.status = `canceled`
+    }
+}
+
+export function cancelDownloadJob(jobId: string) {
+    const files = downloadState.filesForJob(jobId)
+    if (!files.length) {
+        downloadState.removeJob(jobId)
+        return
+    }
+
+    const allDone = files.every(f => f.status === `success` || f.status === `canceled` || f.status === `failed`)
+    if (allDone) {
+        downloadState.removeJob(jobId)
+        return
+    }
+
+    for (const dl of files) {
+        if (dl.status === `queued`) {
+            dl.status = `canceled`
+        } else if (dl.status === `downloading`) {
+            dl.abortController?.abort()
+            dl.status = `canceled`
+        }
+    }
+}
+
+export async function cancelAllDownloads() {
+    downloadState.jobAbort?.abort()
+    downloadState.jobAbort = null
+
+    forEachObject(downloadState.files, (_k, dl) => {
+        if (dl.status === `queued`) {
+            dl.status = `canceled`
+        } else if (dl.status === `downloading`) {
+            dl.abortController?.abort()
+            dl.status = `canceled`
+        }
+    })
 }
 
 

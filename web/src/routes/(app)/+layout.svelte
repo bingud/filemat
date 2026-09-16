@@ -7,6 +7,7 @@
     import Sidebar from './_components/Sidebar.svelte';
     import { fetchState, startStateAutoSync } from '$lib/code/state/stateFetcher';
     import { uploadState } from '$lib/code/stateObjects/subState/uploadState.svelte';
+    import { downloadState } from '$lib/code/stateObjects/subState/downloadState.svelte';
     import { page } from '$app/state';
     import { loadPreferenceSettings } from '$lib/code/module/settings';
     import { syncIncompleteTusUploads } from '$lib/code/module/files/tusIncompleteUploads';
@@ -48,7 +49,7 @@
     })
 
     function beforeUnload(e: BeforeUnloadEvent) {
-        if (uploadState.hasBlockingUploads) {
+        if (uploadState.hasBlockingUploads || downloadState.hasBlockingDownloads) {
             e.preventDefault()
             e.returnValue = ""
         }

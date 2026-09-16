@@ -384,6 +384,7 @@ class FileController(
         // Construct response headers
         val headers = HttpHeaders().apply {
             set(HttpHeaders.ACCEPT_RANGES, "bytes")
+            set(HttpHeaders.CACHE_CONTROL, "private, no-store")
             set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''$encodedFilename")
 
             if (range != null) {
@@ -429,6 +430,7 @@ class FileController(
         val filename = "${Props.appName.lowercase()}-download-${formatUnixToFilename(Instant.now())}.zip"
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$filename\"")
+            .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
             .body(responseBody)
     }
 
