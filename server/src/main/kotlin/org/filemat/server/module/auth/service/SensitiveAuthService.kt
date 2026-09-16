@@ -22,18 +22,23 @@ class SensitiveAuthService(private val logService: LogService) {
     final val maxCodeAge = 300L
 
     // Code, expirationDate
-    private val tokens = Caffeine.newBuilder()
+    internal val tokens = Caffeine.newBuilder()
         .expireAfterWrite(maxCodeAge, TimeUnit.SECONDS)
         .maximumSize(100_000)
         .build<String, Long>()
 
 
     /**
-     * Returns the expiration date of a code (if valid)
+     * Returns the expiration date of a code (if valid).
+     * A successful verification consumes the code so it cannot be reused.
      */
     fun verifyOtp(otp: String): Result<Long> {
-        val expirationDate = tokens.getIfPresent(otp)
+        val expirationDate = tokens.asMap().remove(otp)
             ?: return Result.reject("Code is invalid.")
+
+        if (expirationDate <= unixNow()) {
+            return Result.reject("Code is invalid.")
+        }
 
         return Result.ok(expirationDate)
     }
