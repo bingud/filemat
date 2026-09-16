@@ -207,6 +207,10 @@ class LoginService(
     ): ResponseEntity<String> {
         val userId = loginTokenCache.getIfPresent(loginToken) ?: return unauthenticated("Login expired.", "login-expired")
 
+        RateLimiter.consume(RateLimitId.VERIFY_TOTP, userId.toString()).let { result ->
+            if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
+        }
+
         // Get user
         val user = userService.getUserByUserId(userId, UserAction.VERIFY_LOGIN_TOTP_MFA).let { result ->
             if (result.hasError) return internal(result.error)

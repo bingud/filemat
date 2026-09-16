@@ -38,6 +38,10 @@ class UserController(
         val authToken = request.getAuthToken()!!
         val logoutAllSessions = rawLogoutAllSessions.toBooleanStrictOrNull() ?: return bad("Specify whether to log out all sessions.")
 
+        RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+            if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
+        }
+
         if (user.mfaTotpStatus) {
             Validator.totp(mfaTotp)?.let { return bad(it) }
         }
@@ -87,6 +91,11 @@ class UserController(
         @RequestParam("totp") totp: String,
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
+
+        RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+            if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
+        }
+
         val meta = RequestMeta(
             targetId = user.userId,
             action = UserAction.DISABLE_TOTP_MFA
@@ -125,6 +134,11 @@ class UserController(
         @RequestParam("codes") rawCodes: String,
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
+
+        RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+            if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
+        }
+
         val meta = RequestMeta(
             targetId = user.userId,
             action = UserAction.ENABLE_TOTP_MFA
