@@ -51,19 +51,34 @@ export function option_deleteSelectedFiles() {
 export async function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] | null = null) {
     const selected = inputList || filesState.selectedEntries.list
     if (!selected || !selected.length) return
-    
-    const selectedFile = filesState.selectedEntries.singleMeta
 
-    if (
-        selected.length > 1 
-        || selectedFile && isFolder(selectedFile) && selected.includes(selectedFile.path)
-    ) {
+    if (selected.length > 1) {
         await downloadMultiOrFolder(selected)
-    } else {
-        const path = selected[0]
-        const url = getContentUrl(path)
-        downloadFiles(url, { method: "GET" })
+        return
     }
+
+    const path = selected[0]
+    const meta = metaForDownloadPath(path)
+
+    if (meta && isFolder(meta)) {
+        await downloadMultiOrFolder(selected)
+        return
+    }
+
+    downloadFiles(getContentUrl(path), { method: `GET` })
+}
+
+/** Resolve entry/folder meta for a path without requiring it to be selected. */
+function metaForDownloadPath(path: string) {
+    if (filesState.data.folderMeta?.path === path) {
+        return filesState.data.folderMeta
+    }
+
+    const entries = filesState.isSearchOpen
+        ? filesState.search.entries
+        : filesState.data.entries
+
+    return entries?.find(e => e.path === path) ?? null
 }
 
 export async function option_downloadCurrentFolder() {
