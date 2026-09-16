@@ -344,8 +344,8 @@
                                     class="fixed inset-0 z-50 bg-black/50"
                                 />
                                 <Dialog.Content>
-                                    <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
-                                        <div class="flex items-center justify-between w-full">
+                                    <div class="bg-surface shadow-popover fixed z-50 p-5 flex flex-col gap-4 min-h-0 overflow-y-auto custom-scrollbar inset-0 w-full sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-[30rem] sm:max-w-[calc(100%-2rem)] sm:h-auto sm:max-h-[80svh] sm:rounded-lg">
+                                        <div class="flex items-center justify-between w-full flex-none">
                                             <h3>Create a file permission</h3>
                                             <Dialog.Close>
                                                 <div class="rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] aspect-square p-2">
@@ -422,8 +422,8 @@
                                             />
 
                                             <Dialog.Content>
-                                                <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-5 flex flex-col gap-4">
-                                                    <div class="flex items-center justify-between w-full">
+                                                <div class="bg-surface shadow-popover fixed z-50 p-5 flex flex-col gap-4 min-h-0 overflow-y-auto custom-scrollbar inset-0 w-full max-w-full sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-[30rem] sm:h-auto sm:max-h-[80svh] sm:rounded-lg">
+                                                    <div class="flex items-center justify-between w-full flex-none">
                                                         <h3>Edit file permission</h3>
                                                         <Dialog.Close>
                                                             <div class="rounded-md hover:bg-neutral-300 dark:hover:bg-neutral-700 h-[2.5rem] aspect-square p-2">

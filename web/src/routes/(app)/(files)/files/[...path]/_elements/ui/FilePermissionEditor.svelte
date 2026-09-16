@@ -5,7 +5,9 @@
     import { filterObject, formData, handleErr, keysOf, mapToObject, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import RoleIcon from "$lib/component/icons/RoleIcon.svelte";
     import UserIcon from "$lib/component/icons/UserIcon.svelte";
+    import { untrack } from "svelte";
     import type { EntityPermissionMeta } from "../../_code/fileUtilities";
+    import AllowDenySwitch from "./AllowDenySwitch.svelte";
 
 
     let { editedPermission, onPermissionUpdated }: {
@@ -13,14 +15,27 @@
         onPermissionUpdated: (id: ulid, newPermissions: FilePermission[] | null, deleted: boolean) => any
     } = $props()
 
-    const username = editedPermission.username
-    const role = editedPermission.role
-    const perm = editedPermission.permission
+    const username = untrack(() => editedPermission.username)
+    const role = untrack(() => editedPermission.role)
+    const perm = untrack(() => editedPermission.permission)
 
-    const allPermissions = valuesOf(filePermissionMeta)
-    let selectedPermissions = $state(mapToObject(allPermissions, (v) => { 
+    const permissions = valuesOf(filePermissionMeta)
+    let selectedPermissions = $state(mapToObject(permissions, (v) => { 
         return { key: v.id, value: perm.permissions.includes(v.id) }
     }))
+
+    let allValue = $derived.by(() => {
+        const values = permissions.map((p) => selectedPermissions[p.id])
+        if (values.every((v) => v === true)) return true
+        if (values.every((v) => v === false)) return false
+        return null
+    })
+
+    function setAll(allowed: boolean) {
+        for (const permission of permissions) {
+            selectedPermissions[permission.id] = allowed
+        }
+    }
 
     let loading = $state(false)
     let deleting = $state(false)
@@ -106,8 +121,8 @@
 </script>
 
 
-<div class="size-full max-h-[80svh] flex flex-col gap-4">
-    <div class="p-4 rounded-lg w-full bg-surface flex items-center gap-3">
+<div class="w-full flex flex-col gap-4">
+    <div class="p-4 rounded-lg w-full bg-surface-content-button flex items-center gap-3">
         <div class="aspect-square h-[1.2rem]">
             {#if perm.permissionType === "ROLE"}
                 <RoleIcon></RoleIcon>
@@ -118,22 +133,31 @@
         <p>{username ?? role!.name}</p>
     </div>
 
-    <hr class="basic-hr">
-
     <p>Permissions:</p>
-    <div class="flex flex-col gap-2">
-        {#each valuesOf(filePermissionMeta) as permission}
-            {@const id = `input-permission-${permission.id}`}
-            <div class="flex gap-2 items-center">
-                <input bind:checked={selectedPermissions[permission.id]} id={id} type="checkbox" class="!size-5">
-                <label for={id}>{permission.name}</label>
+    <div class="flex flex-col gap-2 select-none mb-2">
+        <div class="flex items-center gap-4 px-1 py-1">
+            <AllowDenySwitch value={allValue} onchange={setAll} />
+            <span>All</span>
+        </div>
+
+        <hr class="basic-hr">
+
+        {#each permissions as permission (permission.id)}
+            <div class="flex items-center gap-4 px-1 py-1">
+                <AllowDenySwitch
+                    value={selectedPermissions[permission.id]}
+                    onchange={(allowed) => {
+                        selectedPermissions[permission.id] = allowed
+                    }}
+                />
+                <span>{permission.name}</span>
             </div>
         {/each}
     </div>
 
-    <button disabled={loading} on:click={editPermission} class="w-full rounded-lg py-2 bg-surface-content-button disabled:opacity-50">{#if !loading}Update permission{:else}Creating...{/if}</button>
+    <button disabled={loading} onclick={editPermission} class="w-full rounded-lg py-2 mt-2 bg-surface-content-button disabled:opacity-50">{#if !loading}Update permission{:else}Creating...{/if}</button>
 
     <hr class="basic-hr">
     
-    <button disabled={deleting} on:click={deletePermission} class="w-full rounded-lg py-2 bg-surface-content-button hover:ring-2 hover:ring-red-500 disabled:opacity-50">{#if !deleting}Delete permission{:else}Deleting...{/if}</button>
+    <button disabled={deleting} onclick={deletePermission} class="w-full rounded-lg py-2 bg-surface-content-button hover:ring-2 hover:ring-red-500 disabled:opacity-50">{#if !deleting}Delete permission{:else}Deleting...{/if}</button>
 </div>

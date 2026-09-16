@@ -4,8 +4,9 @@
     import { loadMiniUsers } from "$lib/code/module/users";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import type { ulid } from "$lib/code/types/types";
-    import { forEachObject, formData, handleErr, handleException, keysOf, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
+    import { forEachObject, formData, handleErr, mapToObject, run, safeFetch, valuesOf } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
+    import AllowDenySwitch from "./AllowDenySwitch.svelte";
 
     let {
         excludedRoles, 
@@ -23,7 +24,23 @@
     let mode = $derived(selectedMode === 'USER' ? { user: true, role: false } : { user: false, role: true })
 
     let selectedId = $state(null) as ulid | null
-    let selectedPermissions = $state({}) as Record<FilePermission, boolean>
+    const permissions = valuesOf(filePermissionMeta)
+    let selectedPermissions = $state(mapToObject(permissions, (v) => {
+        return { key: v.id, value: false }
+    })) as Record<FilePermission, boolean>
+
+    let allValue = $derived.by(() => {
+        const values = permissions.map((p) => selectedPermissions[p.id])
+        if (values.every((v) => v === true)) return true
+        if (values.every((v) => v === false)) return false
+        return null
+    })
+
+    function setAll(allowed: boolean) {
+        for (const perm of permissions) {
+            selectedPermissions[perm.id] = allowed
+        }
+    }
 
     /**
      * Users that dont have a file role yet
@@ -113,21 +130,21 @@
 </script>
 
 
-<div class="size-full max-h-[80svh] flex flex-col gap-4">
+<div class="w-full flex flex-col gap-4">
     <div class="flex items-center gap-6 select-none">
         <p>For: </p>
         <div class="flex h-[2rem] rounded-lg">
-            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-l-lg bg-surface-content-button {mode.user ? 'inset-ring-2 inset-ring-blue-500' : ''}" aria-pressed={mode.user} on:click={() => selectedMode = "USER"}>User</button>
-            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-r-lg bg-surface-content-button {mode.role ? 'inset-ring-2 inset-ring-blue-500' : ''}" aria-pressed={mode.role} on:click={() => selectedMode = "ROLE"}>Role</button>
+            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-l-lg bg-surface-content-button {mode.user ? 'inset-ring-2 inset-ring-blue-500' : ''}" aria-pressed={mode.user} onclick={() => selectedMode = "USER"}>User</button>
+            <button disabled={createPermissionLoading} class="h-full w-1/2 px-4 rounded-r-lg bg-surface-content-button {mode.role ? 'inset-ring-2 inset-ring-blue-500' : ''}" aria-pressed={mode.role} onclick={() => selectedMode = "ROLE"}>Role</button>
         </div>
     </div>
 
-    <div class="w-full rounded-lg py-3 overflow-y-auto custom-scrollbar max-h-[25rem] flex flex-col bg-surface-content">
+    <div class="w-full rounded-lg py-3 overflow-y-auto custom-scrollbar flex flex-col bg-surface-content sm:max-h-[25rem]">
         {#if mode.user}
             <!-- Check for list of available users -->
             {#if miniList}
-                {#each miniList as mini}
-                    <button on:click={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start bg-surface-content-button">{mini.username}</button>
+                {#each miniList as mini (mini.userId)}
+                    <button onclick={() => { selectedId = mini.userId }} class:selected={mini.userId === selectedId} class="px-3 py-1 w-fit min-w-full text-start bg-surface-content-button">{mini.username}</button>
                 {:else}
                     <p class="px-3 py-1">No users available.</p>
                 {/each}
@@ -141,30 +158,36 @@
                 <p>Failed to load available users.</p>
             {/if}
         {:else}
-            {#each appState.roleList!.filter(r => !excludedRoles.includes(r.roleId)) as role}
-                <button on:click={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-full text-start bg-surface-content-button">{role.name}</button>
+            {#each appState.roleList!.filter(r => !excludedRoles.includes(r.roleId)) as role (role.roleId)}
+                <button onclick={() => { selectedId = role.roleId }} class:selected={role.roleId === selectedId} class="px-3 py-1 w-full text-start bg-surface-content-button">{role.name}</button>
             {:else}
                 <p class="px-3 py-1">No roles available.</p>
             {/each}
         {/if}
     </div>
 
-    <hr class="basic-hr">
-
-    <div class="flex flex-col gap-4 select-none">
-
-        <div class="flex flex-col gap-2">
-            {#each (valuesOf(filePermissionMeta)) as perm}
-                {@const id = `input-permission-${perm.id}`}
-                <div class="flex gap-2 items-center cursor-pointer">
-                    <input bind:checked={selectedPermissions[perm.id]} id={id} type="checkbox" class="!size-5">
-                    <label for={id}>{perm.name}</label>
-                </div>
-            {/each}
+    <div class="flex flex-col gap-2 select-none mb-2">
+        <div class="flex items-center gap-4 px-1 py-1">
+            <AllowDenySwitch value={allValue} onchange={setAll} />
+            <span>All</span>
         </div>
+
+        <hr class="basic-hr">
+
+        {#each permissions as permission (permission.id)}
+            <div class="flex items-center gap-4 px-1 py-1">
+                <AllowDenySwitch
+                    value={selectedPermissions[permission.id]}
+                    onchange={(allowed) => {
+                        selectedPermissions[permission.id] = allowed
+                    }}
+                />
+                <span>{permission.name}</span>
+            </div>
+        {/each}
     </div>
 
-    <button disabled={!canCreatePermission || createPermissionLoading} on:click={createPermission} class="w-full rounded-lg py-2 bg-surface-content-button disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
+    <button disabled={!canCreatePermission || createPermissionLoading} onclick={createPermission} class="w-full rounded-lg py-2 mt-2 bg-surface-content-button disabled:opacity-50">{#if !createPermissionLoading}Create permission{:else}Creating...{/if}</button>
 </div>
 
 <style lang="postcss">
