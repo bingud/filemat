@@ -19,11 +19,12 @@ import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.s
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import type { FileCategory } from "$lib/code/data/files"
-import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isFolder, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis } from "$lib/code/util/codeUtil.svelte"
 import { uploadState, type FileUpload, type PreviousTusUpload, type TusUploadOptions } from "$lib/code/stateObjects/subState/uploadState.svelte"
 import { toast } from "@jill64/svelte-toast"
 import { goto } from "$app/navigation"
 import { persistentToast_loading } from "$lib/code/util/uiUtil"
+import { getContentUrl } from "$lib/code/util/stateUtils"
 import * as tus from "tus-js-client"
 
 
@@ -1086,80 +1087,158 @@ export async function deleteFiles(entries: FileMetadata[]) {
 }
 
 
-export async function downloadFilesAsZip(paths: string[], shareToken: string | undefined = undefined) {
+export function downloadFilesAsZip(paths: string[], shareToken: string | undefined = undefined) {
     const serializedList = JSON.stringify(paths)
 
     const body = formData({ pathList: serializedList })
     if (shareToken) {
-        body.append("shareToken", shareToken)
+        body.append(`shareToken`, shareToken)
     }
-    
-    await downloadFiles(`/api/v1/file/zip-multiple-content`, { body })
+
+    downloadFiles(`/api/v1/file/zip-multiple-content`, { body })
+}
+
+export function supportsDirectoryPicker(): boolean {
+    return typeof (window as Window & { showDirectoryPicker?: unknown }).showDirectoryPicker === `function`
+}
+
+/**
+ * Streams selected files/folders into a local directory via the File System Access API.
+ * Never buffers file bodies with `blob()`.
+ */
+export async function downloadFilesAsFolder(
+    paths: string[],
+    rootHandle: FileSystemDirectoryHandle,
+    shareToken: string | undefined = undefined,
+) {
+    const removeToast = persistentToast_loading(`Saving files...`)
+    let failedCount = 0
+
+    try {
+        for (const path of paths) {
+            failedCount += await writePathIntoDirectory(path, rootHandle, shareToken)
+        }
+    } catch (e) {
+        handleException(`Failed to save files to folder.`, `Failed to save files to folder.`, e)
+        removeToast()
+        return
+    }
+
+    removeToast()
+
+    if (failedCount > 0) {
+        handleErr({
+            notification: `Failed to save ${failedCount} file${letterS(failedCount)}.`,
+        })
+    } else {
+        toast.success(`Saved ${paths.length} item${letterS(paths.length)}.`)
+    }
+}
+
+async function writePathIntoDirectory(
+    path: string,
+    parentHandle: FileSystemDirectoryHandle,
+    shareToken: string | undefined,
+): Promise<number> {
+    const entriesUrl = filesState.meta.fileEntriesUrlPath
+    const result = await getFileData(path, entriesUrl, undefined, {
+        shareToken,
+        silent: true,
+    })
+
+    if (result.isUnsuccessful || !result.value) {
+        return 1
+    }
+
+    const { meta, entries } = result.value
+    const name = meta.filename || filenameFromPath(meta.path)
+    if (!name) return 1
+
+    if (isFolder(meta)) {
+        let dir: FileSystemDirectoryHandle
+        try {
+            dir = await parentHandle.getDirectoryHandle(name, { create: true })
+        } catch {
+            return 1
+        }
+
+        if (!entries?.length) return 0
+
+        let failed = 0
+        for (const entry of entries) {
+            failed += await writePathIntoDirectory(entry.path, dir, shareToken)
+        }
+        return failed
+    }
+
+    try {
+        const fileHandle = await parentHandle.getFileHandle(name, { create: true })
+        const writable = await fileHandle.createWritable()
+        const response = await fetch(getContentUrl(meta.path), { credentials: `same-origin` })
+        if (!response.ok || !response.body) {
+            await writable.abort()
+            return 1
+        }
+        await response.body.pipeTo(writable)
+        return 0
+    } catch {
+        return 1
+    }
 }
 
 
 /**
- * POSTs `form` to `url` and triggers a native download of the response.
+ * Triggers a native browser download without buffering the body in JS.
  *
- * @param url       endpoint that returns `Content-Disposition: attachment`
- * @param form      FormData to send in the POST body
+ * GET uses a same-origin anchor. POST submits a hidden form into a hidden iframe
+ * so `Content-Disposition: attachment` streams straight to disk.
  */
-export async function downloadFiles(
-    url: string, 
+export function downloadFiles(
+    url: string,
     p: {
-        body?: FormData, 
-        method?: "POST" | "GET"
+        body?: FormData,
+        method?: `POST` | `GET`
     }
 ) {
-    const response = await safeFetch(
-        url,
-        {
-            method: p.method || "POST",
-            body: p.body,
-            credentials: 'same-origin',
-        },
-        true
-    )
+    const method = p.method || `POST`
 
-    if (response.failed) {
-        handleErr({
-            description: response.exception,
-            notification: `Failed to download from ${url}`,
-        })
+    if (method === `GET`) {
+        const a = document.createElement(`a`)
+        a.style.display = `none`
+        a.href = url
+        a.download = ``
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
         return
     }
 
-    const status = response.code
+    const iframeName = `filemat-download-${generateRandomString(12)}`
+    const iframe = document.createElement(`iframe`)
+    iframe.name = iframeName
+    iframe.style.display = `none`
+    document.body.appendChild(iframe)
 
-    if (status.failed) {
-        const json = response.json()
-        handleErr({
-            description: `Failed to download file.`,
-            notification: json.message || `Failed to download file. (${status})`,
-            isServerDown: status.serverDown,
-        })
-        return
+    const form = document.createElement(`form`)
+    form.method = `POST`
+    form.action = url
+    form.target = iframeName
+    form.style.display = `none`
+
+    if (p.body) {
+        for (const [key, value] of p.body.entries()) {
+            if (typeof value !== `string`) continue
+            const input = document.createElement(`input`)
+            input.type = `hidden`
+            input.name = key
+            input.value = value
+            form.appendChild(input)
+        }
     }
 
-    // stream blob and save
-    const blob = await response.blob()
-
-    const cd = response.headers.get('Content-Disposition') || ''
-    let filename = 'download'
-    const m = /filename\*?=(?:UTF-8'')?["']?([^;"']+)/i.exec(cd)
-    if (m?.[1]) {
-        filename = decodeURIComponent(m[1])
-    }
-
-    const urlObj = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.style.display = 'none'
-    a.href = urlObj
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(urlObj)
+    document.body.appendChild(form)
+    form.submit()
+    form.remove()
 }
 
 

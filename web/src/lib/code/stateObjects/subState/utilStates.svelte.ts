@@ -1,4 +1,5 @@
 import type ConfirmDialog from "$lib/component/popover/ConfirmDialog.svelte"
+import type DownloadChooserDialog from "$lib/component/popover/DownloadChooserDialog.svelte"
 import type InputDialog from "$lib/component/popover/InputDialog.svelte"
 import type UploadConflictDialog from "$lib/component/popover/UploadConflictDialog.svelte"
 import type FolderTreeSelector from "../../../../routes/(app)/(files)/files/[...path]/_elements/ui/FolderTreeSelector.svelte"
@@ -76,3 +77,15 @@ class UploadConflictDialogState {
 }
 
 export const uploadConflictDialogState = new UploadConflictDialogState()
+
+
+class DownloadChooserDialogState {
+    element: DownloadChooserDialog | undefined = $state()
+    isOpen: boolean = $state(false)
+
+    show() {
+        return this.element?.show()
+    }
+}
+
+export const downloadChooserState = new DownloadChooserDialogState()

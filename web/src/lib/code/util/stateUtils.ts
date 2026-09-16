@@ -4,7 +4,7 @@ import { setPreferenceSetting } from "../module/settings";
 import { appState } from "../stateObjects/appState.svelte";
 import { clientState } from "../stateObjects/clientState.svelte";
 import { filesState } from "../stateObjects/filesState.svelte";
-import { confirmDialogState, folderSelectorState, inputDialogState } from "../stateObjects/subState/utilStates.svelte";
+import { confirmDialogState, downloadChooserState, folderSelectorState, inputDialogState } from "../stateObjects/subState/utilStates.svelte";
 import type { ulid } from "../types/types";
 import { debounceFunction, encodeUrlFilePath } from "./codeUtil.svelte";
 
@@ -117,6 +117,7 @@ export function onUserIdleChange(
 export function isDialogOpen(): boolean {
     if (
         confirmDialogState.isOpen
+        || downloadChooserState.isOpen
         || folderSelectorState.isOpen
         || inputDialogState.isOpen
         || filesState && (

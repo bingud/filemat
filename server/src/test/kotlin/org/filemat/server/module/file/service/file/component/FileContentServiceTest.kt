@@ -41,6 +41,7 @@ class FileContentServiceTest {
         fileService = fileService,
         fileLockService = FileLockService(),
         filesystemService = mockk<FilesystemService>(relaxed = true),
+        logService = mockk(relaxed = true),
     )
 
     @BeforeEach
@@ -75,6 +76,70 @@ class FileContentServiceTest {
         val entries = zipEntries(folder)
 
         assertEquals("hello", entries["folder/a.txt"])
+    }
+
+    @Test
+    fun `zip entry names use forward slashes`() {
+        State.App.followSymlinks = false
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        val nested = Files.createDirectory(folder.resolve("nested"))
+        val file = Files.writeString(nested.resolve("a.txt"), "hello")
+        allow(folder)
+        allow(nested)
+        allow(file)
+
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.setLevel(java.util.zip.Deflater.NO_COMPRESSION)
+            service.addFileToZip(
+                zip = zip,
+                rawPath = FilePath.ofAlreadyNormalized(folder),
+                existingBaseZipPath = folder.fileName,
+                principal = user,
+                shareToken = null,
+            )
+        }
+
+        ZipInputStream(ByteArrayInputStream(out.toByteArray())).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                assertFalse(entry.name.contains('\\'), "zip entry used backslash: ${entry.name}")
+            }
+        }
+    }
+
+    @Test
+    fun `uncompressed zip round trips a multi megabyte file`() {
+        State.App.followSymlinks = false
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        val payload = ByteArray(3 * 1024 * 1024) { i -> (i % 251).toByte() }
+        val file = folder.resolve("big.bin")
+        Files.write(file, payload)
+        allow(folder)
+        allow(file)
+
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.setLevel(java.util.zip.Deflater.NO_COMPRESSION)
+            service.addFileToZip(
+                zip = zip,
+                rawPath = FilePath.ofAlreadyNormalized(folder),
+                existingBaseZipPath = folder.fileName,
+                principal = user,
+                shareToken = null,
+            )
+        }
+
+        val bytes = linkedMapOf<String, ByteArray>()
+        ZipInputStream(ByteArrayInputStream(out.toByteArray())).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.isDirectory) continue
+                bytes[entry.name.replace('\\', '/')] = zip.readBytes()
+            }
+        }
+
+        org.junit.jupiter.api.Assertions.assertArrayEquals(payload, bytes["folder/big.bin"])
     }
 
     @Test

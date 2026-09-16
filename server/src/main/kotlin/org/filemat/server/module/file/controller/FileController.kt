@@ -28,6 +28,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.time.Instant
+import java.util.zip.Deflater
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.milliseconds
@@ -417,6 +418,7 @@ class FileController(
 
         val responseBody = StreamingResponseBody { out: OutputStream ->
             ZipOutputStream(out).use { zip: ZipOutputStream ->
+                zip.setLevel(Deflater.NO_COMPRESSION)
                 paths.forEach { path ->
                     val zipRootName: Path? = path.path.fileName
                     fileService.addFileToZip(zip, path, zipRootName, principal, shareToken)

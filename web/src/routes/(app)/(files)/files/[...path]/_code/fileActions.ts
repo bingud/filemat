@@ -1,7 +1,7 @@
 import { filePermissionMeta } from "$lib/code/data/permissions";
-import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles } from "$lib/code/module/files/files";
+import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles, downloadFilesAsFolder, supportsDirectoryPicker } from "$lib/code/module/files/files";
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-import { confirmDialogState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
+import { confirmDialogState, downloadChooserState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
 import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { textFileViewerState } from "./textFileViewerState.svelte";
@@ -48,7 +48,7 @@ export function option_deleteSelectedFiles() {
 }
 
 
-export function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] | null = null) {
+export async function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] | null = null) {
     const selected = inputList || filesState.selectedEntries.list
     if (!selected || !selected.length) return
     
@@ -58,7 +58,7 @@ export function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] 
         selected.length > 1 
         || selectedFile && isFolder(selectedFile) && selected.includes(selectedFile.path)
     ) {
-        downloadFilesAsZip(selected, filesState.getShareToken())
+        await downloadMultiOrFolder(selected)
     } else {
         const path = selected[0]
         const url = getContentUrl(path)
@@ -66,11 +66,30 @@ export function option_downloadSelectedFiles(e: MouseEvent, inputList: string[] 
     }
 }
 
-export function option_downloadCurrentFolder() {
+export async function option_downloadCurrentFolder() {
     const folder = filesState.data.folderMeta
     if (!folder) return
 
-    downloadFilesAsZip([folder.path], filesState.getShareToken())
+    await downloadMultiOrFolder([folder.path])
+}
+
+async function downloadMultiOrFolder(paths: string[]) {
+    const shareToken = filesState.getShareToken()
+
+    if (!supportsDirectoryPicker()) {
+        downloadFilesAsZip(paths, shareToken)
+        return
+    }
+
+    const choice = await downloadChooserState.show()
+    if (!choice || choice.kind === `cancel`) return
+
+    if (choice.kind === `zip`) {
+        downloadFilesAsZip(paths, shareToken)
+        return
+    }
+
+    await downloadFilesAsFolder(paths, choice.handle, shareToken)
 }
 
 export async function handleNewFolder() {

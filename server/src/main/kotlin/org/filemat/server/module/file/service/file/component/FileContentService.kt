@@ -19,6 +19,8 @@ import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.log.model.LogType
+import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
@@ -29,12 +31,14 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlin.io.path.invariantSeparatorsPathString
 
 @Service
 class FileContentService(
     private val fileService: FileService,
     private val fileLockService: FileLockService,
     private val filesystemService: FilesystemService,
+    private val logService: LogService,
 ) {
 
     /**
@@ -139,6 +143,29 @@ class FileContentService(
         )
     }
 
+    private fun zipEntryName(path: Path?): String? {
+        if (path == null) return null
+        return path.invariantSeparatorsPathString
+    }
+
+    private fun logZipSkip(path: Path, reason: String, e: Exception? = null) {
+        logService.warn(
+            type = LogType.SYSTEM,
+            action = UserAction.READ_FILE,
+            description = "Skipped file while building zip download.",
+            message = buildString {
+                append("path=")
+                append(path.invariantSeparatorsPathString)
+                append("; reason=")
+                append(reason)
+                if (e != null) {
+                    append("; error=")
+                    append(e.message ?: e::class.java.simpleName)
+                }
+            },
+        )
+    }
+
     private fun zipRecursiveSafe(
         currentSource: Path,
         currentZipPath: Path?,
@@ -154,7 +181,10 @@ class FileContentService(
         val sourceFilePath = FilePath.ofAlreadyNormalized(currentSource)
 
         // Explicit protection check
-        if (protectedPath != null && currentSource == protectedPath) return 1
+        if (protectedPath != null && currentSource == protectedPath) {
+            logZipSkip(currentSource, "protected data folder")
+            return 1
+        }
 
         if (shareRoot != null && resolveSharedDescendant(currentSource, shareRoot).isNotSuccessful) {
             return failedCount
@@ -166,7 +196,8 @@ class FileContentService(
         val realPath = try {
             if (copyResolvedSymlinks) currentSource.toRealPath()
             else currentSource.toRealPath(LinkOption.NOFOLLOW_LINKS)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logZipSkip(currentSource, "failed to resolve real path", e)
             return failedCount + 1
         }
 
@@ -179,7 +210,10 @@ class FileContentService(
 
         val resolvedPath = if (isSymlink) {
             resolvePath(sourceFilePath).let { result ->
-                if (result.isNotSuccessful) return failedCount + 1
+                if (result.isNotSuccessful) {
+                    logZipSkip(currentSource, "failed to resolve symlink")
+                    return failedCount + 1
+                }
                 result.value
             }
         } else null
@@ -199,14 +233,20 @@ class FileContentService(
                 user = user,
                 canonicalPath = pathForAccess,
                 ignorePermissions = ignorePermissions
-            ).let { if (it.isNotSuccessful) return@tryWithLock failedCount + 1 }
+            ).let {
+                if (it.isNotSuccessful) {
+                    logZipSkip(currentSource, "permission denied")
+                    return@tryWithLock failedCount + 1
+                }
+            }
 
             // 3. Handle Directory Recursion
             if (isDirectory) {
                 try {
                     // Add directory entry to Zip (must end in /)
-                    if (currentZipPath != null) {
-                        val dirEntryName = currentZipPath.toString().let { if (it.endsWith("/")) it else "$it/" }
+                    val dirName = zipEntryName(currentZipPath)
+                    if (dirName != null) {
+                        val dirEntryName = if (dirName.endsWith("/")) dirName else "$dirName/"
                         zip.putNextEntry(ZipEntry(dirEntryName))
                         zip.closeEntry()
                     }
@@ -227,6 +267,7 @@ class FileContentService(
                         }
                     }
                 } catch (e: Exception) {
+                    logZipSkip(currentSource, "failed to list directory", e)
                     return@tryWithLock failedCount + 1
                 }
                 return@tryWithLock failedCount
@@ -234,22 +275,32 @@ class FileContentService(
 
             // 4. Write File to Zip
             try {
-                val entryName = currentZipPath?.toString() ?: currentSource.fileName.toString()
+                val entryName = zipEntryName(currentZipPath) ?: currentSource.fileName.invariantSeparatorsPathString
                 zip.putNextEntry(ZipEntry(entryName))
 
                 val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
 
                 // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
                 Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
-                    BufferedInputStream(inputStream).copyTo(zip)
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    val buffered = BufferedInputStream(inputStream)
+                    while (buffered.read(buffer).also { bytesRead = it } != -1) {
+                        zip.write(buffer, 0, bytesRead)
+                    }
                 }
                 zip.closeEntry()
+                zip.flush()
             } catch (e: Exception) {
+                logZipSkip(currentSource, "failed to write entry", e)
                 return@tryWithLock failedCount + 1
             }
 
             return@tryWithLock failedCount
-        }.onFailure { failedCount + 1 }
+        }.onFailure {
+            logZipSkip(currentSource, "could not acquire read lock")
+            failedCount + 1
+        }
     }
 
     data class EditFileResult(val modifiedDate: Long, val size: Long)

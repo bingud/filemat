@@ -10,6 +10,10 @@ spring:
   flyway:
     # Run flyway manually
     enabled: false
+  mvc:
+    async:
+      # 0 = no timeout; zip/content/search streams can run longer than Tomcat's 30s default
+      request-timeout: 0
 
 server:
   error:
