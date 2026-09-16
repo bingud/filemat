@@ -49,3 +49,15 @@ sudo docker run -d \
   -e FM_PRINT_LOGS=true \
   bingud/filemat:latest
 ```
+
+---
+
+### Reverse proxy
+
+When Filemat runs behind a reverse proxy, the proxy must forward the original client IP using the `X-Forwarded-For` header.
+
+Filemat reads `X-Forwarded-For` as the client IP. If the header is missing, it uses the actual request IP directly.
+
+User IPs are used for:
+- Rate limiting logins and similar protected actions
+- Recording user IP in audit/security logs
