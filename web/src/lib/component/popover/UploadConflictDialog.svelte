@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { tick } from "svelte"
     import { uploadConflictDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
     import CustomDialog from "$lib/component/popover/CustomDialog.svelte"
 
@@ -13,6 +14,17 @@
         message?: string | null,
     }
 
+    type ShowOptions = {
+        conflicts: UploadConflictDialogConflict[],
+        title?: string,
+        confirmText?: string,
+    }
+
+    type PendingShow = {
+        options: ShowOptions,
+        resolve: (value: Record<string, UploadConflictResolution> | null) => void,
+    }
+
     let conflicts: UploadConflictDialogConflict[] = $state([])
     let resolutions: Record<string, UploadConflictResolution> = $state({})
     // Do not put the resolver in $state — Svelte 5 state proxies break function values.
@@ -20,16 +32,42 @@
     let visibleLimit = $state(50)
     let dialogTitle = $state(`1 file already exists`)
     let confirmLabel = $state(`Start upload`)
+    let pendingShows: PendingShow[] = []
+    let presenting = false
+    // Ignore leftover close events from the previous presentation when reopening.
+    let acceptDismiss = false
 
-    export function show(options: {
-        conflicts: UploadConflictDialogConflict[],
-        title?: string,
-        confirmText?: string,
-    }): Promise<Record<string, UploadConflictResolution> | null> {
-        // Settle any previous open dialog so a stale close event cannot resolve the new promise.
-        resolvePromise?.(null)
-        resolvePromise = null
+    export function show(options: ShowOptions): Promise<Record<string, UploadConflictResolution> | null> {
+        return new Promise((resolve) => {
+            pendingShows.push({
+                options: {
+                    ...options,
+                    conflicts: [...options.conflicts],
+                },
+                resolve,
+            })
+            void pump()
+        })
+    }
 
+    async function pump() {
+        if (presenting || !pendingShows.length) return
+
+        presenting = true
+        const next = pendingShows.shift()
+        if (!next) {
+            presenting = false
+            return
+        }
+
+        present(next.options, next.resolve)
+    }
+
+    function present(
+        options: ShowOptions,
+        resolve: (value: Record<string, UploadConflictResolution> | null) => void,
+    ) {
+        acceptDismiss = false
         conflicts = options.conflicts
         resolutions = {}
         visibleLimit = 50
@@ -45,11 +83,8 @@
                 : conflict.allowedResolutions[0]
         }
 
+        resolvePromise = resolve
         uploadConflictDialogState.isOpen = true
-
-        return new Promise((resolve) => {
-            resolvePromise = resolve
-        })
     }
 
     function setResolution(path: string, resolution: UploadConflictResolution) {
@@ -67,8 +102,25 @@
     function settle(value: Record<string, UploadConflictResolution> | null) {
         const resolve = resolvePromise
         resolvePromise = null
+        acceptDismiss = false
         uploadConflictDialogState.isOpen = false
         resolve?.(value)
+        void openNext()
+    }
+
+    async function openNext() {
+        if (!pendingShows.length) {
+            presenting = false
+            return
+        }
+
+        await tick()
+        if (typeof requestAnimationFrame === `function`) {
+            await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+        }
+
+        presenting = false
+        void pump()
     }
 
     function confirm() {
@@ -80,8 +132,12 @@
     }
 
     function handleClose(open: boolean) {
-        // Ignore open transitions and stale closes after settle().
-        if (open || !resolvePromise) return
+        if (open) {
+            acceptDismiss = true
+            return
+        }
+        // Ignore leftover closes from the previous presentation.
+        if (!acceptDismiss || !resolvePromise) return
         settle(null)
     }
 
