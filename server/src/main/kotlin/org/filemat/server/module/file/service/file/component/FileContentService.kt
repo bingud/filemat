@@ -277,19 +277,24 @@ class FileContentService(
             try {
                 val entryName = zipEntryName(currentZipPath) ?: currentSource.fileName.invariantSeparatorsPathString
                 zip.putNextEntry(ZipEntry(entryName))
+                try {
+                    val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
 
-                val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
-
-                // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
-                Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead: Int
-                    val buffered = BufferedInputStream(inputStream)
-                    while (buffered.read(buffer).also { bytesRead = it } != -1) {
-                        zip.write(buffer, 0, bytesRead)
+                    // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
+                    Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        val buffered = BufferedInputStream(inputStream)
+                        while (buffered.read(buffer).also { bytesRead = it } != -1) {
+                            zip.write(buffer, 0, bytesRead)
+                        }
+                    }
+                } finally {
+                    try {
+                        zip.closeEntry()
+                    } catch (_: Exception) {
                     }
                 }
-                zip.closeEntry()
                 zip.flush()
             } catch (e: Exception) {
                 logZipSkip(currentSource, "failed to write entry", e)

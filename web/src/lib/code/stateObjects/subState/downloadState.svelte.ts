@@ -12,6 +12,8 @@ export type FileDownload = {
     percentage: number,
     abortController: AbortController | null,
     fileHandle: FileSystemFileHandle | null,
+    /** Captured at enqueue time; `null` means no share token. */
+    shareToken: string | null,
 }
 
 export type DownloadJobKind = `file` | `folder`
@@ -22,6 +24,9 @@ export type DownloadJob = {
     displayPath: string,
     /** Nested file list for folder jobs; closed by default. */
     expanded: boolean,
+    abortController: AbortController,
+    /** True while this root is still walking the folder tree. */
+    listing: boolean,
 }
 
 export type DownloadJobStats = {
@@ -72,8 +77,8 @@ export class DownloadState {
 
     count = $derived(valuesOf(this.jobs).length)
 
-    /** Aborts the active folder-save walk/queue job. */
-    jobAbort: AbortController | null = null
+    /** In-flight folder-save batches (cancel-all aborts every one). */
+    batchAborts: Set<AbortController> = new Set()
 
     counts = $derived.by(() => {
         let successful = 0
@@ -103,7 +108,11 @@ export class DownloadState {
     })
 
     get hasBlockingDownloads() {
-        return this.counts.downloading > 0 || this.counts.queued > 0
+        if (this.counts.downloading > 0 || this.counts.queued > 0) return true
+        for (const job of valuesOf(this.jobs)) {
+            if (job.listing && !job.abortController.signal.aborted) return true
+        }
+        return false
     }
 
     getFile(path: string): FileDownload | null {
@@ -152,13 +161,23 @@ export class DownloadState {
         this.panelOpen = true
 
         const existing = this.jobs[id]
-        if (existing) return existing
+        if (existing) {
+            if (existing.abortController.signal.aborted) {
+                existing.abortController = new AbortController()
+            }
+            existing.listing = true
+            existing.kind = options.kind
+            existing.displayPath = options.displayPath
+            return existing
+        }
 
         const job: DownloadJob = {
             id,
             kind: options.kind,
             displayPath: options.displayPath,
             expanded: false,
+            abortController: new AbortController(),
+            listing: true,
         }
         this.jobs[id] = job
         return job
@@ -172,6 +191,7 @@ export class DownloadState {
             bytesTotal?: number,
             fileHandle?: FileSystemFileHandle | null,
             status?: FileDownloadStatus,
+            shareToken?: string | null,
         },
     ): FileDownload | null {
         this.panelExpanded = true
@@ -192,6 +212,7 @@ export class DownloadState {
             percentage: 0,
             abortController: null,
             fileHandle: options.fileHandle ?? null,
+            shareToken: options.shareToken ?? null,
         }
         this.files[path] = entry
         return entry
@@ -202,6 +223,8 @@ export class DownloadState {
     }
 
     removeJob(jobId: string) {
+        const job = this.jobs[jobId]
+        job?.abortController.abort()
         forEachObject(this.files, (k, v) => {
             if (v.jobId === jobId) delete this.files[k]
         })
@@ -209,7 +232,8 @@ export class DownloadState {
     }
 
     clearFinished() {
-        forEachObject(this.jobs, (jobId, _job) => {
+        forEachObject(this.jobs, (jobId, job) => {
+            if (job.listing) return
             const stats = this.jobStats(jobId)
             if (stats.downloading > 0 || stats.queued > 0) return
             this.removeJob(jobId)

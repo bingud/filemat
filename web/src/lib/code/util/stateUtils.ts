@@ -154,10 +154,13 @@ export function isUserInAnyInput() {
     return false
 }
 
-export function getContentUrl(path: string, encodeParam: boolean = true): string {
+export function getContentUrl(path: string, encodeParam: boolean = true, shareToken?: string | null): string {
     const pathParam = `path=${encodeParam ? encodeUrlFilePath(path) : path}`
-    const shareTokenParam = filesState.getIsShared() ? `shareToken=${filesState.meta.shareToken}` : ``
-    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
+    const token = shareToken === undefined
+        ? (filesState.getIsShared() ? filesState.meta.shareToken : null)
+        : shareToken
+    const shareTokenParam = token ? `shareToken=${token}` : ``
+    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareTokenParam ? `&` : ``}${shareTokenParam}`
 }
 
 export function getZipContentUrl(path: string, encodeParam: boolean = false): string {

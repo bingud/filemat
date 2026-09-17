@@ -30,10 +30,11 @@ class SensitiveAuthService(private val logService: LogService) {
 
     /**
      * Returns the expiration date of a code (if valid).
-     * A successful verification consumes the code so it cannot be reused.
+     * The same code can be reused until it expires so a verified
+     * admin session can perform multiple sensitive actions.
      */
     fun verifyOtp(otp: String): Result<Long> {
-        val expirationDate = tokens.asMap().remove(otp)
+        val expirationDate = tokens.getIfPresent(otp)
             ?: return Result.reject("Code is invalid.")
 
         if (expirationDate <= unixNow()) {

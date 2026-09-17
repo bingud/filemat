@@ -13,7 +13,7 @@
             const activeCount = counts.downloading + counts.queued
             const confirmed = await confirmDialogState.show({
                 title: `Cancel all downloads?`,
-                message: activeCount === 1
+                message: activeCount <= 1
                     ? `This will cancel the active download.`
                     : `This will cancel ${activeCount} downloads.`,
                 confirmText: `Cancel downloads`,
@@ -39,7 +39,8 @@
 
     async function jobCloseButton(job: DownloadJob) {
         const stats = downloadState.jobStats(job.id)
-        if (stats.downloading === 0 && stats.queued === 0) {
+        const inProgress = stats.downloading > 0 || stats.queued > 0 || job.listing
+        if (!inProgress) {
             downloadState.removeJob(job.id)
             return
         }
@@ -58,10 +59,11 @@
     }
 
     async function downloadCloseButton(dl: FileDownload) {
-        if (dl.status === `success` || dl.status === `canceled`) {
+        if (dl.status === `success` || dl.status === `canceled` || dl.status === `failed`) {
             downloadState.removeFile(dl.path)
             const remaining = downloadState.filesForJob(dl.jobId)
-            if (!remaining.length) downloadState.removeJob(dl.jobId)
+            const job = downloadState.getJob(dl.jobId)
+            if (!remaining.length && !job?.listing) downloadState.removeJob(dl.jobId)
             return
         }
 
