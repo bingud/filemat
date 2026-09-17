@@ -59,7 +59,7 @@
     }
 
     async function downloadCloseButton(dl: FileDownload) {
-        if (dl.status === `success` || dl.status === `canceled` || dl.status === `failed`) {
+        if (dl.status === `success` || dl.status === `canceled` || dl.status === `failed` || dl.status === `skipped`) {
             downloadState.removeFile(dl.path)
             const remaining = downloadState.filesForJob(dl.jobId)
             const job = downloadState.getJob(dl.jobId)
@@ -95,6 +95,7 @@
         if (status === `success`) return `Saved`
         if (status === `failed`) return `Failed`
         if (status === `canceled`) return `Canceled`
+        if (status === `skipped`) return `Skipped`
         if (status === `downloading`) return `Downloading`
         return `Queued`
     }
@@ -127,6 +128,7 @@
             {#if counts.successful > 0}<span>{counts.successful} saved</span><span class="last:hidden">,</span>{/if}
             {#if counts.failed > 0}<span>{counts.failed} failed</span><span class="last:hidden">,</span>{/if}
             {#if counts.canceled > 0}<span>{counts.canceled} canceled</span><span class="last:hidden">,</span>{/if}
+            {#if counts.skipped > 0}<span>{counts.skipped} skipped</span><span class="last:hidden">,</span>{/if}
             {#if counts.queued > 0}<span>{counts.queued} queued</span><span class="last:hidden">,</span>{/if}
         </div>
 

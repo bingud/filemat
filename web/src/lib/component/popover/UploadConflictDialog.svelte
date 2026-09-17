@@ -19,10 +19,12 @@
     let resolvePromise: ((value: Record<string, UploadConflictResolution> | null) => void) | null = null
     let visibleLimit = $state(50)
     let dialogTitle = $state(`1 file already exists`)
+    let confirmLabel = $state(`Start upload`)
 
     export function show(options: {
         conflicts: UploadConflictDialogConflict[],
         title?: string,
+        confirmText?: string,
     }): Promise<Record<string, UploadConflictResolution> | null> {
         // Settle any previous open dialog so a stale close event cannot resolve the new promise.
         resolvePromise?.(null)
@@ -31,6 +33,7 @@
         conflicts = options.conflicts
         resolutions = {}
         visibleLimit = 50
+        confirmLabel = options.confirmText || `Start upload`
 
         const count = options.conflicts.length
         dialogTitle = options.title
@@ -156,7 +159,7 @@
 
         <div class="flex justify-end gap-2">
             <button class="basic-button" on:click={cancel}>Cancel</button>
-            <button class="basic-button bg-surface-content-button!" on:click={confirm}>Start upload</button>
+            <button class="basic-button bg-surface-content-button!" on:click={confirm}>{confirmLabel}</button>
         </div>
     </div>
 </CustomDialog>

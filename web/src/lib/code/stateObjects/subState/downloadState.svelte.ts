@@ -1,6 +1,6 @@
 import { forEachObject, valuesOf } from "$lib/code/util/codeUtil.svelte"
 
-export type FileDownloadStatus = `queued` | `downloading` | `success` | `failed` | `canceled`
+export type FileDownloadStatus = `queued` | `downloading` | `success` | `failed` | `canceled` | `skipped`
 
 export type FileDownload = {
     path: string,
@@ -35,6 +35,7 @@ export type DownloadJobStats = {
     downloading: number,
     failed: number,
     canceled: number,
+    skipped: number,
     queued: number,
     bytesTotal: number,
     bytesDownloaded: number,
@@ -48,6 +49,7 @@ function emptyStats(): DownloadJobStats {
         downloading: 0,
         failed: 0,
         canceled: 0,
+        skipped: 0,
         queued: 0,
         bytesTotal: 0,
         bytesDownloaded: 0,
@@ -58,8 +60,9 @@ function emptyStats(): DownloadJobStats {
 function aggregateStatus(s: Omit<DownloadJobStats, `status` | `bytesTotal` | `bytesDownloaded`>): FileDownloadStatus {
     if (s.downloading > 0) return `downloading`
     if (s.queued > 0) return `queued`
-    if (s.failed > 0 && s.successful === 0 && s.canceled === 0) return `failed`
-    if (s.canceled > 0 && s.successful === 0 && s.failed === 0) return `canceled`
+    if (s.failed > 0 && s.successful === 0 && s.canceled === 0 && s.skipped === 0) return `failed`
+    if (s.canceled > 0 && s.successful === 0 && s.failed === 0 && s.skipped === 0) return `canceled`
+    if (s.skipped > 0 && s.successful === 0 && s.failed === 0 && s.canceled === 0) return `skipped`
     if (s.successful > 0 && s.failed === 0 && s.canceled === 0) return `success`
     if (s.failed > 0) return `failed`
     if (s.canceled > 0) return `canceled`
@@ -85,6 +88,7 @@ export class DownloadState {
         let downloading = 0
         let canceled = 0
         let failed = 0
+        let skipped = 0
         let queued = 0
         let total = 0
 
@@ -94,6 +98,7 @@ export class DownloadState {
             else if (v.status === `downloading`) downloading++
             else if (v.status === `canceled`) canceled++
             else if (v.status === `failed`) failed++
+            else if (v.status === `skipped`) skipped++
             else if (v.status === `queued`) queued++
         })
 
@@ -102,6 +107,7 @@ export class DownloadState {
             successful,
             failed,
             canceled,
+            skipped,
             queued,
             total,
         }
@@ -143,6 +149,7 @@ export class DownloadState {
             else if (v.status === `downloading`) stats.downloading++
             else if (v.status === `canceled`) stats.canceled++
             else if (v.status === `failed`) stats.failed++
+            else if (v.status === `skipped`) stats.skipped++
             else if (v.status === `queued`) stats.queued++
         })
 
