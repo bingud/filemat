@@ -15,6 +15,12 @@
     let deadlineMs = 0
 
     export function show(): Promise<DownloadChooserResult> {
+        if (resolvePromise) {
+            const previous = resolvePromise
+            resolvePromise = null
+            previous({ kind: "cancel" })
+        }
+
         remainingSeconds = AUTO_ZIP_SECONDS
         downloadChooserState.isOpen = true
         startTimer()

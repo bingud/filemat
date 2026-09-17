@@ -38,11 +38,10 @@ class UserController(
         val authToken = request.getAuthToken()!!
         val logoutAllSessions = rawLogoutAllSessions.toBooleanStrictOrNull() ?: return bad("Specify whether to log out all sessions.")
 
-        RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
-            if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
-        }
-
         if (user.mfaTotpStatus) {
+            RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+                if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
+            }
             Validator.totp(mfaTotp)?.let { return bad(it) }
         }
 

@@ -1103,10 +1103,11 @@ export function supportsDirectoryPicker(): boolean {
     return typeof (window as Window & { showDirectoryPicker?: unknown }).showDirectoryPicker === `function`
 }
 
+const FOLDER_ENTRIES_URL = `/api/v1/folder/file-and-folder-entries`
+
 type FolderSaveContext = {
     batchAbort: AbortController
     shareToken: string | null
-    entriesUrl: string
     jobIds: string[]
     touchedPaths: Set<string>
 }
@@ -1124,7 +1125,6 @@ export async function downloadFilesAsFolder(
     const ctx: FolderSaveContext = {
         batchAbort,
         shareToken: shareToken ?? null,
-        entriesUrl: filesState.meta.fileEntriesUrlPath,
         jobIds: [],
         touchedPaths: new Set(),
     }
@@ -1227,7 +1227,7 @@ async function enqueuePathForDownload(
 
     if (isFolderSaveAborted(ctx, currentJobId)) return
 
-    const result = await getFileData(path, ctx.entriesUrl, mergedSaveSignal(ctx, currentJobId), {
+    const result = await getFileData(path, FOLDER_ENTRIES_URL, mergedSaveSignal(ctx, currentJobId), {
         shareToken: ctx.shareToken ?? undefined,
         silent: true,
     })

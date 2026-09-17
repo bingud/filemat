@@ -12,8 +12,8 @@ spring:
     enabled: false
   mvc:
     async:
-      # 0 = no timeout; zip/content/search streams can run longer than Tomcat's 30s default
-      request-timeout: 0
+      # Streaming ZIP/content/search can run far longer than Tomcat's 30s default
+      request-timeout: 12h
 
 server:
   error:

@@ -2,7 +2,7 @@ import { filePermissionMeta } from "$lib/code/data/permissions";
 import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles, downloadFilesAsFolder, supportsDirectoryPicker } from "$lib/code/module/files/files";
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, downloadChooserState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
+import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isChildOf, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
 import { toast } from "@jill64/svelte-toast";
 import { textFileViewerState } from "./textFileViewerState.svelte";
 import { getContentUrl } from "$lib/code/util/stateUtils";
@@ -90,9 +90,10 @@ export async function option_downloadCurrentFolder() {
 
 async function downloadMultiOrFolder(paths: string[]) {
     const shareToken = filesState.getShareToken()
+    const roots = dropNestedDownloadPaths(paths)
 
     if (!supportsDirectoryPicker()) {
-        downloadFilesAsZip(paths, shareToken)
+        downloadFilesAsZip(roots, shareToken)
         return
     }
 
@@ -100,11 +101,16 @@ async function downloadMultiOrFolder(paths: string[]) {
     if (!choice || choice.kind === `cancel`) return
 
     if (choice.kind === `zip`) {
-        downloadFilesAsZip(paths, shareToken)
+        downloadFilesAsZip(roots, shareToken)
         return
     }
 
-    await downloadFilesAsFolder(paths, choice.handle, shareToken)
+    await downloadFilesAsFolder(roots, choice.handle, shareToken)
+}
+
+/** Drop paths that already sit under another selected folder so a search mix of parent+child is walked once. */
+function dropNestedDownloadPaths(paths: string[]): string[] {
+    return paths.filter(path => !paths.some(other => other !== path && isChildOf(path, other)))
 }
 
 export async function handleNewFolder() {

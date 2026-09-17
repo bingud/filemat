@@ -155,7 +155,7 @@
         {/each}
     </div>
 
-    <button disabled={loading} onclick={editPermission} class="w-full rounded-lg py-2 mt-2 bg-surface-content-button disabled:opacity-50">{#if !loading}Update permission{:else}Creating...{/if}</button>
+    <button disabled={loading} onclick={editPermission} class="w-full rounded-lg py-2 mt-2 bg-surface-content-button disabled:opacity-50">{#if !loading}Update permission{:else}Updating...{/if}</button>
 
     <hr class="basic-hr">
     

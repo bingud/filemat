@@ -108,7 +108,7 @@
             var(--panel-max-height) - var(--panel-header-height)
         );
 
-        max-height: min(--panel-max-height, 100%);
+        max-height: min(var(--panel-max-height), 100%);
     }
 
     .panel-header {
