@@ -1,65 +1,34 @@
 <script lang="ts">
+    import { adminSystemState } from "$lib/code/state/adminSystemFetcher.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte";
     import Loader from "$lib/component/Loader.svelte";
-    import { onMount } from "svelte";
 
-    let isLoading = $state(false)
     let isSaving = $state(false)
+    let pathInput = $state(``)
 
-    let currentPath: string | null = $state(null)
-    let pathInput: string | null = $derived(currentPath)
-
-    let isUnchanged = $derived((pathInput === currentPath))
-    let failedToLoad = $derived(!isLoading && !currentPath)
+    let isUnchanged = $derived(pathInput === (adminSystemState.uploadFolderPath ?? ``))
+    let failedToLoad = $derived(adminSystemState.loadFailed)
+    let isLoading = $derived(adminSystemState.loading && adminSystemState.uploadFolderPath == null)
 
     let placeholder = $derived.by(() => {
-        if (isLoading) return "Loading..."
-        if (failedToLoad) return "Failed to load upload folder path."
-        return "Upload folder path"
+        if (isLoading) return `Loading...`
+        if (failedToLoad) return `Failed to load upload folder path.`
+        return `Upload folder path`
     })
 
-    onMount(() => {
-        loadCurrentPath()
-    })
-
-    async function loadCurrentPath() {
-        if (isLoading) return
-        isLoading = true
-
-        try {
-            const response = await safeFetch(`/api/v1/admin/system/get-upload-folder-path`, { method:"GET" })
-            if (response.failed) {
-                handleErr({
-                    notification: "Failed to load upload folder path.",
-                })
-                return
-            }
-
-            const text = response.content
-            if (response.code.failed) {
-                const json = response.json()
-                handleErr({
-                    description: "Failed to load upload folder path.",
-                    notification: `Failed to load upload folder path: ${json.message || "unknown server error."}`,
-                    isServerDown: response.code.serverDown
-                })
-                return
-            }
-
-            currentPath = text
-            pathInput = currentPath
-        } finally {
-            isLoading = false
+    $effect(() => {
+        if (adminSystemState.uploadFolderPath != null) {
+            pathInput = adminSystemState.uploadFolderPath
         }
-    }
+    })
 
     async function changeUploadFolderPath() {
         const conf = await confirmDialogState.show({
-            title: "Change upload folder path?",
-            message: "This will pause all uploads, and move all upload files to the new folder.",
-            cancelText: "Cancel",
-            confirmText: "Yes"
+            title: `Change upload folder path?`,
+            message: `This will pause all uploads, and move all upload files to the new folder.`,
+            cancelText: `Cancel`,
+            confirmText: `Yes`
         })
         if (!conf) return
 
@@ -73,7 +42,7 @@
 
             if (response.failed) {
                 handleErr({
-                    notification: "Failed to update upload folder path.",
+                    notification: `Failed to update upload folder path.`,
                 })
                 return
             }
@@ -83,21 +52,22 @@
 
             if (status.failed) {
                 handleErr({
-                    description: "Failed to update upload folder path.",
-                    notification: json.message || "Failed to update upload folder path.",
+                    description: `Failed to update upload folder path.`,
+                    notification: json.message || `Failed to update upload folder path.`,
                     isServerDown: status.serverDown
                 })
                 return
             }
 
-            currentPath = response.content
+            adminSystemState.uploadFolderPath = response.content
+            pathInput = response.content
         } finally {
             isSaving = false
         }
     }
 
     function cancel() {
-        pathInput = currentPath
+        pathInput = adminSystemState.uploadFolderPath ?? ``
     }
 </script>
 

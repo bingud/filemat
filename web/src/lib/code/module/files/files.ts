@@ -1,10 +1,10 @@
 import {
     clearIncompleteUpload,
     findIncompleteByPath,
+    getTusUploadEndpoint,
     headTusUpload,
     listStoredTusUploads,
     removeStoredTusUpload,
-    TUS_UPLOAD_ENDPOINT,
     terminateTusUpload,
     tryFinalizeCompleteTusUpload,
 } from "$lib/code/module/files/tusIncompleteUploads"
@@ -36,6 +36,7 @@ import { toast } from "@jill64/svelte-toast"
 import { goto } from "$app/navigation"
 import { persistentToast_loading } from "$lib/code/util/uiUtil"
 import { getContentUrl } from "$lib/code/util/stateUtils"
+import { credentialsForUrl, joinContentUrl } from "$lib/code/util/contentUrl"
 import * as tus from "tus-js-client"
 
 
@@ -157,7 +158,7 @@ export async function streamFileContent(
         body.append("shareToken", options.shareToken)
     }
 
-    const response = await safeFetch(`/api/v1/file/content`,{ 
+    const response = await safeFetch(joinContentUrl(`/api/v1/file/content`),{ 
         body: body, signal: options.signal
     }, true)
     if (response.failed) {
@@ -344,7 +345,7 @@ function beginTusUpload(
     let actualFilename: string | null = null
 
     const upload = new tus.Upload(file, {
-        endpoint: TUS_UPLOAD_ENDPOINT,
+        endpoint: getTusUploadEndpoint(),
         retryDelays: [0, 1000, 3000, 5000, 7000, 10000, 15000, 20000],
         metadata: {
             ...(options.metadata || {}),
@@ -352,6 +353,10 @@ function beginTusUpload(
         },
         chunkSize: 64 * 1024 * 1024, // 128 MB chunk
         removeFingerprintOnSuccess: true,
+        onBeforeRequest: (req) => {
+            const xhr = req.getUnderlyingObject() as XMLHttpRequest | null
+            if (xhr) xhr.withCredentials = true
+        },
         onUploadUrlAvailable: () => {
             const handle = options.fileHandle
             if (!handle) return
@@ -1106,7 +1111,7 @@ export function downloadFilesAsZip(paths: string[], shareToken: string | undefin
         body.append(`shareToken`, shareToken)
     }
 
-    downloadFiles(`/api/v1/file/zip-multiple-content`, { body })
+    downloadFiles(joinContentUrl(`/api/v1/file/zip-multiple-content`), { body })
 }
 
 export function supportsDirectoryPicker(): boolean {
@@ -1533,8 +1538,9 @@ async function downloadOneQueuedFile(dl: FileDownload) {
         }
 
         writable = await dl.fileHandle.createWritable()
-        const response = await fetch(getContentUrl(dl.path, true, dl.shareToken), {
-            credentials: `same-origin`,
+        const contentUrl = getContentUrl(dl.path, { shareToken: dl.shareToken })
+        const response = await fetch(contentUrl, {
+            credentials: credentialsForUrl(contentUrl),
             signal: abortController.signal,
         })
         if (!response.ok || !response.body) {

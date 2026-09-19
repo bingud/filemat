@@ -18,6 +18,8 @@
     import UploadConflictDialog from '$lib/component/popover/UploadConflictDialog.svelte';
     import { onUserIdleChange } from '$lib/code/util/stateUtils';
     import { Tooltip } from 'bits-ui';
+    import { auth } from '$lib/code/stateObjects/authState.svelte';
+    import SensitiveAuthDialog from '$lib/component/popover/SensitiveAuthDialog.svelte';
 
 	let { children } = $props();
 
@@ -104,6 +106,9 @@
 <DownloadChooserDialog bind:this={downloadChooserState.element} />
 <InputDialog bind:this={inputDialogState.element}></InputDialog>
 <UploadConflictDialog bind:this={uploadConflictDialogState.element}></UploadConflictDialog>
+{#if auth.isAdmin}
+    <SensitiveAuthDialog />
+{/if}
 
 
 {#if dev}

@@ -3,7 +3,13 @@ import { uploadState, type PreviousTusUpload, type TusUploadOptions } from "$lib
 import { decodeBase64, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
 import { deleteUploadFileHandle, getUploadFileHandle } from "./uploadFileHandleStore"
 
-export const TUS_UPLOAD_ENDPOINT = `/api/v1/file/upload`
+import { credentialsForUrl, joinContentUrl } from "$lib/code/util/contentUrl"
+
+export const TUS_UPLOAD_PATH = `/api/v1/file/upload`
+
+export function getTusUploadEndpoint(): string {
+    return joinContentUrl(TUS_UPLOAD_PATH)
+}
 
 function getUrlStorage() {
     return tus.defaultOptions.urlStorage
@@ -17,7 +23,7 @@ export async function listStoredTusUploads(): Promise<PreviousTusUpload[]> {
     return entries
         .filter(entry => {
             const url = entry.uploadUrl || ``
-            return url.includes(TUS_UPLOAD_ENDPOINT)
+            return url.includes(TUS_UPLOAD_PATH)
         })
         .map(entry => ({
             size: entry.size,
@@ -42,7 +48,7 @@ export async function terminateTusUpload(uploadUrl: string | null | undefined) {
     if (!uploadUrl) return
     try {
         await tus.Upload.terminate(uploadUrl, {
-            endpoint: TUS_UPLOAD_ENDPOINT,
+            endpoint: getTusUploadEndpoint(),
         })
     } catch {
         // Server may already have expired the upload; local cleanup still proceeds.
@@ -57,7 +63,7 @@ export async function headTusUpload(uploadUrl: string): Promise<{
     try {
         const response = await fetch(uploadUrl, {
             method: `HEAD`,
-            credentials: `same-origin`,
+            credentials: credentialsForUrl(uploadUrl),
             headers: {
                 "Tus-Resumable": `1.0.0`,
             },
@@ -93,7 +99,7 @@ export async function tryFinalizeCompleteTusUpload(uploadUrl: string, offset: nu
     try {
         const response = await fetch(uploadUrl, {
             method: `PATCH`,
-            credentials: `same-origin`,
+            credentials: credentialsForUrl(uploadUrl),
             headers: {
                 "Tus-Resumable": `1.0.0`,
                 "Upload-Offset": `${offset}`,

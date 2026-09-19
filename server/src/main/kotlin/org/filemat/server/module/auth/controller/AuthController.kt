@@ -2,24 +2,15 @@ package org.filemat.server.module.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.apache.coyote.Response
-import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.config.CorsOriginRegistry
 import org.filemat.server.config.auth.Unauthenticated
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.AuthTokenService
-import org.filemat.server.module.log.model.LogLevel
-import org.filemat.server.module.log.model.LogType
-import org.filemat.server.module.log.service.LogService
-import org.filemat.server.module.user.model.User
-import org.filemat.server.module.user.model.UserAction
-import org.filemat.server.module.user.service.UserService
+import org.filemat.server.module.auth.service.ContentSessionService
 import org.springframework.http.ResponseEntity
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -28,11 +19,9 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/auth")
 class AuthController(
-    private val userService: UserService,
-    private val passwordEncoder: PasswordEncoder,
     private val authTokenService: AuthTokenService,
-    private val logService: LogService,
-    private val authService: AuthService
+    private val authService: AuthService,
+    private val contentSessionService: ContentSessionService,
 ) : AController() {
 
     @Unauthenticated
@@ -48,6 +37,70 @@ class AuthController(
         }
 
         return ok("ok")
+    }
+
+    @PostMapping("/content-session-ticket")
+    fun mintContentSessionTicketMapping(
+        request: HttpServletRequest,
+    ): ResponseEntity<String> {
+        val origin = CorsOriginRegistry.spaOriginFrom(request)
+            ?: return bad("Missing request origin.")
+        CorsOriginRegistry.remember(origin)
+
+        val rawToken = request.getAuthToken() ?: return unauthenticated("unauthenticated")
+        val authToken = authTokenService.getToken(rawToken).let {
+            if (it.notFound) return unauthenticated("unauthenticated")
+            if (it.isNotSuccessful) return internal(it.error)
+            it.value
+        }
+
+        contentSessionService.mintTicket(authToken, origin).let {
+            if (it.rejected) return bad(it.error)
+            if (it.isNotSuccessful) return internal(it.error)
+            return ok(it.value)
+        }
+    }
+
+    @Unauthenticated
+    @PostMapping("/content-session")
+    fun contentSessionMapping(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        @RequestParam("ticket", required = false) ticket: String?,
+    ): ResponseEntity<String> {
+        val origin = CorsOriginRegistry.spaOriginFrom(request)
+        val secure = request.isSecure || request.getHeader("X-Forwarded-Proto")?.equals("https", ignoreCase = true) == true
+
+        val cookieToken = request.getAuthToken()
+        if (!cookieToken.isNullOrBlank()) {
+            val existing = authTokenService.getToken(cookieToken)
+            if (existing.isSuccessful) {
+                val maxAge = contentSessionService.cookieMaxAgeSeconds(existing.value)
+                if (maxAge <= 0) return unauthenticated("unauthenticated")
+                response.addHeader("Set-Cookie", contentSessionService.buildSetCookieHeader(existing.value.authToken, maxAge, secure))
+                return ok()
+            }
+        }
+
+        if (ticket.isNullOrBlank()) return unauthenticated("unauthenticated")
+        val consumed = contentSessionService.consumeTicket(ticket)
+        if (consumed.rejected) return unauthenticated(consumed.error)
+        if (consumed.isNotSuccessful) return internal(consumed.error)
+
+        val ticketData = consumed.value
+        if (origin == null || ticketData.origin != origin) {
+            return unauthenticated("Ticket origin mismatch.")
+        }
+
+        val authToken = authTokenService.getToken(ticketData.authToken).let {
+            if (it.notFound) return unauthenticated("unauthenticated")
+            if (it.isNotSuccessful) return internal(it.error)
+            it.value
+        }
+        val maxAge = contentSessionService.cookieMaxAgeSeconds(authToken)
+        if (maxAge <= 0) return unauthenticated("unauthenticated")
+        response.addHeader("Set-Cookie", contentSessionService.buildSetCookieHeader(authToken.authToken, maxAge, secure))
+        return ok()
     }
 
 }

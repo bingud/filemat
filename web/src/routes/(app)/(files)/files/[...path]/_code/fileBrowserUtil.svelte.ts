@@ -5,7 +5,16 @@ import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { joinContentUrl } from "$lib/code/util/contentUrl"
 import { SvelteSet } from "svelte/reactivity"
+
+function applyPreviewCors(img: HTMLImageElement) {
+    if (appState.contentBaseUrl) {
+        img.crossOrigin = `use-credentials`
+    } else {
+        img.removeAttribute(`crossorigin`)
+    }
+}
 
 export type FileContextMenuProps = {
     option_rename: (entry: FileMetadata) => any
@@ -359,9 +368,10 @@ export class VisibilityManager {
             if (format !== `image` && format !== `video`) continue
 
             const endpoint = format === `image` ? `image-thumbnail` : `video-preview`
-            const src = `/api/v1/file/${endpoint}?size=${pixelSize}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`
+            const src = `${joinContentUrl(`/api/v1/file/${endpoint}`)}?size=${pixelSize}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`
 
             const img = document.createElement(`img`)
+            applyPreviewCors(img)
             img.setAttribute(`data-src`, src)
 
             this.headlessImages.add(img)
@@ -404,6 +414,7 @@ export class VisibilityManager {
             // loadAllPreviews can still fetch and cache the thumbnail via the service worker.
             if (!wasHeadless && wasInPending && dataSrc && appState.settings.loadAllPreviews) {
                 const headless = document.createElement(`img`)
+                applyPreviewCors(headless)
                 headless.setAttribute(`data-src`, dataSrc)
                 this.headlessImages.add(headless)
                 this.pending.add(headless)
@@ -505,7 +516,8 @@ export class VisibilityManager {
             console.error(`Image load failed:`, src)
             cleanup()
         }
-        
+
+        applyPreviewCors(img)
         img.src = src
     }
 

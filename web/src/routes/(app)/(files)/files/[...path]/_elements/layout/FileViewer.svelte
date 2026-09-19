@@ -16,6 +16,7 @@
     import { selectSiblingFile } from "../../_code/fileBrowserUtil.svelte";
     import OpenFileAsCategoryButton from "../button/OpenFileAsCategoryButton.svelte";
     import FileNavZone from "../ui/FileNavZone.svelte";
+    import { contentCrossOrigin } from "$lib/code/util/contentUrl";
     
     let meta = $derived(filesState.data.fileMeta) 
     let fileCategory = $derived(filesState.currentFile.displayedFileCategory)
@@ -83,6 +84,11 @@
                 fluid: false,
                 fill: true,
                 persistVolume: true,
+                html5: {
+                    vhs: {
+                        withCredentials: true,
+                    },
+                },
                 sources: [{
                     src: filesState.data.contentUrl,
                     type: mime.getType(meta.filename!) || "video/mp4"
@@ -167,17 +173,18 @@
                     <img 
                         src={filesState.data.contentUrl}
                         alt={meta.path} 
+                        crossorigin={contentCrossOrigin()}
                         class="max-w-full max-h-full size-auto"
                         on:dragstart={(e) => { if (e.dataTransfer?.effectAllowed) { e.dataTransfer.dropEffect = 'link'; e.dataTransfer.setData('isFromPage', 'true') } }}
                     >
                 {:else if fileCategory === "video"}
                     <div class="size-full overflow-hidden">
-                        <video bind:this={videoElement} class="video-js h-full w-full">
+                        <video bind:this={videoElement} class="video-js h-full w-full" crossorigin={contentCrossOrigin()}>
                             <track kind="captions" srclang="en" label="No captions" />
                         </video>
                     </div>
                 {:else if fileCategory === "audio"}
-                    <audio bind:volume={audioVolume} src={filesState.data.contentUrl} controls></audio>
+                    <audio bind:volume={audioVolume} src={filesState.data.contentUrl} crossorigin={contentCrossOrigin()} controls></audio>
                 {:else if fileCategory === "pdf"}
                     <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
                 {/if}
@@ -194,7 +201,7 @@
         <div class="flex flex-col items-center justify-center gap-4 w-full flex-grow">
             <p class="">This file type doesn't have a preview.</p>
             <div class="flex items-center gap-4">
-                <a download href={filesState.data.contentUrl} target="_blank" class="basic-button">Download</a>
+                <a download href={`${filesState.data.contentUrl}&download=true`} class="basic-button">Download</a>
                 <OpenFileAsCategoryButton location="file-viewer" />
             </div>
         </div>

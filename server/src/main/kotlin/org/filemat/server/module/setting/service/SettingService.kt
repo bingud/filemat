@@ -4,6 +4,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.looksLikeHttpUrl
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
@@ -98,6 +99,53 @@ class SettingService(
             initiatorId = user.userId,
         )
         return Result.ok()
+    }
+
+    fun set_contentBaseUrl(user: Principal, raw: String): Result<String> {
+        if (State.App.ContentBaseUrl.lockedByEnv) {
+            return Result.reject("This setting is locked by the FM_CONTENT_BASE_URL environment variable.")
+        }
+
+        val value = raw
+        if (!value.looksLikeHttpUrl()) {
+            return Result.reject("Content base URL must be an absolute http or https URL.")
+        }
+
+        db_setSetting(Props.Settings.contentBaseUrl, value).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        State.App.ContentBaseUrl.url = value
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.UPDATE_CONTENT_BASE_URL,
+            description = "Content base URL was changed.",
+            message = "New value:\n${value.ifEmpty { "(empty)" }}",
+            initiatorId = user.userId,
+        )
+        return Result.ok(value)
+    }
+
+    fun set_contentBaseUrlForUnauthenticated(user: Principal, enabled: Boolean): Result<Boolean> {
+        if (State.App.ContentBaseUrl.forUnauthenticatedLockedByEnv) {
+            return Result.reject("This setting is locked by the FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED environment variable.")
+        }
+
+        db_setSetting(Props.Settings.contentBaseUrlForUnauthenticated, enabled.toString()).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        State.App.ContentBaseUrl.forUnauthenticated = enabled
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.UPDATE_CONTENT_BASE_URL_FOR_UNAUTHENTICATED,
+            description = "Content base URL for unauthenticated users was ${if (enabled) "enabled" else "disabled"}.",
+            message = "User ${user.username} toggled ${Props.Settings.contentBaseUrlForUnauthenticated} to $enabled",
+            initiatorId = user.userId,
+        )
+        return Result.ok(enabled)
     }
 
     fun getSetting(name: String): Result<Setting> {

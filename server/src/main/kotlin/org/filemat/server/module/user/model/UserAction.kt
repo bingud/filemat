@@ -69,7 +69,9 @@ enum class UserAction(val index: Int) {
     UPDATE_HOME_FOLDER_PATH(60),
     UPDATE_UPLOAD_FOLDER_PATH(61),
     UPDATE_THUMBNAIL_CACHE_SETTING(62),
-    DELETE_USER(63);
+    DELETE_USER(63),
+    UPDATE_CONTENT_BASE_URL(64),
+    UPDATE_CONTENT_BASE_URL_FOR_UNAUTHENTICATED(65);
 
     companion object {
         init {

@@ -1,30 +1,19 @@
 <script lang="ts">
-    import { uiState } from "$lib/code/stateObjects/uiState.svelte";
-    import { doRequest, entriesOf, formatDuration, formData, handleErr, handleException, safeFetch, unixNow, valuesOf } from "$lib/code/util/codeUtil.svelte";
-    import { prefixSlash } from "$lib/code/util/uiUtil";
-    import CodeChunk from "$lib/component/CodeChunk.svelte";
-    import TrashIcon from "$lib/component/icons/TrashIcon.svelte";
-    import Loader from "$lib/component/Loader.svelte";
-    import { toast } from "@jill64/svelte-toast";
-    import { Dialog } from "bits-ui";
-    import { onMount } from "svelte";
+    import { sensitiveAuth } from "$lib/code/state/sensitiveAuth.svelte"
+    import { uiState } from "$lib/code/stateObjects/uiState.svelte"
+    import { doRequest, entriesOf, formatDuration, formData, handleErr, handleException, safeFetch } from "$lib/code/util/codeUtil.svelte"
+    import { prefixSlash } from "$lib/code/util/uiUtil"
+    import TrashIcon from "$lib/component/icons/TrashIcon.svelte"
+    import Loader from "$lib/component/Loader.svelte"
+    import { Dialog } from "bits-ui"
+    import { onMount } from "svelte"
 
-    const title = "Exposed files"
+    const title = `Exposed files`
 
     type VisibilityMap = { [key: string]: boolean }
     let visibilities: VisibilityMap | null = $state(null)
 
     let loading = $state(false)
-    let loginDialogOpen = $state(false)
-    let expirationUpdatingInterval: NodeJS.Timeout | null = $state(null)
-
-    let verifiedCode: {
-        code: string,
-        expirationDate: number,
-    } | null = $state(null)
-
-    let codeInput: string = $state("")
-    let remainingSeconds: number | null = $state(null)
 
     let newFile: {
         path: string,
@@ -33,24 +22,24 @@
         isLoading: false,
         reset: Function,
     } = $state({
-        path: "/",
+        path: `/`,
         isExposed: true,
         isDialogOpen: false,
         isLoading: false,
-        reset: function () { 
-            this.path = "/"
+        reset: function () {
+            this.path = `/`
             this.isExposed = true
             this.isDialogOpen = false
         }
     })
- 
+
     onMount(() => {
         uiState.settings.title = title
         loadVisibilities()
     })
 
     async function loadVisibilities() {
-        const response = await safeFetch(`/api/v1/admin/system/file-visibility-entries`, { method: "GET" })
+        const response = await safeFetch(`/api/v1/admin/system/file-visibility-entries`, { method: `GET` })
         if (response.failed) {
             visibilities = null
             handleErr({
@@ -75,88 +64,8 @@
         visibilities = json
     }
 
-    async function verifyAuthCode() {
-        if (codeInput.length !== 16) {
-            toast.error(`The code must be 16 letters long.`)
-            return
-        }
-
-        if (loading) return
-        loading = true
-        const response = await safeFetch(`/api/v1/admin/system/authenticate-sensitive-code`, {
-            body: formData({ code: codeInput })
-        })
-        loading = false
-
-        if (response.failed) {
-            handleErr({
-                description: `Failed to verify auth OTP.`,
-                notification: `Failed to verify code.`,
-            })
-            return
-        }
-
-        const status = response.code
-        if (status.failed) {
-            const json = response.json()
-            handleErr({
-                description: `Failed to verify code.`,
-                notification: json.message || `Failed to verify code.`,
-                isServerDown: status.serverDown
-            })
-            return
-        }
-
-        const expirationDate = parseInt(response.content)
-        verifiedCode = {
-            code: codeInput,
-            expirationDate: expirationDate
-        }
-
-        if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
-        expirationUpdatingInterval = setInterval(calculateRemainingCodeSeconds, 3000)
-        calculateRemainingCodeSeconds()
-
-        loginDialogOpen = false
-    }
-
-    function calculateRemainingCodeSeconds() {
-        if (!verifiedCode) {
-            if (expirationUpdatingInterval) clearInterval(expirationUpdatingInterval)
-            return
-        }
-        const now = unixNow()
-        remainingSeconds = verifiedCode.expirationDate - now
-        const isExpired = remainingSeconds <= 0
-        
-        if (isExpired) {
-            verifiedCode = null
-        }
-    }
-
-    async function generateAuthCode() {
-    if (loading) return
-        loading = true
-
-        const response = await safeFetch(`/api/v1/admin/system/generate-sensitive-code`)
-        loading = false
-        if (response.failed) {
-            handleErr({
-                description: `Failed to generate auth OTP.`,
-                notification: `Failed to generate code.`,
-            })
-            return
-        }
-
-        const status = response.code
-        if (status.failed) {
-            const json = response.json()
-            handleErr({
-                description: `Failed to generate code.`,
-                notification: json.message || `Failed to generate code.`,
-                isServerDown: status.serverDown
-            })
-        }
+    function openLogin() {
+        sensitiveAuth.open(`Enter the authentication code to configure exposed files.`)
     }
 
     function openNewConfigurationDialog() {
@@ -164,7 +73,7 @@
     }
 
     async function addNewConfiguration() {
-        if (!verifiedCode) {
+        if (!sensitiveAuth.code) {
             openLogin()
             return
         }
@@ -174,7 +83,7 @@
         if (loading) return
         loading = true
         const response = await safeFetch(`/api/v1/admin/system/add-file-visibility`, {
-            body: formData({ auth_code: verifiedCode.code, path: newFile.path, isExposed: newFile.isExposed })
+            body: formData({ auth_code: sensitiveAuth.code, path: newFile.path, isExposed: newFile.isExposed })
         })
         loading = false
 
@@ -198,13 +107,8 @@
         newFile.reset()
     }
 
-    function openLogin() {
-        generateAuthCode()
-        loginDialogOpen = true
-    }
-
     async function deleteConfiguration(path: string) {
-        if (!verifiedCode) {
+        if (!sensitiveAuth.code) {
             openLogin()
             return
         }
@@ -214,9 +118,9 @@
 
         loading = true
         await doRequest({
-            method: 'POST',
+            method: `POST`,
             path: `/api/v1/admin/system/remove-file-visibility`,
-            body: formData({ auth_code: verifiedCode.code, path: path }),
+            body: formData({ auth_code: sensitiveAuth.code, path: path }),
             afterResponse: () => {
                 loading = false
             },
@@ -242,8 +146,8 @@
         <p>Configure which files are accessible in Filemat.</p>
         <p class="opacity-50">To configure file visibility, you must enter a code from application console/logs or a special file.</p>
 
-        {#if verifiedCode && remainingSeconds}
-            <p class="p-4 rounded-lg bg-neutral-300 dark:bg-neutral-800 my-4">You can change exposed files for the next {formatDuration(remainingSeconds)}.</p>
+        {#if sensitiveAuth.verified && sensitiveAuth.remainingSeconds}
+            <p class="p-4 rounded-lg bg-neutral-300 dark:bg-neutral-800 my-4">You can change exposed files for the next {formatDuration(sensitiveAuth.remainingSeconds)}.</p>
             <button on:click={openNewConfigurationDialog} class="basic-button">Add new file</button>
         {:else}
             <button class="basic-button" on:click={openLogin}>Configure files</button>
@@ -300,34 +204,6 @@
     {/if}
 </div>
 
-
-<!-- Authentication dialog -->
-<Dialog.Root bind:open={loginDialogOpen}>
-    <Dialog.Portal>
-        <Dialog.Overlay
-            class="fixed inset-0 z-50 bg-black/50"
-        />
-        <Dialog.Content>
-            <div class="rounded-lg bg-surface shadow-popover fixed left-[50%] top-[50%] z-50 w-[30rem] max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] p-8 flex flex-col gap-8">
-                <p>Enter the authentication code to configure exposed files.</p>
-                <div class="flex flex-col gap-2">
-                    <p>The code can be found in:</p>
-                    <ul class="list-disc list-inside">
-                        <li>Application console or logs</li>
-                        <li><CodeChunk>/var/lib/filemat/auth-code.txt</CodeChunk></li>
-                    </ul>
-                </div>
-                <form on:submit={verifyAuthCode} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">
-                    <label for="code-input">Code:</label>
-                    <input id="code-input" required minlength="16" maxlength="16" bind:value={codeInput} class="basic-input bg-surface-content!">
-
-                    <button type="submit" class="basic-input-button bg-surface-content!">{#if !loading}Continue{:else}...{/if}</button>
-                </form>
-            </div>
-        </Dialog.Content>
-    </Dialog.Portal>
-</Dialog.Root>
-
 <!-- New file configuration dialog -->
 <Dialog.Root bind:open={newFile.isDialogOpen}>
     <Dialog.Portal>
@@ -352,8 +228,8 @@
                                     type="button"
                                     disabled={newFile.isLoading}
                                     class="h-full w-1/2 px-4 rounded-l-lg bg-neutral-300 dark:bg-neutral-800
-                                        {newFile.isExposed 
-                                            ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' 
+                                        {newFile.isExposed
+                                            ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600'
                                             : ''}"
                                     aria-pressed={newFile.isExposed}
                                     on:click={() => newFile.isExposed = true}
@@ -364,8 +240,8 @@
                                     type="button"
                                     disabled={newFile.isLoading}
                                     class="h-full w-1/2 px-4 rounded-r-lg bg-neutral-300 dark:bg-neutral-800
-                                        {!newFile.isExposed 
-                                            ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600' 
+                                        {!newFile.isExposed
+                                            ? 'inset-ring-2 inset-ring-blue-500 bg-neutral-400/50 dark:bg-neutral-600'
                                             : ''}"
                                     aria-pressed={newFile.isExposed === false}
                                     on:click={() => newFile.isExposed = false}

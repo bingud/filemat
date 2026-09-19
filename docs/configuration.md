@@ -14,6 +14,8 @@ Input multiple values by putting a colon in between (`/one:/two`).
 | `FM_ALLOW_READ_DATA_FOLDER` | Allow reading the application data folder | `false` | `true` |
 | `FM_ALLOW_WRITE_DATA_FOLDER` | Allow modifying the application data folder | `false` | `true` |
 | `FM_FOLLOW_SYMBOLIC_LINKS` | Whether to follow symbolic links | `false` | `true` |
+| `FM_CONTENT_BASE_URL` | Absolute prefix for file content, uploads, and thumbnails | (empty) | `https://203.0.113.10:8080` |
+| `FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED` | Also send the content base URL to unauthenticated users | `false` | `true` |
 | `FM_PRINT_LOGS` | Whether to print logs to console | `true` | `false` |
 
 ## Security Defaults
