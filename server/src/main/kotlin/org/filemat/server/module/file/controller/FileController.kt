@@ -313,6 +313,7 @@ class FileController(
         request: HttpServletRequest,
         @RequestParam("path") rawPath: String,
         @RequestParam("shareToken", required = false) shareToken: String?,
+        @RequestParam("download", required = false) rawDownload: String?,
     ): ResponseEntity<StreamingResponseBody> {
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
@@ -380,12 +381,13 @@ class FileController(
 
         val encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8)
             .replace("+", "%20")
+        val disposition = if (rawDownload?.toBooleanStrictOrNull() == true) "attachment" else "inline"
 
         // Construct response headers
         val headers = HttpHeaders().apply {
             set(HttpHeaders.ACCEPT_RANGES, "bytes")
             set(HttpHeaders.CACHE_CONTROL, "private, no-store")
-            set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''$encodedFilename")
+            set(HttpHeaders.CONTENT_DISPOSITION, "$disposition; filename*=UTF-8''$encodedFilename")
 
             if (range != null) {
                 set(HttpHeaders.CONTENT_RANGE, "bytes ${range.first}-${range.last}/${fileSize}")

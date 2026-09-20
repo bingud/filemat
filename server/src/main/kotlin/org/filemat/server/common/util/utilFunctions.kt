@@ -15,6 +15,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
 import org.springframework.transaction.TransactionStatus
 import java.io.InputStream
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.*
@@ -225,6 +226,17 @@ fun String.normalizePath() = this.getNormalizedPath().toString()
 
 fun String.addPrefixIfNotPresent(prefix: Char) = if (this.startsWith(prefix)) this else prefix + this
 
+fun String.looksLikeHttpUrl(): Boolean {
+    if (isBlank()) return true
+    return try {
+        val uri = URI(this)
+        val scheme = uri.scheme?.lowercase()
+        (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+    } catch (_: Exception) {
+        false
+    }
+}
+
 
 fun parseTusHttpHeader(header: String): Map<String, String> {
     return header.split(",").mapNotNull {
@@ -378,6 +390,7 @@ class JsonBuilder {
     fun put(key: String, element: String) = content.put(key, Json.encodeToJsonElement(element))
     fun put(key: String, element: Int) = content.put(key, Json.encodeToJsonElement(element))
     fun put(key: String, element: Boolean) = content.put(key, Json.encodeToJsonElement(element))
+    fun put(key: String, element: JsonElement) = content.put(key, element)
 
     // Generic put that serializes any object into a JsonElement:
     inline fun <reified T> put(key: String, value: T) {

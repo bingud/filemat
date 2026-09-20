@@ -102,6 +102,18 @@ class DatabaseSetup(
             }
         }
 
+        settingService.getSetting(Props.Settings.contentBaseUrl).let { result ->
+            result.valueOrNull?.value?.let { value ->
+                State.App.ContentBaseUrl.url = value
+            }
+        }
+
+        settingService.getSetting(Props.Settings.contentBaseUrlForUnauthenticated).let { result ->
+            result.valueOrNull?.value?.toBooleanStrictOrNull()?.let { enabled ->
+                State.App.ContentBaseUrl.forUnauthenticated = enabled
+            }
+        }
+
         // Is app setup setting
         settingService.getSetting(Props.Settings.isAppSetup).let { result ->
             result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->

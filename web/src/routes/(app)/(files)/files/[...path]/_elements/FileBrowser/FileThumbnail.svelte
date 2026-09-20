@@ -4,6 +4,7 @@
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
     import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte";
+    import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
     import FolderArrow from "$lib/component/icons/FolderArrow.svelte";
@@ -26,6 +27,9 @@
 
     const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
     const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
+    const cors = $derived(contentCrossOrigin())
+    const imageSrc = $derived(`${joinContentUrl(`/api/v1/file/image-thumbnail`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`)
+    const videoSrc = $derived(`${joinContentUrl(`/api/v1/file/video-preview`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`)
 
     let imageLoadFailed = $state(false)
 
@@ -42,7 +46,8 @@
             on:error={onImageError} 
             use:loadFilePreview={entry.path} 
             alt=""
-            data-src="/api/v1/file/image-thumbnail?size={size}&path={encodeUrlFilePath(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}" 
+            crossorigin={cors}
+            data-src={imageSrc} 
             class="h-full w-full object-contain opacity-0" 
             on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}
         >
@@ -53,7 +58,8 @@
                 on:error={onImageError}
                 use:loadFilePreview={entry.path}
                 alt=""
-                data-src="/api/v1/file/video-preview?size={size}&path={encodeUrlFilePath(entry.path)}&modified={entry.modifiedDate}{shareTokenParam}"
+                crossorigin={cors}
+                data-src={videoSrc}
                 class="h-full w-full object-contain opacity-0"
             >
             {#if isLarge}

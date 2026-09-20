@@ -42,6 +42,8 @@ object Props {
         const val isAppSetup = "is_application_setup"
         const val followSymlinks = "follow_symbolic_links"
         const val uploadFolderPath = "upload_folder_path"
+        const val contentBaseUrl = "content_base_url"
+        const val contentBaseUrlForUnauthenticated = "content_base_url_for_unauthenticated"
 
         object ThumbCache {
             const val enabled = "is_thumbnail_cache_enabled"
@@ -54,5 +56,10 @@ object Props {
     object Cookies {
         const val tempLoginToken = "filemat-temp-login-token"
         const val authToken = "filemat-auth-token"
+    }
+
+    object ContentSession {
+        const val ticketTtlSeconds = 60L
+        const val cookieMaxAgeSeconds = 3600L
     }
 }
