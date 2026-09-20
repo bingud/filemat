@@ -6,7 +6,8 @@ import { clientState } from "../stateObjects/clientState.svelte";
 import { filesState } from "../stateObjects/filesState.svelte";
 import { confirmDialogState, downloadChooserState, folderSelectorState, inputDialogState } from "../stateObjects/subState/utilStates.svelte";
 import type { ulid } from "../types/types";
-import { debounceFunction, encodeUrlFilePath } from "./codeUtil.svelte";
+import { debounceFunction, encodeUrlFilePath } from "./codeUtil.svelte"
+import { joinContentUrl } from "./contentUrl";
 
 
 export function getRole(id: ulid): Role | null {
@@ -154,17 +155,25 @@ export function isUserInAnyInput() {
     return false
 }
 
-export function getContentUrl(path: string, encodeParam: boolean = true, shareToken?: string | null): string {
+export function getContentUrl(path: string, options: {
+    encodeParam?: boolean
+    shareToken?: string | null
+    download?: boolean
+} = {}): string {
+    const encodeParam = options.encodeParam ?? true
     const pathParam = `path=${encodeParam ? encodeUrlFilePath(path) : path}`
-    const token = shareToken === undefined
+    const token = options.shareToken === undefined
         ? (filesState.getIsShared() ? filesState.meta.shareToken : null)
-        : shareToken
-    const shareTokenParam = token ? `shareToken=${token}` : ``
-    return `${config.fileContentUrlPathPrefix}?${pathParam}${shareTokenParam ? `&` : ``}${shareTokenParam}`
+        : options.shareToken
+    const extras = [
+        token ? `shareToken=${token}` : ``,
+        options.download ? `download=true` : ``,
+    ].filter(Boolean).join(`&`)
+    return `${joinContentUrl(config.fileContentUrlPathPrefix)}?${pathParam}${extras ? `&${extras}` : ``}`
 }
 
 export function getZipContentUrl(path: string, encodeParam: boolean = false): string {
     const pathParam = `path=${encodeParam ? encodeUrlFilePath(path) : path}`
     const shareTokenParam = filesState.getIsShared() ? `shareToken=${filesState.meta.shareToken}` : ``
-    return `/api/v1/file/zip-multiple-content?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
+    return `${joinContentUrl(`/api/v1/file/zip-multiple-content`)}?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
 }

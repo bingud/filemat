@@ -5,6 +5,7 @@
     import ExposedFilesSetting from "./_setting-components/ExposedFilesSetting.svelte";
     import LogsSetting from "./_setting-components/LogsSetting.svelte";
     import UploadFolderPathSetting from "./_setting-components/UploadFolderPathSetting.svelte";
+    import ContentBaseUrlSetting from "./_setting-components/ContentBaseUrlSetting.svelte";
     import ThumbnailCacheSetting from "./_setting-components/ThumbnailCacheSetting.svelte";
 
     const title = "System Settings"
@@ -17,6 +18,7 @@
 
 <div class="page !h-fit settings-margin flex-col gap-8">
     {@render settingCell(UploadFolderPathSetting)}
+    {@render settingCell(ContentBaseUrlSetting)}
     {@render settingCell(ThumbnailCacheSetting)}
     {@render settingCell(SymbolicLinksSetting)}
 

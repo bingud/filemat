@@ -56,6 +56,10 @@ class StateController : AController() {
                 JsonBuilder().apply {
                     put("isSetup", State.App.isSetup)
                     put("followSymlinks", State.App.followSymlinks)
+
+                    if (principal != null || State.App.ContentBaseUrl.forUnauthenticated) {
+                        put("contentBaseUrl", State.App.ContentBaseUrl.url)
+                    }
                 }.build()
             }
 

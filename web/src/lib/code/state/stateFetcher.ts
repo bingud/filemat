@@ -4,12 +4,13 @@ import { delay, handleErr, handleException, safeFetch, unixNow } from "../util/c
 import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
 import { clientState } from "../stateObjects/clientState.svelte"
+import { maybeRenewContentSession } from "./contentSession"
 
 
 type state = {
     principal: { value: Principal, status: HttpStatus }, 
     roles: { value: Role[], status: HttpStatus }, 
-    app: { value: { isSetup: boolean, followSymlinks: boolean }, status: HttpStatus },
+    app: { value: { isSetup: boolean, followSymlinks: boolean, contentBaseUrl?: string }, status: HttpStatus },
     systemRoleIds: { value: { user: ulid, admin: ulid }, status: HttpStatus },
     hashCode: number,
 }
@@ -36,7 +37,10 @@ export async function fetchState(
             return false
         }
 
-        if (response.content === "up-to-date") return true
+        if (response.content === "up-to-date") {
+            await maybeRenewContentSession()
+            return true
+        }
 
         const status = response.code
         const json = response.json()
@@ -108,6 +112,7 @@ export async function fetchState(
                 const app = data.app.value
                 appState.isSetup = app.isSetup
                 appState.followSymlinks = app.followSymlinks
+                appState.contentBaseUrl = app.contentBaseUrl || ``
             } else {
                 handleErr({
                     description: `Status ${status} for app state when fetching state.`,
@@ -133,6 +138,8 @@ export async function fetchState(
         if (!options) {
             appState.lastFullStateRefresh = unixNow()
         }
+
+        await maybeRenewContentSession()
 
         console.log(`Loaded state.`)
         return true

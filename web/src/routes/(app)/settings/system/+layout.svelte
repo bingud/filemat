@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { hasPermissionLevel } from '$lib/code/module/permissions';
-    import { uiState } from '$lib/code/stateObjects/uiState.svelte';
+    import { fetchAdminSystemState } from '$lib/code/state/adminSystemFetcher.svelte';
     import { onMount } from 'svelte';
 
 
@@ -12,6 +12,7 @@
             goto(`/settings`)
             return
         }
+        fetchAdminSystemState()
     })
 </script>
 

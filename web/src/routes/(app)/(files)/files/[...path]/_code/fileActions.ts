@@ -65,7 +65,7 @@ export async function option_downloadSelectedFiles(e: MouseEvent, inputList: str
         return
     }
 
-    downloadFiles(getContentUrl(path), { method: `GET` })
+    downloadFiles(getContentUrl(path, { download: true }), { method: `GET` })
 }
 
 /** Resolve entry/folder meta for a path without requiring it to be selected. */

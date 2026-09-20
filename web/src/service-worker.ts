@@ -17,6 +17,14 @@ const THUMB_CACHE_NAME = `thumb-cache`
 // max age for thumbnails in seconds
 const THUMB_MAX_AGE_SECONDS = 60 /* seconds */ * 60 /* minutes */ * 24 /* hours */ * 2 /* days */
 
+let contentBaseOrigin: string | null = null
+
+sw.addEventListener('message', (event) => {
+    const data = event.data
+    if (!data || data.type !== 'contentBaseUrl') return
+    contentBaseOrigin = typeof data.origin === 'string' && data.origin ? data.origin : null
+})
+
 // Install event - cache static assets
 sw.addEventListener('install', (event) => {
     console.log('[SW] Installing')
@@ -38,20 +46,29 @@ sw.addEventListener('activate', (event) => {
     )
 })
 
+function isThumbRequest(url: URL): boolean {
+    return url.pathname.includes("/image-thumbnail") || url.pathname.includes("/video-preview")
+}
+
+function isAllowedThumbOrigin(url: URL): boolean {
+    if (url.origin === location.origin) return true
+    return contentBaseOrigin != null && url.origin === contentBaseOrigin
+}
+
 // Fetch event - network strategies
 sw.addEventListener('fetch', (event) => {
     const { request } = event
     const url = new URL(request.url)
     
     if (request.method !== 'GET') return
-    if (url.origin !== location.origin) return   
 
-    // Cache file previews
-    if (url.pathname.includes("/image-thumbnail") || url.pathname.includes("/video-preview")) {
+    if (isThumbRequest(url)) {
+        if (!isAllowedThumbOrigin(url)) return
         event.respondWith(cacheResponse(request, caches.open(THUMB_CACHE_NAME)))
         return
     }
 
+    if (url.origin !== location.origin) return
     if (url.pathname.startsWith('/api/')) return
 
     if (url.pathname.startsWith("/__filemat-clear-sw-thumb-cache")) {

@@ -37,6 +37,28 @@ object State {
                 field = new
             }
 
+        object ContentBaseUrl {
+            private val urlEnv = env("FM_CONTENT_BASE_URL", true)
+            val lockedByEnv get() = urlEnv != null
+            var url: String = (urlEnv ?: "").also {
+                if (urlEnv != null) println("Content base URL (env): $it\n")
+            }
+                set(new) {
+                    if (urlEnv != null) return
+                    field = new
+                }
+
+            private val forUnauthenticatedEnv = env("FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED", true)?.toBooleanStrictOrNull()
+            val forUnauthenticatedLockedByEnv get() = forUnauthenticatedEnv != null
+            var forUnauthenticated: Boolean = (forUnauthenticatedEnv ?: false).also {
+                if (forUnauthenticatedEnv != null) println("Content base URL for unauthenticated users (env): $it\n")
+            }
+                set(new) {
+                    if (forUnauthenticatedEnv != null) return
+                    field = new
+                }
+        }
+
         val printLogs = env("FM_PRINT_LOGS", true)?.toBooleanStrictOrNull() ?: true
     }
 

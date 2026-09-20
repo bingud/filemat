@@ -21,3 +21,4 @@ data class AuthToken(
 
 fun AuthToken.isExpired(now: Long) = now >= this.createdDate + this.maxAge
 fun AuthToken.isExpired() = this.isExpired(unixNow())
+fun AuthToken.remainingMaxAge(now: Long = unixNow()): Long = (createdDate + maxAge - now).coerceAtLeast(0)

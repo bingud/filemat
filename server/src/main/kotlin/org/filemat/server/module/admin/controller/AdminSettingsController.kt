@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.config.CorsOriginRegistry
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.auth.service.SensitiveAuthService
 import org.filemat.server.module.file.model.FilePath
@@ -227,10 +228,61 @@ class AdminSettingsController(
         }
     }
 
-    @GetMapping("/get-upload-folder-path")
-    fun adminGetUploadFolderPath(
-        request: HttpServletRequest
+    @GetMapping("/state/get")
+    fun adminGetSystemStateMapping(
+        request: HttpServletRequest,
     ): ResponseEntity<String> {
-        return ok(State.App.uploadFolderPath)
+        return ok(json {
+            put("uploadFolderPath", State.App.uploadFolderPath)
+            put("contentBaseUrl", JsonBuilder().apply {
+                put("url", State.App.ContentBaseUrl.url)
+                put("lockedByEnv", State.App.ContentBaseUrl.lockedByEnv)
+                put("forUnauthenticated", State.App.ContentBaseUrl.forUnauthenticated)
+                put("forUnauthenticatedLockedByEnv", State.App.ContentBaseUrl.forUnauthenticatedLockedByEnv)
+            }.build())
+        })
+    }
+
+    @PostMapping("/set/content-base-url")
+    fun adminSetContentBaseUrlMapping(
+        request: HttpServletRequest,
+        @RequestParam("auth_code") authCode: String,
+        @RequestParam("url") url: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+
+        sensitiveAuthService.verifyOtp(authCode).let {
+            if (it.rejected) return unauthenticated(it.error, "invalid-code")
+            if (it.hasError) return internal(it.error)
+        }
+
+        settingService.set_contentBaseUrl(user, url).let {
+            if (it.rejected) return bad(it.error)
+            if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to update content base URL.")
+            CorsOriginRegistry.spaOriginFrom(request)?.let { origin -> CorsOriginRegistry.remember(origin) }
+            return ok(it.value)
+        }
+    }
+
+    @PostMapping("/set/content-base-url-for-unauthenticated")
+    fun adminSetContentBaseUrlForUnauthenticatedMapping(
+        request: HttpServletRequest,
+        @RequestParam("auth_code") authCode: String,
+        @RequestParam("enabled") enabledRaw: String,
+    ): ResponseEntity<String> {
+        val user = request.getPrincipal()!!
+        val enabled = enabledRaw.toBooleanStrictOrNull()
+            ?: return bad("enabled must be true or false.", "validation")
+
+        sensitiveAuthService.verifyOtp(authCode).let {
+            if (it.rejected) return unauthenticated(it.error, "invalid-code")
+            if (it.hasError) return internal(it.error)
+        }
+
+        settingService.set_contentBaseUrlForUnauthenticated(user, enabled).let {
+            if (it.rejected) return bad(it.error)
+            if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to update unauthenticated content URL setting.")
+            return ok()
+        }
     }
 }

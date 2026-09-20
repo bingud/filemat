@@ -34,6 +34,10 @@ class AppState {
      * Whether the system follows symlinks
      */
     followSymlinks = $state(false)
+    /**
+     * Absolute prefix for content downloads, uploads, and thumbnails.
+     */
+    contentBaseUrl = $state(``)
     
     /**
      * Indicates whether the first page the user entered is stil open 

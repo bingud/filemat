@@ -3,6 +3,7 @@ import { untrack } from "svelte"
 import type { FileMetadata, FullFileMetadata } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 import type { FileSortingMode, SortingDirection } from "../types/fileTypes"
+import { credentialsForUrl, isCrossOriginUrl } from "./contentUrl"
 
 type ObjectKey = string | number | symbol
 
@@ -91,10 +92,15 @@ type SafeFetchResult = Omit<Response, 'json'> & { failed: boolean, exception: an
  * 
  * Default request is POST and credentials same-origin
  */
-export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boolean = false): Promise<SafeFetchResult> {
+export async function safeFetch(
+    url: string,
+    args?: RequestInit,
+    ignoreBody: boolean = false,
+    options?: { skipContentAuthRetry?: boolean },
+): Promise<SafeFetchResult> {
     try {
         let arg = args || {}
-        if (!arg.credentials) arg.credentials = "same-origin"
+        if (!arg.credentials) arg.credentials = credentialsForUrl(url)
         if (!arg.method) arg.method = "POST"
         
         const response = await fetch(url, arg) as any as SafeFetchResult
@@ -104,6 +110,19 @@ export async function safeFetch(url: string, args?: RequestInit, ignoreBody: boo
         if (!ignoreBody) {
             response.content = await response.text()
             response.json = () => { return parseJson(response.content) }
+        }
+
+        if (
+            !options?.skipContentAuthRetry
+            && response.status === 401
+            && isCrossOriginUrl(url)
+            && appState.contentBaseUrl
+        ) {
+            const { maybeRenewContentSession } = await import("$lib/code/state/contentSession")
+            const renewed = await maybeRenewContentSession(true)
+            if (renewed) {
+                return safeFetch(url, args, ignoreBody, { skipContentAuthRetry: true })
+            }
         }
 
         return response
