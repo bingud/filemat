@@ -70,6 +70,9 @@ class AuthController(
     ): ResponseEntity<String> {
         val origin = CorsOriginRegistry.spaOriginFrom(request)
         val secure = request.isSecure || request.getHeader("X-Forwarded-Proto")?.equals("https", ignoreCase = true) == true
+        if (!secure) {
+            return bad("Content session cookies require HTTPS.")
+        }
 
         val cookieToken = request.getAuthToken()
         if (!cookieToken.isNullOrBlank()) {
@@ -77,7 +80,9 @@ class AuthController(
             if (existing.isSuccessful) {
                 val maxAge = contentSessionService.cookieMaxAgeSeconds(existing.value)
                 if (maxAge <= 0) return unauthenticated("unauthenticated")
-                response.addHeader("Set-Cookie", contentSessionService.buildSetCookieHeader(existing.value.authToken, maxAge, secure))
+                val cookie = contentSessionService.buildSetCookieHeader(existing.value.authToken, maxAge, secure)
+                    ?: return bad("Content session cookies require HTTPS.")
+                response.addHeader("Set-Cookie", cookie)
                 return ok()
             }
         }
@@ -99,7 +104,9 @@ class AuthController(
         }
         val maxAge = contentSessionService.cookieMaxAgeSeconds(authToken)
         if (maxAge <= 0) return unauthenticated("unauthenticated")
-        response.addHeader("Set-Cookie", contentSessionService.buildSetCookieHeader(authToken.authToken, maxAge, secure))
+        val cookie = contentSessionService.buildSetCookieHeader(authToken.authToken, maxAge, secure)
+            ?: return bad("Content session cookies require HTTPS.")
+        response.addHeader("Set-Cookie", cookie)
         return ok()
     }
 

@@ -51,17 +51,15 @@ class ContentSessionService {
         return minOf(Props.ContentSession.cookieMaxAgeSeconds, authToken.remainingMaxAge())
     }
 
-    fun buildSetCookieHeader(token: String, maxAge: Long, secure: Boolean): String {
-        val parts = mutableListOf(
+    fun buildSetCookieHeader(token: String, maxAge: Long, secure: Boolean): String? {
+        if (!secure) return null
+        return listOf(
             "${Props.Cookies.authToken}=$token",
             "Path=/",
             "HttpOnly",
             "Max-Age=$maxAge",
             "SameSite=None",
-        )
-        if (secure) {
-            parts.add("Secure")
-        }
-        return parts.joinToString("; ")
+            "Secure",
+        ).joinToString("; ")
     }
 }

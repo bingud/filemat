@@ -27,6 +27,10 @@ export async function maybeRenewContentSession(force: boolean = false): Promise<
         return true
     }
 
+    if (!isHttpsAbsoluteUrl(base)) {
+        return false
+    }
+
     if (base !== lastSeenContentBaseUrl) {
         lastContentCookieRenewal = 0
         lastSeenContentBaseUrl = base
@@ -74,4 +78,12 @@ async function renewContentSession(): Promise<boolean> {
 export function resetContentSessionRenewal() {
     lastContentCookieRenewal = 0
     lastSeenContentBaseUrl = ``
+}
+
+function isHttpsAbsoluteUrl(value: string): boolean {
+    try {
+        return new URL(value).protocol === `https:`
+    } catch {
+        return false
+    }
 }
