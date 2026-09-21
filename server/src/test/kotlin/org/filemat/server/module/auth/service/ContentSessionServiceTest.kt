@@ -6,6 +6,7 @@ import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -42,17 +43,14 @@ class ContentSessionServiceTest {
     }
 
     @Test
-    fun `cookie header is Secure only on HTTPS`() {
-        val secure = service.buildSetCookieHeader("abc", 3600, true)
+    fun `cookie header uses SameSite None only when secure`() {
+        val secure = service.buildSetCookieHeader("abc", 3600, true)!!
         assertTrue(secure.contains("Secure"))
         assertFalse(secure.contains("Partitioned"))
         assertTrue(secure.contains("SameSite=None"))
         assertTrue(secure.contains("${Props.Cookies.authToken}=abc"))
 
-        val insecure = service.buildSetCookieHeader("abc", 3600, false)
-        assertFalse(insecure.contains("Secure"))
-        assertFalse(insecure.contains("Partitioned"))
-        assertTrue(insecure.contains("SameSite=None"))
+        assertNull(service.buildSetCookieHeader("abc", 3600, false))
     }
 
     @Test

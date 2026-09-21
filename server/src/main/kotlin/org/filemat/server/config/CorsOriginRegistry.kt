@@ -31,18 +31,17 @@ object CorsOriginRegistry {
         return originValue.equals(requestValue, ignoreCase = true)
     }
 
+    /**
+     * Origin used to bind content-session tickets and enroll the SPA in the CORS allowlist.
+     *
+     * Only a well-formed Origin header that matches this request, or an origin already
+     * trusted as this instance's SPA, is returned. Referer is never used.
+     */
     fun spaOriginFrom(request: HttpServletRequest): String? {
-        request.getHeader("Origin")?.trim()?.takeIf { it.isNotEmpty() }?.let { return it.trimEnd('/') }
-        val referer = request.getHeader("Referer") ?: return null
-        return try {
-            val uri = URI(referer)
-            val scheme = uri.scheme ?: return null
-            val host = uri.host ?: return null
-            val port = uri.port
-            if (port == -1) "$scheme://$host" else "$scheme://$host:$port"
-        } catch (_: Exception) {
-            null
-        }
+        val raw = request.getHeader("Origin")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val origin = canonicalOrigin(raw) ?: return null
+        if (!isSameOrigin(request, origin) && !isAllowed(origin)) return null
+        return origin
     }
 
     internal fun requestOrigin(request: HttpServletRequest): String? {
