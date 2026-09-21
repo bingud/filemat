@@ -19,6 +19,7 @@
     import { onUserIdleChange } from '$lib/code/util/stateUtils';
     import { Tooltip } from 'bits-ui';
     import { auth } from '$lib/code/stateObjects/authState.svelte';
+    import { sensitiveAuth } from '$lib/code/state/sensitiveAuth.svelte';
     import SensitiveAuthDialog from '$lib/component/popover/SensitiveAuthDialog.svelte';
 
 	let { children } = $props();
@@ -84,6 +85,15 @@
             }
             initialPath = path
         })
+    })
+
+    let lastSensitiveAuthUserId: string | null = null
+    $effect(() => {
+        const userId = auth.principal?.userId ?? null
+        if (userId !== lastSensitiveAuthUserId) {
+            sensitiveAuth.clear()
+            lastSensitiveAuthUserId = userId
+        }
     })
 </script>
 
