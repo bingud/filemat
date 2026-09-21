@@ -1,4 +1,5 @@
 import { appState } from "$lib/code/stateObjects/appState.svelte"
+import { postToServiceWorker } from "$lib/code/util/serviceWorker"
 
 export function joinWithContentBase(base: string, path: string): string {
     if (!base) {
@@ -44,11 +45,8 @@ export function contentCrossOrigin(): "use-credentials" | undefined {
 }
 
 export function notifyServiceWorkerContentBaseUrl() {
-    if (typeof navigator === `undefined` || !navigator.serviceWorker) return
-    const origin = contentBaseOrigin()
-    const message = { type: `contentBaseUrl`, origin }
-    navigator.serviceWorker.controller?.postMessage(message)
-    navigator.serviceWorker.ready.then((reg) => {
-        reg.active?.postMessage(message)
-    }).catch(() => {})
+    postToServiceWorker({
+        type: `contentBaseUrl`,
+        origin: contentBaseOrigin(),
+    })
 }

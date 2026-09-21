@@ -5,6 +5,7 @@ import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
 import { clientState } from "../stateObjects/clientState.svelte"
 import { maybeRenewContentSession } from "./contentSession"
+import { notifyServiceWorkerLastUserId } from "../util/serviceWorker"
 
 
 type state = {
@@ -39,6 +40,7 @@ export async function fetchState(
 
         if (response.content === "up-to-date") {
             await maybeRenewContentSession()
+            await notifyLastUserId()
             return true
         }
 
@@ -78,9 +80,11 @@ export async function fetchState(
                 const principal = data.principal.value
                 auth.principal = principal
                 auth.authenticated = true
+                await notifyLastUserId()
             } else if (status === 401) {
                 auth.principal = null
                 auth.authenticated = false
+                await notifyLastUserId()
             } else {
                 handleErr({
                     description: `Status ${status} for principal when fetching state.`,
@@ -147,6 +151,10 @@ export async function fetchState(
         handleException("Exception when fetching state", "An error occurred while loading state.", e)
         return false
     }
+}
+
+async function notifyLastUserId() {
+    await notifyServiceWorkerLastUserId(auth.principal?.userId)
 }
 
 

@@ -17,12 +17,28 @@ const THUMB_CACHE_NAME = `thumb-cache`
 // max age for thumbnails in seconds
 const THUMB_MAX_AGE_SECONDS = 60 /* seconds */ * 60 /* minutes */ * 24 /* hours */ * 2 /* days */
 
+const LAST_USER_ID_DB = 'filemat-sw'
+const LAST_USER_ID_STORE = 'kv'
+const LAST_USER_ID_KEY = 'lastUserId'
+
 let contentBaseOrigin: string | null = null
+let lastUserId: string | undefined
 
 sw.addEventListener('message', (event) => {
     const data = event.data
-    if (!data || data.type !== 'contentBaseUrl') return
-    contentBaseOrigin = typeof data.origin === 'string' && data.origin ? data.origin : null
+    if (!data) return
+
+    if (data.type === 'contentBaseUrl') {
+        contentBaseOrigin = typeof data.origin === 'string' && data.origin ? data.origin : null
+        return
+    }
+
+    if (data.type === 'lastUserId') {
+        const userId = data.lastUserId == null ? '' : String(data.lastUserId)
+        const task = syncLastUserId(userId)
+        if (typeof event.waitUntil === 'function') event.waitUntil(task)
+        else void task
+    }
 })
 
 // Install event - cache static assets
@@ -110,5 +126,65 @@ async function cacheResponse(request: Request, cachePromise: Cache | Promise<Cac
         return response
     } catch {
         return new Response(null, { status: 504 })
+    }
+}
+
+function idbRequest<T>(request: IDBRequest<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+    })
+}
+
+function openLastUserIdDb(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(LAST_USER_ID_DB, 1)
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(LAST_USER_ID_STORE)) {
+                request.result.createObjectStore(LAST_USER_ID_STORE)
+            }
+        }
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+    })
+}
+
+async function readLastUserId(): Promise<string | undefined> {
+    const db = await openLastUserIdDb()
+    try {
+        const value = await idbRequest(
+            db.transaction(LAST_USER_ID_STORE, 'readonly').objectStore(LAST_USER_ID_STORE).get(LAST_USER_ID_KEY)
+        )
+        return typeof value === 'string' ? value : undefined
+    } finally {
+        db.close()
+    }
+}
+
+async function writeLastUserId(userId: string): Promise<void> {
+    const db = await openLastUserIdDb()
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(LAST_USER_ID_STORE, 'readwrite')
+            tx.oncomplete = () => resolve()
+            tx.onerror = () => reject(tx.error)
+            tx.onabort = () => reject(tx.error ?? new Error('IndexedDB write aborted'))
+            tx.objectStore(LAST_USER_ID_STORE).put(userId, LAST_USER_ID_KEY)
+        })
+    } finally {
+        db.close()
+    }
+}
+
+async function syncLastUserId(userId: string): Promise<void> {
+    try {
+        const previous = lastUserId !== undefined ? lastUserId : await readLastUserId().catch(() => undefined)
+        if (previous !== undefined && previous !== userId) {
+            await caches.delete(THUMB_CACHE_NAME)
+        }
+        lastUserId = userId
+        await writeLastUserId(userId)
+    } catch (e) {
+        console.error('[SW] lastUserId write failed', e)
     }
 }

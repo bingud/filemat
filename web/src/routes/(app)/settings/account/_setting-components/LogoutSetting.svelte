@@ -1,6 +1,7 @@
 <script lang="ts">
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { notifyServiceWorkerLastUserId } from "$lib/code/util/serviceWorker";
     import { toast } from "@jill64/svelte-toast";
 
 
@@ -11,8 +12,9 @@
         const response = await safeFetch(`/api/v1/auth/logout`)
         const code = response.code
         if (code.ok) {
-            window.location.href = "/login"
+            await notifyServiceWorkerLastUserId(null)
             localStorage.clear()
+            window.location.href = "/login"
         } else if (code.failed) {
             const json = response.json()
             const error = json.message
