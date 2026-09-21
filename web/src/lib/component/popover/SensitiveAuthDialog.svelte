@@ -19,7 +19,7 @@
                 </div>
                 <form on:submit|preventDefault={() => sensitiveAuth.verify()} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">
                     <label for="sensitive-auth-code-input">Code:</label>
-                    <input id="sensitive-auth-code-input" required minlength="16" maxlength="16" bind:value={sensitiveAuth.codeInput} class="basic-input bg-surface-content!">
+                    <input id="sensitive-auth-code-input" required type="password" minlength="16" maxlength="16" bind:value={sensitiveAuth.codeInput} class="basic-input bg-surface-content!">
                     <button type="submit" class="basic-input-button bg-surface-content!">{#if !sensitiveAuth.loading}Continue{:else}...{/if}</button>
                 </form>
             </div>
