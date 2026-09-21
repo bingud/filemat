@@ -92,6 +92,14 @@ class SensitiveAuthState {
         }
     }
 
+    clear() {
+        this.verifiedCode = null
+        this.remainingSeconds = null
+        this.codeInput = ``
+        this.dialogOpen = false
+        this.#stopTicker()
+    }
+
     #startTicker() {
         this.#stopTicker()
         this.#interval = setInterval(() => this.#tick(), 3000)
