@@ -42,8 +42,7 @@ class ContentSessionService {
 
     fun consumeTicket(ticket: String): Result<ContentSessionTicket> {
         if (ticket.isBlank()) return Result.reject("Ticket is invalid.")
-        val value = tickets.getIfPresent(ticket) ?: return Result.reject("Ticket is invalid.")
-        tickets.invalidate(ticket)
+        val value = tickets.asMap().remove(ticket) ?: return Result.reject("Ticket is invalid.")
         return Result.ok(value)
     }
 
