@@ -15,6 +15,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  */
 val endpointAuthMap: HashMap<String, EndpointAuth> = HashMap()
 
+/** `@Cors` servlet paths. Filled when mappings are collected. */
+val corsOpenPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
@@ -25,6 +28,11 @@ annotation class Authenticated(
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Unauthenticated
+
+/** Public file read. No cookie: any origin. A cookie still has to match that token's origin. */
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Cors
 
 /**
  * Allows an endpoint to be reached before the app is set up.
@@ -55,6 +63,7 @@ class AuthenticatedMappingConfig(
     @EventListener(ApplicationReadyEvent::class)
     fun collectMappings() {
         endpointAuthMap.clear() // clear any previous mappings
+        corsOpenPaths.clear()
 
         // Iterate over all Spring request mappings.
         val handlerMethods = requestMappingHandlerMapping.handlerMethods
@@ -68,6 +77,10 @@ class AuthenticatedMappingConfig(
             val methodUnauthAnnotation = AnnotationUtils.findAnnotation(handlerMethod.method, Unauthenticated::class.java)
             val classUnauthAnnotation = AnnotationUtils.findAnnotation(handlerMethod.beanType, Unauthenticated::class.java)
             val unauthAnnotation = methodUnauthAnnotation ?: classUnauthAnnotation
+
+            val methodCorsAnnotation = AnnotationUtils.findAnnotation(handlerMethod.method, Cors::class.java)
+            val classCorsAnnotation = AnnotationUtils.findAnnotation(handlerMethod.beanType, Cors::class.java)
+            val openCors = methodCorsAnnotation != null || classCorsAnnotation != null
 
             // Look for @BeforeSetup on the method; if not present, check the controller class.
             val methodBeforeSetupAnnotation = AnnotationUtils.findAnnotation(handlerMethod.method, BeforeSetup::class.java)
@@ -100,6 +113,7 @@ class AuthenticatedMappingConfig(
 
             // Create an EndpointAuth for every combination of path and HTTP method.
             for (pattern in patterns) {
+                if (openCors) corsOpenPaths.add(pattern)
                 for (httpMethod in httpMethods) {
                     val endpointAuth = EndpointAuth(
                         path = pattern,

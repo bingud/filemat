@@ -36,7 +36,7 @@ import { toast } from "@jill64/svelte-toast"
 import { goto } from "$app/navigation"
 import { persistentToast_loading } from "$lib/code/util/uiUtil"
 import { getContentUrl } from "$lib/code/util/stateUtils"
-import { credentialsForUrl, joinContentUrl } from "$lib/code/util/contentUrl"
+import { credentialsForContentRead, joinContentUrl } from "$lib/code/util/contentUrl"
 import * as tus from "tus-js-client"
 
 
@@ -158,8 +158,11 @@ export async function streamFileContent(
         body.append("shareToken", options.shareToken)
     }
 
-    const response = await safeFetch(joinContentUrl(`/api/v1/file/content`),{ 
-        body: body, signal: options.signal
+    const contentUrl = joinContentUrl(`/api/v1/file/content`)
+    const response = await safeFetch(contentUrl, {
+        body: body,
+        signal: options.signal,
+        credentials: credentialsForContentRead(contentUrl),
     }, true)
     if (response.failed) {
         const exception = response.exception
@@ -1540,7 +1543,7 @@ async function downloadOneQueuedFile(dl: FileDownload) {
         writable = await dl.fileHandle.createWritable()
         const contentUrl = getContentUrl(dl.path, { shareToken: dl.shareToken })
         const response = await fetch(contentUrl, {
-            credentials: credentialsForUrl(contentUrl),
+            credentials: credentialsForContentRead(contentUrl),
             signal: abortController.signal,
         })
         if (!response.ok || !response.body) {

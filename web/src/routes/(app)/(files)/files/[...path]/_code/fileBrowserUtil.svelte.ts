@@ -1,6 +1,5 @@
 import { goto } from "$app/navigation"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
-import type { GridPreviewSize, RowPreviewSize } from "$lib/code/config/values"
 import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"

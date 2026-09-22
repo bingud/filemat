@@ -1,4 +1,5 @@
 import { appState } from "$lib/code/stateObjects/appState.svelte"
+import { auth } from "$lib/code/stateObjects/authState.svelte"
 import { postToServiceWorker } from "$lib/code/util/serviceWorker"
 
 export function joinWithContentBase(base: string, path: string): string {
@@ -28,6 +29,12 @@ export function credentialsForUrl(url: string): RequestCredentials {
     return isCrossOriginUrl(url) ? `include` : `same-origin`
 }
 
+/** Credentials for a `@Cors` file read. Anonymous callers must not send the auth cookie. */
+export function credentialsForContentRead(url: string): RequestCredentials {
+    if (!isCrossOriginUrl(url)) return `same-origin`
+    return auth.authenticated === true ? `include` : `omit`
+}
+
 export function contentBaseOrigin(): string | null {
     const base = appState.contentBaseUrl
     if (!base) return null
@@ -38,11 +45,12 @@ export function contentBaseOrigin(): string | null {
     }
 }
 
-export function contentCrossOrigin(): "use-credentials" | undefined {
+/** Logged-out cross-origin images omit cookies, so the response may use `*`. */
+export function contentCrossOrigin(): "anonymous" | "use-credentials" | undefined {
     const origin = contentBaseOrigin()
     if (!origin || typeof window === `undefined`) return undefined
     if (origin === window.location.origin) return undefined
-    return `use-credentials`
+    return auth.authenticated === true ? `use-credentials` : `anonymous`
 }
 
 export function notifyServiceWorkerContentBaseUrl() {

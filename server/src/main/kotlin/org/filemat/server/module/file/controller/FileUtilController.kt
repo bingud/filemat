@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest
 import org.filemat.server.common.util.RateLimitedLog
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.getPrincipal
+import org.filemat.server.config.auth.Cors
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.file.FileService
@@ -32,6 +33,7 @@ class FileUtilController(
 ) : AController() {
 
     @Unauthenticated
+    @Cors
     @GetMapping("/image-thumbnail")
     fun imageThumbnailMapping(
         request: HttpServletRequest,
@@ -119,6 +121,7 @@ class FileUtilController(
     }
 
     @Unauthenticated
+    @Cors
     @GetMapping("/video-preview")
     fun videoPreviewMapping(
         request: HttpServletRequest,
