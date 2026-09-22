@@ -226,12 +226,11 @@ fun String.normalizePath() = this.getNormalizedPath().toString()
 
 fun String.addPrefixIfNotPresent(prefix: Char) = if (this.startsWith(prefix)) this else prefix + this
 
-fun String.looksLikeHttpUrl(): Boolean {
-    if (isBlank()) return true
+fun String.isAbsoluteHttpsUrl(): Boolean {
+    if (isBlank()) return false
     return try {
-        val uri = URI(this)
-        val scheme = uri.scheme?.lowercase()
-        (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+        val uri = URI(trim())
+        uri.scheme?.lowercase() == "https" && !uri.host.isNullOrBlank()
     } catch (_: Exception) {
         false
     }

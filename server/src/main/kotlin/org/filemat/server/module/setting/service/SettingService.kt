@@ -4,7 +4,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
-import org.filemat.server.common.util.looksLikeHttpUrl
+import org.filemat.server.common.util.isAbsoluteHttpsUrl
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
@@ -106,9 +106,9 @@ class SettingService(
             return Result.reject("This setting is locked by the FM_CONTENT_BASE_URL environment variable.")
         }
 
-        val value = raw
-        if (!value.looksLikeHttpUrl()) {
-            return Result.reject("Content base URL must be an absolute http or https URL.")
+        val value = raw.trim()
+        if (value.isNotEmpty() && !value.isAbsoluteHttpsUrl()) {
+            return Result.reject("Content base URL must be an absolute https URL.")
         }
 
         db_setSetting(Props.Settings.contentBaseUrl, value).let {
