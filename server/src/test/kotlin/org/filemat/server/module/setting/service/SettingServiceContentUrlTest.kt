@@ -75,7 +75,27 @@ class SettingServiceContentUrlTest {
     }
 
     @Test
-    fun `rejects a value that is not an http URL`() {
+    fun `trims a content base URL and treats whitespace as empty`() {
+        val padded = service.set_contentBaseUrl(principal(), "  https://203.0.113.10:8080  ")
+        assertTrue(padded.isSuccessful)
+        assertEquals("https://203.0.113.10:8080", padded.value)
+
+        val blank = service.set_contentBaseUrl(principal(), "   ")
+        assertTrue(blank.isSuccessful)
+        assertEquals("", blank.value)
+        assertEquals("", State.App.ContentBaseUrl.url)
+    }
+
+    @Test
+    fun `rejects an http content base URL`() {
+        val result = service.set_contentBaseUrl(principal(), "http://203.0.113.10:8080")
+
+        assertTrue(result.rejected)
+        verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
+    }
+
+    @Test
+    fun `rejects a value that is not an https URL`() {
         val result = service.set_contentBaseUrl(principal(), "not-a-url")
 
         assertTrue(result.rejected)

@@ -1,6 +1,7 @@
 package org.filemat.server.common
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.util.isAbsoluteHttpsUrl
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.role.model.Role
 import java.time.Duration
@@ -38,7 +39,7 @@ object State {
             }
 
         object ContentBaseUrl {
-            private val urlEnv = env("FM_CONTENT_BASE_URL", true)
+            private val urlEnv = contentBaseUrlFromEnv(env("FM_CONTENT_BASE_URL", true))
             val lockedByEnv get() = urlEnv != null
             var url: String = (urlEnv ?: "").also {
                 if (urlEnv != null) println("Content base URL (env): $it\n")
@@ -89,6 +90,15 @@ object State {
         // All roles
         val roleMap = ConcurrentHashMap<Ulid, Role>()
     }
+}
+
+private fun contentBaseUrlFromEnv(raw: String?): String? {
+    val value = raw?.trim() ?: return null
+    if (value.isEmpty()) return null
+    if (!value.isAbsoluteHttpsUrl()) {
+        throw IllegalArgumentException("FM_CONTENT_BASE_URL must be an absolute https URL.")
+    }
+    return value
 }
 
 private fun env(name: String, print: Boolean = false): String? {
