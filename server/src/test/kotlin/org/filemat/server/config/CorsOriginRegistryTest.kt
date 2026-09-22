@@ -1,5 +1,6 @@
 package org.filemat.server.config
 
+import com.github.f4b6a3.ulid.UlidCreator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -13,7 +14,7 @@ class CorsOriginRegistryTest {
     fun `unknown origin is not allowed until remembered`() {
         val origin = "https://cors-allowlist-test.example"
         assertFalse(CorsOriginRegistry.isAllowed(origin))
-        CorsOriginRegistry.remember(origin)
+        CorsOriginRegistry.bind("cors-allowlist-token", UlidCreator.getUlid(), origin)
         assertTrue(CorsOriginRegistry.isAllowed(origin))
         assertTrue(CorsOriginRegistry.isAllowed("$origin/"))
         assertFalse(CorsOriginRegistry.isAllowed("https://evil.example"))
@@ -75,7 +76,7 @@ class CorsOriginRegistryTest {
     @Test
     fun `spaOriginFrom accepts a previously trusted SPA origin on another host`() {
         val origin = "https://spa-trusted-follow.example"
-        CorsOriginRegistry.remember(origin)
+        CorsOriginRegistry.bind("spa-trusted-token", UlidCreator.getUlid(), origin)
 
         val contentRequest = httpsRequest("203.0.113.10", 443)
         contentRequest.addHeader("Origin", origin)

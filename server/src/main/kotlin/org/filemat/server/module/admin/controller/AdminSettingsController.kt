@@ -5,7 +5,6 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
-import org.filemat.server.config.CorsOriginRegistry
 import org.filemat.server.config.auth.Authenticated
 import org.filemat.server.module.auth.service.SensitiveAuthService
 import org.filemat.server.module.file.model.FilePath
@@ -259,7 +258,6 @@ class AdminSettingsController(
         settingService.set_contentBaseUrl(user, url).let {
             if (it.rejected) return bad(it.error)
             if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to update content base URL.")
-            CorsOriginRegistry.spaOriginFrom(request)?.let { origin -> CorsOriginRegistry.remember(origin) }
             return ok(it.value)
         }
     }
