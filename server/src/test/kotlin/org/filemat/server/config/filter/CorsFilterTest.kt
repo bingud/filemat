@@ -223,6 +223,55 @@ class CorsFilterTest {
     }
 
     @Test
+    fun `context path still matches an open CORS route`() {
+        val filter = CorsFilter("/filemat")
+        val request = MockHttpServletRequest("GET", "/filemat/api/v1/file/content")
+        request.addHeader("Origin", "https://anonymous-share.example")
+        request.serverName = "203.0.113.10"
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        filter.doFilter(request, response, chain)
+
+        assertEquals("*", response.getHeader("Access-Control-Allow-Origin"))
+        verify { chain.doFilter(any(), any()) }
+    }
+
+    @Test
+    fun `context path OPTIONS still returns no content`() {
+        val filter = CorsFilter("/filemat")
+        val request = MockHttpServletRequest("OPTIONS", "/filemat/api/v1/file/content")
+        request.addHeader("Origin", "https://anonymous-share.example")
+        request.serverName = "203.0.113.10"
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        filter.doFilter(request, response, chain)
+
+        assertEquals(204, response.status)
+        assertEquals("*", response.getHeader("Access-Control-Allow-Origin"))
+        verify(exactly = 0) { chain.doFilter(any(), any()) }
+    }
+
+    @Test
+    fun `context path still recognizes the content session route`() {
+        val filter = CorsFilter("/filemat")
+        val origin = "https://first-visit-spa.example"
+        val request = MockHttpServletRequest("POST", "/filemat/api/v1/auth/content-session")
+        request.addHeader("Origin", origin)
+        request.serverName = "203.0.113.10"
+        val response = MockHttpServletResponse()
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        filter.doFilter(request, response, chain)
+
+        assertEquals(401, response.status)
+        assertEquals(origin, response.getHeader("Access-Control-Allow-Origin"))
+        assertEquals("true", response.getHeader("Access-Control-Allow-Credentials"))
+        verify(exactly = 0) { chain.doFilter(any(), any()) }
+    }
+
+    @Test
     fun `same-origin request is not blocked`() {
         val origin = "https://spa-cors-remember.example"
         val appRequest = MockHttpServletRequest("POST", "/api/v1/state/select")

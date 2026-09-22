@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.filemat.server.common.util.getAuthToken
 import org.filemat.server.config.CorsOriginRegistry
 import org.filemat.server.config.auth.corsOpenPaths
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -17,12 +18,21 @@ import org.springframework.web.filter.OncePerRequestFilter
  */
 @Order(0)
 @Component
-class CorsFilter : OncePerRequestFilter() {
+class CorsFilter(
+    @Value("\${server.servlet.context-path:}") configuredContextPath: String = "",
+) : OncePerRequestFilter() {
+
+    /** Empty unless the process was started with `server.servlet.context-path`. */
+    private val contextPath = normalizeContextPath(configuredContextPath)
+
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val origin = request.getHeader("Origin")
         val crossOrigin = origin != null && !CorsOriginRegistry.isSameOrigin(request, origin)
+        val options = request.method.equals("OPTIONS", ignoreCase = true)
+        val path = if (crossOrigin || options) requestPath(request) else null
 
         if (crossOrigin) {
+            val route = path!!.removePrefix("/api")
             val token = request.getAuthToken()
             if (!token.isNullOrBlank()) {
                 if (!CorsOriginRegistry.allows(token, origin)) {
@@ -35,23 +45,22 @@ class CorsFilter : OncePerRequestFilter() {
                     return
                 }
                 applyCredentialedCors(response, origin)
-            } else if (isOpenCors(request)) {
+            } else if (route in corsOpenPaths) {
                 // OPTIONS has no cookie. A bound origin means the following request is logged in.
-                val preflightForSession = request.method.equals("OPTIONS", ignoreCase = true)
-                    && CorsOriginRegistry.allows(null, origin)
+                val preflightForSession = options && CorsOriginRegistry.allows(null, origin)
                 if (preflightForSession) {
                     applyCredentialedCors(response, origin)
                 } else {
                     applyAnonymousCors(response)
                 }
             } else if (!CorsOriginRegistry.allows(null, origin)) {
-                if (!isContentSession(request)) {
+                if (route != "/v1/auth/content-session") {
                     response.status = HttpServletResponse.SC_FORBIDDEN
                     return
                 }
                 // No content cookie yet. The page reads 401 and then requests a ticket.
                 applyCredentialedCors(response, origin)
-                if (!request.method.equals("OPTIONS", ignoreCase = true)) {
+                if (!options) {
                     response.status = HttpServletResponse.SC_UNAUTHORIZED
                     return
                 }
@@ -61,7 +70,7 @@ class CorsFilter : OncePerRequestFilter() {
             }
         }
 
-        if (request.method.equals("OPTIONS", ignoreCase = true) && request.requestURI.startsWith("/api")) {
+        if (options && path!!.startsWith("/api")) {
             response.status = HttpServletResponse.SC_NO_CONTENT
             return
         }
@@ -69,17 +78,14 @@ class CorsFilter : OncePerRequestFilter() {
         filterChain.doFilter(request, response)
     }
 
-    /** `@Cors` path. This filter runs before `/api` is stripped. */
-    private fun isOpenCors(request: HttpServletRequest): Boolean {
-        return servletPath(request) in corsOpenPaths
-    }
-
-    private fun isContentSession(request: HttpServletRequest): Boolean {
-        return servletPath(request) == "/v1/auth/content-session"
-    }
-
-    private fun servletPath(request: HttpServletRequest): String {
-        return request.requestURI.substringBefore('?').removePrefix("/api")
+    /** `requestURI` has no query string. Context path is stripped only when one was configured. */
+    private fun requestPath(request: HttpServletRequest): String {
+        val uri = request.requestURI
+        if (contextPath.isEmpty()) return uri
+        if (uri.length > contextPath.length && uri.startsWith(contextPath) && uri[contextPath.length] == '/') {
+            return uri.substring(contextPath.length)
+        }
+        return uri
     }
 
     /** Exact origin and Allow-Credentials. `*` is invalid once credentials are allowed. */
@@ -111,4 +117,10 @@ class CorsFilter : OncePerRequestFilter() {
         response.setHeader("Access-Control-Max-Age", "86400")
         response.setHeader("Vary", "Origin")
     }
+}
+
+private fun normalizeContextPath(raw: String): String {
+    val value = raw.trim().trimEnd('/')
+    if (value.isEmpty() || value == "/") return ""
+    return if (value[0] == '/') value else "/$value"
 }
