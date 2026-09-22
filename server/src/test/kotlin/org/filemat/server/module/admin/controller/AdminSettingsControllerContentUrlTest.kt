@@ -91,7 +91,7 @@ class AdminSettingsControllerContentUrlTest {
 
         assertEquals(200, response.statusCode.value())
         verify { settingService.set_contentBaseUrl(any(), "https://example.com") }
-        assertTrue(CorsOriginRegistry.isAllowed("https://admin-set-cors.example"))
+        assertFalse(CorsOriginRegistry.isAllowed("https://admin-set-cors.example"))
     }
 
     @Test

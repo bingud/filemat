@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.StringUtils
+import org.filemat.server.config.CorsOriginRegistry
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.remainingMaxAge
@@ -29,6 +30,7 @@ class ContentSessionService {
         if (authToken.remainingMaxAge() <= 0) return Result.reject("Session expired.")
 
         val ticket = StringUtils.randomString(64)
+        CorsOriginRegistry.bind(authToken.authToken, authToken.userId, origin)
         tickets.put(
             ticket,
             ContentSessionTicket(

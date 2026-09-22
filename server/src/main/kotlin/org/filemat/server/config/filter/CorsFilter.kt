@@ -3,6 +3,7 @@ package org.filemat.server.config.filter
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.filemat.server.common.util.getAuthToken
 import org.filemat.server.config.CorsOriginRegistry
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
@@ -15,7 +16,7 @@ class CorsFilter : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val origin = request.getHeader("Origin")
         val crossOrigin = origin != null && !CorsOriginRegistry.isSameOrigin(request, origin)
-        val allowCors = origin != null && crossOrigin && CorsOriginRegistry.isAllowed(origin)
+        val allowCors = origin != null && crossOrigin && CorsOriginRegistry.allows(request.getAuthToken(), origin)
 
         if (allowCors) {
             applyCors(response, origin)

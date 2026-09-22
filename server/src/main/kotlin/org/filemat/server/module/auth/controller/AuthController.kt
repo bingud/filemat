@@ -56,7 +56,6 @@ class AuthController(
         contentSessionService.createTicket(authToken, origin).let {
             if (it.rejected) return bad(it.error)
             if (it.isNotSuccessful) return internal(it.error)
-            CorsOriginRegistry.remember(origin)
             return ok(it.value)
         }
     }

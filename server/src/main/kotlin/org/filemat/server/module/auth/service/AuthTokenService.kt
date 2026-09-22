@@ -7,6 +7,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.config.CorsOriginRegistry
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.repository.AuthTokenRepository
@@ -76,6 +77,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
             } else {
                 authTokenRepository.removeTokensByUserIdWithExclusion(userId.toString(), excludedToken)
             }
+            CorsOriginRegistry.unbindUser(userId, excludedToken)
             return Result.ok()
         } catch (e: Exception) {
             logService.error(
@@ -125,6 +127,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
     fun deleteToken(token: String, userAction: UserAction): Result<Unit> {
         try {
             authTokenRepository.deleteToken(token)
+            CorsOriginRegistry.unbind(token)
             return Result.ok()
         } catch (e: Exception) {
             logService.error(

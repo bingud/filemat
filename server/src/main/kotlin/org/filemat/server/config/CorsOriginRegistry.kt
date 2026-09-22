@@ -1,25 +1,53 @@
 package org.filemat.server.config
 
+import com.github.f4b6a3.ulid.Ulid
 import jakarta.servlet.http.HttpServletRequest
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * SPA origins recorded when a logged-in client mints a content-session ticket.
+ * SPA origin bound to the auth token that minted a content session.
  *
- * Used as the CORS allowlist when the browser later calls a different host
- * that still serves this same Filemat instance.
+ * Credentialed CORS is allowed only when the request cookie's token was bound to
+ * that origin. A request with no cookie is allowed when some live session was
+ * bound to the origin, so ticket redeem and preflight can run.
  */
 object CorsOriginRegistry {
-    private val origins = ConcurrentHashMap.newKeySet<String>()
+    private data class Binding(val userId: Ulid, val origin: String)
 
-    fun remember(origin: String) {
-        val clean = origin.trim().trimEnd('/')
-        if (clean.isNotEmpty()) origins.add(clean)
+    private val bindings = ConcurrentHashMap<String, Binding>()
+
+    fun bind(authToken: String, userId: Ulid, origin: String) {
+        val canonical = canonicalOrigin(origin) ?: return
+        if (authToken.isBlank()) return
+        bindings[authToken] = Binding(userId, canonical)
+    }
+
+    fun unbind(authToken: String) {
+        if (authToken.isNotBlank()) bindings.remove(authToken)
+    }
+
+    fun unbindUser(userId: Ulid, excludedToken: String? = null) {
+        val tokens = bindings.filter { (token, binding) ->
+            binding.userId == userId && token != excludedToken
+        }.keys
+        tokens.forEach { bindings.remove(it) }
     }
 
     fun isAllowed(origin: String): Boolean {
-        return origins.contains(origin.trim().trimEnd('/'))
+        return allows(null, origin)
+    }
+
+    /**
+     * [authToken] is the content-session cookie. When it is present, only that
+     * token's origin matches. When it is absent, any bound session for [origin] matches.
+     */
+    fun allows(authToken: String?, origin: String): Boolean {
+        val canonical = canonicalOrigin(origin) ?: return false
+        if (!authToken.isNullOrBlank()) {
+            return bindings[authToken]?.origin == canonical
+        }
+        return bindings.values.any { it.origin == canonical }
     }
 
     /**
