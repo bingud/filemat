@@ -15,9 +15,10 @@ export function joinContentUrl(path: string): string {
 }
 
 export function isCrossOriginUrl(url: string): boolean {
-    if (!url.startsWith(`http://`) && !url.startsWith(`https://`)) return false
     try {
-        return new URL(url, window.location.href).origin !== window.location.origin
+        const parsed = new URL(url, window.location.href)
+        if (parsed.protocol !== `http:` && parsed.protocol !== `https:`) return false
+        return parsed.origin !== window.location.origin
     } catch {
         return false
     }
