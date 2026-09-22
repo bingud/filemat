@@ -111,6 +111,16 @@ class SettingServiceContentUrlTest {
     }
 
     @Test
+    fun `rejects a content base URL with a query or fragment`() {
+        val query = service.set_contentBaseUrl(principal(), "https://cdn.example?tenant=x")
+        val fragment = service.set_contentBaseUrl(principal(), "https://cdn.example/#files")
+
+        assertTrue(query.rejected)
+        assertTrue(fragment.rejected)
+        verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
+    }
+
+    @Test
     fun `rejects content base URL when locked by env`() {
         mockkObject(State.App.ContentBaseUrl)
         try {
