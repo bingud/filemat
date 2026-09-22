@@ -9,6 +9,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
+import org.filemat.server.config.auth.Cors
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
@@ -308,6 +309,7 @@ class FileController(
      * Optionally returns a byte range
      */
     @Unauthenticated
+    @Cors
     @RequestMapping("/content")
     fun streamFileContentMapping(
         request: HttpServletRequest,
@@ -408,6 +410,7 @@ class FileController(
      * Returns a stream of ZIP file of multiple selected files
      */
     @Unauthenticated
+    @Cors
     @PostMapping("/zip-multiple-content")
     fun streamMultipleContentZipMapping(
         request: HttpServletRequest,

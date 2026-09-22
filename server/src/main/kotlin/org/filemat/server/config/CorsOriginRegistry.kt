@@ -38,6 +38,11 @@ object CorsOriginRegistry {
         return allows(null, origin)
     }
 
+    /** True when [authToken] has a row. The row's origin may still differ. */
+    fun isBound(authToken: String): Boolean {
+        return authToken.isNotBlank() && bindings.containsKey(authToken)
+    }
+
     /**
      * [authToken] is the content-session cookie. When it is present, only that
      * token's origin matches. When it is absent, any bound session for [origin] matches.

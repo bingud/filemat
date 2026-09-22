@@ -16,6 +16,7 @@
     import { selectSiblingFile } from "../../_code/fileBrowserUtil.svelte";
     import OpenFileAsCategoryButton from "../button/OpenFileAsCategoryButton.svelte";
     import FileNavZone from "../ui/FileNavZone.svelte";
+    import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { contentCrossOrigin, isCrossOriginUrl } from "$lib/code/util/contentUrl";
     
     let meta = $derived(filesState.data.fileMeta) 
@@ -86,7 +87,7 @@
                 persistVolume: true,
                 html5: {
                     vhs: {
-                        withCredentials: isCrossOriginUrl(filesState.data.contentUrl!),
+                        withCredentials: auth.authenticated === true && isCrossOriginUrl(filesState.data.contentUrl!),
                     },
                 },
                 sources: [{
@@ -184,7 +185,7 @@
                         </video>
                     </div>
                 {:else if fileCategory === "audio"}
-                    <audio bind:volume={audioVolume} src={filesState.data.contentUrl} controls></audio>
+                    <audio bind:volume={audioVolume} src={filesState.data.contentUrl} crossorigin={contentCrossOrigin()} controls></audio>
                 {:else if fileCategory === "pdf"}
                     <iframe src={filesState.data.contentUrl} title={meta.path} class="w-full h-full"></iframe>
                 {/if}
