@@ -54,10 +54,9 @@ sudo docker run -d \
 
 ### Reverse proxy
 
-When Filemat runs behind a reverse proxy, the proxy must forward the original client IP using the `X-Forwarded-For` header.
+When Filemat runs behind a reverse proxy, these headers must be forwarded:
 
-Filemat reads `X-Forwarded-For` as the client IP. If the header is missing, it uses the actual request IP directly.
+- `X-Forwarded-For`: client IP, for rate limiting and audit logs. If missing, the connection IP is used.
+- `X-Forwarded-Proto`: the browser scheme (`https` or `http`).
 
-User IPs are used for:
-- Rate limiting logins and similar protected actions
-- Recording user IP in audit/security logs
+The browser's `Host` header must also be forwarded.

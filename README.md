@@ -88,9 +88,12 @@ Input multiple values by putting a colon in between (`/one:/two`)
   It's easy to configure volumes later with Docker compose.
 
 - **Reverse proxy**<br>
-  When Filemat runs behind a reverse proxy, the proxy must forward the original client IP using the `X-Forwarded-For` header.<br>
-  If the header is missing, Filemat uses the actual request IP directly.<br>
-  User IPs are used for rate limiting and audit/security logs.
+  When Filemat runs behind a reverse proxy, the proxy must forward these headers:<br>
+  - `X-Forwarded-For` for the original user IP.<br>
+    If the header is missing, Filemat uses the actual request IP directly.<br>
+    User IPs are used for rate limiting and audit/security logs.<br>
+  - `X-Forwarded-Proto` for the browser scheme (`https` or `http`).<br>
+  - `Host` header must also be forwarded.
 
 ## Technical details
 
