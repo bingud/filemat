@@ -230,7 +230,10 @@ fun String.isAbsoluteHttpsUrl(): Boolean {
     if (isBlank()) return false
     return try {
         val uri = URI(trim())
-        uri.scheme?.lowercase() == "https" && !uri.host.isNullOrBlank()
+        uri.scheme?.lowercase() == "https"
+            && !uri.host.isNullOrBlank()
+            && uri.rawQuery == null
+            && uri.rawFragment == null
     } catch (_: Exception) {
         false
     }
