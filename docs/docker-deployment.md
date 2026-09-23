@@ -57,6 +57,8 @@ sudo docker run -d \
 When Filemat runs behind a reverse proxy, these headers must be forwarded:
 
 - `X-Forwarded-For`: client IP, for rate limiting and audit logs. If missing, the connection IP is used.
-- `X-Forwarded-Proto`: the browser scheme (`https` or `http`).
 
-The browser's `Host` header must also be forwarded.
+If you also configure a different content server URL, Filemat requires these headers:
+
+- `X-Forwarded-Proto`: the browser scheme (`https` or `http`).
+- `Host`

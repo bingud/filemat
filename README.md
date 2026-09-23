@@ -34,6 +34,7 @@ Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org
 - Java 17
 - (Or just Docker)
 
+> To configure an alternative content server URL, your browser must allow third-party cookies.
 
 ## Installation
 
@@ -92,8 +93,10 @@ Input multiple values by putting a colon in between (`/one:/two`)
   - `X-Forwarded-For` for the original user IP.<br>
     If the header is missing, Filemat uses the actual request IP directly.<br>
     User IPs are used for rate limiting and audit/security logs.<br>
+
+  If you also configure a different content server URL, Filemat requires these headers:<br>
   - `X-Forwarded-Proto` for the browser scheme (`https` or `http`).<br>
-  - `Host` header must also be forwarded.
+  - `Host`
 
 ## Technical details
 
