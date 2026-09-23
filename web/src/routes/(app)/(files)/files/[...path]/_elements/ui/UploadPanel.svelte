@@ -203,7 +203,7 @@
 
                         <!-- Buttons -->
                         <div class="w-[4.1rem] gap-[0.1rem] h-8 flex justify-end">
-                            {#if up.status === "uploading"}
+                            {#if up.status === "uploading" || up.status === "queued"}
                                 <button
                                     on:click={() => { onPauseUpload(up) }}
                                     disabled={up.action === "pausing"}

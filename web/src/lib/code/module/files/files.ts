@@ -702,11 +702,18 @@ async function resolveCompleteServerUpload(
 }
 
 /**
- * Pause an in-flight upload by aborting the current request (keeps server bytes).
+ * Pause an upload. Queued items are parked immediately so they do not auto-start.
+ * In-flight uploads abort the current request and keep server bytes.
  */
 export async function pauseUpload(fileUpload: FileUpload) {
-    if (fileUpload.status !== `uploading` || !fileUpload.upload) return
     if (fileUpload.action) return
+
+    if (fileUpload.status === `queued`) {
+        fileUpload.status = `paused`
+        return
+    }
+
+    if (fileUpload.status !== `uploading` || !fileUpload.upload) return
 
     fileUpload.action = `pausing`
     if (fileUpload.upload.url) {
@@ -762,9 +769,10 @@ export async function resumeUpload(fileUpload: FileUpload) {
 /** Pause every active upload; park queued ones so they do not auto-start. */
 export async function pauseAllUploads() {
     const list = [...uploadState.list]
+    // Park queued uploads first so aborting in-flight ones cannot start them.
     for (const up of list) {
         if (up.status === `queued`) {
-            up.status = `paused`
+            await pauseUpload(up)
         }
     }
     for (const up of list) {
