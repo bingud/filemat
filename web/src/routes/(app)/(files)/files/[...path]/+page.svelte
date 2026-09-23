@@ -1,6 +1,6 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isPathDirectChild as isPathDirectChildOf, letterS, parentFromPath, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isFolder, isPathDirectChild as isPathDirectChildOf, letterS, parentFromPath, unixNow } from "$lib/code/util/codeUtil.svelte"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -139,6 +139,12 @@
             } else if (pathIsChild && filesState.data.fileMeta != null) {
                 // Sibling/other child file: drop file bytes only, keep folder list
                 filesState.clearFileData()
+            } else if (pathIsChild && filesState.data.fileMeta == null) {
+                // Sub-folder
+                const child = filesState.data.entryMap.get(newPath)
+                if (child && isFolder(child)) {
+                    filesState.ui.visibilityManager.clearUnusedPreviews()
+                }
             } else if (!pathIsChild && !pathIsParentFolder) {
                 // Unrelated path: full reset
                 filesState.clearAllState()

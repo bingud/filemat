@@ -129,7 +129,7 @@ class FilesState {
      */
     clearAllState() {
         this.data.clear()
-        this.ui.clear()
+        this.ui.destroy()
         this.search.clear()
     }
 
@@ -361,6 +361,12 @@ class FileUiStateClasss {
         this.fileSortingMenuPopoverOpen = false
         this.fileNavZoneLastMousePosition = { y: 0, x: 0 }
     }
+
+    destroy() {
+        this.clear()
+        this.visibilityManager.destroy()
+        this.searchVisibilityManager.destroy()
+    }
 }
 
 class FileDataStateClass {
@@ -410,6 +416,7 @@ class FileDataStateClass {
         this.contentFilePath = null
 
         filesState.currentFile.clear()
+        filesState.ui.visibilityManager.clearUnusedPreviews()
     }
 
     clearOpenContent() {
@@ -458,6 +465,7 @@ class FileSearchStateClass {
         this.searchPath = null
         filesState.selectedEntries.searchList = []
         filesState.selectedEntries.searchSet.clear()
+        filesState.ui.searchVisibilityManager.clearUnusedPreviews()
     }
 }
 
@@ -509,23 +517,32 @@ export let filesState: FilesState
  * @returns class nonce
  */
 export function createFilesState(meta: StateMetadata): number | null {
-    if (filesState) {
-        console.log(`FilesState recreated`)
-    } else {
-        console.log(`FilesState created`)
-    }
-    
+    const filesStateExisted = !!filesState
+
+    destroyFilesState(appState.filesStateNonce)
+
     filesState = new FilesState()
     appState.filesStateNonce = generateRandomNumber()
     filesState.meta = meta
 
     loadFilePreferenceSettings()
 
+    if (filesStateExisted) {
+        console.log(`FilesState recreated`)
+    } else {
+        console.log(`FilesState created`)
+    }
+
     return appState.actualFilesStanceNonce
 }
 
 export function destroyFilesState(nonce: number | null) {
     if (appState.actualFilesStanceNonce === nonce) {
+        if (filesState) {
+            try {
+                filesState.clearAllState()
+            } catch (e) {}
+        }
         filesState = undefined!
         appState.filesStateNonce = null
         console.log(`FilesState destroyed`)

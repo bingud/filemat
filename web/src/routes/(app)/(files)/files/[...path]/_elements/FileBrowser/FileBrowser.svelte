@@ -31,10 +31,7 @@
         window.addEventListener('keydown', handleKeyDown)
         
         return () => {
-            // Clean up listener when component unmounts
             window.removeEventListener('keydown', handleKeyDown)
-            filesState.ui.visibilityManager.destroy()
-            filesState.ui.searchVisibilityManager.destroy()
         }
     })
 

@@ -248,7 +248,9 @@ export class VisibilityManager {
             },
             destroy: () => {
                 this.observer?.unobserve(node)
+                const oldPath = this.entryElements.get(node)
                 this.entryElements.delete(node)
+                if (oldPath) this.visibleEntryPaths.delete(oldPath)
             }
         }
     }
@@ -294,7 +296,9 @@ export class VisibilityManager {
             },
             destroy: () => {
                 this.observer?.unobserve(node)
+                const oldPath = this.entryElements.get(node)
                 this.entryElements.delete(node)
+                if (oldPath) this.visibleEntryPaths.delete(oldPath)
             }
         }
     }
@@ -310,9 +314,7 @@ export class VisibilityManager {
         if (path) {
             const existing = this.imageMap.get(path)
             if (existing && existing !== img && this.headlessImages.has(existing)) {
-                this.pending.delete(existing)
-                this.headlessImages.delete(existing)
-                this.nodeToPath.delete(existing)
+                this.dropHeadless(existing)
             }
             this.imageMap.set(path, img)
             this.nodeToPath.set(img, path)
@@ -357,6 +359,8 @@ export class VisibilityManager {
      * the headless image is replaced and the browser serves the data from the service worker cache.
      */
     preloadAllPreviews(entries: FullFileMetadata[], pixelSize: number) {
+        this.clearUnusedPreviews(entries.map(entry => entry.path))
+
         const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
 
         let added = false
@@ -387,6 +391,20 @@ export class VisibilityManager {
         }
     }
 
+    /**
+     * Drop queued thumbnails that are no longer in the open folder, and discard
+     * hidden preload images for those paths. In-list <img> nodes are left alone
+     * until Svelte unmounts them.
+     */
+    clearUnusedPreviews(keepPaths: string[] = []) {
+        const keep = new Set(keepPaths)
+        for (const [path, img] of [...this.imageMap.entries()]) {
+            if (keep.has(path)) continue
+            this.unqueue(img)
+            if (this.headlessImages.has(img)) this.dropHeadless(img)
+        }
+    }
+
     // Cleans up an image from all queues and observers.
     // When loadAllPreviews is enabled and a real (non-headless) image is unregistered
     // (e.g. entry went back to skeleton), a headless replacement is created so the
@@ -396,13 +414,10 @@ export class VisibilityManager {
         const wasInPending = this.pending.has(img)
         const dataSrc = img.getAttribute(`data-src`)
 
-        this.pending.delete(img)
-        this.highPriority.delete(img)
-        this.lowPriority.delete(img)
+        this.unqueue(img)
+        this.loading.delete(img)
         this.loadingFromNetwork.delete(img)
         this.headlessImages.delete(img)
-        this.observer?.unobserve(img)
-        this.visibleImageObserver?.unobserve(img)
         
         const path = this.nodeToPath.get(img)
         if (path) {
@@ -424,6 +439,27 @@ export class VisibilityManager {
                 this.scheduleImageLoad()
             }
         }
+    }
+
+    private unqueue(img: HTMLImageElement) {
+        this.pending.delete(img)
+        this.highPriority.delete(img)
+        this.lowPriority.delete(img)
+        this.observer?.unobserve(img)
+        this.visibleImageObserver?.unobserve(img)
+    }
+
+    private dropHeadless(img: HTMLImageElement) {
+        this.unqueue(img)
+        this.loading.delete(img)
+        this.loadingFromNetwork.delete(img)
+        this.headlessImages.delete(img)
+        img.onload = null
+        img.onerror = null
+        img.removeAttribute(`src`)
+        const path = this.nodeToPath.get(img)
+        if (path && this.imageMap.get(path) === img) this.imageMap.delete(path)
+        this.nodeToPath.delete(img)
     }
 
     private scheduleImageLoad() {
@@ -610,6 +646,7 @@ export class VisibilityManager {
             this.rafId = null
         }
 
+        this.clearUnusedPreviews()
         this.observer?.disconnect()
         this.observer = null
         this.visibleImageObserver?.disconnect()
