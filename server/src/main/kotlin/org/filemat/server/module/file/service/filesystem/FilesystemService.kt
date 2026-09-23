@@ -34,7 +34,7 @@ class FilesystemService(
         }catch (e: NoSuchFileException) {
             return Result.notFound()
         } catch (e: Exception) {
-            return Result.error("Failed to get file size.")
+            return Result.error("Failed to get file size.", exception = e)
         }
     }
 
@@ -43,7 +43,7 @@ class FilesystemService(
             Files.createDirectories(folder.path)
             Result.ok()
         } catch (e: Exception) {
-            Result.error("Failed to create folder.")
+            Result.error("Failed to create folder.", exception = e)
         }
     }
 
@@ -52,7 +52,7 @@ class FilesystemService(
             Files.createFile(path.path)
             Result.ok()
         } catch (e: Exception) {
-            Result.error("Failed to create file.")
+            Result.error("Failed to create file.", exception = e)
         }
     }
 
@@ -80,7 +80,7 @@ class FilesystemService(
         } catch (e: NoSuchFileException) {
             Result.notFound()
         } catch (e: Exception) {
-            Result.error("Failed to replace file contents.")
+            Result.error("Failed to replace file contents.", exception = e)
         } finally {
             runCatching { Files.deleteIfExists(replacementTemp) }
         }
@@ -155,7 +155,7 @@ class FilesystemService(
                 return Result.ok(stream.iterator().hasNext() == false)
             }
         } catch (e: Exception) {
-            return Result.error("Failed to check if folder is empty.")
+            return Result.error("Failed to check if folder is empty.", exception = e)
         }
     }
 
@@ -173,7 +173,7 @@ class FilesystemService(
         } catch (e: NoSuchFileException) {
             Result.notFound()
         } catch (e: Exception) {
-            Result.error("Failed to walk directory.")
+            Result.error("Failed to walk directory.", exception = e)
         }
     }
 

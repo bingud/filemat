@@ -15,7 +15,6 @@ import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.auth.service.AuthTokenService
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.PlainFolderVisibility
-import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.log.model.LogLevel
@@ -24,6 +23,7 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.role.service.UserRoleService
 import org.filemat.server.module.service.AppService
 import org.filemat.server.module.setting.service.SettingService
+import org.filemat.server.module.setting.service.component.ThumbCacheSettingService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.service.UserService
@@ -55,6 +55,7 @@ class SetupController(
     private val authTokenService: AuthTokenService,
     private val fileVisibilityService: FileVisibilityService,
     private val tusService: TusService,
+    private val thumbCacheSettingService: ThumbCacheSettingService,
 ) : AController() {
 
     val submitLock = Locker()
@@ -102,6 +103,10 @@ class SetupController(
         @RequestParam("follow-symlinks") rawFollowSymlinks: String,
         @RequestParam("setup-code") setupCode: String,
         @RequestParam("upload-folder-path") rawUploadFolderPath: String,
+        @RequestParam("thumbnail-cache-enabled") rawThumbnailCacheEnabled: String,
+        @RequestParam("thumbnail-cache-folder-path", required = false) rawThumbnailCacheFolderPath: String?,
+        @RequestParam("thumbnail-cache-max-size-mb", required = false) rawThumbnailCacheMaxSizeMb: String?,
+        @RequestParam("thumbnail-cache-max-age", required = false) rawThumbnailCacheMaxAge: String?,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
         val ip = request.realIp()
         if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
@@ -113,6 +118,23 @@ class SetupController(
             ?: Validator.username(username)
         )?.let { return@run bad(it, "validation") }
         val uploadFolderPath = FilePath.of(rawUploadFolderPath)
+        val thumbnailCacheEnabled = rawThumbnailCacheEnabled.toBooleanStrictOrNull()
+            ?: return@run bad("Thumbnail caching must be true or false.", "validation")
+        val thumbnailCacheFolderPath = rawThumbnailCacheFolderPath
+            ?.takeIf { it.isNotBlank() }
+            ?.let { FilePath.of(it) }
+        val thumbnailCacheMaxSizeMb = if (rawThumbnailCacheMaxSizeMb.isNullOrBlank()) {
+            null
+        } else {
+            rawThumbnailCacheMaxSizeMb.toIntOrNull()
+                ?: return@run bad("Thumbnail cache max size must be a number.", "validation")
+        }
+        val thumbnailCacheMaxAge = if (rawThumbnailCacheMaxAge.isNullOrBlank()) {
+            null
+        } else {
+            rawThumbnailCacheMaxAge.toLongOrNull()
+                ?: return@run bad("Thumbnail cache expiration must be a number.", "validation")
+        }
 
         val codeVerification = appService.verifySetupCode(setupCode)
         if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
@@ -211,9 +233,28 @@ class SetupController(
                 return@runTransaction Result.error("Failed to save folder visibility configuration to database.")
             }
 
+            // Save thumbnail cache settings
+            thumbCacheSettingService.saveForSetup(
+                initiatorId = user.userId,
+                isEnabled = thumbnailCacheEnabled,
+                folderPath = thumbnailCacheFolderPath,
+                maxSizeMb = thumbnailCacheMaxSizeMb,
+                maxAge = thumbnailCacheMaxAge,
+            ).let { result ->
+                if (result.rejected) {
+                    status.setRollbackOnly()
+                    return@runTransaction result
+                }
+                if (result.isNotSuccessful) {
+                    status.setRollbackOnly()
+                    return@runTransaction Result.error(result.errorOrNull ?: "Failed to save thumbnail cache settings.")
+                }
+            }
+
             return@runTransaction Result.ok(Unit)
         }
 
+        if (result.rejected) return@run bad(result.error, "validation")
         if (result.isNotSuccessful) return@run internal(result.error, "failure")
 
         logService.createLog(

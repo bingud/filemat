@@ -57,6 +57,81 @@ class ThumbCacheSettingService(
         }
     }
 
+    /**
+     * Saves thumbnail cache settings during first-time setup.
+     */
+    fun saveForSetup(
+        initiatorId: Ulid,
+        isEnabled: Boolean,
+        folderPath: FilePath?,
+        maxSizeMb: Int?,
+        maxAge: Long?,
+    ): Result<Unit> {
+        if (maxSizeMb != null && maxSizeMb < 1) return Result.reject("Max Size parameter is too low.")
+        if (maxAge != null && maxAge < 1) return Result.reject("Expiration time is too low.")
+        if (folderPath != null && folderPath.pathString == "/") return Result.reject("Thumbnail folder cannot be root.")
+        if (isEnabled && folderPath == null) {
+            return Result.reject("Thumbnail cache folder is required when caching is enabled.")
+        }
+
+        settingService.db_setSetting(Props.Settings.ThumbCache.enabled, isEnabled.toString()).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
+        if (folderPath != null) {
+            settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folderPath.pathString).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+            if (isEnabled) {
+                filesystemService.createFolder(folderPath).let {
+                    if (it.isSuccessful) return@let
+
+                    logService.error(
+                        type = LogType.SYSTEM,
+                        action = UserAction.APP_SETUP,
+                        description = "Failed to create thumbnail cache folder during setup. Path: [$folderPath]",
+                        message = it.exception?.stackTraceToString() ?: (it.errorOrNull ?: ""),
+                        initiatorId = initiatorId,
+                    )
+
+                    return Result.error("Failed to create thumbnail cache folder.")
+                }
+            }
+        }
+
+        if (maxSizeMb != null) {
+            settingService.db_setSetting(Props.Settings.ThumbCache.maxSizeMb, maxSizeMb.toString()).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+        }
+
+        if (maxAge != null) {
+            settingService.db_setSetting(Props.Settings.ThumbCache.maxAge, maxAge.toString()).let {
+                if (it.isNotSuccessful) return it.cast()
+            }
+        }
+
+        logService.info(
+            type = LogType.AUDIT,
+            action = UserAction.APP_SETUP,
+            description = "Thumbnail cache settings saved during application setup.",
+            message = buildString {
+                append("Enabled: $isEnabled")
+                folderPath?.let { append("\nFolder: $it") }
+                maxSizeMb?.let { append("\nMax size: $it MB") }
+                maxAge?.let { append("\nMax age: ${formatSecondsToReadableTime(it)}") }
+            },
+            initiatorId = initiatorId,
+        )
+
+        State.ThumbCache.isEnabled = isEnabled
+        State.ThumbCache.folderPath = folderPath?.pathString
+        State.ThumbCache.maxSizeMb = maxSizeMb
+        State.ThumbCache.maxAge = maxAge
+
+        return Result.ok()
+    }
+
     fun set_thumbnail(
         user: Principal,
         isEnabled: Boolean?,
@@ -99,7 +174,7 @@ class ThumbCacheSettingService(
 
                 if (shouldMoveCache) {
                     filesystemService.moveFile(
-                        source = previousFolderPath!!,
+                        source = previousFolderPath,
                         destination = folderPath,
                         user = user,
                         ignorePermissions = true,

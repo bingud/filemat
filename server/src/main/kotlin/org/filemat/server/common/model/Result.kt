@@ -7,15 +7,15 @@ data class Result<T>(
     private val inputError: String? = null,
     private val inputNotFound: Boolean = false,
     private val rejectInput: String? = null,
-//    var source: String? = null,
+    private val inputException: Exception? = null,
 ) {
 
     companion object {
         fun <T> ok(value: T): Result<T> = Result(inputValue = value)
         fun ok(): Result<Unit> = Result()
-        fun <T> error(message: String): Result<T> = Result(inputError = message)
-        fun <T> notFound(): Result<T> = Result(inputNotFound = true)
-        fun <T> reject(message: String): Result<T> = Result(rejectInput = message)
+        fun <T> error(message: String, exception: Exception? = null): Result<T> = Result(inputError = message, inputException = exception)
+        fun <T> notFound(exception: Exception? = null): Result<T> = Result(inputNotFound = true, inputException = exception)
+        fun <T> reject(message: String, exception: Exception? = null): Result<T> = Result(rejectInput = message, inputException = exception)
 
 //        fun <T> error(message: String, source: String? = null): Result<T> = Result(inputError = message, source = source)
 //        fun <T> notFound(source: String? = null): Result<T> = Result(inputNotFound = true, source = source)
@@ -53,6 +53,9 @@ data class Result<T>(
 
     val valueOrNull: T?
         get() = inputValue
+
+    val exception: Exception?
+        get() = inputException
 }
 
 fun <T> T.toResult(): Result<T> {

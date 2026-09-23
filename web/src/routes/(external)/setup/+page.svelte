@@ -38,6 +38,12 @@
     // Section 4
     let uploadPathInput = $state("/tmp/filemat")
 
+    // Section 5
+    let thumbnailCacheEnabled = $state(true)
+    let thumbnailCacheFolderInput = $state(`/var/cache/filemat`)
+    let thumbnailCacheMaxSizeMb = $state<number | null>(512)
+    let thumbnailCacheMaxAgeHours = $state<number | null>(168)
+
     onMount(async () => {
         await getSetupStatus()
     })
@@ -47,6 +53,11 @@
     function increasePhase() { lastPhase = phase; phase++ }
     function decreasePhase() { lastPhase = phase; phase-- }
     function setPhase(newPhase: typeof phase) { lastPhase = phase; phase = newPhase }
+
+    function goBack() {
+        if (running || phase <= 1) return
+        decreasePhase()
+    }
 
     function closePopup() { history.back() }
     function openPopup(newPopupPhase: typeof page.state.popupPhase) {
@@ -117,6 +128,22 @@
     }
 
     async function submit_4() {
+        increasePhase()
+    }
+
+    async function submit_5() {
+        if (thumbnailCacheEnabled && isBlank(thumbnailCacheFolderInput)) {
+            toast.error(`Thumbnail cache folder is required when caching is enabled.`)
+            return
+        }
+        if (typeof thumbnailCacheMaxSizeMb === `number` && thumbnailCacheMaxSizeMb < 1) {
+            toast.error(`Max cache size must be at least 1 MB.`)
+            return
+        }
+        if (typeof thumbnailCacheMaxAgeHours === `number` && thumbnailCacheMaxAgeHours < 1) {
+            toast.error(`Thumbnail expiration must be at least 1 hour.`)
+            return
+        }
         await submit_finish()
     }
 
@@ -135,6 +162,16 @@
             body.append("follow-symlinks", followSymlinks.toString())
             body.append("setup-code", codeInput)
             body.append("upload-folder-path", uploadPathInput)
+            body.append("thumbnail-cache-enabled", thumbnailCacheEnabled.toString())
+            if (!isBlank(thumbnailCacheFolderInput)) {
+                body.append("thumbnail-cache-folder-path", thumbnailCacheFolderInput)
+            }
+            if (typeof thumbnailCacheMaxSizeMb === `number` && Number.isFinite(thumbnailCacheMaxSizeMb)) {
+                body.append("thumbnail-cache-max-size-mb", thumbnailCacheMaxSizeMb.toString())
+            }
+            if (typeof thumbnailCacheMaxAgeHours === `number` && Number.isFinite(thumbnailCacheMaxAgeHours)) {
+                body.append("thumbnail-cache-max-age", Math.round(thumbnailCacheMaxAgeHours * 3600).toString())
+            }
 
             const response = await safeFetch(`/api/v1/setup/submit`, { method: "POST", body: body })
             if (response.failed) {
@@ -249,7 +286,8 @@
                     <label for="repeat-password-input">Repeat Password</label>
                     <input type="password" bind:value={repeatPasswordInput} minlength="1" maxlength="256" required title="Repeat your password" id="repeat-password-input" class="basic-input">
 
-                    <button type="submit" class="basic-input-button">{running ? "..." : "Continue"}</button>
+                    <button type="submit" class="basic-input-button mb-4">{running ? "..." : "Continue"}</button>
+                    {@render backButton()}
                 </form>
             {:else if phase === 3}
                 <div class="flex flex-col items-center gap-2 shrink-0">
@@ -305,6 +343,7 @@
                         <p><button title="Open information about symbolic links" on:click={openInfo_symbolicLinks} class="underline hover:text-blue-400">Click here</button> to learn about symbolic links.</p>
                     </div>
                     <button on:click={submit_3} class="basic-input-button">{#if !running}Continue{:else}...{/if}</button>
+                    {@render backButton()}
                 </div>
             {:else if phase === 4}
                 <div class="flex flex-col items-center gap-6">
@@ -316,10 +355,46 @@
                         <input type="text" bind:value={uploadPathInput} id="upload-folder-path-input" class="basic-input">
                         <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
                         <p class="text-sm text-neutral-500">Files will appear in: <CodeChunk>{uploadPathInput}/uploads</CodeChunk></p>
-                        <button type="submit" class="basic-input-button mt-4">{running ? "..." : "Continue"}</button>
+                        <button type="submit" class="basic-input-button my-4">{running ? "..." : "Continue"}</button>
+                        {@render backButton()}
                     </form>
                 </div>
             {:else if phase === 5}
+                <div class="flex flex-col items-center gap-12">
+                    <div class="flex flex-col items-center gap-6">
+                        <h1 class="text-2xl font">Thumbnail caching</h1>
+                        <p>Store generated image and video thumbnails on disk so they load faster next time</p>
+                    </div>
+                    
+                    <form class="flex flex-col gap-4 w-[20rem] max-w-full" on:submit|preventDefault={submit_5}>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="thumbnail-cache-enabled-input" bind:checked={thumbnailCacheEnabled}>
+                            <label for="thumbnail-cache-enabled-input">Enable thumbnail caching</label>
+                        </div>
+
+                        <div class="flex flex-col gap-2 {thumbnailCacheEnabled ? '' : 'opacity-60'}">
+                            <label for="thumbnail-cache-folder-input">Cache folder</label>
+                            <input type="text" bind:value={thumbnailCacheFolderInput} id="thumbnail-cache-folder-input" class="basic-input" required={thumbnailCacheEnabled}>
+                            <p class="text-sm text-neutral-500">This folder does not need to be exposed in Filemat.</p>
+                        </div>
+
+                        <div class="flex flex-col gap-2 {thumbnailCacheEnabled ? '' : 'opacity-60'}">
+                            <label for="thumbnail-cache-max-size-input">Max size (MB)</label>
+                            <input type="number" min="1" bind:value={thumbnailCacheMaxSizeMb} id="thumbnail-cache-max-size-input" class="basic-input">
+                            <p class="text-sm text-neutral-500">Leave empty for no size limit</p>
+                        </div>
+
+                        <div class="flex flex-col gap-2 {thumbnailCacheEnabled ? '' : 'opacity-60'}">
+                            <label for="thumbnail-cache-max-age-input">Expiration (hours)</label>
+                            <input type="number" min="1" bind:value={thumbnailCacheMaxAgeHours} id="thumbnail-cache-max-age-input" class="basic-input">
+                            <p class="text-sm text-neutral-500">Leave empty for no expiration</p>
+                        </div>
+
+                        <button type="submit" class="basic-input-button mt-4 mb-4">{running ? "..." : "Continue"}</button>
+                        {@render backButton()}
+                    </form>
+                </div>
+            {:else if phase === 6}
                 <div class="flex flex-col items-center gap-6 pt-[20svh]">
                     <h1 class="text-2xl font">Filemat was set up!</h1>
                     <a href="/" class="basic-input-button text-center">Continue</a>
@@ -368,3 +443,7 @@
         <Loader class="m-auto" />
     {/if}
 </div>
+
+{#snippet backButton()}
+    <button type="button" on:click={goBack} class="basic-input-button" disabled={running} title="Go to the previous setup step">Back</button>
+{/snippet}

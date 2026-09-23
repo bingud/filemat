@@ -8,6 +8,7 @@
 | `/var/lib/filemat/filemat-server.db` | SQLite database file |
 | `/var/lib/filemat/setup-code.txt` | Initial setup code file |
 | `/var/lib/filemat/auth-code.txt` | Sensitive action auth code file |
+| `/var/cache/filemat` | Default thumbnail cache folder |
 | `/tmp/filemat` | Default upload folder |
 
 ## Server

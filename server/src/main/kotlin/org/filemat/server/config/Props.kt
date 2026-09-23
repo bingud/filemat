@@ -17,6 +17,9 @@ object Props {
     const val setupCodeFile = "$dataFolder/setup-code.txt"
     const val authCodeFile = "$dataFolder/auth-code.txt"
     const val defaultUploadFolderPath = "/tmp/filemat"
+    const val defaultThumbnailCacheFolderPath = "/var/cache/filemat"
+    const val defaultThumbnailCacheMaxSizeMb = 512
+    const val defaultThumbnailCacheMaxAgeSeconds = 604800L
 
     val sensitiveFolders = SensitiveFolderPaths
     val nonDeletableFolders = NonDeletableSystemPaths

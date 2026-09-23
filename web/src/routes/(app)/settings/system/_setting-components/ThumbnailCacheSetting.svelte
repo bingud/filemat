@@ -180,6 +180,7 @@
 
 <div class="flex flex-col gap-2">
     <h3 class="font-medium">Thumbnail caching</h3>
+    <p class="text-sm text-neutral-500">Stores generated thumbnails on disk. The cache folder does not need to be exposed in Filemat.</p>
     {#if options && originalOptions}
         <div class="flex flex-col gap-6">
             <div class="flex flex-col gap-2">
