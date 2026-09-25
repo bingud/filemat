@@ -129,4 +129,31 @@ class FolderController(private val fileService: FileService) : AController() {
         return ok(serialized)
     }
 
+    @PostMapping("/size")
+    fun folderSizeMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()!!
+        val path = FilePath.of(rawPath)
+
+        val result = fileService.calculateFolderSize(
+            user = principal,
+            rawPath = path
+        )
+
+        if (result.rejected) return bad(result.error, "rejected")
+        if (result.notFound) return notFound()
+        if (result.hasError) return bad(result.error, "")
+
+        val size = result.value
+        val serialized = json {
+            put("fileCount", size.fileCount)
+            put("folderCount", size.folderCount)
+            put("totalSize", size.totalSize)
+            put("failedFolderCount", size.failedFolderCount)
+        }
+        return ok(serialized)
+    }
+
 }

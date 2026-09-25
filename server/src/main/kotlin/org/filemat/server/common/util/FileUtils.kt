@@ -1,14 +1,17 @@
 package org.filemat.server.common.util
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import org.apache.tika.Tika
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 
 val tika = Tika()
 
@@ -67,10 +70,12 @@ fun Path.safeWalk(
     with: FileLockService? = null,
     followDirectoryLinks: Boolean = false,
     include: (Path) -> Boolean = { true },
+    onListFailed: () -> Unit = {},
 ): Flow<Path> = safeWalk(
     with = with,
     followDirectoryLinks = followDirectoryLinks,
     include = include,
+    onListFailed = onListFailed,
     ancestorRealPaths = emptySet(),
 )
 
@@ -78,6 +83,7 @@ private fun Path.safeWalk(
     with: FileLockService?,
     followDirectoryLinks: Boolean,
     include: (Path) -> Boolean,
+    onListFailed: () -> Unit,
     ancestorRealPaths: Set<Path>,
 ): Flow<Path> = flow {
     val lock = with?.getLock(this@safeWalk, LockType.READ)
@@ -104,17 +110,71 @@ private fun Path.safeWalk(
                                 with = with,
                                 followDirectoryLinks = followDirectoryLinks,
                                 include = include,
+                                onListFailed = onListFailed,
                                 ancestorRealPaths = childAncestors,
                             )
                         )
                     }
                 }
             } catch (_: Exception) {
+                if (ancestorRealPaths.isNotEmpty()) onListFailed()
             }
         }
     } finally {
         if (lock != null) lock.unlock()
     }
+}
+
+data class FolderSize(
+    val fileCount: Long,
+    val folderCount: Long,
+    val totalSize: Long,
+    val failedFolderCount: Long,
+)
+
+/**
+ * Counts nested files and folders under this path. The starting folder is not included in [FolderSize.folderCount].
+ * Directory sizes are not summed. Symlinks count as files and are not followed.
+ */
+fun Path.measureFolderContents(with: FileLockService? = null): FolderSize {
+    var fileCount = 0L
+    var folderCount = 0L
+    var totalSize = 0L
+    var failedFolderCount = 0L
+    var skipRoot = true
+
+    runBlocking {
+        this@measureFolderContents.safeWalk(
+            with = with,
+            onListFailed = { failedFolderCount++ },
+        ).collect { path ->
+            if (skipRoot) {
+                skipRoot = false
+                return@collect
+            }
+
+            val attrs = try {
+                Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            } catch (_: Exception) {
+                return@collect
+            }
+
+            if (attrs.isDirectory && !attrs.isSymbolicLink) {
+                folderCount++
+                return@collect
+            }
+
+            fileCount++
+            totalSize += attrs.size()
+        }
+    }
+
+    return FolderSize(
+        fileCount = fileCount,
+        folderCount = folderCount,
+        totalSize = totalSize,
+        failedFolderCount = failedFolderCount,
+    )
 }
 
 data class PathRelationship(
