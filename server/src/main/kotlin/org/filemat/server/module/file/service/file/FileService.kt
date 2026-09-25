@@ -117,6 +117,15 @@ class FileService(
         ignorePermissions: Boolean = false,
     ): Result<List<FullFileMetadata>> = fileFolderEntriesService.getFolderEntries(user = user, canonicalPath = canonicalPath, foldersOnly = foldersOnly, ignorePermissions = ignorePermissions)
 
+    suspend fun calculateFolderSize(user: Principal, rawPath: FilePath): Result<FolderSize>
+            = fileFolderEntriesService.calculateFolderSize(user = user, rawPath = rawPath)
+
+    fun prepareFolderSize(user: Principal, rawPath: FilePath): Result<FilePath>
+            = fileFolderEntriesService.prepareFolderSize(user = user, rawPath = rawPath)
+
+    suspend fun measurePreparedFolderSize(canonicalPath: FilePath): Result<FolderSize>
+            = fileFolderEntriesService.measurePreparedFolderSize(canonicalPath = canonicalPath)
+
     // --- Metadata ---
 
     fun getFileOrFolderEntries(user: Principal, rawPath: FilePath, foldersOnly: Boolean = false): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>>

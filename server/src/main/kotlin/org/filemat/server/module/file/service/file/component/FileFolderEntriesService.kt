@@ -1,11 +1,17 @@
 package org.filemat.server.module.file.service.file.component
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.FolderSize
+import org.filemat.server.common.util.measureFolderContents
+import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
+import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
@@ -25,7 +31,8 @@ class FileFolderEntriesService(
     private val fileVisibilityService: FileVisibilityService,
     private val savedFileService: SavedFileService,
     private val filesystemService: FilesystemService,
-    private val logService: LogService
+    private val logService: LogService,
+    private val fileLockService: FileLockService,
 ) {
 
     fun getFolderEntries(
@@ -102,6 +109,42 @@ class FileFolderEntriesService(
         return entries.toResult()
     }
 
+    /**
+     * Recursively counts files, folders, and total size under [rawPath].
+     * Checks READ only on the requested folder. Descendants are counted without permission checks.
+     */
+    suspend fun calculateFolderSize(user: Principal, rawPath: FilePath): Result<FolderSize> = withContext(Dispatchers.IO) {
+        val prepared = prepareFolderSize(user, rawPath)
+        if (prepared.isNotSuccessful) return@withContext prepared.cast()
+        measurePreparedFolderSize(prepared.value)
+    }
+
+    fun prepareFolderSize(user: Principal, rawPath: FilePath): Result<FilePath> {
+        val pathResult = resolvePath(rawPath)
+        if (pathResult.isNotSuccessful) return pathResult.cast()
+        val canonicalPath = pathResult.value
+
+        val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath)
+        if (isAllowed.isNotSuccessful) return isAllowed.cast()
+
+        val followSymlinks = State.App.followSymlinks
+        val directoryOptions = if (followSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
+        if (!Files.isDirectory(canonicalPath.path, *directoryOptions)) {
+            return Result.reject("Path is not a directory.")
+        }
+
+        try {
+            Files.newDirectoryStream(canonicalPath.path).use { }
+        } catch (_: Exception) {
+            return Result.error("Failed to read this folder.")
+        }
+
+        return Result.ok(canonicalPath)
+    }
+
+    suspend fun measurePreparedFolderSize(canonicalPath: FilePath): Result<FolderSize> = withContext(Dispatchers.IO) {
+        canonicalPath.path.measureFolderContents(with = fileLockService)
+    }
 
     /**
      * Directly gets entries from a folder. Is not authenticated.
