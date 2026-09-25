@@ -209,6 +209,7 @@
 
     explicitEffect(() => [
         filesState.selectedEntries.singlePath,
+        filesState.ui.detailsOpen,
     ], () => {
         folderSizeResult = null
         folderSizeLoading = false
@@ -244,10 +245,10 @@
         }
 
         const json = response.json()
-        if (response.code.failed) {
+        if (response.code.failed || json?.fileCount == null) {
             handleErr({
                 description: `Failed to calculate folder size for path ${path}`,
-                notification: json.message || `Failed to calculate folder size.`,
+                notification: json?.message || `Failed to calculate folder size.`,
                 isServerDown: response.code.serverDown
             })
             return

@@ -1,11 +1,14 @@
 package org.filemat.server.common.util
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.runBlocking
 import org.apache.tika.Tika
+import org.filemat.server.common.model.Result
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import java.nio.file.Files
@@ -66,6 +69,10 @@ internal fun Set<Path>.plusWalkIdentity(path: Path): Set<Path> {
     return next
 }
 
+/**
+ * Depth-first walk that does not follow directory links.
+ * [onListFailed] runs when a directory cannot be listed, including the walk root.
+ */
 fun Path.safeWalk(
     with: FileLockService? = null,
     followDirectoryLinks: Boolean = false,
@@ -105,6 +112,7 @@ private fun Path.safeWalk(
                 // newDirectoryStream is lazy and allows catching access errors per directory
                 Files.newDirectoryStream(this@safeWalk).use { stream ->
                     for (path in stream) {
+                        currentCoroutineContext().ensureActive()
                         emitAll(
                             path.safeWalk(
                                 with = with,
@@ -116,8 +124,10 @@ private fun Path.safeWalk(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
-                if (ancestorRealPaths.isNotEmpty()) onListFailed()
+                onListFailed()
             }
         }
     } finally {
@@ -135,45 +145,68 @@ data class FolderSize(
 /**
  * Counts nested files and folders under this path. The starting folder is not included in [FolderSize.folderCount].
  * Directory sizes are not summed. Symlinks count as files and are not followed.
+ *
+ * Fails when the root path is never visited (for example a missed read lock) or when the root directory cannot be listed.
  */
-fun Path.measureFolderContents(with: FileLockService? = null): FolderSize {
+suspend fun Path.measureFolderContents(with: FileLockService? = null): Result<FolderSize> {
     var fileCount = 0L
     var folderCount = 0L
     var totalSize = 0L
     var failedFolderCount = 0L
     var skipRoot = true
+    var seenDescendant = false
+    var rootListFailed = false
 
-    runBlocking {
-        this@measureFolderContents.safeWalk(
-            with = with,
-            onListFailed = { failedFolderCount++ },
-        ).collect { path ->
-            if (skipRoot) {
-                skipRoot = false
-                return@collect
-            }
+    this@measureFolderContents.safeWalk(
+        with = with,
+        onListFailed = {
+            if (!seenDescendant) rootListFailed = true
+            else failedFolderCount++
+        },
+    ).collect { path ->
+        currentCoroutineContext().ensureActive()
 
-            val attrs = try {
-                Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-            } catch (_: Exception) {
-                return@collect
-            }
-
-            if (attrs.isDirectory && !attrs.isSymbolicLink) {
-                folderCount++
-                return@collect
-            }
-
-            fileCount++
-            totalSize += attrs.size()
+        if (skipRoot) {
+            skipRoot = false
+            return@collect
         }
+
+        seenDescendant = true
+
+        println("path: $path")
+        val attrs = try {
+            Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        } catch (_: Exception) {
+            return@collect
+        }
+
+        if (attrs.isDirectory && !attrs.isSymbolicLink) {
+            folderCount++
+            return@collect
+        }
+
+        fileCount++
+        totalSize += attrs.size()
     }
 
-    return FolderSize(
-        fileCount = fileCount,
-        folderCount = folderCount,
-        totalSize = totalSize,
-        failedFolderCount = failedFolderCount,
+    if (skipRoot) {
+        return if (with != null) {
+            Result.reject("This folder is currently being modified.")
+        } else {
+            Result.error("Failed to read this folder.")
+        }
+    }
+    if (rootListFailed) {
+        return Result.error("Failed to read this folder.")
+    }
+
+    return Result.ok(
+        FolderSize(
+            fileCount = fileCount,
+            folderCount = folderCount,
+            totalSize = totalSize,
+            failedFolderCount = failedFolderCount,
+        )
     )
 }
 
