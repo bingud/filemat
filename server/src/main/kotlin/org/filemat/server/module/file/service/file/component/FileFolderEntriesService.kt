@@ -1,7 +1,7 @@
 package org.filemat.server.module.file.service.file.component
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -113,27 +113,37 @@ class FileFolderEntriesService(
      * Recursively counts files, folders, and total size under [rawPath].
      * Checks READ only on the requested folder. Descendants are counted without permission checks.
      */
-    fun calculateFolderSize(user: Principal, rawPath: FilePath): Result<FolderSize> = runBlocking(Dispatchers.IO) {
+    suspend fun calculateFolderSize(user: Principal, rawPath: FilePath): Result<FolderSize> = withContext(Dispatchers.IO) {
+        val prepared = prepareFolderSize(user, rawPath)
+        if (prepared.isNotSuccessful) return@withContext prepared.cast()
+        measurePreparedFolderSize(prepared.value)
+    }
+
+    fun prepareFolderSize(user: Principal, rawPath: FilePath): Result<FilePath> {
         val pathResult = resolvePath(rawPath)
-        if (pathResult.isNotSuccessful) return@runBlocking pathResult.cast()
+        if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
         val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath)
-        if (isAllowed.isNotSuccessful) return@runBlocking isAllowed.cast()
+        if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
         val followSymlinks = State.App.followSymlinks
         val directoryOptions = if (followSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
         if (!Files.isDirectory(canonicalPath.path, *directoryOptions)) {
-            return@runBlocking Result.reject("Path is not a directory.")
+            return Result.reject("Path is not a directory.")
         }
 
         try {
             Files.newDirectoryStream(canonicalPath.path).use { }
         } catch (_: Exception) {
-            return@runBlocking Result.error("Failed to read this folder.")
+            return Result.error("Failed to read this folder.")
         }
 
-        canonicalPath.path.measureFolderContents(with = fileLockService).toResult()
+        return Result.ok(canonicalPath)
+    }
+
+    suspend fun measurePreparedFolderSize(canonicalPath: FilePath): Result<FolderSize> = withContext(Dispatchers.IO) {
+        canonicalPath.path.measureFolderContents(with = fileLockService)
     }
 
     /**
