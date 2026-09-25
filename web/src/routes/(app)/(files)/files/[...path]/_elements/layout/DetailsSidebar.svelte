@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, safeFetch, debounceFunction, handleErr, isFolder, explicitEffect, valuesOf, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formData, safeFetch, debounceFunction, handleErr, handleException, isFolder, explicitEffect, valuesOf, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
@@ -21,11 +21,20 @@
     import FileSharingDialog from "../ui/fileSharing/FileSharingDialog.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
     import { onActualClick } from "$lib/code/util/uiUtil";
+    import { toast } from "@jill64/svelte-toast";
+    import RulerIcon from "$lib/component/icons/RulerIcon.svelte";
 
     type PermissionData = {
         permissions: EntityPermission[],
         ownerId: ulid,
         miniUserList: Record<ulid, string>
+    }
+
+    type FolderSizeResult = {
+        fileCount: number
+        folderCount: number
+        totalSize: number
+        failedFolderCount: number
     }
 
     let abortController = new AbortController()
@@ -37,6 +46,9 @@
 
     let filenameWrapped = $state(true)
     let sharingDialogOpen = $state(false)
+    let folderSizeLoading = $state(false)
+    let folderSizeResult: FolderSizeResult | null = $state(null)
+    let folderSizeAbort = new AbortController()
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
 
@@ -141,6 +153,7 @@
         if (abortController) {
             abortController.abort()
         }
+        folderSizeAbort.abort()
     })
 
     /**
@@ -192,6 +205,58 @@
             json.miniUserList[v.userId] = v.username
         })
         permissionData = json
+    }
+
+    explicitEffect(() => [
+        filesState.selectedEntries.singlePath,
+    ], () => {
+        folderSizeResult = null
+        folderSizeLoading = false
+        folderSizeAbort.abort()
+        folderSizeAbort = new AbortController()
+    })
+
+    async function onCalculateFolderSize() {
+        const path = filesState.selectedEntries.singleMeta?.path
+        if (!path) return
+
+        folderSizeLoading = true
+        folderSizeAbort.abort()
+        folderSizeAbort = new AbortController()
+        const signal = folderSizeAbort.signal
+
+        const response = await safeFetch(`/api/v1/folder/size`, {
+            body: formData({ path: path }),
+            signal: signal,
+        })
+
+        if (signal.aborted) return
+        folderSizeLoading = false
+
+        if (response.failed) {
+            if (response.exception?.name === `AbortError`) return
+            handleException(
+                `Failed to calculate folder size for path ${path}`,
+                `Failed to calculate folder size.`,
+                response.exception
+            )
+            return
+        }
+
+        const json = response.json()
+        if (response.code.failed) {
+            handleErr({
+                description: `Failed to calculate folder size for path ${path}`,
+                notification: json.message || `Failed to calculate folder size.`,
+                isServerDown: response.code.serverDown
+            })
+            return
+        }
+
+        folderSizeResult = json as FolderSizeResult
+        if (folderSizeResult.failedFolderCount > 0) {
+            toast.error(`Failed to open ${folderSizeResult.failedFolderCount} sub-folders.`)
+        }
     }
 
     function onFilePermissionCreated(perm: EntityPermission, target: { user: MiniUser | null, roleId: ulid | null }) {
@@ -254,6 +319,12 @@
 
     {:else if filesState.selectedEntries.singleMeta}
         {@const selectedMeta = filesState.selectedEntries.singleMeta}
+        {@const listing = filesState.selectedEntries.isCurrentFolderSelected ? filesState.data.entries : null}
+        {@const fileCountValue = folderSizeResult
+            ? `${folderSizeResult.fileCount} (${folderSizeResult.folderCount} folders)`
+            : listing != null ? String(listing.length) : null}
+        {@const sizeBytes = folderSizeResult?.totalSize
+            ?? (listing != null ? calculateFilesSize(listing) : isFolder(selectedMeta) ? null : selectedMeta.size)}
 
         <div use:onActualClick={() => { filenameWrapped = !filenameWrapped }} class="w-full flex flex-col px-6 shrink-0 flex-none">
             <h3 class:truncate={!filenameWrapped} class="text-lg break-all">{displayFilename}</h3>
@@ -283,25 +354,19 @@
         {/if}
         
         <div class="w-full flex flex-col px-6 gap-6 flex-none">
-            {#if filesState.selectedEntries.isCurrentFolderSelected && filesState.data.entries}
-                {@const count = filesState.data.entries.length}
-                {@const collectiveSize = calculateFilesSize(filesState.data.entries)}
-
+            {#if fileCountValue != null}
                 <div class="detail-container">
-                    <p class="detail-title">File count</p>
-                    <p>{count}</p>
-                </div>
-
-                <div class="detail-container" title="Collective size of all files in this folder. Sub-directories are not counted.">
-                    <p class="detail-title">Size</p>
-                    <p>{formatBytes(collectiveSize)}</p>
+                    <p class="detail-title">{folderSizeResult ? `Total files` : `File count`}</p>
+                    <p>{fileCountValue}</p>
                 </div>
             {/if}
 
-            <div class="detail-container">
-                <p class="detail-title">File Size</p>
-                <p>{formatBytes(selectedMeta.size)}</p>
-            </div>
+            {#if sizeBytes != null}
+                <div class="detail-container" title={!folderSizeResult && listing != null ? `Collective size of all files in this folder. Sub-directories are not counted.` : undefined}>
+                    <p class="detail-title">{folderSizeResult ? `Total size` : listing != null ? `Size` : `File Size`}</p>
+                    <p>{formatBytes(sizeBytes)}</p>
+                </div>
+            {/if}
 
             <div class="detail-container">
                 <p class="detail-title">Last modified at</p>
@@ -315,7 +380,17 @@
         </div>
         
         {#if auth.authenticated && !filesState.isShared}
-            <div class="px-6">
+            <div class="px-6 flex flex-col gap-2">
+                {#if isFolder(selectedMeta) && !folderSizeResult}
+                    <button
+                        disabled={folderSizeLoading}
+                        class="basic-button bg-surface-content-button! disabled:opacity-50 disabled:cursor-not-allowed"
+                        on:click={onCalculateFolderSize}
+                    >
+                        <span class="size-4"><RulerIcon /></span>
+                        <span>Calculate folder size</span>
+                    </button>
+                {/if}
                 <FileSharingDialog path={selectedMeta.path} bind:open={sharingDialogOpen} />
             </div>
         {/if}
