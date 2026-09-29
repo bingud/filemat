@@ -382,7 +382,7 @@
         
         {#if auth.authenticated && !filesState.isShared}
             <div class="px-6 flex flex-col gap-2">
-                {#if isFolder(selectedMeta) && !folderSizeResult}
+                {#if isFolder(selectedMeta) && (!folderSizeResult || folderSizeResult.failedFolderCount > 0)}
                     <button
                         disabled={folderSizeLoading}
                         class="basic-button bg-surface-content-button! disabled:opacity-50 disabled:cursor-not-allowed"
