@@ -173,7 +173,6 @@ suspend fun Path.measureFolderContents(with: FileLockService? = null): Result<Fo
 
         seenDescendant = true
 
-        println("path: $path")
         val attrs = try {
             Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
         } catch (_: Exception) {
