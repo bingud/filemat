@@ -132,7 +132,7 @@ export async function getFileListFromCustomEndpoint({
     } else if (status.failed) {
         handleErr({
             description: `Failed to open folder.`,
-            notification: silent ? undefined : (json.message || `Failed to open folder.`),
+            notification: silent ? undefined : (json?.message || `Failed to open folder.`),
             isServerDown: status.serverDown
         })
         return Result.error(json.message)

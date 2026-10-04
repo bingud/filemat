@@ -334,9 +334,14 @@ class FileController(
             it.value
         }
 
+        val download = rawDownload?.toBooleanStrictOrNull() == true
         val range = if (rawRangeHeader != null) {
-            parseRangeHeaderToLongRange(rawRangeHeader, length = fileSize)
+            val parsed = parseRangeHeaderToLongRange(rawRangeHeader, length = fileSize)
                 ?: return streamResponse("Invalid byte range.", HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value())
+            if (!download && isOpenEndedByteRange(rawRangeHeader)) {
+                val cappedEnd = minOf(parsed.last, parsed.first + OPEN_ENDED_RANGE_LIMIT_BYTES - 1)
+                parsed.first..cappedEnd
+            } else parsed
         } else null
 
         // Get the file content
@@ -383,7 +388,7 @@ class FileController(
 
         val encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8)
             .replace("+", "%20")
-        val disposition = if (rawDownload?.toBooleanStrictOrNull() == true) "attachment" else "inline"
+        val disposition = if (download) "attachment" else "inline"
 
         // Construct response headers
         val headers = HttpHeaders().apply {
@@ -439,6 +444,17 @@ class FileController(
             .body(responseBody)
     }
 
+}
+
+private const val OPEN_ENDED_RANGE_LIMIT_BYTES = 30L * 1024 * 1024
+
+/** `bytes=start-`. A suffix range (`bytes=-n`) and a range with an end are left alone. */
+private fun isOpenEndedByteRange(rangeHeader: String): Boolean {
+    if (!rangeHeader.startsWith("bytes=")) return false
+    val value = rangeHeader.removePrefix("bytes=").trim()
+    val dash = value.indexOf('-')
+    if (dash <= 0) return false
+    return value.substring(dash + 1).isBlank()
 }
 
 
