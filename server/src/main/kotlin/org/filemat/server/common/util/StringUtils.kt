@@ -2,19 +2,24 @@ package org.filemat.server.common.util
 
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
-import kotlin.random.Random
+import java.security.SecureRandom
 
 object StringUtils {
+
+    // randomString/randomLetterString back every security token this app issues: the session
+    // auth token, login tokens, MFA backup codes, OTPs, and file-share tokens. kotlin.random.Random
+    // is a fast, non-cryptographic PRNG (not SecureRandom), so it must not be used here.
+    private val secureRandom = SecureRandom()
 
     private val charPool: List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
     private val uppercaseCharPool: List<Char> = ('A'..'Z').toList()
 
     fun randomString(length: Int) = (1..length)
-        .map { Random.nextInt(0, charPool.size).let { charPool[it] } }
+        .map { secureRandom.nextInt(charPool.size).let { charPool[it] } }
         .joinToString("")
 
     fun randomLetterString(length: Int) = (1..length)
-        .map { Random.nextInt(0, uppercaseCharPool.size).let { uppercaseCharPool[it] } }
+        .map { secureRandom.nextInt(uppercaseCharPool.size).let { uppercaseCharPool[it] } }
         .joinToString("")
 
     /**
