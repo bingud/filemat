@@ -399,7 +399,7 @@ class FileDataStateClass {
         return sortFileMetadata(filesState.data.entries, filesState.sortingMode, filesState.sortingDirection, filesState.mixFilesAndFolders)
     })
 
-    // Map of path to fileMetadata
+    // Same object references as `entries`; contentMeta is stored on those objects.
     entryMap = $derived(new Map(this.entries?.map(e => [e.path, e]) || []))
 
     isFileSymlink = $derived.by(() => {

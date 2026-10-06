@@ -1,8 +1,11 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import kotlinx.serialization.json.Json
+import org.filemat.server.common.util.JsonNonNull
 import org.filemat.server.common.util.RateLimitedLog
 import org.filemat.server.common.util.controller.AController
+import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.config.auth.Cors
 import org.filemat.server.config.auth.Unauthenticated
@@ -17,6 +20,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -202,5 +206,40 @@ class FileUtilController(
             .contentLength(bytes.size.toLong())
             .contentType(MediaType.IMAGE_JPEG)
             .body(bytes)
+    }
+
+    @Unauthenticated
+    @Cors
+    @GetMapping("/content-metadata")
+    fun contentMetadataMapping(
+        request: HttpServletRequest,
+        @RequestParam("path") rawPath: String,
+        @RequestParam("shareToken", required = false) shareToken: String?,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()
+        val path = FilePath.of(rawPath)
+
+        return fileService.getContentMetadata(principal, path, shareToken).let {
+            if (it.notFound) return notFound("This file was not found.")
+            if (it.rejected) return bad(it.error)
+            if (it.hasError) return internal(it.error)
+            ok(JsonNonNull.encodeToString(it.value))
+        }
+    }
+
+    @Unauthenticated
+    @Cors
+    @PostMapping("/content-metadata-batch")
+    fun contentMetadataBatchMapping(
+        request: HttpServletRequest,
+        @RequestParam("paths") rawPathList: String,
+        @RequestParam("shareToken", required = false) shareToken: String?,
+    ): ResponseEntity<String> {
+        val principal = request.getPrincipal()
+        val paths = Json.decodeFromStringOrNull<List<String>>(rawPathList)?.map { FilePath.of(it) }
+            ?: return bad("Parameter 'paths' is invalid.")
+
+        val result = fileService.getContentMetadataBatch(principal, paths, shareToken)
+        return ok(JsonNonNull.encodeToString(result))
     }
 }
