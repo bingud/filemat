@@ -6,9 +6,6 @@ import java.security.SecureRandom
 
 object StringUtils {
 
-    // randomString/randomLetterString back every security token this app issues: the session
-    // auth token, login tokens, MFA backup codes, OTPs, and file-share tokens. kotlin.random.Random
-    // is a fast, non-cryptographic PRNG (not SecureRandom), so it must not be used here.
     private val secureRandom = SecureRandom()
 
     private val charPool: List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
