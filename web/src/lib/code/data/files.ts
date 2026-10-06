@@ -24,6 +24,12 @@ export function getFileCategoryFromFilename(name: string): FileCategory | null {
     return getFileCategory(getFileExtension(name))
 }
 
+const MEDIA_CONTENT_CATEGORIES: ReadonlySet<FileCategory> = new Set([`image`, `video`, `audio`])
+export function isMediaContentFile(filename: string): boolean {
+    const category = getFileCategoryFromFilename(filename)
+    return category != null && MEDIA_CONTENT_CATEGORIES.has(category)
+}
+
 export const fileCategories: Record<string, FileCategory> = {
     // HTML and Web Files
     // "html": "html",

@@ -35,6 +35,7 @@ class FileService(
     @Lazy private val fileFolderEntriesService: FileFolderEntriesService,
     @Lazy private val fileSecurityService: FileSecurityService,
     @Lazy private val fileMetadataService: FileMetadataService,
+    @Lazy private val fileContentMetadataService: FileContentMetadataService,
     @Lazy private val fileEntryListsService: FileEntryListsService,
 ) {
 
@@ -144,6 +145,12 @@ class FileService(
             isPathCanonical = isPathCanonical,
             ignorePermissions = ignorePermissions,
         )
+
+    fun getContentMetadata(user: Principal?, rawPath: FilePath, shareToken: String?): Result<FileContentMetadata>
+            = fileContentMetadataService.getContentMetadata(user = user, rawPath = rawPath, shareToken = shareToken)
+
+    fun getContentMetadataBatch(user: Principal?, rawPaths: List<FilePath>, shareToken: String?): Map<String, FileContentMetadata>
+            = fileContentMetadataService.getContentMetadataBatch(user = user, rawPaths = rawPaths, shareToken = shareToken)
 
     // --- Entry lists ---
 

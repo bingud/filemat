@@ -8,6 +8,7 @@ import { addSuffix, filenameFromPath, formData, handleErr, parentFromPath, safeF
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { toast } from "@jill64/svelte-toast"
 import { textFileViewerState } from "./textFileViewerState.svelte"
+import { existingContentMeta } from "./fileContentMetadata"
 import { sharedFilesPageState } from "../../../shared-files/state.svelte"
 import { inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
 
@@ -123,6 +124,9 @@ export async function loadPageData(
         } else if (type === "FILE" || type === "FILE_LINK") {
             if (!options.parentFolderOnly) {
                 filesState.data.fileMeta = meta
+                // Keep width, height, or duration already fetched for this path in the listing.
+                const contentMeta = existingContentMeta(meta.path)
+                if (contentMeta !== undefined) meta.contentMeta = contentMeta
             }
 
             // Load parent folder of file

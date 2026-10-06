@@ -13,6 +13,7 @@ import org.filemat.server.module.file.service.file.component.FileCopyService
 import org.filemat.server.module.file.service.file.component.FileDeletionService
 import org.filemat.server.module.file.service.file.component.FileEntryListsService
 import org.filemat.server.module.file.service.file.component.FileFolderEntriesService
+import org.filemat.server.module.file.service.file.component.FileContentMetadataService
 import org.filemat.server.module.file.service.file.component.FileMetadataService
 import org.filemat.server.module.file.service.file.component.FileMoveService
 import org.filemat.server.module.file.service.file.component.FileSecurityService
@@ -40,6 +41,7 @@ class FileServiceResolveShareTest {
         fileFolderEntriesService = mockk<FileFolderEntriesService>(relaxed = true),
         fileSecurityService = mockk<FileSecurityService>(relaxed = true),
         fileMetadataService = mockk<FileMetadataService>(relaxed = true),
+        fileContentMetadataService = mockk<FileContentMetadataService>(relaxed = true),
         fileEntryListsService = mockk<FileEntryListsService>(relaxed = true),
     )
 

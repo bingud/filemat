@@ -1,10 +1,13 @@
 <script lang="ts">
+    import { browser } from "$app/environment"
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { type RowPreviewSize, type GridPreviewSize, config } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import { explicitEffect } from "$lib/code/util/codeUtil.svelte";
+    import { debounceFunction, explicitEffect } from "$lib/code/util/codeUtil.svelte";
+    import { onDestroy } from "svelte";
     import { changeSortingMode, type FileListProps } from "../../_code/fileBrowserUtil.svelte";
+    import { loadVisibleContentMeta } from "../../_code/fileContentMetadata";
     import FileContextMenuPopover from "../ui/FileContextMenuPopover.svelte";
     import GridFileEntry from "./GridFileEntry.svelte";
     import RowFileEntry from "./RowFileEntry.svelte";
@@ -52,6 +55,36 @@
         if (!appState.settings.loadAllPreviews || !sortedEntries) return
         const size = filesState.ui.previewSize as GridPreviewSize
         visibilityManager.preloadAllPreviews(sortedEntries, size.pixelSize)
+    })
+
+    let contentMetaAbort = new AbortController()
+
+    // Wait until scrolling settles, then fetch contentMeta for visible files.
+    const loadVisibleContentMetaDebounced = debounceFunction(() => {
+        loadVisibleContentMeta(sortedEntries, visibilityManager.visibleEntryPaths, contentMetaAbort.signal)
+    }, 100, 2000)
+
+    // Set visibility listener before mount
+    if (browser && visibilityManager) {
+        visibilityManager.onVisibleEntriesChange = loadVisibleContentMetaDebounced
+    }
+
+    // Refetch when the listing objects are replaced. Sorting reuses those objects.
+    // Search results and lists without a folder have no folderMeta, so they watch the raw entries.
+    explicitEffect(() => [
+        visibilityManager === filesState.ui.searchVisibilityManager
+            ? filesState.search.entries
+            : (filesState.data.folderMeta ?? filesState.data.entries),
+        filesState.getShareToken(),
+    ], () => {
+        loadVisibleContentMetaDebounced()
+    })
+
+    onDestroy(() => {
+        contentMetaAbort.abort()
+        if (visibilityManager.onVisibleEntriesChange === loadVisibleContentMetaDebounced) {
+            visibilityManager.onVisibleEntriesChange = null
+        }
     })
 
     function closeContextMenu() {
