@@ -236,7 +236,9 @@ class FileUtilController(
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()
-        val paths = Json.decodeFromStringOrNull<List<String>>(rawPathList)?.map { FilePath.of(it) }
+        val paths = Json.decodeFromStringOrNull<List<String>>(rawPathList)
+            ?.take(2500)
+            ?.map { FilePath.of(it) }
             ?: return bad("Parameter 'paths' is invalid.")
 
         val result = fileService.getContentMetadataBatch(principal, paths, shareToken)

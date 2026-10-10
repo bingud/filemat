@@ -78,6 +78,7 @@ async function fetchContentMetaChunk(entries: FullFileMetadata[], signal: AbortS
 
         for (const entry of entries) {
             // Missing key: server skipped this file, so leave it unset and try again later.
+            if (!Object.hasOwn(json, entry.path)) continue
             applyContentMeta(entry.path, json[entry.path])
         }
     } finally {
