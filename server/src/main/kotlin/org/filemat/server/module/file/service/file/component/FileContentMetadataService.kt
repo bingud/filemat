@@ -134,6 +134,8 @@ class FileContentMetadataService(
         return try {
             av_log_set_level(AV_LOG_QUIET)
             grabber = FFmpegFrameGrabber(file)
+            grabber.setOption("probesize", "524288")
+            grabber.setOption("analyzeduration", "1000000")
             grabber.start()
             metadataFromGrabber(grabber, includeDuration = true)
         } catch (_: Throwable) {

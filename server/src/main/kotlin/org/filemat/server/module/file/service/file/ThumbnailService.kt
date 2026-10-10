@@ -813,6 +813,8 @@ class ThumbnailService(
     ) {
         val imageFile = File(canonicalPath.pathString)
         val grabber = FFmpegFrameGrabber(imageFile)
+        grabber.setOption("probesize", "524288")
+        grabber.setOption("analyzeduration", "1000000")
         grabber.start()
 
         try {
@@ -880,6 +882,8 @@ class ThumbnailService(
             }
 
             val grabber = FFmpegFrameGrabber(videoFile)
+            grabber.setOption("probesize", "524288")
+            grabber.setOption("analyzeduration", "1000000")
             grabber.start()
 
             try {
