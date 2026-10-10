@@ -675,6 +675,18 @@ export function formatDuration(seconds: number): string {
     return `${days} day${days === 1 ? "" : "s"}`
 }
 
+/** Clock time for video and audio, such as `1:05` or `1:02:03`. */
+export function formatMediaDuration(seconds: number): string {
+    const total = Math.floor(Math.max(0, seconds))
+    const hours = Math.floor(total / 3600)
+    const minutes = Math.floor((total % 3600) / 60)
+    const remainder = total % 60
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, `0`)}:${remainder.toString().padStart(2, `0`)}`
+    }
+    return `${minutes}:${remainder.toString().padStart(2, `0`)}`
+}
+
 
 
 export async function doRequest(

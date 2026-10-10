@@ -10,11 +10,14 @@ import org.bytedeco.javacv.Java2DFrameConverter
 import org.filemat.server.common.State
 import org.filemat.server.common.util.RateLimitedLog
 import org.filemat.server.common.util.md5hash
+import org.filemat.server.module.file.model.FileContentMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileVisibilityService
+import org.filemat.server.module.file.service.file.component.FileContentMetadataService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.io.File
 import java.io.InputStream
@@ -36,6 +39,7 @@ import kotlinx.coroutines.*
 class ThumbnailService(
     private val fileVisibilityService: FileVisibilityService,
     private val logService: LogService,
+    @Lazy private val fileContentMetadataService: FileContentMetadataService,
 ) {
 
     // --- Thumbnail cache timing (FFmpeg / decoder I/O timeouts are not configured here.) ---
@@ -758,9 +762,24 @@ class ThumbnailService(
                     Thumbnails.of(it).scale(1.0).asBufferedImage()
                 }
             } catch (_: Exception) {
-                fallbackFfmpegImageThumbnail(canonicalPath, targetSize, outputStream, targetCacheFile)
+                fallbackFfmpegImageThumbnail(
+                    canonicalPath = canonicalPath,
+                    targetSize = targetSize,
+                    modifiedDate = modifiedDate,
+                    fileSize = fileSize,
+                    outputStream = outputStream,
+                    cacheFile = targetCacheFile,
+                )
                 return@streamCachedOrGenerate
             }
+
+            // Save the decoded size so a later content-metadata request can reuse it.
+            fileContentMetadataService.putFromProbe(
+                canonicalPath = canonicalPath,
+                modifiedDate = modifiedDate,
+                fileSize = fileSize,
+                meta = FileContentMetadata(width = image.width, height = image.height),
+            )
 
             val sourceSize = max(image.width, image.height)
             val finalSize = min(sourceSize, targetSize)
@@ -787,14 +806,23 @@ class ThumbnailService(
     private fun fallbackFfmpegImageThumbnail(
         canonicalPath: FilePath,
         targetSize: Int,
+        modifiedDate: Long,
+        fileSize: Long,
         outputStream: OutputStream,
         cacheFile: File?
     ) {
         val imageFile = File(canonicalPath.pathString)
         val grabber = FFmpegFrameGrabber(imageFile)
+        grabber.setOption("probesize", "524288")
+        grabber.setOption("analyzeduration", "1000000")
         grabber.start()
 
         try {
+            // Save the decoded size. Stills have no duration.
+            FileContentMetadataService.metadataFromGrabber(grabber, includeDuration = false)?.let { meta ->
+                fileContentMetadataService.putFromProbe(canonicalPath, modifiedDate, fileSize, meta)
+            }
+
             val frame = grabber.grabImage() ?: throw Exception("Could not decode image")
             val converter = Java2DFrameConverter()
             val image = converter.convert(frame) ?: throw Exception("Could not convert frame to image")
@@ -854,9 +882,16 @@ class ThumbnailService(
             }
 
             val grabber = FFmpegFrameGrabber(videoFile)
+            grabber.setOption("probesize", "524288")
+            grabber.setOption("analyzeduration", "1000000")
             grabber.start()
 
             try {
+                // Save frame size and duration from this decode.
+                FileContentMetadataService.metadataFromGrabber(grabber, includeDuration = true)?.let { meta ->
+                    fileContentMetadataService.putFromProbe(canonicalPath, modifiedDate, fileSize, meta)
+                }
+
                 val frame = grabber.grabImage()
 
                 if (frame == null) {

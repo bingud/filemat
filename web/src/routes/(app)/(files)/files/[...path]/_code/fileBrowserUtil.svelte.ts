@@ -96,6 +96,9 @@ export class VisibilityManager {
     visibleEntryPaths = new SvelteSet<string>()
     private entryElements = new Map<HTMLElement, string>()
 
+    /** Called when files scroll into view. FileList uses this to fetch contentMeta. */
+    onVisibleEntriesChange: (() => void) | null = null
+
 
     setScrollContainer(container: HTMLElement | null) {
         this.scrollContainer = container
@@ -105,13 +108,16 @@ export class VisibilityManager {
     private initObserver() {
         this.observer = new IntersectionObserver(
             (entries) => {
+                // A file row entered the viewport in this callback.
+                let becameVisible = false
                 for (const entry of entries) {
                     if (entry.target instanceof HTMLImageElement) {
                         this.handleImageIntersect(entry)
-                    } else {
-                        this.handleEntryIntersect(entry)
+                    } else if (this.handleEntryIntersect(entry)) {
+                        becameVisible = true
                     }
                 }
+                if (becameVisible) this.onVisibleEntriesChange?.()
                 this.scheduleImageLoad()
             },
             { 
@@ -153,16 +159,19 @@ export class VisibilityManager {
         )
     }
 
-    private handleEntryIntersect(entry: IntersectionObserverEntry) {
+    /** True only when the path was added to the visible set this callback. */
+    private handleEntryIntersect(entry: IntersectionObserverEntry): boolean {
         const element = entry.target as HTMLElement
         const path = this.entryElements.get(element)
-        if (!path) return
-        
+        if (!path) return false
+
         if (entry.isIntersecting) {
+            if (this.visibleEntryPaths.has(path)) return false
             this.visibleEntryPaths.add(path)
-        } else {
-            this.visibleEntryPaths.delete(path)
+            return true
         }
+        this.visibleEntryPaths.delete(path)
+        return false
     }
 
     private handleImageIntersect(entry: IntersectionObserverEntry) {
@@ -233,6 +242,7 @@ export class VisibilityManager {
         // This prevents all N entries from being fully rendered on the initial mount.
         if (this.isNearViewport(node)) {
             this.visibleEntryPaths.add(path)
+            this.onVisibleEntriesChange?.()
         }
 
         this.observer!.observe(node)
@@ -245,6 +255,7 @@ export class VisibilityManager {
                 }
                 this.entryElements.set(node, newPath)
                 this.visibleEntryPaths.add(newPath)
+                this.onVisibleEntriesChange?.()
             },
             destroy: () => {
                 this.observer?.unobserve(node)
@@ -275,6 +286,7 @@ export class VisibilityManager {
             this.knownEntryPaths.add(path)
             if (this.isNearViewport(node)) {
                 this.visibleEntryPaths.add(path)
+                this.onVisibleEntriesChange?.()
             }
         }
 
@@ -291,6 +303,7 @@ export class VisibilityManager {
                     this.knownEntryPaths.add(newPath)
                     if (this.isNearViewport(node)) {
                         this.visibleEntryPaths.add(newPath)
+                        this.onVisibleEntriesChange?.()
                     }
                 }
             },

@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formData, safeFetch, debounceFunction, handleErr, handleException, isFolder, explicitEffect, valuesOf, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
+    import { filenameFromPath, formatBytes, formatUnixMillis, formatMediaDuration, formData, safeFetch, debounceFunction, handleErr, handleException, isFolder, explicitEffect, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
+    import type { EntityPermission, FilePermission, FullFileMetadata, MiniUser } from "$lib/code/auth/types";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import type { ulid } from "$lib/code/types/types";
-    import type { EntityPermission, FilePermission, MiniUser } from "$lib/code/auth/types";
     import { hasAnyPermission, hasPermission } from "$lib/code/module/permissions";
     import { getRole } from "$lib/code/util/stateUtils";
     import { fade } from "svelte/transition";
@@ -23,6 +23,8 @@
     import { onActualClick } from "$lib/code/util/uiUtil";
     import { toast } from "@jill64/svelte-toast";
     import RulerIcon from "$lib/component/icons/RulerIcon.svelte";
+    import { isMediaContentFile } from "$lib/code/data/files";
+    import { loadContentMetadata, applyContentMeta } from "../../_code/fileContentMetadata";
 
     type PermissionData = {
         permissions: EntityPermission[],
@@ -49,6 +51,8 @@
     let folderSizeLoading = $state(false)
     let folderSizeResult: FolderSizeResult | null = $state(null)
     let folderSizeAbort = new AbortController()
+    // Aborts the selected-file content metadata request when the selection changes.
+    let contentMetaAbort = new AbortController()
 
     let editedPermission: EntityPermissionMeta | null = $state(null)
 
@@ -101,35 +105,70 @@
         return filesState.selectedEntries.singlePath ?? filesState.data.folderMeta?.path ?? null
     })
 
-    // Load permissions for selected entry or current folder
+    let contentMetadata = $derived(filesState.selectedEntries.singleMeta?.contentMeta ?? null)
+
+    // Load permissions and contentMeta when the selected file or sidebar changes.
     let lastLoaded = ""
-    explicitEffect(() => [ 
+    explicitEffect(() => [
         filesState.selectedEntries.singlePath,
         filesState.ui.detailsOpen,
         filesState.data.folderMeta?.path,
+        filesState.getShareToken(),
     ], () => {
-        if (filesState.isShared) return
-        const loadPath = permissionEntityPath
+        folderSizeResult = null
+        folderSizeLoading = false
+        folderSizeAbort.abort()
+        folderSizeAbort = new AbortController()
 
-        if (!loadPath) {
-            abortController.abort()
-            abortController = new AbortController()
-            lastLoaded = ""
-            showPermissions = false
-            permissionData = null
-            permissionDataLoading = false
-            permissionDataDebounced = false
-            return
+        // File permissions (not shown on public shares)
+        if (!filesState.isShared) {
+            const loadPath = permissionEntityPath
+
+            if (!loadPath) {
+                abortController.abort()
+                abortController = new AbortController()
+                lastLoaded = ""
+                showPermissions = false
+                permissionData = null
+                permissionDataLoading = false
+                permissionDataDebounced = false
+            } else if (filesState.ui.detailsOpen && lastLoaded !== loadPath && auth.authenticated) {
+                showPermissions = false
+                permissionData = null
+                permissionDataDebounced = true
+                loadPermissionDataDebounced(loadPath)
+            }
         }
-        if (!filesState.ui.detailsOpen) return
-        if (lastLoaded === loadPath) return
-        if (!auth.authenticated) return
 
-        showPermissions = false
-        permissionData = null
-        permissionDataDebounced = true
+        // Fetch contentMeta for the selected file if it doesnt have it yet
+        if (filesState.ui.detailsOpen) {
+            const selectedMeta = filesState.selectedEntries.singleMeta
+            if (
+                selectedMeta
+                && isFile(selectedMeta)
+                && selectedMeta.contentMeta == null
+                && isMediaContentFile(selectedMeta.filename ?? selectedMeta.path)
+            ) {
+                loadContentMetadataDebounced(selectedMeta)
+            }
+        }
+    })
 
-        loadPermissionDataDebounced(loadPath)
+    const loadContentMetadataDebounced = debounceFunction(async (entry: FullFileMetadata) => {
+        contentMetaAbort.abort()
+        contentMetaAbort = new AbortController()
+        const json = await loadContentMetadata(entry.path, contentMetaAbort.signal)
+        // Selection changed while this request was in flight.
+        if (filesState.selectedEntries.singleMeta?.path !== entry.path) return
+        if (json) applyContentMeta(entry.path, json)
+    }, 100, 5000)
+
+    onDestroy(() => {
+        if (abortController) {
+            abortController.abort()
+        }
+        folderSizeAbort.abort()
+        contentMetaAbort.abort()
     })
 
     // Debounced function to load permission data
@@ -148,13 +187,6 @@
             showPermissions = true
         }
     }, 100, 5000)
-
-    onDestroy(() => {
-        if (abortController) {
-            abortController.abort()
-        }
-        folderSizeAbort.abort()
-    })
 
     /**
      * Loads the permission data for the given path
@@ -206,16 +238,6 @@
         })
         permissionData = json
     }
-
-    explicitEffect(() => [
-        filesState.selectedEntries.singlePath,
-        filesState.ui.detailsOpen,
-    ], () => {
-        folderSizeResult = null
-        folderSizeLoading = false
-        folderSizeAbort.abort()
-        folderSizeAbort = new AbortController()
-    })
 
     async function onCalculateFolderSize() {
         const path = filesState.selectedEntries.singleMeta?.path
@@ -378,6 +400,20 @@
                 <p class="detail-title">Created at</p>
                 <p>{formatUnixMillis(selectedMeta.createdDate)}</p>
             </div>
+
+            {#if contentMetadata?.width && contentMetadata?.height}
+                <div class="detail-container">
+                    <p class="detail-title">Dimensions</p>
+                    <p>{contentMetadata.width} × {contentMetadata.height}</p>
+                </div>
+            {/if}
+
+            {#if contentMetadata?.durationMs != null}
+                <div class="detail-container">
+                    <p class="detail-title">Duration</p>
+                    <p>{formatMediaDuration(contentMetadata.durationMs / 1000)}</p>
+                </div>
+            {/if}
         </div>
         
         {#if auth.authenticated && !filesState.isShared}
