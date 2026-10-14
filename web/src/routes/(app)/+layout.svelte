@@ -69,7 +69,7 @@
             <Sidebar />
         </nav>
         
-        <main id="app-page" class="w-full {auth.authenticated ? 'lg:w-without-sidebar-desktop h-without-navbar lg:h-full' : 'h-full'}  min-h-0">
+        <main id="app-page" class="w-full {auth.authenticated ? 'lg:w-auto lg:flex-1 h-without-navbar lg:h-full' : 'h-full'}  min-h-0">
             {@render children()}
         </main>
     </div>

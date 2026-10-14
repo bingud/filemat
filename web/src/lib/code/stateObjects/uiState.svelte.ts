@@ -16,6 +16,11 @@ class UiState {
      */
     isDesktop: boolean = $state(false)
 
+    /**
+     * Indicates whether the desktop sidebar is collapsed to icons only
+     */
+    sidebarCollapsed: boolean = $state(false)
+
     screenWidth: number = $state(0)
 
     /**

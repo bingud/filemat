@@ -14,62 +14,79 @@
     import SettingsIcon from "$lib/component/icons/SettingsIcon.svelte";
     import MoonIcon from "$lib/component/icons/MoonIcon.svelte";
     import SunIcon from "$lib/component/icons/SunIcon.svelte";
+    import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
+    import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
 
     function hide() { uiState.menuOpen = false }
 
     const transitionDuration = 150
+
+    // Collapsing only applies on desktop
+    const collapsed = $derived(uiState.isDesktop && uiState.sidebarCollapsed)
 </script>
 
 
 <div class="fixed z-sidebar top-0 left-0 w-full h-full overflow-hidden flex pointer-events-none lg:contents">
     <!-- Navbar -->
     {#if uiState.menuOpen || uiState.isDesktop}
-        <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class="w-sidebar lg:w-sidebar-desktop h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0">
+        <div transition:fly={{ duration: transitionDuration, x: -400, opacity: 1 }} class:collapsed class="w-sidebar {collapsed ? 'lg:w-sidebar-collapsed' : 'lg:w-sidebar-desktop'} h-full bg-surface pointer-events-auto z-10 flex flex-col justify-between shrink-0">
             <!-- Top -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files && !appState.currentPath.home}>
+                <a href="/files" title="All" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.files && !appState.currentPath.home}>
                     <span class="button-icon">
                         <FolderIcon />
                     </span>
-                    <span>All</span>
+                    <span class="label">All</span>
                 </a>
-                <a href="/files{auth.principal?.homeFolderPath || ""}" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home} class:pointer-events-none={!auth.principal?.homeFolderPath}>
+                <a href="/files{auth.principal?.homeFolderPath || ""}" title="Home folder" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home} class:pointer-events-none={!auth.principal?.homeFolderPath}>
                     <span class="button-icon">
                         <HomeIcon />
                     </span>
-                    <span>Home folder</span>
+                    <span class="label">Home folder</span>
                 </a>
-                <a href="/saved-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.savedFiles}>
+                <a href="/saved-files" title="Saved" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.savedFiles}>
                     <span class="button-icon"><BookmarkIcon /></span>
-                    <span>Saved</span>
+                    <span class="label">Saved</span>
                 </a>
-                <a href="/accessible-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.accessibleFiles}>
+                <a href="/accessible-files" title="Accessible to me" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.accessibleFiles}>
                     <span class="button-icon"><EyeIcon /></span>
-                    <span>Accessible to me</span>
+                    <span class="label">Accessible to me</span>
                 </a>
-                <a href="/shared-files" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.allSharedFiles}>
+                <a href="/shared-files" title="Shared" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.allSharedFiles}>
                     <span class="button-icon"><ShareIcon /></span>
-                    <span>Shared</span>
+                    <span class="label">Shared</span>
                 </a>
             </div>
 
 
             <!-- Bottom -->
             <div class="flex flex-col px-2 py-4 gap-1">
-                <a href="/settings/{uiState.settings.defaultSection}" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.settings}>
+                <a href="/settings/{uiState.settings.defaultSection}" title="Settings" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.settings}>
                     <span class="button-icon"><SettingsIcon /></span>
-                    <span>Settings</span>
+                    <span class="label">Settings</span>
                 </a>
-                <button on:click={toggleDarkMode} class="sidebar-button">
+                <button on:click={toggleDarkMode} title={uiState.isDark ? "Light mode" : "Dark mode"} class="sidebar-button">
                     {#if uiState.isDark}
                         <span class="button-icon"><SunIcon /></span>
-                        <span>Light mode</span>
+                        <span class="label">Light mode</span>
                     {:else}
                         <span class="button-icon"><MoonIcon /></span>
-                        <span>Dark mode</span>
+                        <span class="label">Dark mode</span>
                     {/if}
                 </button>
+                {#if uiState.isDesktop}
+                    <button on:click={() => { uiState.sidebarCollapsed = !uiState.sidebarCollapsed }} title={collapsed ? "Show" : "Hide"} class="sidebar-button">
+                        <span class="button-icon">
+                            {#if collapsed}
+                                <ChevronRightIcon />
+                            {:else}
+                                <ChevronLeftIcon />
+                            {/if}
+                        </span>
+                        <span class="label">Hide</span>
+                    </button>
+                {/if}
             </div>
         </div>
     {/if}
@@ -83,14 +100,22 @@
 
 <style lang="postcss">
     .sidebar-button {
-        @apply flex items-center px-4 py-2 gap-3 w-full rounded-md duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none;
+        @apply flex items-center px-4 h-10 gap-3 w-full shrink-0 rounded-md transition-colors duration-[50ms] hover:bg-neutral-300 dark:hover:bg-neutral-800 select-none;
     }
 
     .button-icon {
-        @apply size-[1.1rem] opacity-70;
+        @apply size-[1.1rem] shrink-0 opacity-70;
     }
-    
+
     .current-button {
         @apply bg-neutral-300 dark:bg-neutral-800;
+    }
+
+    .collapsed .label {
+        @apply hidden;
+    }
+
+    .collapsed .sidebar-button {
+        @apply justify-center px-0 w-10;
     }
 </style>
