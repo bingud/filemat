@@ -743,6 +743,78 @@ export function selectSiblingFile(direction: 'previous' | 'next', onlyFiles: boo
     scrollSelectedEntryIntoView(newEntry.path)
 }
 
+/**
+ * Type-ahead selection: typing selects the first entry whose filename starts with the typed text.
+ * Esc / Backspace end the query and keep the selection, arrows cycle through matches while a query is active.
+ * @returns true if the event was consumed
+ */
+export function handleTypeAheadKey(event: KeyboardEvent): boolean {
+    const typeAhead = filesState.typeAhead
+
+    if (event.ctrlKey || event.altKey || event.metaKey) return false
+    if (filesState.data.fileMeta || !filesState.data.sortedEntries) return false
+    if (isTextEntryFocused()) return false
+
+    if (typeAhead.active) {
+        if (event.key === `Escape` || event.key === `Backspace`) {
+            event.preventDefault()
+            typeAhead.reset()
+            return true
+        }
+
+        const isPrevious = event.key === `ArrowUp` || event.key === `ArrowLeft`
+        const isNext = event.key === `ArrowDown` || event.key === `ArrowRight`
+        if ((isPrevious || isNext) && typeAhead.matchPaths.length > 0) {
+            event.preventDefault()
+            moveTypeAheadMatch(isPrevious ? `previous` : `next`)
+            return true
+        }
+    }
+
+    // Printable character; a leading space is not part of a query
+    if (event.key.length === 1 && !(event.key === ` ` && !typeAhead.active)) {
+        event.preventDefault()
+        typeAhead.query += event.key
+
+        const firstMatch = typeAhead.matchPaths[0]
+        if (firstMatch) {
+            filesState.selectedEntries.setSelected(firstMatch)
+            scrollSelectedEntryIntoView(firstMatch)
+        }
+        return true
+    }
+
+    return false
+}
+
+function moveTypeAheadMatch(direction: 'previous' | 'next') {
+    const { matchPaths, matchIndex } = filesState.typeAhead
+    const count = matchPaths.length
+    if (count < 1) return
+
+    let newIndex: number
+    if (matchIndex === -1) {
+        newIndex = direction === `next` ? 0 : count - 1
+    } else {
+        newIndex = direction === `next` ? (matchIndex + 1) % count : (matchIndex - 1 + count) % count
+    }
+
+    const path = matchPaths[newIndex]
+    filesState.selectedEntries.setSelected(path)
+    scrollSelectedEntryIntoView(path)
+}
+
+/**
+ * Text fields only; unlike isUserInAnyInput this ignores focused buttons, links and row checkboxes
+ */
+function isTextEntryFocused(): boolean {
+    const el = document.activeElement as HTMLElement | null
+    if (!el) return false
+    if (el.isContentEditable) return true
+    if (el.tagName === `TEXTAREA` || el.tagName === `SELECT`) return true
+    return el instanceof HTMLInputElement && el.type !== `checkbox`
+}
+
 export function openEntry(path: string) {
     if (filesState.metaLoading) return
     goto(getFilePagePath(path, filesState.meta.pagePath))

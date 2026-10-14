@@ -117,6 +117,7 @@
         const isSearchedParent = filesState.isSearchOpen && filesState.search.searchPath === newPath
 
         filesState.abort()
+        filesState.typeAhead.reset()
         // Leave search only when leaving search context entirely
         if (!isSearchedFile && !isSearchedParent) filesState.search.clear()
 

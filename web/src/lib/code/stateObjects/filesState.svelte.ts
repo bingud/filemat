@@ -92,6 +92,7 @@ class FilesState {
      * Selected entry state
      */
     selectedEntries = new SelectedEntryStateClass()
+    typeAhead = new TypeAheadStateClass()
     lastFilePathLoaded = $state(null) as string | null
 
     /**
@@ -291,6 +292,37 @@ class SelectedEntryStateClass {
         this.searchList = []
         this.set.clear()
         this.searchSet.clear()
+    }
+}
+
+/**
+ * Type-ahead selection: typed filename prefix and the entries it matches
+ */
+class TypeAheadStateClass {
+    query = $state(``)
+    active = $derived(this.query.length > 0)
+
+    /**
+     * Paths of entries in the active list whose filename contains the query, in display order
+     */
+    matchPaths: string[] = $derived.by(() => {
+        if (!this.query) return []
+        const entries = filesState.isSearchOpen ? filesState.search.sortedEntries : filesState.data.sortedEntries
+        if (!entries) return []
+
+        const query = this.query.toLowerCase()
+        return entries
+            .filter(entry => (entry.filename ?? ``).toLowerCase().includes(query))
+            .map(entry => entry.path)
+    })
+    matchSet = $derived(new Set(this.matchPaths))
+    /**
+     * Index of the selected entry within matchPaths, -1 if the selection is not a match
+     */
+    matchIndex = $derived(this.matchPaths.indexOf(filesState.selectedEntries.singlePath ?? ``))
+
+    reset() {
+        this.query = ``
     }
 }
 

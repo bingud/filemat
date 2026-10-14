@@ -13,8 +13,9 @@
     import { appState } from '$lib/code/stateObjects/appState.svelte'
     import { isDialogOpen } from "$lib/code/util/stateUtils"
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
-    import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView } from "../../_code/fileBrowserUtil.svelte";
+    import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView, handleTypeAheadKey } from "../../_code/fileBrowserUtil.svelte";
     import FileList from "./FileList.svelte";
+    import TypeAheadChip from "./TypeAheadChip.svelte";
     import Loader from "$lib/component/Loader.svelte";
 
     // TODO - Temporary fix
@@ -29,11 +30,17 @@
         setSelectedEntryPath()
 
         window.addEventListener('keydown', handleKeyDown)
-        
+        window.addEventListener('pointerdown', resetTypeAhead, true)
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
+            window.removeEventListener('pointerdown', resetTypeAhead, true)
         }
     })
+
+    function resetTypeAhead() {
+        filesState.typeAhead.reset()
+    }
 
 
     function setSelectedEntryPath() {
@@ -50,9 +57,11 @@
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (isDialogOpen()) return
+        if (isDialogOpen()) return resetTypeAhead()
         if (textFileViewerState.isFocused) return
         if (filesState.metaLoading) return
+
+        if (handleTypeAheadKey(event)) return
 
         // Check if Delete key was pressed
         if (event.key === 'Delete' && !event.ctrlKey && !event.altKey && !event.metaKey) {
@@ -430,6 +439,9 @@
         </div>
     {/if}
 {/if}
+
+
+<TypeAheadChip></TypeAheadChip>
 
 
 <!-- Transfer panels -->

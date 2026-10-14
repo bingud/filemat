@@ -177,6 +177,8 @@ export async function reloadCurrentFolder() {
 
 export function handleKeyDown(event: KeyboardEvent) {
     if (isDialogOpen() || isUserInAnyInput()) return
+    // Backspace belongs to type-ahead while a query is active (or was just consumed by it)
+    if (event.defaultPrevented || filesState.typeAhead.active) return
 
     // Navigate to the parent folder
     if (event.key === "Backspace") {

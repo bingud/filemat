@@ -5,6 +5,7 @@
     import { onMount } from "svelte";
     import { getFilePagePath, type FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
     import FileThumbnail from "./FileThumbnail.svelte";
+    import TypeAheadFilename from "./TypeAheadFilename.svelte";
     import type { GridPreviewSize } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
 
@@ -84,7 +85,7 @@
         <div class="entry-bar w-full flex items-end justify-between overflow-hidden">
             <div class="flex gap-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis">
                 <p title={entry.filename} class="truncate">
-                    {entry.filename!}
+                    <TypeAheadFilename {entry} />
                 </p>
             </div>
 

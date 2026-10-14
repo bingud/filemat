@@ -5,6 +5,7 @@
     import { onMount } from "svelte";
     import { getFilePagePath, type FileEntryProps } from "../../_code/fileBrowserUtil.svelte";
     import FileThumbnail from "./FileThumbnail.svelte";
+    import TypeAheadFilename from "./TypeAheadFilename.svelte";
     import type { RowPreviewSize } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import InfoIcon from "$lib/component/icons/InfoIcon.svelte";
@@ -87,7 +88,7 @@
                 {/if}
             </div>
             <p class="truncate" title={entry.filename}>
-                {entry.filename!}
+                <TypeAheadFilename {entry} />
             </p>
         </div>
     </div>
