@@ -222,6 +222,12 @@ class FileSecurityServiceTest {
 
         @ParameterizedTest(name = "{0}")
         @EnumSource(Operation::class)
+        fun `access-all-files holder is allowed without any file grant`(op: Operation) {
+            assertSuccess(op.check(service, principal(SystemPermission.ACCESS_ALL_FILES), file, null))
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(Operation::class)
         fun `forcing permission checks makes even a super admin need the grant`(op: Operation) {
             assertRejected(op.check(service, superAdmin(), file, false))
         }
@@ -324,6 +330,20 @@ class FileSecurityServiceTest {
         @Test
         fun `super admin has every file permission`() {
             assertEquals(FilePermission.entries.toSet(), service.getActualFilePermissions(superAdmin(), file))
+        }
+
+        @Test
+        fun `access-all-files holder has every file permission`() {
+            val user = principal(SystemPermission.ACCESS_ALL_FILES)
+
+            assertEquals(FilePermission.entries.toSet(), service.getActualFilePermissions(user, file))
+        }
+
+        @Test
+        fun `other system permissions grant no file permissions`() {
+            val user = principal(SystemPermission.MANAGE_USERS, SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
+
+            assertEquals(emptySet<FilePermission>(), service.getActualFilePermissions(user, file))
         }
 
         @Test

@@ -43,11 +43,8 @@ data class Principal(
          */
         fun Principal.getEffectiveFilePermissions(state: State): Set<FilePermission> {
             val perms = this.getPermissions(state)
-            return when {
-                SystemPermission.SUPER_ADMIN in perms          -> FilePermission.entries.toSet()
-                SystemPermission.ACCESS_ALL_FILES in perms     -> setOf(FilePermission.READ)
-                else                                           -> emptySet()
-            }
+            val hasAllFileAccess = SystemPermission.SUPER_ADMIN in perms || SystemPermission.ACCESS_ALL_FILES in perms
+            return if (hasAllFileAccess) FilePermission.entries.toSet() else emptySet()
         }
 
         /**
