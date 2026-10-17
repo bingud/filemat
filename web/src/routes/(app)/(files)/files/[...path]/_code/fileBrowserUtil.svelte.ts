@@ -4,6 +4,7 @@ import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { config } from "$lib/code/config/values"
 import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl"
 import { SvelteSet } from "svelte/reactivity"
 
@@ -14,6 +15,37 @@ function applyPreviewCors(img: HTMLImageElement) {
     } else {
         img.removeAttribute(`crossorigin`)
     }
+}
+
+/** Queue key for the placeholder image of `path`, so it is ordered right beside the real thumbnail. */
+export const fallbackQueueKey = (path: string) => `${path}\u0000fallback`
+
+let thumbCachePromise: Promise<Cache> | null = null
+
+/**
+ * Finds a locally cached thumbnail of the same file at another size, to show while `src` loads.
+ * Returns null if `src` itself is cached or no other size is. Prefers the closest larger size.
+ */
+export async function findCachedThumbFallback(src: string): Promise<string | null> {
+    if (typeof window === `undefined` || !(`caches` in window)) return null
+
+    const wanted = Number(new URL(src, location.href).searchParams.get(`size`))
+    const sizes = [...Object.values(config.preview.row), ...Object.values(config.preview.grid)].map(s => s.pixelSize)
+    const candidates = [...new Set(sizes)]
+        .filter(size => size !== wanted)
+        .sort((a, b) => (a > wanted ? 0 : 1) - (b > wanted ? 0 : 1) || Math.abs(a - wanted) - Math.abs(b - wanted))
+        .map(size => src.replace(`size=${wanted}`, `size=${size}`))
+
+    try {
+        const cache = await (thumbCachePromise ??= caches.open(`thumb-cache`))
+        if (await cache.match(src)) return null
+        for (const candidate of candidates) {
+            if (await cache.match(candidate)) return candidate
+        }
+    } catch {
+        thumbCachePromise = null
+    }
+    return null
 }
 
 export type FileContextMenuProps = {
@@ -348,10 +380,13 @@ export class VisibilityManager {
 
         // 1. Add images in the new sort order
         for (const path of sortedPaths) {
-            const img = this.imageMap.get(path)
-            if (img && this.pending.has(img)) {
-                newPending.add(img)
-                this.pending.delete(img)
+            // The placeholder goes first, so it shows before the real thumbnail
+            for (const key of [fallbackQueueKey(path), path]) {
+                const img = this.imageMap.get(key)
+                if (img && this.pending.has(img)) {
+                    newPending.add(img)
+                    this.pending.delete(img)
+                }
             }
         }
 
@@ -440,7 +475,7 @@ export class VisibilityManager {
             // If a real image is being unregistered (entry went to skeleton) and it was
             // still pending (never started loading), create a headless replacement so that
             // loadAllPreviews can still fetch and cache the thumbnail via the service worker.
-            if (!wasHeadless && wasInPending && dataSrc && appState.settings.loadAllPreviews) {
+            if (!wasHeadless && wasInPending && dataSrc && appState.settings.loadAllPreviews && !path.endsWith(`\u0000fallback`)) {
                 const headless = document.createElement(`img`)
                 applyPreviewCors(headless)
                 headless.setAttribute(`data-src`, dataSrc)

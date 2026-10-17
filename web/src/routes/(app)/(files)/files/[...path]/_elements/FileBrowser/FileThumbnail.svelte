@@ -2,7 +2,7 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
-    import type { VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
+    import { fallbackQueueKey, findCachedThumbFallback, type VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
     import { encodeUrlFilePath, filenameFromPath, formatMediaDuration } from "$lib/code/util/codeUtil.svelte";
     import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
@@ -39,41 +39,62 @@
         durationMs != null ? formatMediaDuration(durationMs / 1000) : null
     )
 
+    const isMedia = format === "image" || format === "video"
+    const src = $derived(format === "video" ? videoSrc : imageSrc)
+
+    // A cached thumbnail of another size, shown until the requested one has loaded.
+    let fallbackSrc: string | null = $state(null)
+    let fallbackLoaded = $state(false)
+    let loaded = $state(false)
+
+    $effect(() => {
+        if (!isMedia) return
+        let stale = false
+        loaded = false
+        fallbackLoaded = false
+        fallbackSrc = null
+        findCachedThumbFallback(src).then((found) => {
+            if (!stale) fallbackSrc = found
+        })
+        return () => { stale = true }
+    })
+
     function onImageError() {
         imageLoadFailed = true
     }
 </script>
 
-
-
 {#key size}
-    {#if format === "image" && !imageLoadFailed}
-        <img 
-            on:error={onImageError} 
-            use:loadFilePreview={entry.path} 
-            alt=""
-            crossorigin={cors}
-            data-src={imageSrc} 
-            class="h-full w-full object-contain opacity-0" 
-            on:load={(e: any) => { e.currentTarget.classList.remove("opacity-0") }}
-        >
-    {:else if format === "video" && !imageLoadFailed}
+    {#if isMedia && !imageLoadFailed}
         <div class="relative flex h-full w-full items-center justify-center">
+            {#if fallbackSrc && !loaded}
+                <img
+                    on:load={() => fallbackLoaded = true}
+                    on:error={() => fallbackSrc = null}
+                    use:loadFilePreview={fallbackQueueKey(entry.path)}
+                    alt=""
+                    crossorigin={cors}
+                    data-src={fallbackSrc}
+                    class="absolute inset-0 h-full w-full object-contain"
+                    class:opacity-0={!fallbackLoaded}
+                >
+            {/if}
             <img
-                on:load={(e) => e.currentTarget.classList.remove("opacity-0")}
+                on:load={() => loaded = true}
                 on:error={onImageError}
                 use:loadFilePreview={entry.path}
                 alt=""
                 crossorigin={cors}
-                data-src={videoSrc}
-                class="h-full w-full object-contain opacity-0"
+                data-src={src}
+                class="relative h-full w-full object-contain"
+                class:opacity-0={!loaded}
             >
-            {#if isLarge}
+            {#if format === "video" && isLarge}
                 <div class="absolute pointer-events-none text-white size-6 opacity-60">
                     <PlayIcon class="[filter:drop-shadow(0_0_1px_rgba(0,0,0,1))_drop-shadow(0_0_3px_rgba(0,0,0,0.6))]"></PlayIcon>
                 </div>
             {/if}
-            {#if durationLabel}
+            {#if format === "video" && durationLabel}
                 <div class="absolute bottom-0.5 right-0.5 pointer-events-none rounded-sm bg-black/70 px-1 py-px text-[0.65rem] leading-none text-white">
                     {durationLabel}
                 </div>
