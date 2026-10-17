@@ -19,6 +19,15 @@ export default defineConfig({
     css: {
         devSourcemap: true
     },
+    // Dev server only: forwards API calls to the Spring backend
+    server: {
+        proxy: {
+            '/api': {
+                target: process.env.FM_DEV_BACKEND || 'http://localhost:8080',
+                xfwd: true,
+            },
+        },
+    },
 })
 
 

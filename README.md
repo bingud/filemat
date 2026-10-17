@@ -117,3 +117,14 @@ Environment variables override these settings.
 
 Bug reports and feature requests are welcome in the GitHub Issues.  
 For larger changes, please open an issue first to discuss what you want to add or change.
+
+### Development setup
+
+1. Start the backend (`./gradlew bootRun` in `server/`) with `FM_DEV_MODE=true`. It listens on port `8080`.
+2. Start the frontend (`npm install`, then `npm run dev` in `web/`) and open the URL Vite prints.
+
+The Vite dev server proxies `/api` to `http://localhost:8080`, so no separate reverse proxy is needed.
+To use a different backend address, set `FM_DEV_BACKEND` (for example `FM_DEV_BACKEND=http://localhost:9090 npm run dev`).
+This proxy is dev-only and does not affect production builds.
+
+The alternative content server URL feature uses cross-origin requests and can't be tested through this proxy.
