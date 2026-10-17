@@ -32,7 +32,8 @@ class LoginService(
     private val authTokenService: AuthTokenService,
     private val logService: LogService,
     private val authService: AuthService,
-    private val mfaService: MfaService
+    private val mfaService: MfaService,
+    private val rateLimiter: RateLimiter,
 ): AController() {
 
     private val tempTokenExpirationSeconds = 600
@@ -60,8 +61,8 @@ class LoginService(
     ): ResponseEntity<String> {
         // Rate limit
         val rateLimit = if (existingPrincipal != null) {
-            RateLimiter.consume(RateLimitId.LOGIN_AUTHED, existingPrincipal.userId.toString())
-        } else RateLimiter.consume(RateLimitId.LOGIN, ip)
+            rateLimiter.consume(RateLimitId.LOGIN_AUTHED, existingPrincipal.userId.toString())
+        } else rateLimiter.consume(RateLimitId.LOGIN, ip)
 
         if (!rateLimit.isAllowed) return rateLimited(rateLimit.millisUntilRefill)
 
@@ -207,7 +208,7 @@ class LoginService(
     ): ResponseEntity<String> {
         val userId = loginTokenCache.getIfPresent(loginToken) ?: return unauthenticated("Login expired.", "login-expired")
 
-        RateLimiter.consume(RateLimitId.VERIFY_TOTP, userId.toString()).let { result ->
+        rateLimiter.consume(RateLimitId.VERIFY_TOTP, userId.toString()).let { result ->
             if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
         }
 

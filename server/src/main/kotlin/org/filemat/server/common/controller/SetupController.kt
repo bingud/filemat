@@ -59,6 +59,7 @@ class SetupController(
     private val thumbCacheSettingService: ThumbCacheSettingService,
     private val state: State,
     private val sensitiveFolderPaths: SensitiveFolderPaths,
+    private val rateLimiter: RateLimiter,
 ) : AController() {
 
     val submitLock = Locker()
@@ -79,7 +80,7 @@ class SetupController(
 
         // Rate limit
         val ip = request.realIp()
-        RateLimiter.consume(RateLimitId.VERIFY_SETUP_CODE, ip).let { result ->
+        rateLimiter.consume(RateLimitId.VERIFY_SETUP_CODE, ip).let { result ->
             if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
         }
 
@@ -149,7 +150,7 @@ class SetupController(
             ?: return@run bad("Option for following symbolic links must be true or false.", "validation")
 
         // Rate limit
-        RateLimiter.consume(RateLimitId.SETUP, ip).let {
+        rateLimiter.consume(RateLimitId.SETUP, ip).let {
             if (!it.isAllowed) return@run rateLimited(it.millisUntilRefill)
         }
 

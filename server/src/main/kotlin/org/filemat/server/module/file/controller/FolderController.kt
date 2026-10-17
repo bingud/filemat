@@ -43,7 +43,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @RestController
 @RequestMapping("/v1/folder")
-class FolderController(private val fileService: FileService, private val state: State) : AController() {
+class FolderController(private val fileService: FileService, private val state: State, private val rateLimiter: RateLimiter) : AController() {
 
     @PostMapping("/create")
     fun createFolderMapping(
@@ -104,7 +104,7 @@ class FolderController(private val fileService: FileService, private val state: 
     ): ResponseEntity<String> {
         if (shareToken != null) {
             val ip = request.realIp()
-            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+            rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)

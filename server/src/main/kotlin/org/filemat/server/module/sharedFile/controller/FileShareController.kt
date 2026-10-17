@@ -25,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/file/share")
 class FileShareController(
     private val fileShareService: FileShareService,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val rateLimiter: RateLimiter,
 ) : AController() {
 
     @Unauthenticated
@@ -53,7 +54,7 @@ class FileShareController(
         @RequestParam("shareToken") shareToken: String,
     ): ResponseEntity<String> {
         val ip = request.realIp()
-        RateLimiter.consume(RateLimitId.SHARED_FILE_PROBE, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        rateLimiter.consume(RateLimitId.SHARED_FILE_PROBE, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
 
         fileShareService.getMetadata(shareToken, UserAction.GET_FILE_SHARE_METADATA).let {
             if (it.notFound) return notFound("This shared file was not found.")
@@ -71,7 +72,7 @@ class FileShareController(
         @RequestParam("shareId") shareId: String,
     ): ResponseEntity<String> {
         val ip = request.realIp()
-        RateLimiter.consume(RateLimitId.SHARED_FILE_PROBE, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        rateLimiter.consume(RateLimitId.SHARED_FILE_PROBE, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
 
         fileShareService.getPasswordStatus(shareId, UserAction.GET_SHARED_FILE).let {
             if (it.notFound) return ok("false")

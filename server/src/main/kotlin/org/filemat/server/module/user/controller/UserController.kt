@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController
 class UserController(
     private val mfaService: MfaService,
     private val userService: UserService,
+    private val rateLimiter: RateLimiter,
 ) : AController() {
 
     @PostMapping("/change-password")
@@ -39,7 +40,7 @@ class UserController(
         val logoutAllSessions = rawLogoutAllSessions.toBooleanStrictOrNull() ?: return bad("Specify whether to log out all sessions.")
 
         if (user.mfaTotpStatus) {
-            RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+            rateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
                 if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
             }
             Validator.totp(mfaTotp)?.let { return bad(it) }
@@ -91,7 +92,7 @@ class UserController(
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
 
-        RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+        rateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
             if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
         }
 
@@ -134,7 +135,7 @@ class UserController(
     ): ResponseEntity<String> {
         val user = request.getPrincipal()!!
 
-        RateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
+        rateLimiter.consume(RateLimitId.VERIFY_TOTP, user.userId.toString()).let { result ->
             if (!result.isAllowed) return rateLimited(result.millisUntilRefill)
         }
 

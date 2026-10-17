@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.util.RateLimiter
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.file.model.FilePath
@@ -24,6 +25,7 @@ import org.filemat.server.testutil.assertNotFound
 import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
 import org.filemat.server.testutil.principalWith
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -49,6 +51,11 @@ class FileShareServiceTest {
     private val fileService = mockk<FileService>()
     private val passwordEncoder = mockk<PasswordEncoder>()
 
+    private val rateLimiter = RateLimiter()
+
+    @AfterEach
+    fun stopRateLimiter() = rateLimiter.shutdown()
+
     private val service = FileShareService(
         fileShareRepository = repository,
         logService = mockk<LogService>(relaxed = true),
@@ -56,6 +63,7 @@ class FileShareServiceTest {
         fileService = fileService,
         passwordEncoder = passwordEncoder,
         state = state,
+        rateLimiter = rateLimiter,
     )
 
     init {
@@ -65,7 +73,7 @@ class FileShareServiceTest {
 
     private val entityId = UlidCreator.getUlid()
     private val ownerId = UlidCreator.getUlid()
-    private val ip = "share-ip-${UlidCreator.getUlid()}"
+    private val ip = "127.0.0.1"
 
     private fun share(
         id: String = "my-link",
@@ -213,8 +221,8 @@ class FileShareServiceTest {
             matches()
             every { repository.getSharesByShareId("ghost") } returns null
 
-            val unknown = login(shareId = "ghost", ip = "ip-a-${UlidCreator.getUlid()}")
-            val wrong = login(password = "wrong", ip = "ip-b-${UlidCreator.getUlid()}")
+            val unknown = login(shareId = "ghost")
+            val wrong = login(password = "wrong")
 
             assertEquals(wrong.error, unknown.error)
         }

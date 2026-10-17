@@ -1,8 +1,12 @@
 package org.filemat.server.common.util
 
 import io.github.bucket4j.Bucket
+import io.github.bucket4j.TimeMeter
+import jakarta.annotation.PreDestroy
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.springframework.stereotype.Component
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.exitProcess
@@ -38,7 +42,21 @@ data class TimedBucket(
 )
 
 
-object RateLimiter {
+/**
+ * Rate limiter keyed by endpoint ID and identifier (IP or user ID).
+ *
+ * [clockMillis] is the source of the current time in epoch milliseconds.
+ * Tests can pass their own clock to control time.
+ */
+@Component
+class RateLimiter(
+    private val clockMillis: () -> Long = System::currentTimeMillis,
+) {
+    private val timeMeter = object : TimeMeter {
+        override fun currentTimeNanos(): Long = clockMillis() * 1_000_000
+        override fun isWallClockBased(): Boolean = true
+    }
+
     //                                      Endpoint ID                    UserID  Bucket
     private val buckets = ConcurrentHashMap<RateLimitId, ConcurrentHashMap<String, TimedBucket>>()
     private val configs = HashMap<RateLimitId, RateLimitConfig>()
@@ -66,31 +84,44 @@ object RateLimiter {
             }
         }
 
-        loop_removeUnusedBuckets()
     }
 
-    private fun loop_removeUnusedBuckets() = globalCoroutineScope.launch {
+    private val cleanupJob: Job = globalCoroutineScope.launch {
         while (true) {
 //            delay(90_000)
             delay(1000)
-            val now = unixNow()
+            removeUnusedBuckets()
+        }
+    }
 
-            // Loop over all endpoints
-            buckets.forEach { id: RateLimitId, userBuckets: ConcurrentHashMap<String, TimedBucket> ->
-                val configuration = configs[id]!!
+    @PreDestroy
+    fun shutdown() {
+        cleanupJob.cancel()
+    }
 
-                // Loop over all buckets for this endpoint
-                userBuckets.iterate { identifier: String, timedBucket: TimedBucket, remove: Function0<Unit> ->
-                    val bucket = timedBucket.bucket
-                    val hasMaxTokens = bucket.availableTokens == configuration.maxTokens
+    private fun nowSeconds() = clockMillis() / 1000
 
-                    val secondsSinceLastRequest = now - timedBucket.lastRequestDate
-                    val hasOverflownToken = secondsSinceLastRequest > configuration.refillIntervalSeconds
+    /**
+     * Remove buckets that are full and have not been used for longer than their refill interval.
+     */
+    internal fun removeUnusedBuckets() {
+        val now = nowSeconds()
 
-                    // If bucket has maximum tokens and has overflown at least one more token
-                    if (hasMaxTokens && hasOverflownToken) {
-                        remove()
-                    }
+        // Loop over all endpoints
+        buckets.forEach { id: RateLimitId, userBuckets: ConcurrentHashMap<String, TimedBucket> ->
+            val configuration = configs[id]!!
+
+            // Loop over all buckets for this endpoint
+            userBuckets.iterate { identifier: String, timedBucket: TimedBucket, remove: Function0<Unit> ->
+                val bucket = timedBucket.bucket
+                val hasMaxTokens = bucket.availableTokens == configuration.maxTokens
+
+                val secondsSinceLastRequest = now - timedBucket.lastRequestDate
+                val hasOverflownToken = secondsSinceLastRequest > configuration.refillIntervalSeconds
+
+                // If bucket has maximum tokens and has overflown at least one more token
+                if (hasMaxTokens && hasOverflownToken) {
+                    remove()
                 }
             }
         }
@@ -101,7 +132,7 @@ object RateLimiter {
      * Try to consume a token by UserID or IP address.
      */
     fun consume(endpointId: RateLimitId, identifier: String): RateLimitResult {
-        val now = unixNow()
+        val now = nowSeconds()
         val timedBucket = buckets[endpointId]!!.computeIfAbsent(identifier) {
             createBucket(id = endpointId, lastRequestDate = now)
         }
@@ -118,7 +149,7 @@ object RateLimiter {
      */
     private fun createBucket(id: RateLimitId, lastRequestDate: Long): TimedBucket {
         val config = configs[id]!!
-        val bucket = Bucket.builder().addLimit {
+        val bucket = Bucket.builder().withCustomTimePrecision(timeMeter).addLimit {
             it.capacity(config.maxTokens)
                 .refillIntervally(1, Duration.ofMillis(config.refillIntervalMillis))
         }.build()

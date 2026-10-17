@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.util.RateLimiter
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.common.util.TotpUtil
 import org.filemat.server.config.Props
@@ -15,6 +16,7 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.User
 import org.filemat.server.module.user.service.UserService
 import org.filemat.server.testutil.testPrincipal
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -28,7 +30,7 @@ import java.net.URI
 
 /**
  * Tests the login flow: who gets an auth session, what each caller is told, and the rate limits.
- * Rate limiting is keyed by IP, so each test uses its own IP unless it is testing the limit.
+ * Each test gets a fresh [RateLimiter], so attempts never leak between tests.
  */
 class LoginServiceTest {
 
@@ -39,10 +41,15 @@ class LoginServiceTest {
     private val mfaService = mockk<MfaService>()
     private val logService = mockk<LogService>(relaxed = true)
 
-    private val service = LoginService(userService, passwordEncoder, authTokenService, logService, authService, mfaService)
+    private val rateLimiter = RateLimiter()
+
+    @AfterEach
+    fun stopRateLimiter() = rateLimiter.shutdown()
+
+    private val service = LoginService(userService, passwordEncoder, authTokenService, logService, authService, mfaService, rateLimiter)
 
     private val response = MockHttpServletResponse()
-    private val ip = "test-ip-${UlidCreator.getUlid()}"
+    private val ip = "127.0.0.1"
     private val totpSecret = "JBSWY3DPEHPK3PXP"
 
     private fun user(
@@ -140,8 +147,8 @@ class LoginServiceTest {
             existing()
             every { userService.getUserByUsername("ghost", any()) } returns Result.notFound()
 
-            val unknown = login(username = "ghost", ip = "ip-a-${UlidCreator.getUlid()}")
-            val wrongPassword = login(password = "wrong-password", ip = "ip-b-${UlidCreator.getUlid()}")
+            val unknown = login(username = "ghost")
+            val wrongPassword = login(password = "wrong-password")
 
             assertEquals(wrongPassword.statusCode, unknown.statusCode)
             assertEquals(wrongPassword.body, unknown.body)
@@ -186,13 +193,12 @@ class LoginServiceTest {
         @Test
         fun `invalid input is rejected before any user lookup`() {
             existing()
-            val ips = generateSequence { "ip-${UlidCreator.getUlid()}" }.iterator()
 
-            assertEquals("username-invalid", login(username = null, ip = ips.next()).errorCode())
-            assertEquals("username-invalid", login(username = "bad name!", ip = ips.next()).errorCode())
-            assertEquals("email-invalid", login(username = "not an@email", ip = ips.next()).errorCode())
-            assertEquals("password-invalid", login(password = null, ip = ips.next()).errorCode())
-            assertEquals("password-invalid", login(password = "abc", ip = ips.next()).errorCode())
+            assertEquals("username-invalid", login(username = null).errorCode())
+            assertEquals("username-invalid", login(username = "bad name!").errorCode())
+            assertEquals("email-invalid", login(username = "not an@email").errorCode())
+            assertEquals("password-invalid", login(password = null).errorCode())
+            assertEquals("password-invalid", login(password = "abc").errorCode())
 
             verify(exactly = 0) { userService.getUserByUsername(any(), any()) }
             verify(exactly = 0) { userService.getUserByEmail(any(), any()) }
@@ -226,7 +232,7 @@ class LoginServiceTest {
             existing()
             repeat(9) { login(password = "wrong-password") }
 
-            assertEquals(200, login(ip = "other-ip-${UlidCreator.getUlid()}").statusCode.value())
+            assertEquals(200, login(ip = "10.0.0.2").statusCode.value())
         }
     }
 

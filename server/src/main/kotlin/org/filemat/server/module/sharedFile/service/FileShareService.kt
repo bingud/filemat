@@ -38,6 +38,7 @@ class FileShareService(
     @Lazy private val fileService: FileService,
     private val passwordEncoder: PasswordEncoder,
     private val state: State,
+    private val rateLimiter: RateLimiter,
 ) {
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -85,8 +86,8 @@ class FileShareService(
      */
     fun login(shareId: String, password: String, principal: Principal?, ip: String, userAction: UserAction): Result<String> {
         val rateLimit = if (principal != null) {
-            RateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN, principal.userId.toString())
-        } else RateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN_ANON, ip)
+            rateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN, principal.userId.toString())
+        } else rateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN_ANON, ip)
 
         if (!rateLimit.isAllowed) return Result.reject("Try again in ${rateLimit.millisUntilRefill / 1000} seconds")
 

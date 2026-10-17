@@ -37,6 +37,7 @@ class FileUtilController(
     private val fileService: FileService,
     private val thumbnailService: ThumbnailService,
     private val logService: LogService,
+    private val rateLimiter: RateLimiter,
 ) : AController() {
 
     @Unauthenticated
@@ -50,7 +51,7 @@ class FileUtilController(
     ): ResponseEntity<*> {
         if (shareToken != null) {
             val ip = request.realIp()
-            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+            rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
@@ -142,7 +143,7 @@ class FileUtilController(
     ): ResponseEntity<*> {
         if (shareToken != null) {
             val ip = request.realIp()
-            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+            rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
@@ -229,7 +230,7 @@ class FileUtilController(
     ): ResponseEntity<String> {
         if (shareToken != null) {
             val ip = request.realIp()
-            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+            rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
@@ -252,7 +253,7 @@ class FileUtilController(
     ): ResponseEntity<String> {
         if (shareToken != null) {
             val ip = request.realIp()
-            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+            rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
         val paths = Json.decodeFromStringOrNull<List<String>>(rawPathList)
