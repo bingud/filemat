@@ -2,20 +2,20 @@ package org.filemat.server.module.file.service.file.component
 
 import io.mockk.every
 import io.mockk.mockk
+import java.awt.image.BufferedImage
+import java.nio.file.Path
+import javax.imageio.ImageIO
 import org.filemat.server.common.model.Result
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FileContentMetadata
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.FileLockService
+import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.awt.image.BufferedImage
-import java.nio.file.Path
-import javax.imageio.ImageIO
+import org.junit.jupiter.api.Test
 
 class FileContentMetadataServiceTest {
 
@@ -50,7 +50,7 @@ class FileContentMetadataServiceTest {
 
         val result = service.getContentMetadata(user, path, null)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(48, result.value.width)
         assertEquals(24, result.value.height)
         assertNull(result.value.durationMs)
@@ -73,7 +73,7 @@ class FileContentMetadataServiceTest {
 
         val result = service.getContentMetadata(user, path, null)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(99, result.value.width)
         assertEquals(88, result.value.height)
     }
@@ -95,7 +95,7 @@ class FileContentMetadataServiceTest {
 
         val result = service.getContentMetadata(user, path, null)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(32, result.value.width)
         assertEquals(16, result.value.height)
     }

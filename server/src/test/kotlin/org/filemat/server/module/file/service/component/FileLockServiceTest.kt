@@ -1,4 +1,4 @@
-package org.filemat.server.module.file.service.commponent
+package org.filemat.server.module.file.service.component
 
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType

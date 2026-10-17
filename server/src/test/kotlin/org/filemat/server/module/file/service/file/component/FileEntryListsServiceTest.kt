@@ -26,7 +26,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
-class FileEntryListsServiceSharedSearchTest {
+class FileEntryListsServiceTest {
 
     @TempDir
     lateinit var tempDir: Path

@@ -4,22 +4,21 @@ import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
-import org.filemat.server.common.util.unixNow
+import org.filemat.server.common.State
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
-import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.permission.service.EntityPermissionService
-import org.filemat.server.module.role.model.Role
 import org.filemat.server.testutil.assertError
 import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.principalWith
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -85,20 +84,7 @@ class FileSecurityServiceTest {
         every { fileVisibilityService.isPathAllowed(any()) } returns "blocked"
     }
 
-    private fun principal(vararg systemPermissions: SystemPermission): Principal {
-        val roleId = UlidCreator.getUlid()
-        state.auth.roleMap[roleId] = Role(roleId, "role-$roleId", unixNow(), systemPermissions.toList())
-        return Principal(
-            userId = UlidCreator.getUlid(),
-            email = "user@test",
-            username = "user",
-            mfaTotpStatus = false,
-            mfaTotpRequired = false,
-            isBanned = false,
-            roles = mutableListOf(roleId),
-            homeFolderPath = null,
-        )
-    }
+    private fun principal(vararg systemPermissions: SystemPermission) = state.principalWith(*systemPermissions)
 
     private fun superAdmin() = principal(SystemPermission.SUPER_ADMIN)
 

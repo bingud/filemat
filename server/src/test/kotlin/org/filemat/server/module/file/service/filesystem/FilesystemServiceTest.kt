@@ -1,13 +1,15 @@
 package org.filemat.server.module.file.service.filesystem
 
 import io.mockk.mockk
-import org.filemat.server.module.file.model.FilePath
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.testutil.assertNotFound
+import org.filemat.server.testutil.assertSuccess
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.Test
 
 class FilesystemServiceTest {
     @TempDir
@@ -31,7 +33,7 @@ class FilesystemServiceTest {
             destination = FilePath.ofAlreadyNormalized(destination),
         )
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals("new", Files.readString(destination))
         assertTrue(Files.notExists(source))
     }
@@ -47,7 +49,7 @@ class FilesystemServiceTest {
             destination = FilePath.ofAlreadyNormalized(destination),
         )
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
         assertEquals("old", Files.readString(destination))
     }
 }

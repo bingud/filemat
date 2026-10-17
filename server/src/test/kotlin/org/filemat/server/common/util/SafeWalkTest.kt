@@ -1,30 +1,33 @@
 package org.filemat.server.common.util
 
-import org.filemat.server.testutil.symlinkOrSkip
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.filemat.server.common.model.Result
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
+import org.filemat.server.testutil.assertError
+import org.filemat.server.testutil.assertRejected
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.symlinkOrSkip
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.LinkOption
-import java.nio.file.Path
-import java.nio.file.attribute.BasicFileAttributes
-import java.util.concurrent.atomic.AtomicInteger
+import org.junit.jupiter.api.Test
 
 class SafeWalkTest {
 
@@ -74,7 +77,7 @@ class SafeWalkTest {
 
         val result = measureFolder(root)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         val size = result.value
         assertEquals(3, size.fileCount)
         assertEquals(2, size.folderCount)
@@ -88,7 +91,7 @@ class SafeWalkTest {
 
         val result = measureFolder(root)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         val size = result.value
         assertEquals(0, size.fileCount)
         assertEquals(0, size.folderCount)
@@ -106,7 +109,7 @@ class SafeWalkTest {
 
         try {
             val result = runBlocking(Dispatchers.IO) { root.measureFolderContents(with = locks) }
-            assertTrue(result.rejected)
+            assertRejected(result)
             assertEquals("This folder is currently being modified.", result.error)
         } finally {
             writeLock.unlock()
@@ -126,7 +129,7 @@ class SafeWalkTest {
             assertEquals(1, failed.get())
 
             val result = measureFolder(root)
-            assertTrue(result.hasError)
+            assertError(result)
             assertEquals("Failed to read this folder.", result.error)
         } finally {
             restore()
@@ -143,7 +146,7 @@ class SafeWalkTest {
 
         try {
             val result = measureFolder(root)
-            assertTrue(result.isSuccessful)
+            assertSuccess(result)
             val size = result.value
             assertEquals(1, size.fileCount)
             assertEquals(1, size.folderCount)
@@ -169,7 +172,7 @@ class SafeWalkTest {
 
         val result = measureFolder(root)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         val size = result.value
         val dirLinkSize = Files.readAttributes(dirLink, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS).size()
         val fileLinkSize = Files.readAttributes(fileLink, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS).size()

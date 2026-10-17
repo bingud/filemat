@@ -1,32 +1,32 @@
 package org.filemat.server.module.file.service.file
 
-import org.filemat.server.testutil.symlinkOrSkip
 import com.github.f4b6a3.ulid.Ulid
 import io.mockk.every
 import io.mockk.mockk
-import org.filemat.server.common.State
+import java.nio.file.Files
+import java.nio.file.Path
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
+import org.filemat.server.module.file.service.file.component.FileContentMetadataService
 import org.filemat.server.module.file.service.file.component.FileContentService
 import org.filemat.server.module.file.service.file.component.FileCopyService
 import org.filemat.server.module.file.service.file.component.FileDeletionService
 import org.filemat.server.module.file.service.file.component.FileEntryListsService
 import org.filemat.server.module.file.service.file.component.FileFolderEntriesService
-import org.filemat.server.module.file.service.file.component.FileContentMetadataService
 import org.filemat.server.module.file.service.file.component.FileMetadataService
 import org.filemat.server.module.file.service.file.component.FileMoveService
 import org.filemat.server.module.file.service.file.component.FileSecurityService
-import org.junit.jupiter.api.AfterEach
+import org.filemat.server.testutil.assertNotFound
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.symlinkOrSkip
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
+import org.junit.jupiter.api.Test
 
-class FileServiceResolveShareTest {
+class FileServiceTest {
 
     @TempDir
     lateinit var tempDir: Path
@@ -74,8 +74,8 @@ class FileServiceResolveShareTest {
         val inside = fileService.resolvePathWithOptionalShare(FilePath.of("in-tree/hello.txt"), "token")
         val outbound = fileService.resolvePathWithOptionalShare(FilePath.of("escape"), "token")
 
-        assertTrue(inside.isSuccessful)
+        assertSuccess(inside)
         assertTrue(hello.toRealPath() == inside.value.path)
-        assertTrue(outbound.notFound)
+        assertNotFound(outbound)
     }
 }

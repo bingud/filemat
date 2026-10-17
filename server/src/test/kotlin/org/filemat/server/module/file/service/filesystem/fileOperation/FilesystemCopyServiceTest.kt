@@ -1,21 +1,23 @@
 package org.filemat.server.module.file.service.filesystem.fileOperation
 
-import org.filemat.server.common.State
 import io.mockk.every
 import io.mockk.mockk
+import java.nio.file.Files
+import java.nio.file.Path
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.testutil.assertNotSuccessful
+import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
+import org.junit.jupiter.api.Test
 
 class FilesystemCopyServiceTest {
 
@@ -55,7 +57,7 @@ class FilesystemCopyServiceTest {
 
         val result = copy(source, dest)
 
-        assertTrue(result.isNotSuccessful)
+        assertNotSuccessful(result)
         assertFalse(Files.exists(dest))
         assertTrue(Files.exists(source.resolve("file.txt")))
     }
@@ -70,7 +72,7 @@ class FilesystemCopyServiceTest {
 
         val result = copy(source, dest)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertTrue(Files.isDirectory(dest))
         assertTrue(Files.exists(source))
     }
@@ -89,7 +91,7 @@ class FilesystemCopyServiceTest {
 
         val result = copy(source, dest)
 
-        assertTrue(result.isNotSuccessful)
+        assertNotSuccessful(result)
         assertTrue(Files.exists(dest.resolve("nested").resolve("allowed.txt")))
         assertFalse(Files.exists(dest.resolve("denied.txt")))
         assertTrue(Files.exists(nested.resolve("allowed.txt")))
@@ -108,7 +110,7 @@ class FilesystemCopyServiceTest {
 
         val result = copy(source, dest)
 
-        assertTrue(result.isNotSuccessful)
+        assertNotSuccessful(result)
         assertFalse(Files.exists(dest))
         assertFalse(Files.exists(dest.resolve("a")))
         assertFalse(Files.exists(dest.resolve("a").resolve("b")))
@@ -129,7 +131,7 @@ class FilesystemCopyServiceTest {
 
         val result = copy(source, dest)
 
-        assertTrue(result.isNotSuccessful)
+        assertNotSuccessful(result)
         assertTrue(Files.exists(dest.resolve("ok.txt")))
         assertFalse(Files.exists(dest.resolve("a")))
     }

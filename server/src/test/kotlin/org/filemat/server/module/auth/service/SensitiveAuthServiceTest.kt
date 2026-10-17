@@ -3,8 +3,9 @@ package org.filemat.server.module.auth.service
 import io.mockk.mockk
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.log.service.LogService
+import org.filemat.server.testutil.assertRejected
+import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class SensitiveAuthServiceTest {
@@ -19,7 +20,7 @@ class SensitiveAuthServiceTest {
 
         val result = service.verifyOtp(otp)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(expirationDate, result.value)
     }
 
@@ -32,8 +33,8 @@ class SensitiveAuthServiceTest {
         val first = service.verifyOtp(otp)
         val second = service.verifyOtp(otp)
 
-        assertTrue(first.isSuccessful)
-        assertTrue(second.isSuccessful)
+        assertSuccess(first)
+        assertSuccess(second)
         assertEquals(expirationDate, second.value)
     }
 
@@ -41,7 +42,7 @@ class SensitiveAuthServiceTest {
     fun `verifyOtp rejects an unknown code`() {
         val result = service.verifyOtp("UNKNOWNCODE00001")
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Code is invalid.", result.error)
     }
 
@@ -52,9 +53,9 @@ class SensitiveAuthServiceTest {
 
         val result = service.verifyOtp(otp)
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Code is invalid.", result.error)
-        assertTrue(service.verifyOtp(otp).rejected)
+        assertRejected(service.verifyOtp(otp))
     }
 
     @Test
@@ -65,10 +66,10 @@ class SensitiveAuthServiceTest {
         service.tokens.put(first, unixNow() + 120)
         service.tokens.put(other, otherExpiration)
 
-        assertTrue(service.verifyOtp(first).isSuccessful)
+        assertSuccess(service.verifyOtp(first))
 
         val otherResult = service.verifyOtp(other)
-        assertTrue(otherResult.isSuccessful)
+        assertSuccess(otherResult)
         assertEquals(otherExpiration, otherResult.value)
     }
 }

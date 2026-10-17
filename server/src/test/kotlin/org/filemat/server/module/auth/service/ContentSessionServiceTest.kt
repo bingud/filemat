@@ -4,6 +4,8 @@ import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
+import org.filemat.server.testutil.assertRejected
+import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -25,21 +27,21 @@ class ContentSessionServiceTest {
     @Test
     fun `ticket is single use`() {
         val minted = service.createTicket(token(), "https://example.com")
-        assertTrue(minted.isSuccessful)
+        assertSuccess(minted)
 
         val first = service.consumeTicket(minted.value)
         val second = service.consumeTicket(minted.value)
 
-        assertTrue(first.isSuccessful)
+        assertSuccess(first)
         assertEquals("session-token-value", first.value.authToken)
         assertEquals("https://example.com", first.value.origin)
-        assertTrue(second.rejected)
+        assertRejected(second)
     }
 
     @Test
     fun `unknown ticket is rejected`() {
         val result = service.consumeTicket("missing")
-        assertTrue(result.rejected)
+        assertRejected(result)
     }
 
     @Test

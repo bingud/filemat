@@ -1,27 +1,26 @@
 package org.filemat.server.module.file.service.file.component
 
-import org.filemat.server.testutil.symlinkOrSkip
 import io.mockk.every
 import io.mockk.mockk
-import org.filemat.server.common.State
+import java.nio.file.Files
+import java.nio.file.Path
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
-import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.sharedFile.resolveSharedFilePath
-import org.junit.jupiter.api.AfterEach
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.symlinkOrSkip
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
+import org.junit.jupiter.api.Test
 
-class FileMetadataServiceSharedEntriesTest {
+class FileMetadataServiceTest {
 
     @TempDir
     lateinit var tempDir: Path
@@ -67,7 +66,7 @@ class FileMetadataServiceSharedEntriesTest {
 
         val result = service.getSharedFileOrFolderEntries(FilePath.of("/"), shareToken = "share-token")
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         val names = result.value.second!!.map { Path.of(it.path).fileName.toString() }
         assertTrue(names.contains("nested"))
         assertTrue(names.contains("in-tree"))

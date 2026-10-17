@@ -7,15 +7,16 @@ import io.mockk.verify
 import org.filemat.server.common.State
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.model.Role
 import org.filemat.server.module.role.repository.RoleRepository
 import org.filemat.server.module.user.model.UserAction
+import org.filemat.server.testutil.assertRejected
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class RoleServiceTest {
@@ -46,16 +47,7 @@ class RoleServiceTest {
             permissions = listOf(SystemPermission.EDIT_ROLES),
         )
 
-        val principal = Principal(
-            userId = userId,
-            email = "e@test",
-            username = "editor",
-            mfaTotpStatus = false,
-            mfaTotpRequired = false,
-            isBanned = false,
-            roles = mutableListOf(editorRoleId),
-            homeFolderPath = null,
-        )
+        val principal = testPrincipal(userId = userId, username = "editor", roles = listOf(editorRoleId))
 
         val result = roleService.updatePermissionList(
             user = principal,
@@ -64,7 +56,7 @@ class RoleServiceTest {
             userAction = UserAction.UPDATE_ROLE_PERMISSIONS,
         )
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Cannot update role with higher permissions than you have.", result.error)
         verify(exactly = 0) { roleRepository.updatePermissions(any(), any()) }
     }
@@ -104,7 +96,7 @@ class RoleServiceTest {
             userAction = UserAction.DELETE_ROLE,
         )
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         verify(exactly = 1) { roleRepository.deleteById(targetRoleId) }
         verify(exactly = 1) { authService.removeRoleFromAllPrincipals(targetRoleId) }
     }
@@ -132,19 +124,10 @@ class RoleServiceTest {
             userAction = UserAction.DELETE_ROLE,
         )
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Cannot delete a system role.", result.error)
         verify(exactly = 0) { roleRepository.deleteById(any<Ulid>()) }
     }
 
-    private fun principalWithRole(roleId: Ulid) = Principal(
-        userId = UlidCreator.getUlid(),
-        email = "e@test",
-        username = "editor",
-        mfaTotpStatus = false,
-        mfaTotpRequired = false,
-        isBanned = false,
-        roles = mutableListOf(roleId),
-        homeFolderPath = null,
-    )
+    private fun principalWithRole(roleId: Ulid) = testPrincipal(username = "editor", roles = listOf(roleId))
 }

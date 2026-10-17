@@ -4,8 +4,8 @@ import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.file.ThumbnailService
@@ -13,6 +13,8 @@ import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.service.SettingService
 import org.filemat.server.module.user.model.UserAction
+import org.filemat.server.testutil.assertRejected
+import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -20,7 +22,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
-class ThumbCacheSettingServiceSetupTest {
+class ThumbCacheSettingServiceTest {
 
     private val settingService = mockk<SettingService>()
     private val filesystemService = mockk<FilesystemService>()
@@ -52,7 +54,7 @@ class ThumbCacheSettingServiceSetupTest {
             maxAge = Props.defaultThumbnailCacheMaxAgeSeconds,
         )
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertTrue(state.thumbCache.isEnabled)
         assertEquals(folder.pathString, state.thumbCache.folderPath)
         assertEquals(Props.defaultThumbnailCacheMaxSizeMb, state.thumbCache.maxSizeMb)
@@ -86,7 +88,7 @@ class ThumbCacheSettingServiceSetupTest {
             maxAge = null,
         )
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertFalse(state.thumbCache.isEnabled)
         assertNull(state.thumbCache.folderPath)
         assertNull(state.thumbCache.maxSizeMb)
@@ -105,7 +107,7 @@ class ThumbCacheSettingServiceSetupTest {
             maxAge = 3600,
         )
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Thumbnail cache folder is required when caching is enabled.", result.error)
         verify(exactly = 0) { settingService.db_setSetting(any(), any()) }
     }
@@ -120,7 +122,7 @@ class ThumbCacheSettingServiceSetupTest {
             maxAge = null,
         )
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Max Size parameter is too low.", result.error)
         verify(exactly = 0) { settingService.db_setSetting(any(), any()) }
     }
@@ -135,7 +137,7 @@ class ThumbCacheSettingServiceSetupTest {
             maxAge = 0,
         )
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         assertEquals("Expiration time is too low.", result.error)
         verify(exactly = 0) { settingService.db_setSetting(any(), any()) }
     }

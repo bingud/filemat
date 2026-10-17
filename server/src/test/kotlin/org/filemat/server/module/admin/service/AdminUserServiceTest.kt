@@ -1,14 +1,12 @@
 package org.filemat.server.module.admin.service
 
-import org.filemat.server.common.State
-import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.config.Props
-import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.AuthService
 import org.filemat.server.module.auth.service.MfaService
 import org.filemat.server.module.file.service.EntityService
@@ -20,7 +18,8 @@ import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.PublicUserRepository
 import org.filemat.server.module.user.repository.UserRepository
 import org.filemat.server.module.user.service.UserService
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Test
 import org.springframework.security.crypto.password.PasswordEncoder
 
@@ -51,13 +50,13 @@ class AdminUserServiceTest {
         every { userRoleService.assign(any(), any(), any()) } returns Result.error("Failed to assign role to user.")
 
         val result = adminUserService.createUser(
-            admin = admin(),
+            admin = testPrincipal(),
             email = "user@test",
             username = "newuser",
             password = ArgonHash("hashed"),
         )
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         verify(exactly = 1) { userRepository.createUser(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
         verify(exactly = 1) { userRoleService.assign(result.value, Props.Roles.userRoleId, UserAction.CREATE_USER) }
         verify(exactly = 1) {
@@ -80,24 +79,14 @@ class AdminUserServiceTest {
         every { userRoleService.assign(any(), any(), any()) } returns Result.ok()
 
         val result = adminUserService.createUser(
-            admin = admin(),
+            admin = testPrincipal(),
             email = "user@test",
             username = "newuser",
             password = ArgonHash("hashed"),
         )
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         verify(exactly = 1) { userRoleService.assign(result.value, Props.Roles.userRoleId, UserAction.CREATE_USER) }
     }
 
-    private fun admin() = Principal(
-        userId = UlidCreator.getUlid(),
-        email = "admin@test",
-        username = "admin",
-        mfaTotpStatus = false,
-        mfaTotpRequired = false,
-        isBanned = false,
-        roles = mutableListOf(),
-        homeFolderPath = null,
-    )
 }

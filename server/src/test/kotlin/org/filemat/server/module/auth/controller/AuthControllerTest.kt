@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 
-class AuthControllerContentSessionTest {
+class AuthControllerTest {
 
     private val authTokenService = mockk<AuthTokenService>()
     private val contentSessionService = ContentSessionService()

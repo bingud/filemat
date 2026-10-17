@@ -1,22 +1,21 @@
 package org.filemat.server.module.setting.service
 
-import com.github.f4b6a3.ulid.UlidCreator
-import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.State
 import org.filemat.server.config.Props
-import org.filemat.server.module.auth.model.Principal
-import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.repository.SettingRepository
+import org.filemat.server.testutil.assertRejected
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
-class SettingServiceContentUrlTest {
+class SettingServiceTest {
 
     private val settingRepository = mockk<SettingRepository>(relaxed = true)
     private val logService = mockk<LogService>(relaxed = true)
@@ -35,23 +34,13 @@ class SettingServiceContentUrlTest {
         state,
     )
 
-    private fun principal() = Principal(
-        userId = UlidCreator.getUlid(),
-        email = "admin@test",
-        username = "admin",
-        mfaTotpStatus = false,
-        mfaTotpRequired = false,
-        isBanned = false,
-        roles = mutableListOf(),
-        homeFolderPath = null,
-    )
 
     @Test
     fun `stores a content base URL verbatim`() {
         val url = "https://203.0.113.10:8080/filemat/"
-        val result = service.set_contentBaseUrl(principal(), url)
+        val result = service.set_contentBaseUrl(testPrincipal(), url)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(url, result.value)
         assertEquals(url, state.app.contentBaseUrl.url)
         verify { settingRepository.setSetting(Props.Settings.contentBaseUrl, url, any()) }
@@ -59,56 +48,56 @@ class SettingServiceContentUrlTest {
 
     @Test
     fun `allows clearing the content base URL`() {
-        val result = service.set_contentBaseUrl(principal(), "")
+        val result = service.set_contentBaseUrl(testPrincipal(), "")
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals("", result.value)
         assertEquals("", state.app.contentBaseUrl.url)
     }
 
     @Test
     fun `trims a content base URL and treats whitespace as empty`() {
-        val padded = service.set_contentBaseUrl(principal(), "  https://203.0.113.10:8080  ")
-        assertTrue(padded.isSuccessful)
+        val padded = service.set_contentBaseUrl(testPrincipal(), "  https://203.0.113.10:8080  ")
+        assertSuccess(padded)
         assertEquals("https://203.0.113.10:8080", padded.value)
 
-        val blank = service.set_contentBaseUrl(principal(), "   ")
-        assertTrue(blank.isSuccessful)
+        val blank = service.set_contentBaseUrl(testPrincipal(), "   ")
+        assertSuccess(blank)
         assertEquals("", blank.value)
         assertEquals("", state.app.contentBaseUrl.url)
     }
 
     @Test
     fun `rejects an http content base URL`() {
-        val result = service.set_contentBaseUrl(principal(), "http://203.0.113.10:8080")
+        val result = service.set_contentBaseUrl(testPrincipal(), "http://203.0.113.10:8080")
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
     }
 
     @Test
     fun `rejects a value that is not an https URL`() {
-        val result = service.set_contentBaseUrl(principal(), "not-a-url")
+        val result = service.set_contentBaseUrl(testPrincipal(), "not-a-url")
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
     }
 
     @Test
     fun `rejects a relative path as a content base URL`() {
-        val result = service.set_contentBaseUrl(principal(), "/api/v1/file/content")
+        val result = service.set_contentBaseUrl(testPrincipal(), "/api/v1/file/content")
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
     }
 
     @Test
     fun `rejects a content base URL with a query or fragment`() {
-        val query = service.set_contentBaseUrl(principal(), "https://cdn.example?tenant=x")
-        val fragment = service.set_contentBaseUrl(principal(), "https://cdn.example/#files")
+        val query = service.set_contentBaseUrl(testPrincipal(), "https://cdn.example?tenant=x")
+        val fragment = service.set_contentBaseUrl(testPrincipal(), "https://cdn.example/#files")
 
-        assertTrue(query.rejected)
-        assertTrue(fragment.rejected)
+        assertRejected(query)
+        assertRejected(fragment)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
     }
 
@@ -116,9 +105,9 @@ class SettingServiceContentUrlTest {
     fun `rejects content base URL when locked by env`() {
         val lockedService = newService(State(env = mapOf("FM_CONTENT_BASE_URL" to "https://env.example")))
 
-        val result = lockedService.set_contentBaseUrl(principal(), "https://example.com")
+        val result = lockedService.set_contentBaseUrl(testPrincipal(), "https://example.com")
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
     }
 
@@ -126,9 +115,9 @@ class SettingServiceContentUrlTest {
     fun `rejects unauthenticated toggle when locked by env`() {
         val lockedService = newService(State(env = mapOf("FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED" to "false")))
 
-        val result = lockedService.set_contentBaseUrlForUnauthenticated(principal(), true)
+        val result = lockedService.set_contentBaseUrlForUnauthenticated(testPrincipal(), true)
 
-        assertTrue(result.rejected)
+        assertRejected(result)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
     }
 }

@@ -1,23 +1,24 @@
 package org.filemat.server.module.sharedFile
 
-import org.filemat.server.testutil.directoryLinkOrSkip
-import org.filemat.server.testutil.symlinkOrSkip
-import org.filemat.server.common.State
-import org.filemat.server.common.model.Result
-import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.sharedFile.model.FileShare
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
+import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.sharedFile.model.FileShare
+import org.filemat.server.testutil.assertNotFound
+import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.directoryLinkOrSkip
+import org.filemat.server.testutil.symlinkOrSkip
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.Test
 
-class ResolveSharedFilePathTest {
+class SharePathTest {
 
     @TempDir
     lateinit var tempDir: Path
@@ -51,7 +52,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("inside.txt")
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(shareRoot.resolve("inside.txt").toRealPath(), result.value.path)
     }
 
@@ -61,7 +62,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("/")
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(shareRoot.toRealPath(), result.value.path)
     }
 
@@ -75,7 +76,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("alias/hello.txt")
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(target.toRealPath(), result.value.path)
     }
 
@@ -87,7 +88,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("alias-file")
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
     }
 
     @Test
@@ -99,7 +100,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("escape-file")
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
         assertEquals("SECRET", Files.readString(secret))
     }
 
@@ -111,7 +112,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("escape-dir/secret.txt")
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
         assertEquals("SECRET", Files.readString(outside.resolve("secret.txt")))
     }
 
@@ -125,7 +126,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("leave-and-return")
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
     }
 
     @Test
@@ -137,7 +138,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolve("escape-file", followOutbound = true)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(secret.toRealPath(), result.value.path)
     }
 
@@ -149,7 +150,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolveSharedDescendant(hello, FilePath.ofAlreadyNormalized(shareRoot), state.app.followSymlinks)
 
-        assertTrue(result.isSuccessful)
+        assertSuccess(result)
         assertEquals(hello.toRealPath(), result.value.path)
     }
 
@@ -162,7 +163,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolveSharedDescendant(escape, FilePath.ofAlreadyNormalized(shareRoot), state.app.followSymlinks)
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
     }
 
     @Test
@@ -176,7 +177,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolveSharedDescendant(leave, FilePath.ofAlreadyNormalized(shareRoot), state.app.followSymlinks)
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
     }
 
     @Test
@@ -185,7 +186,7 @@ class ResolveSharedFilePathTest {
 
         val result = resolveSharedDescendant(outside.resolve("secret.txt"), FilePath.ofAlreadyNormalized(shareRoot), state.app.followSymlinks)
 
-        assertTrue(result.notFound)
+        assertNotFound(result)
     }
 
     private fun resolve(relative: String, followOutbound: Boolean = FileShare.followSymlinks): Result<FilePath> {

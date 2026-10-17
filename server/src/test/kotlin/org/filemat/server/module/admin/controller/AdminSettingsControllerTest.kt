@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.mock.web.MockHttpServletRequest
 
-class AdminSettingsControllerContentUrlTest {
+class AdminSettingsControllerTest {
 
     private val settingService = mockk<SettingService>(relaxed = true)
     private val sensitiveAuthService = mockk<SensitiveAuthService>(relaxed = true)
