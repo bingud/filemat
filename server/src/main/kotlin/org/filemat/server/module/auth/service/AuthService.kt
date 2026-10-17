@@ -5,7 +5,6 @@ import kotlinx.coroutines.*
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.iterate
-import org.filemat.server.common.util.removeIf
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.model.Principal
@@ -247,7 +246,7 @@ class AuthService(
             }
         }
 
-        tokenToUserIdMap.removeIf { key, value ->
+        tokenToUserIdMap.entries.removeIf { (key, value) ->
             (value.userId == userId) && key != excludedToken
         }
 
