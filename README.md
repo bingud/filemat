@@ -57,7 +57,8 @@ Use this command to run the file with Java (change the filename according to the
 
 ## Configuration
 
-[All configuration details here](</docs/technical-details.md>)
+[All configuration details here](</docs/technical-details.md>)  
+[Role permissions explained](</docs/configuration.md#role-permissions>)
 
 ### \- Environment variables
 

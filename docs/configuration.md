@@ -52,3 +52,44 @@ These paths cannot be deleted through Filemat (unless overridden with `FM_FORCE_
 - `/usr`, `/etc`, `/boot`, `/dev`
 - `/proc`, `/sys`, `/var`, `/run`
 - `/opt`, `/srv`, `/root`, `/home`
+
+## Role permissions
+
+Roles grant system permissions to users. Users can also get per-file permissions on individual files.
+
+### System permissions
+
+| Permission | Level | What it allows |
+| --- | --- | --- |
+| `ACCESS_ALL_FILES` | 2 | Read, edit, share, delete, move and rename any file, ignoring per-file permissions. Blocked/sensitive paths, the Filemat data folder and non-deletable system folders still apply |
+| `MANAGE_OWN_FILE_PERMISSIONS` | 1 | View and edit the permissions of files the user owns. Also allows listing users to pick who to grant access to |
+| `MANAGE_ALL_FILE_PERMISSIONS` | 1 | View and edit the permissions of any file |
+| `MANAGE_ALL_FILE_SHARES` | 1 | View and manage public share links created by any user |
+| `CHANGE_OWN_HOME_FOLDER` | 1 | Set the path of their own home folder |
+| `EXPOSE_FOLDERS` | 1 | Not enforced by the server yet (exposing folders is currently covered by `MANAGE_SYSTEM`) |
+| `MANAGE_USERS` | 3 | Admin user management: list, create, delete, edit users, change passwords, reset MFA, assign and remove user roles |
+| `MANAGE_SYSTEM` | 3 | Admin system settings (thumbnails, file visibility, symbolic links, upload folder, content base URL) and the audit/system logs |
+| `EDIT_ROLES` | 3 | Create and delete roles and change their permissions |
+| `SUPER_ADMIN` | 4 | Everything: passes every permission check and has the same file access as `ACCESS_ALL_FILES` |
+
+### File permissions
+
+Granted to a user or role on a specific file or folder.
+
+| Permission | What it allows |
+| --- | --- |
+| `READ` | View, open and download the file |
+| `WRITE` | Edit or modify the file |
+| `DELETE` | Delete the file |
+| `SHARE` | Create public share links for the file |
+| `RENAME` | Rename the file |
+| `MOVE` | Move the file |
+
+### Permission levels
+
+Each system permission has a level (shown above). Users can only create, edit or delete roles, and assign roles or edit users, whose highest permission level is not above their own highest level. When editing a role, they also cannot grant a permission they do not have themselves.
+
+### Built-in roles
+
+- `admin`: always has every system permission (reset on each startup). Cannot be deleted.
+- `user`: has no system permissions by default. Cannot be deleted.
