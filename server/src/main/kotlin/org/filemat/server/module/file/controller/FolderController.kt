@@ -1,6 +1,9 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.util.realIp
+import org.filemat.server.common.util.RateLimitId
+import org.filemat.server.common.util.RateLimiter
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +101,10 @@ class FolderController(private val fileService: FileService) : AController() {
         @RequestParam("foldersOnly") rawFoldersOnly: String,
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<String> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val foldersOnly = rawFoldersOnly.toBooleanStrictOrNull() ?: false

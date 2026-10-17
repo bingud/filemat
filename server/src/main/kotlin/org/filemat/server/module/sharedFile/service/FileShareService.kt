@@ -84,7 +84,7 @@ class FileShareService(
     fun login(shareId: String, password: String, principal: Principal?, ip: String, userAction: UserAction): Result<String> {
         val rateLimit = if (principal != null) {
             RateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN, principal.userId.toString())
-        } else RateLimiter.consume(RateLimitId.LOGIN, ip)
+        } else RateLimiter.consume(RateLimitId.SHARED_FILE_LOGIN_ANON, ip)
 
         if (!rateLimit.isAllowed) return Result.reject("Try again in ${rateLimit.millisUntilRefill / 1000} seconds")
 

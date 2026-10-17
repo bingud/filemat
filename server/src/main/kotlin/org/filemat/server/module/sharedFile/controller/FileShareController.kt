@@ -1,6 +1,8 @@
 package org.filemat.server.module.sharedFile.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.util.RateLimitId
+import org.filemat.server.common.util.RateLimiter
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.dto.ArgonHash
@@ -50,6 +52,9 @@ class FileShareController(
         request: HttpServletRequest,
         @RequestParam("shareToken") shareToken: String,
     ): ResponseEntity<String> {
+        val ip = request.realIp()
+        RateLimiter.consume(RateLimitId.SHARED_FILE_PROBE, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+
         fileShareService.getMetadata(shareToken, UserAction.GET_FILE_SHARE_METADATA).let {
             if (it.notFound) return notFound("This shared file was not found.")
             if (it.rejected) return bad(it.error)
@@ -65,6 +70,9 @@ class FileShareController(
         request: HttpServletRequest,
         @RequestParam("shareId") shareId: String,
     ): ResponseEntity<String> {
+        val ip = request.realIp()
+        RateLimiter.consume(RateLimitId.SHARED_FILE_PROBE, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+
         fileShareService.getPasswordStatus(shareId, UserAction.GET_SHARED_FILE).let {
             if (it.notFound) return ok("false")
             if (it.isNotSuccessful) return internal(it.error)

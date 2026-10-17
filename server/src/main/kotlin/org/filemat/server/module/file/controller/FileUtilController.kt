@@ -1,6 +1,9 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.util.realIp
+import org.filemat.server.common.util.RateLimitId
+import org.filemat.server.common.util.RateLimiter
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.JsonNonNull
 import org.filemat.server.common.util.RateLimitedLog
@@ -45,6 +48,10 @@ class FileUtilController(
         @RequestParam("size", required = false) rawSize: String?,
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<*> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
@@ -133,6 +140,10 @@ class FileUtilController(
         @RequestParam("size", required = false) rawSize: String?,
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<*> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
@@ -216,6 +227,10 @@ class FileUtilController(
         @RequestParam("path") rawPath: String,
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<String> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
 
@@ -235,6 +250,10 @@ class FileUtilController(
         @RequestParam("paths") rawPathList: String,
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<String> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val paths = Json.decodeFromStringOrNull<List<String>>(rawPathList)
             ?.take(2500)

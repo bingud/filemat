@@ -1,6 +1,8 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.util.RateLimitId
+import org.filemat.server.common.util.RateLimiter
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -13,7 +15,6 @@ import org.filemat.server.config.auth.Cors
 import org.filemat.server.config.auth.Unauthenticated
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
-import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileLockService
@@ -68,6 +69,10 @@ class FileController(
         @RequestParam("shareToken") shareToken: String?,
         @RequestParam("text") text: String,
     ): ResponseEntity<StreamingResponseBody> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return streamRateLimited(it.millisUntilRefill) }
+        }
         val user = request.getPrincipal()
         val path = FilePath.of(rawPath)
 
@@ -188,6 +193,10 @@ class FileController(
         @RequestParam("path") rawPath: String,
         @RequestParam("shareToken", required = false) shareToken: String?
     ): ResponseEntity<String> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
 
@@ -317,6 +326,10 @@ class FileController(
         @RequestParam("shareToken", required = false) shareToken: String?,
         @RequestParam("download", required = false) rawDownload: String?,
     ): ResponseEntity<StreamingResponseBody> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return streamRateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
         val rawRangeHeader: String? = request.getHeader("Range")
@@ -422,6 +435,10 @@ class FileController(
         @RequestParam("pathList") rawPathList: String,
         @RequestParam("shareToken", required = false) shareToken: String?,
     ): ResponseEntity<StreamingResponseBody> {
+        if (shareToken != null) {
+            val ip = request.realIp()
+            RateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return streamRateLimited(it.millisUntilRefill) }
+        }
         val principal = request.getPrincipal()
         val pathStrings = rawPathList.parseJsonOrNull<List<String>>()
             ?: return streamBad("List of file paths is invalid.", "validation")

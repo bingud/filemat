@@ -25,6 +25,9 @@ abstract class AController {
     fun rateLimited(millisUntilRefill: Long): ResponseEntity<String> =
         ResponseEntity.status(429).body(ErrorResponse("Too many requests. Try again in ${formatMillisecondsToReadableTime(millisUntilRefill)}", "ratelimit").serialize())
 
+    fun streamRateLimited(millisUntilRefill: Long) =
+        streamResponse(ErrorResponse("Too many requests. Try again in ${formatMillisecondsToReadableTime(millisUntilRefill)}", "ratelimit").serialize(), 429)
+
     fun streamBad(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 400)
     fun streamNotFound() = ResponseEntity.status(404).build<StreamingResponseBody>()
     fun streamUnauthenticated(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 401)
