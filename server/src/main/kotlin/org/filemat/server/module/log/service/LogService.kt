@@ -24,7 +24,8 @@ fun meta(vararg input: Pair<String, String>) = mutableMapOf(*input)
 
 @Service
 class LogService(
-    private val logRepository: LogRepository
+    private val logRepository: LogRepository,
+    private val state: State,
 ) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -174,7 +175,7 @@ class LogService(
             return false
         }
 
-        if (State.App.printLogs || State.App.isDev) {
+        if (state.app.printLogs || state.app.isDev) {
             printLog(false)
         }
         return true

@@ -28,13 +28,14 @@ class SettingService(
     private val filesystemService: FilesystemService,
     private val tusService: TusService,
     private val fileService: FileService,
+    private val state: State,
 ) {
 
     fun set_uploadFolderPath(user: Principal, rawNewPath: FilePath): Result<FilePath> {
         tusService.uploadLock.writeLock().withLock {
-            val oldPath = FilePath.of(State.App.uploadFolderPath)
+            val oldPath = FilePath.of(state.app.uploadFolderPath)
 
-            val newPath = resolvePath(rawNewPath, allowNonExistent = true).let { result ->
+            val newPath = resolvePath(rawNewPath, state.app.followSymlinks, allowNonExistent = true).let { result ->
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }
@@ -43,7 +44,7 @@ class SettingService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-            State.App.uploadFolderPath = newPath.pathString
+            state.app.uploadFolderPath = newPath.pathString
 
             logService.info(
                 type = LogType.AUDIT,
@@ -89,7 +90,7 @@ class SettingService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        State.App.followSymlinks = newState
+        state.app.followSymlinks = newState
 
         logService.info(
             type = LogType.AUDIT,
@@ -102,7 +103,7 @@ class SettingService(
     }
 
     fun set_contentBaseUrl(user: Principal, raw: String): Result<String> {
-        if (State.App.ContentBaseUrl.lockedByEnv) {
+        if (state.app.contentBaseUrl.lockedByEnv) {
             return Result.reject("This setting is locked by the FM_CONTENT_BASE_URL environment variable.")
         }
 
@@ -115,7 +116,7 @@ class SettingService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        State.App.ContentBaseUrl.url = value
+        state.app.contentBaseUrl.url = value
 
         logService.info(
             type = LogType.AUDIT,
@@ -128,7 +129,7 @@ class SettingService(
     }
 
     fun set_contentBaseUrlForUnauthenticated(user: Principal, enabled: Boolean): Result<Boolean> {
-        if (State.App.ContentBaseUrl.forUnauthenticatedLockedByEnv) {
+        if (state.app.contentBaseUrl.forUnauthenticatedLockedByEnv) {
             return Result.reject("This setting is locked by the FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED environment variable.")
         }
 
@@ -136,7 +137,7 @@ class SettingService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        State.App.ContentBaseUrl.forUnauthenticated = enabled
+        state.app.contentBaseUrl.forUnauthenticated = enabled
 
         logService.info(
             type = LogType.AUDIT,

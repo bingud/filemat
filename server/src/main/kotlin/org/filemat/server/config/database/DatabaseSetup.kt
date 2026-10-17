@@ -27,6 +27,7 @@ class DatabaseSetup(
     private val appService: AppService,
     private val environment: Environment,
     private val thumbCacheSettingService: ThumbCacheSettingService,
+    private val state: State,
 ) {
     fun runFlywayMigrations() {
         println("Running flyway migrations...")
@@ -91,33 +92,33 @@ class DatabaseSetup(
         // Follow symlinks setting
         settingService.getSetting(Props.Settings.followSymlinks).let { result ->
             result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->
-                State.App.followSymlinks = bool ?: false
+                state.app.followSymlinks = bool ?: false
             }
         }
 
         // Upload folder path setting
         settingService.getSetting(Props.Settings.uploadFolderPath).let { result ->
             result.valueOrNull?.value.let { path ->
-                State.App.uploadFolderPath = path?.removeSuffix("/")?.addPrefixIfNotPresent('/') ?: Props.defaultUploadFolderPath
+                state.app.uploadFolderPath = path?.removeSuffix("/")?.addPrefixIfNotPresent('/') ?: Props.defaultUploadFolderPath
             }
         }
 
         settingService.getSetting(Props.Settings.contentBaseUrl).let { result ->
             result.valueOrNull?.value?.let { value ->
-                State.App.ContentBaseUrl.url = value
+                state.app.contentBaseUrl.url = value
             }
         }
 
         settingService.getSetting(Props.Settings.contentBaseUrlForUnauthenticated).let { result ->
             result.valueOrNull?.value?.toBooleanStrictOrNull()?.let { enabled ->
-                State.App.ContentBaseUrl.forUnauthenticated = enabled
+                state.app.contentBaseUrl.forUnauthenticated = enabled
             }
         }
 
         // Is app setup setting
         settingService.getSetting(Props.Settings.isAppSetup).let { result ->
             result.valueOrNull?.value?.toBooleanStrictOrNull().let { bool ->
-                State.App.isSetup = bool ?: false
+                state.app.isSetup = bool ?: false
                 if (bool != true) {
                     appService.generateSetupCode()
                 }

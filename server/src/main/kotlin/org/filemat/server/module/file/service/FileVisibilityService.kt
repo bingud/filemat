@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
+import org.filemat.server.config.properties.SensitiveFolderPaths
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
@@ -18,6 +19,8 @@ import kotlin.system.exitProcess
 class FileVisibilityService(
     private val fileVisibilityRepository: FileVisibilityRepository,
     private val logService: LogService,
+    private val state: State,
+    private val sensitiveFolderPaths: SensitiveFolderPaths,
 ) {
     private val visibilityTrie = VisibilityTrie()
     private val hiddenFileTrie = VisibilityTrie()
@@ -51,18 +54,18 @@ class FileVisibilityService(
         }
 
         // Insert true because VisibilityTrie returns false by default
-        State.App.hiddenFolders.forEach { hiddenFileTrie.insert(it, true) }
+        state.app.hiddenFolders.forEach { hiddenFileTrie.insert(it, true) }
     }
 
     /**
      * returns if a folder path is not blocked
      */
     fun isPathAllowed(canonicalPath: FilePath): String? {
-        if (State.App.hideSensitiveFolders && Props.sensitiveFolders.contains(canonicalPath.pathString, isPathNormalized = true)) {
+        if (state.app.hideSensitiveFolders && sensitiveFolderPaths.contains(canonicalPath.pathString, isPathNormalized = true)) {
             return "This file is blocked because it is marked as sensitive."
         }
 
-        if (!State.App.allowReadDataFolder && canonicalPath.startsWith(Props.dataFolderPath)) return "${Props.appName} data folder is blocked."
+        if (!state.app.allowReadDataFolder && canonicalPath.startsWith(Props.dataFolderPath)) return "${Props.appName} data folder is blocked."
 
         val isForceHidden = hiddenFileTrie.getVisibility(canonicalPath.pathString)
         // isExposed is set to true because all folders in this list are forcefully hidden

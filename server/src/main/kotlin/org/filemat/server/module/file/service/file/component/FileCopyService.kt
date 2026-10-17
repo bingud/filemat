@@ -16,13 +16,13 @@ import kotlin.io.path.isSymbolicLink
 import kotlin.io.path.pathString
 
 @Service
-class FileCopyService(private val fileService: FileService, private val filesystemService: FilesystemService) {
+class FileCopyService(private val fileService: FileService, private val filesystemService: FilesystemService, private val state: State) {
 
     fun copyFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<FullFileMetadata> {
         val isSymlink = rawPath.path.isSymbolicLink()
 
         // Resolve the copied path
-        val canonicalPath: FilePath = resolvePath(rawPath)
+        val canonicalPath: FilePath = resolvePath(rawPath, state.app.followSymlinks)
             .let { result: Result<FilePath> ->
                 if (result.notFound) return Result.reject("Copied file was not found.")
                 if (result.isNotSuccessful) return result.cast()
@@ -34,19 +34,19 @@ class FileCopyService(private val fileService: FileService, private val filesyst
         val rawParentDestinationPath = FilePath.of(rawDestinationPath.path.parent.pathString)
 
         // Resolve parent of destination path
-        val canonicalParentDestinationPath: FilePath = resolvePath(rawParentDestinationPath)
+        val canonicalParentDestinationPath: FilePath = resolvePath(rawParentDestinationPath, state.app.followSymlinks)
             .let { result: Result<FilePath> ->
                 if (result.notFound) return Result.reject("Destination folder was not found.")
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }
 
-        val isFileStoreMatching = if (State.App.followSymlinks) {
+        val isFileStoreMatching = if (state.app.followSymlinks) {
             isFileStoreMatching(canonicalPath.path, canonicalParentDestinationPath.path)
                 ?: return Result.error("Failed to check if copied file path is on the same filesystem.")
         } else null
 
-        val copyResolvedSymlinks = State.App.followSymlinks && isSymlink && isFileStoreMatching == false
+        val copyResolvedSymlinks = state.app.followSymlinks && isSymlink && isFileStoreMatching == false
 
         val actualCanonicalPath = if (copyResolvedSymlinks) {
             canonicalPath

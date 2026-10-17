@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service.file.component
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.State
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -37,7 +38,8 @@ class FileEntryListsService(
     private val entityService: EntityService,
     private val filesystemService: FilesystemService,
     private val savedFileService: SavedFileService,
-    private val entityPermissionService: EntityPermissionService
+    private val entityPermissionService: EntityPermissionService,
+    private val state: State,
 ) {
 
     fun searchFiles(
@@ -56,7 +58,7 @@ class FileEntryListsService(
             if (shareRoot.isNotSuccessful) return emptyFlow()
             canonicalPath.path.safeWalk(
                 with = fileLockService,
-                include = { resolveSharedDescendant(it, shareRoot.value).isSuccessful },
+                include = { resolveSharedDescendant(it, shareRoot.value, state.app.followSymlinks).isSuccessful },
             )
         } else {
             canonicalPath.path.safeWalk(with = fileLockService)
@@ -92,7 +94,7 @@ class FileEntryListsService(
      * @return List of files that are shared by a user, or globally
      */
     fun getSharedFileList(user: Principal, getAll: Boolean, userAction: UserAction): Result<List<FullFileMetadata>> {
-        if (getAll && !user.hasPermission(SystemPermission.MANAGE_ALL_FILE_SHARES)) return Result.reject("You do not have permission to view all shared files.")
+        if (getAll && !user.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_SHARES)) return Result.reject("You do not have permission to view all shared files.")
 
         val shares = let {
             if (getAll) {

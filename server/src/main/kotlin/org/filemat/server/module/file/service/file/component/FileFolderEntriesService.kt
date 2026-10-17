@@ -33,6 +33,7 @@ class FileFolderEntriesService(
     private val filesystemService: FilesystemService,
     private val logService: LogService,
     private val fileLockService: FileLockService,
+    private val state: State,
 ) {
 
     fun getFolderEntries(
@@ -69,7 +70,7 @@ class FileFolderEntriesService(
         val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath = canonicalPath, ignorePermissions = ignorePermissions)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
-        val followSymlinks = State.App.followSymlinks
+        val followSymlinks = state.app.followSymlinks
 
         // Get folder entries
         val rawAllEntries: List<FileMetadata> = internalGetFolderEntries(canonicalPath = canonicalPath, userAction = UserAction.READ_FOLDER).let {
@@ -120,14 +121,14 @@ class FileFolderEntriesService(
     }
 
     fun prepareFolderSize(user: Principal, rawPath: FilePath): Result<FilePath> {
-        val pathResult = resolvePath(rawPath)
+        val pathResult = resolvePath(rawPath, state.app.followSymlinks)
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
         val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
 
-        val followSymlinks = State.App.followSymlinks
+        val followSymlinks = state.app.followSymlinks
         val directoryOptions = if (followSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
         if (!Files.isDirectory(canonicalPath.path, *directoryOptions)) {
             return Result.reject("Path is not a directory.")
@@ -152,7 +153,7 @@ class FileFolderEntriesService(
     private fun internalGetFolderEntries(canonicalPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
         try {
             // Check if the resolved path is a folder
-            if (!Files.isDirectory(canonicalPath.path, *if (State.App.followSymlinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
+            if (!Files.isDirectory(canonicalPath.path, *if (state.app.followSymlinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
                 return Result.notFound()
             }
 

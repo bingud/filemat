@@ -25,6 +25,7 @@ import java.nio.file.Path
 fun resolveSharedFilePath(
     relativePath: FilePath,
     shareRoot: FilePath,
+    followSymlinks: Boolean,
     followOutboundSymlinks: Boolean = FileShare.followSymlinks,
 ): Result<FilePath> {
     val joined = joinSharePath(shareRoot.path, relativePath)
@@ -32,7 +33,7 @@ fun resolveSharedFilePath(
         return Result.notFound()
     }
 
-    val resolved = resolvePath(FilePath.ofAlreadyNormalized(joined)).let {
+    val resolved = resolvePath(FilePath.ofAlreadyNormalized(joined), followSymlinks).let {
         if (it.isNotSuccessful) return it
         it.value
     }
@@ -56,10 +57,11 @@ fun resolveSharedFilePath(
 fun resolveSharedDescendant(
     absolutePath: Path,
     shareRoot: FilePath,
+    followSymlinks: Boolean,
     followOutboundSymlinks: Boolean = FileShare.followSymlinks,
 ): Result<FilePath> {
     val relative = toShareRelativePath(absolutePath, shareRoot.path) ?: return Result.notFound()
-    return resolveSharedFilePath(relative, shareRoot, followOutboundSymlinks)
+    return resolveSharedFilePath(relative, shareRoot, followSymlinks, followOutboundSymlinks)
 }
 
 internal fun toShareRelativePath(absolutePath: Path, shareRoot: Path): FilePath? {

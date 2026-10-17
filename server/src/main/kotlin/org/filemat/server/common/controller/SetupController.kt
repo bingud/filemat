@@ -1,6 +1,7 @@
 package org.filemat.server.common.controller
 
 import com.github.f4b6a3.ulid.UlidCreator
+import org.filemat.server.config.properties.SensitiveFolderPaths
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.Json
@@ -56,15 +57,17 @@ class SetupController(
     private val fileVisibilityService: FileVisibilityService,
     private val tusService: TusService,
     private val thumbCacheSettingService: ThumbCacheSettingService,
+    private val state: State,
+    private val sensitiveFolderPaths: SensitiveFolderPaths,
 ) : AController() {
 
     val submitLock = Locker()
 
     @GetMapping("/sensitive-folders")
-    fun getSensitiveFolderListMapping() = ok(Props.sensitiveFolders.serialize())
+    fun getSensitiveFolderListMapping() = ok(sensitiveFolderPaths.serialize())
 
     @GetMapping("/status")
-    fun setupStatusMapping() = ok(State.App.isSetup.toString())
+    fun setupStatusMapping() = ok(state.app.isSetup.toString())
 
     @PostMapping("/verify")
     fun verifyAppSetupCode(
@@ -109,7 +112,7 @@ class SetupController(
         @RequestParam("thumbnail-cache-max-age", required = false) rawThumbnailCacheMaxAge: String?,
     ): ResponseEntity<String> = submitLock.run (default = bad("${Props.appName} is already being set up.", "lock")) {
         val ip = request.realIp()
-        if (State.App.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
+        if (state.app.isSetup) return@run bad("${Props.appName} has already been set up. You can log in with an admin account.", "already-setup")
 
         // Validate inputs
         (
@@ -268,9 +271,9 @@ class SetupController(
         )
 
         appService.deleteSetupCode()
-        State.App.isSetup = true
-        State.App.followSymlinks = followSymlinks
-        State.App.uploadFolderPath = uploadFolderPath.pathString
+        state.app.isSetup = true
+        state.app.followSymlinks = followSymlinks
+        state.app.uploadFolderPath = uploadFolderPath.pathString
 
         tusService.initializeTusService()
 

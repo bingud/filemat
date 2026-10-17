@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service.file.component
 
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
@@ -14,14 +15,15 @@ import org.springframework.stereotype.Service
 class FileMoveService(
     private val fileService: FileService,
     private val savedFileService: SavedFileService,
-    private val filesystemService: FilesystemService
+    private val filesystemService: FilesystemService,
+    private val state: State,
 ) {
 
     fun moveFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<Unit> {
         // Resolve the target path
         val rawParent = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
-        val sourceParent = resolvePath(rawParent)
+        val sourceParent = resolvePath(rawParent, state.app.followSymlinks)
             .let { canonicalResult ->
                 if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
                 canonicalResult.value
@@ -36,7 +38,7 @@ class FileMoveService(
         val rawDestinationParentPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent)
 
         // Resolve the target path
-        val destinationParentPath = resolvePath(rawDestinationParentPath)
+        val destinationParentPath = resolvePath(rawDestinationParentPath, state.app.followSymlinks)
             .let { destinationParentPathResult ->
                 if (destinationParentPathResult.isNotSuccessful) return destinationParentPathResult.cast()
                 destinationParentPathResult.value
@@ -74,7 +76,7 @@ class FileMoveService(
      * Moves multiple files, returns inputted paths of successfully moved files
      */
     fun moveMultipleFiles(user: Principal, rawPaths: List<FilePath>, rawNewParentPath: FilePath): Result<List<FilePath>> {
-        val canonicalResult = resolvePath(rawNewParentPath)
+        val canonicalResult = resolvePath(rawNewParentPath, state.app.followSymlinks)
         if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
         val newParentPath = canonicalResult.value
 

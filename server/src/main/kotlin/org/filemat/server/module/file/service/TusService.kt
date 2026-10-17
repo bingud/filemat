@@ -37,6 +37,7 @@ class TusService(
     private val fileService: FileService,
     private val logService: LogService,
     @Lazy private val folderUploadService: FolderUploadService,
+    private val state: State,
 ) {
     val uploadLock = ReentrantReadWriteLock()
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -48,7 +49,7 @@ class TusService(
         try {
             tusFileService = TusFileUploadService()
                 .withUploadUri("/api/v1/file/upload")
-                .withStoragePath(State.App.uploadFolderPath)
+                .withStoragePath(state.app.uploadFolderPath)
                 .withUploadExpirationPeriod(Duration.ofHours(48).toMillis())
                 .withThreadLocalCache(true)
 
@@ -202,7 +203,7 @@ class TusService(
         val destinationParentPath = let {
             val parent = rawPath.path.parent.toString()
 
-            resolvePath(FilePath.of(parent)).let { result ->
+            resolvePath(FilePath.of(parent), state.app.followSymlinks).let { result ->
                 if (result.notFound) {
                     response.respond(400, "The target folder does not exist.")
                     return false
@@ -272,7 +273,7 @@ class TusService(
      */
     private fun handleUploadedFile(user: Principal, info: UploadInfo): Result<String?> {
         // Get the current uploaded file location
-        val sourceFolder = "${State.App.uploadFolderPath}/uploads/${info.id}"
+        val sourceFolder = "${state.app.uploadFolderPath}/uploads/${info.id}"
         val uploadLocation = "$sourceFolder/data".toFilePath()
 
         val folderUploadSessionId = info.metadata["folderUploadSessionId"]
@@ -326,7 +327,7 @@ class TusService(
         // Resolve destination so symlinks / canonical parents match the rest of the app.
         val rawDestinationParent = getParentFromPath(rawDestinationPath)
         val filename = getFilenameFromPath(rawDestinationPath.path)
-        val destinationParent = resolvePath(rawDestinationParent).let { result ->
+        val destinationParent = resolvePath(rawDestinationParent, state.app.followSymlinks).let { result ->
             if (result.isNotSuccessful) return result.cast()
             result.value
         }

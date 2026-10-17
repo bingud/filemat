@@ -2,6 +2,7 @@ package org.filemat.server.module.admin.service
 
 
 import org.filemat.server.config.Props
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
@@ -47,6 +48,7 @@ class AdminUserService(
     private val entityService: EntityService,
     private val savedFileService: SavedFileService,
     private val entityPermissionService: EntityPermissionService,
+    private val state: State,
 ) {
     fun updateProperty(meta: RequestMeta, property: String, value: String): Result<Unit> {
         // Check if user exists
@@ -274,7 +276,7 @@ class AdminUserService(
             it.value
         }
 
-        if (!admin.getPermissions().hasSufficientPermissionsFor(targetPrincipal.getPermissions())) {
+        if (!admin.getPermissions(state).hasSufficientPermissionsFor(targetPrincipal.getPermissions(state))) {
             return Result.reject("Cannot delete a user with higher permissions than you have.")
         }
 

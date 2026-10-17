@@ -26,10 +26,11 @@ class RoleService(
     private val roleRepository: RoleRepository,
     private val logService: LogService,
     private val authService: AuthService,
+    private val state: State,
 ) {
 
     fun remove(user: Principal, roleId: Ulid, userAction: UserAction): Result<Unit> {
-        val role = State.Auth.roleMap[roleId]
+        val role = state.auth.roleMap[roleId]
             ?: return Result.notFound()
 
         if (Props.Roles.isSystemRole(roleId)) {
@@ -37,7 +38,7 @@ class RoleService(
         }
 
         // Check if user has permissions to delete role
-        val userPermissions = user.getPermissions()
+        val userPermissions = user.getPermissions(state)
         val rolePermissions = role.permissions
         val hasSufficientPermissions = userPermissions.hasSufficientPermissionsFor(rolePermissions)
         if (!hasSufficientPermissions) return Result.reject("Cannot delete role with higher permissions than you have.")
@@ -47,7 +48,7 @@ class RoleService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        State.Auth.roleMap.remove(roleId)
+        state.auth.roleMap.remove(roleId)
         authService.removeRoleFromAllPrincipals(roleId)
 
         logService.info(
@@ -66,11 +67,11 @@ class RoleService(
      * Update the permission list of a role
      */
     fun updatePermissionList(user: Principal, roleId: Ulid, newList: List<SystemPermission>, userAction: UserAction): Result<Unit> {
-        val role = State.Auth.roleMap[roleId]
+        val role = state.auth.roleMap[roleId]
             ?: return Result.notFound()
 
         // Check if user has sufficient permissions to edit this role's permissions
-        val userPermissions = user.getPermissions()
+        val userPermissions = user.getPermissions(state)
         val rolePermissions = role.permissions
         val hasSufficientPermissions = userPermissions.hasSufficientPermissionsFor(rolePermissions)
         if (!hasSufficientPermissions) return Result.reject("Cannot edit role with higher permissions than you have.")
@@ -86,7 +87,7 @@ class RoleService(
         }
 
         // Update permissions in memory
-        State.Auth.roleMap.computeIfPresent(roleId) { _, existing ->
+        state.auth.roleMap.computeIfPresent(roleId) { _, existing ->
             existing.withNewPermissions(newList)
         }
 
@@ -148,7 +149,7 @@ class RoleService(
                 createdDate = roleDto.createdDate,
                 permissions = roleDto.permissions
             )
-            State.Auth.roleMap[role.roleId] = role
+            state.auth.roleMap[role.roleId] = role
 
             return Result.ok()
         } catch (e: Exception) {
@@ -166,7 +167,7 @@ class RoleService(
         try {
             val list = roleRepository.getAll().map { it.toRole() }
             list.forEach {
-                State.Auth.roleMap[it.roleId] = it
+                state.auth.roleMap[it.roleId] = it
             }
             return true
         } catch (e: Exception) {
@@ -259,7 +260,7 @@ class RoleService(
                     createdRoleNames.add(role.name)
                 }
 
-                State.Auth.roleMap[role.roleId] = role
+                state.auth.roleMap[role.roleId] = role
             } catch (e: Exception) {
                 logService.error(
                     type = LogType.SYSTEM,

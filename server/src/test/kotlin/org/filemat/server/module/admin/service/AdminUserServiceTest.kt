@@ -1,5 +1,6 @@
 package org.filemat.server.module.admin.service
 
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.every
 import io.mockk.mockk
@@ -41,6 +42,7 @@ class AdminUserServiceTest {
         entityService = mockk<EntityService>(relaxed = true),
         savedFileService = mockk<SavedFileService>(relaxed = true),
         entityPermissionService = mockk<EntityPermissionService>(relaxed = true),
+        state = State(env = emptyMap()),
     )
 
     @Test

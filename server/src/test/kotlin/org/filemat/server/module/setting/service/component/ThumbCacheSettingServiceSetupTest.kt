@@ -13,7 +13,6 @@ import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.service.SettingService
 import org.filemat.server.module.user.model.UserAction
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -27,30 +26,19 @@ class ThumbCacheSettingServiceSetupTest {
     private val filesystemService = mockk<FilesystemService>()
     private val thumbnailService = mockk<ThumbnailService>(relaxed = true)
     private val logService = mockk<LogService>(relaxed = true)
+    private val state = State(env = emptyMap())
     private val service = ThumbCacheSettingService(
         settingService,
         filesystemService,
         thumbnailService,
         logService,
+        state,
     )
-
-    private val previousEnabled = runCatching { State.ThumbCache.isEnabled }.getOrNull()
-    private val previousFolder = State.ThumbCache.folderPath
-    private val previousMaxSize = State.ThumbCache.maxSizeMb
-    private val previousMaxAge = State.ThumbCache.maxAge
 
     @BeforeEach
     fun stubDbWrites() {
         every { settingService.db_setSetting(any(), any()) } returns Result.ok()
         every { filesystemService.createFolder(any()) } returns Result.ok()
-    }
-
-    @AfterEach
-    fun restore() {
-        if (previousEnabled != null) State.ThumbCache.isEnabled = previousEnabled
-        State.ThumbCache.folderPath = previousFolder
-        State.ThumbCache.maxSizeMb = previousMaxSize
-        State.ThumbCache.maxAge = previousMaxAge
     }
 
     @Test
@@ -65,10 +53,10 @@ class ThumbCacheSettingServiceSetupTest {
         )
 
         assertTrue(result.isSuccessful)
-        assertTrue(State.ThumbCache.isEnabled)
-        assertEquals(folder.pathString, State.ThumbCache.folderPath)
-        assertEquals(Props.defaultThumbnailCacheMaxSizeMb, State.ThumbCache.maxSizeMb)
-        assertEquals(Props.defaultThumbnailCacheMaxAgeSeconds, State.ThumbCache.maxAge)
+        assertTrue(state.thumbCache.isEnabled)
+        assertEquals(folder.pathString, state.thumbCache.folderPath)
+        assertEquals(Props.defaultThumbnailCacheMaxSizeMb, state.thumbCache.maxSizeMb)
+        assertEquals(Props.defaultThumbnailCacheMaxAgeSeconds, state.thumbCache.maxAge)
         verify { settingService.db_setSetting(Props.Settings.ThumbCache.enabled, "true") }
         verify { settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folder.pathString) }
         verify { settingService.db_setSetting(Props.Settings.ThumbCache.maxSizeMb, "512") }
@@ -99,10 +87,10 @@ class ThumbCacheSettingServiceSetupTest {
         )
 
         assertTrue(result.isSuccessful)
-        assertFalse(State.ThumbCache.isEnabled)
-        assertNull(State.ThumbCache.folderPath)
-        assertNull(State.ThumbCache.maxSizeMb)
-        assertNull(State.ThumbCache.maxAge)
+        assertFalse(state.thumbCache.isEnabled)
+        assertNull(state.thumbCache.folderPath)
+        assertNull(state.thumbCache.maxSizeMb)
+        assertNull(state.thumbCache.maxAge)
         verify { settingService.db_setSetting(Props.Settings.ThumbCache.enabled, "false") }
         verify(exactly = 0) { filesystemService.createFolder(any()) }
     }

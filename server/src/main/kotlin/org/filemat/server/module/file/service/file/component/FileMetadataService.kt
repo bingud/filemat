@@ -23,6 +23,7 @@ class FileMetadataService(
     private val filesystemService: FilesystemService,
     private val savedFileService: SavedFileService,
     private val fileLockService: FileLockService,
+    private val state: State,
 ) {
 
     /**
@@ -31,7 +32,7 @@ class FileMetadataService(
      * if file is a folder, also returns entries
      */
     fun getFileOrFolderEntries(user: Principal, rawPath: FilePath, foldersOnly: Boolean = false): Result<Pair<FullFileMetadata, List<FullFileMetadata>?>> {
-        val pathResult = resolvePath(rawPath)
+        val pathResult = resolvePath(rawPath, state.app.followSymlinks)
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
 
@@ -45,7 +46,7 @@ class FileMetadataService(
             }
             val type = metadata.fileType
 
-            if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
+            if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && state.app.followSymlinks)) {
                 val entries = fileService.getFolderEntries(
                     user = user,
                     canonicalPath = canonicalPath,
@@ -92,7 +93,7 @@ class FileMetadataService(
             val metadata = rawMetadata.copy(path = rawPath.pathString)
             val type = metadata.fileType
 
-            if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && State.App.followSymlinks)) {
+            if (type == FileType.FOLDER || (type == FileType.FOLDER_LINK && state.app.followSymlinks)) {
                 // Get folder entries, change paths back to relative
                 val entries = fileService.getFolderEntries(
                     user = null,
@@ -105,7 +106,7 @@ class FileMetadataService(
                     it.value
                 }.mapNotNull { entry ->
                     val entryPath = Path.of(entry.path)
-                    if (resolveSharedDescendant(entryPath, shareRoot).isNotSuccessful) return@mapNotNull null
+                    if (resolveSharedDescendant(entryPath, shareRoot, state.app.followSymlinks).isNotSuccessful) return@mapNotNull null
 
                     val relativePath = canonicalPath.path.relativize(entryPath)
                     val newPath = rawPath.path.resolve(relativePath)
@@ -128,7 +129,7 @@ class FileMetadataService(
         val canonicalPath = if (isPathCanonical) {
             rawPath
         } else {
-            val pathResult = resolvePath(rawPath)
+            val pathResult = resolvePath(rawPath, state.app.followSymlinks)
             if (pathResult.isNotSuccessful) return pathResult.cast()
             pathResult.value
         }

@@ -17,7 +17,7 @@ import kotlin.system.measureTimeMillis
 
 @Order(3)
 @Component
-class AuthorizationFilter : OncePerRequestFilter() {
+class AuthorizationFilter(private val state: State) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val path = request.servletPath
         val endpoint = endpointAuthMap[path]
@@ -37,7 +37,7 @@ class AuthorizationFilter : OncePerRequestFilter() {
 
             if (endpoint.requiredPermissions.isEmpty()) return@let
 
-            val permissions = auth.getPermissions()
+            val permissions = auth.getPermissions(state)
             if (permissions.contains(SystemPermission.SUPER_ADMIN)) return@let
 
             // Check permissions
@@ -51,7 +51,7 @@ class AuthorizationFilter : OncePerRequestFilter() {
         }
 
         // Check if endpoint is available before app is set up
-        if (!State.App.isSetup && !endpoint.isBeforeSetup) {
+        if (!state.app.isSetup && !endpoint.isBeforeSetup) {
             response.status = 400
             response.writer.write("${Props.appName} is not set up yet.")
             return

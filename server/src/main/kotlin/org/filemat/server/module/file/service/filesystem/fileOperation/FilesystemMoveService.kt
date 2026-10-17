@@ -48,6 +48,7 @@ class FilesystemMoveService(
     private val entityService: EntityService,
     @Lazy private val filesystemService: FilesystemService,
     private val thumbnailService: ThumbnailService,
+    private val state: State,
 ) : FilesystemMoveOperations {
 
     override fun moveFile(
@@ -60,7 +61,7 @@ class FilesystemMoveService(
         listOf(source.path, destination.path), LockType.WRITE,
         checkChildren = true
     ) {
-        val isDataFolderProtected = State.App.allowWriteDataFolder == false
+        val isDataFolderProtected = state.app.allowWriteDataFolder == false
 
         if (!source.path.exists()) return@tryWithLock Result.notFound()
         if (destination.path.startsWith(source.path)) return@tryWithLock Result.reject("Cannot move folder into itself.")

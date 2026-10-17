@@ -1,6 +1,7 @@
 package org.filemat.server.module.user.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.State
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.controller.AController
 import org.filemat.server.common.util.decodeFromStringOrNull
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/v1/user")
-class UserUtilController(private val userUtilService: UserUtilService) : AController() {
+class UserUtilController(private val userUtilService: UserUtilService, private val state: State) : AController() {
 
     /**
      * Returns a list of mini users
@@ -29,7 +30,7 @@ class UserUtilController(private val userUtilService: UserUtilService) : AContro
         @RequestParam("allUsers", required = false) rawAllUsers: String?,
     ): ResponseEntity<String> {
         val principal = request.getPrincipal()!!
-        if (!principal.hasAnyPermission(listOf(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS, SystemPermission.MANAGE_USERS))) return bad("You do not have permission to list users.")
+        if (!principal.hasAnyPermission(state, listOf(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS, SystemPermission.MANAGE_USERS))) return bad("You do not have permission to list users.")
 
         val allUsers = rawAllUsers?.toBooleanStrictOrNull() ?: false
         if (allUsers && rawIdList != null) return bad("User ID list is present when loading all users.", "validation")

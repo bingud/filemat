@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -47,6 +48,7 @@ class FolderUploadService(
     private val entityService: EntityService,
     private val fileLockService: FileLockService,
     @Lazy private val thumbnailService: ThumbnailService,
+    private val state: State,
 ) {
     // Keep platform-specific rules behind one switch so Windows support can be added
     // later without scattering OS checks through the upload flow.
@@ -626,7 +628,7 @@ class FolderUploadService(
     // Resolve and authorize the selected destination folder before manifest paths
     // are joined under it.
     private fun resolveDestinationParent(user: Principal, destinationPath: String): Result<FilePath> {
-        val destinationParent = resolvePath(FilePath.of(destinationPath)).let {
+        val destinationParent = resolvePath(FilePath.of(destinationPath), state.app.followSymlinks).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }

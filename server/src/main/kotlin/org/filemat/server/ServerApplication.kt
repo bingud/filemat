@@ -1,6 +1,5 @@
 package org.filemat.server
 
-import org.filemat.server.common.State
 import org.filemat.server.config.Props
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -20,7 +19,7 @@ class ServerApplication
 fun main(args: Array<String>) {
 	println("=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*")
 	println("FILEMAT STARTING")
-	Props; State
+	Props
 
 	val currentUser = System.getProperty("user.name")
 	println("Current user: $currentUser")

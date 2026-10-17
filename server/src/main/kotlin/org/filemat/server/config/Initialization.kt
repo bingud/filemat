@@ -1,6 +1,7 @@
 package org.filemat.server.config
 
 import jakarta.annotation.PostConstruct
+import org.filemat.server.config.properties.SensitiveFolderPaths
 import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
 import org.filemat.server.module.file.service.filesystem.FilesystemService
@@ -18,6 +19,8 @@ class Initialization(
     private val filePermissionService: EntityPermissionService,
     private val savedFileService: SavedFileService,
     private val tusService: TusService,
+    private val state: State,
+    private val sensitiveFolderPaths: SensitiveFolderPaths,
 ) {
 
     /**
@@ -31,14 +34,14 @@ class Initialization(
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()
 
-        Props.sensitiveFolders.printSensitiveFolders()
+        sensitiveFolderPaths.printSensitiveFolders()
 
         // Load settings to memory
         databaseSetup.initialize_loadSettings().line()
 
         savedFileService.initialize_loadSavedFilesFromDatabase().line()
 
-        if (State.App.isSetup) {
+        if (state.app.isSetup) {
             // Load exposed folders to memory
             fileVisibilityService.initialize().line()
 
@@ -55,7 +58,7 @@ class Initialization(
         }
 
         println("${Props.appName} is initialized.")
-        State.App.isInitialized = true
+        state.app.isInitialized = true
     }
 
     // Prints new line

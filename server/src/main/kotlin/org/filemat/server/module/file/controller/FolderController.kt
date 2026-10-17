@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.State
 import org.filemat.server.common.util.realIp
 import org.filemat.server.common.util.RateLimitId
 import org.filemat.server.common.util.RateLimiter
@@ -42,7 +43,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @RestController
 @RequestMapping("/v1/folder")
-class FolderController(private val fileService: FileService) : AController() {
+class FolderController(private val fileService: FileService, private val state: State) : AController() {
 
     @PostMapping("/create")
     fun createFolderMapping(
@@ -74,7 +75,7 @@ class FolderController(private val fileService: FileService) : AController() {
         val path = FilePath.of(rawPath)
 
         val result = let {
-            val pathResult = resolvePath(path)
+            val pathResult = resolvePath(path, state.app.followSymlinks)
             if (pathResult.isNotSuccessful) return@let pathResult.cast()
             val canonicalPath = pathResult.value
 

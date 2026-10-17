@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.file.component
 
+import org.filemat.server.testutil.symlinkOrSkip
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.toList
@@ -17,7 +18,6 @@ import org.filemat.server.module.user.model.UserAction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -31,9 +31,9 @@ class FileEntryListsServiceSharedSearchTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private val state = State(env = emptyMap())
     private val fileService = mockk<FileService>()
     private val user = mockk<Principal>(relaxed = true)
-    private var previousFollowSymlinks = false
 
     private val service = FileEntryListsService(
         fileLockService = FileLockService(),
@@ -43,26 +43,20 @@ class FileEntryListsServiceSharedSearchTest {
         filesystemService = mockk(relaxed = true),
         savedFileService = mockk(relaxed = true),
         entityPermissionService = mockk(relaxed = true),
+        state = state,
     )
 
     @BeforeEach
     fun setup() {
-        previousFollowSymlinks = State.App.followSymlinks
         every { fileService.getFullMetadata(any(), any(), any(), any()) } answers {
             val path = invocation.args[1] as FilePath
             Result.ok(fileMeta(path.path))
         }
     }
 
-    @AfterEach
-    fun tearDown() {
-        State.App.followSymlinks = previousFollowSymlinks
-    }
-
     @Test
     fun `shared search does not follow directory links and skips outbound targets`() = runBlocking {
-        State.App.followSymlinks = true
-        assumeTrue(State.App.followSymlinks, "followSymlinks is locked by environment variable")
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         val nested = Files.createDirectory(shareRoot.resolve("nested"))
@@ -70,8 +64,8 @@ class FileEntryListsServiceSharedSearchTest {
         val outside = Files.createDirectory(tempDir.resolve("outside"))
         val secret = Files.writeString(outside.resolve("secret.txt"), "SHARED SECRET PAYLOAD")
 
-        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("in-tree"), nested) }.isSuccess, "Could not create in-tree symlink")
-        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("escape-file"), secret) }.isSuccess, "Could not create file symlink")
+        symlinkOrSkip(shareRoot.resolve("in-tree"), nested)
+        symlinkOrSkip(shareRoot.resolve("escape-file"), secret)
 
         mockShareResolve(shareRoot)
 
@@ -105,15 +99,11 @@ class FileEntryListsServiceSharedSearchTest {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     fun `shared search does not recurse forever through a directory link to an ancestor`() = runBlocking {
-        State.App.followSymlinks = true
-        assumeTrue(State.App.followSymlinks, "followSymlinks is locked by environment variable")
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         Files.writeString(shareRoot.resolve("hello.txt"), "from-root")
-        assumeTrue(
-            runCatching { Files.createSymbolicLink(shareRoot.resolve("loop"), shareRoot) }.isSuccess,
-            "Could not create directory symlink to ancestor",
-        )
+        symlinkOrSkip(shareRoot.resolve("loop"), shareRoot)
 
         mockShareResolve(shareRoot)
 
@@ -134,15 +124,14 @@ class FileEntryListsServiceSharedSearchTest {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     fun `shared search does not recurse forever through sibling directory links`() = runBlocking {
-        State.App.followSymlinks = true
-        assumeTrue(State.App.followSymlinks, "followSymlinks is locked by environment variable")
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         val a = Files.createDirectory(shareRoot.resolve("a"))
         val b = Files.createDirectory(shareRoot.resolve("b"))
         Files.writeString(a.resolve("hello.txt"), "from-a")
-        assumeTrue(runCatching { Files.createSymbolicLink(a.resolve("to-b"), b) }.isSuccess, "Could not create a→b symlink")
-        assumeTrue(runCatching { Files.createSymbolicLink(b.resolve("to-a"), a) }.isSuccess, "Could not create b→a symlink")
+        symlinkOrSkip(a.resolve("to-b"), b)
+        symlinkOrSkip(b.resolve("to-a"), a)
 
         mockShareResolve(shareRoot)
 
@@ -165,6 +154,7 @@ class FileEntryListsServiceSharedSearchTest {
             resolveSharedFilePath(
                 relativePath = path,
                 shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                followSymlinks = state.app.followSymlinks,
             )
         }
         every { fileService.resolvePathWithOptionalShare(any(), any(), any()) } answers {
@@ -172,6 +162,7 @@ class FileEntryListsServiceSharedSearchTest {
             resolveSharedFilePath(
                 relativePath = path,
                 shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                followSymlinks = state.app.followSymlinks,
             )
         }
     }

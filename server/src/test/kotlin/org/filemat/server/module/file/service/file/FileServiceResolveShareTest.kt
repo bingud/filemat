@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.file
 
+import org.filemat.server.testutil.symlinkOrSkip
 import com.github.f4b6a3.ulid.Ulid
 import io.mockk.every
 import io.mockk.mockk
@@ -19,7 +20,6 @@ import org.filemat.server.module.file.service.file.component.FileMoveService
 import org.filemat.server.module.file.service.file.component.FileSecurityService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -31,6 +31,7 @@ class FileServiceResolveShareTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private val state = State(env = emptyMap())
     private val entityService = mockk<EntityService>()
     private val fileService = FileService(
         entityService = entityService,
@@ -43,24 +44,13 @@ class FileServiceResolveShareTest {
         fileMetadataService = mockk<FileMetadataService>(relaxed = true),
         fileContentMetadataService = mockk<FileContentMetadataService>(relaxed = true),
         fileEntryListsService = mockk<FileEntryListsService>(relaxed = true),
+        state = state,
     )
 
-    private var previousFollowSymlinks = false
-
-    @BeforeEach
-    fun setup() {
-        previousFollowSymlinks = State.App.followSymlinks
-    }
-
-    @AfterEach
-    fun tearDown() {
-        State.App.followSymlinks = previousFollowSymlinks
-    }
 
     @Test
     fun `shared resolve follows in-tree links and rejects outbound links`() {
-        State.App.followSymlinks = true
-        assumeTrue(State.App.followSymlinks, "followSymlinks is locked by environment variable")
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         val nested = Files.createDirectory(shareRoot.resolve("nested"))
@@ -68,8 +58,8 @@ class FileServiceResolveShareTest {
         val outside = Files.createDirectory(tempDir.resolve("outside"))
         val secret = Files.writeString(outside.resolve("secret.txt"), "SECRET")
 
-        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("in-tree"), nested) }.isSuccess, "Could not create in-tree symlink")
-        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("escape"), secret) }.isSuccess, "Could not create outbound symlink")
+        symlinkOrSkip(shareRoot.resolve("in-tree"), nested)
+        symlinkOrSkip(shareRoot.resolve("escape"), secret)
 
         every { entityService.getByShareToken(any(), any()) } returns Result.ok(
             FilesystemEntity(

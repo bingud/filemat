@@ -39,6 +39,7 @@ class AdminSettingsController(
     private val sensitiveAuthService: SensitiveAuthService,
     private val thumbCacheSettingService: ThumbCacheSettingService,
     private val thumbnailService: ThumbnailService,
+    private val state: State,
 ) : AController() {
 
     @PostMapping("/thumbnails/update")
@@ -80,10 +81,10 @@ class AdminSettingsController(
         request: HttpServletRequest,
     ): ResponseEntity<String> {
         return ok(json {
-            put("isEnabled", State.ThumbCache.isEnabled)
-            put("folderPath", State.ThumbCache.folderPath)
-            put("maxSizeMb", State.ThumbCache.maxSizeMb)
-            put("maxAge", State.ThumbCache.maxAge)
+            put("isEnabled", state.thumbCache.isEnabled)
+            put("folderPath", state.thumbCache.folderPath)
+            put("maxSizeMb", state.thumbCache.maxSizeMb)
+            put("maxAge", state.thumbCache.maxAge)
         })
     }
 
@@ -232,12 +233,12 @@ class AdminSettingsController(
         request: HttpServletRequest,
     ): ResponseEntity<String> {
         return ok(json {
-            put("uploadFolderPath", State.App.uploadFolderPath)
+            put("uploadFolderPath", state.app.uploadFolderPath)
             put("contentBaseUrl", JsonBuilder().apply {
-                put("url", State.App.ContentBaseUrl.url)
-                put("lockedByEnv", State.App.ContentBaseUrl.lockedByEnv)
-                put("forUnauthenticated", State.App.ContentBaseUrl.forUnauthenticated)
-                put("forUnauthenticatedLockedByEnv", State.App.ContentBaseUrl.forUnauthenticatedLockedByEnv)
+                put("url", state.app.contentBaseUrl.url)
+                put("lockedByEnv", state.app.contentBaseUrl.lockedByEnv)
+                put("forUnauthenticated", state.app.contentBaseUrl.forUnauthenticated)
+                put("forUnauthenticatedLockedByEnv", state.app.contentBaseUrl.forUnauthenticatedLockedByEnv)
             }.build())
         })
     }

@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.filesystem.fileOperation
 
+import org.filemat.server.common.State
 import io.mockk.every
 import io.mockk.mockk
 import org.filemat.server.common.model.Result
@@ -40,6 +41,7 @@ class FilesystemMoveServiceTest {
         entityService = entityService,
         filesystemService = filesystemService,
         thumbnailService = thumbnailService,
+        state = State(env = emptyMap()),
     )
 
     @BeforeEach

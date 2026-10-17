@@ -1,6 +1,7 @@
 package org.filemat.server.module.savedFile
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
@@ -22,7 +23,8 @@ import java.util.concurrent.ConcurrentHashMap
 class SavedFileService(
     private val savedFileRepository: SavedFileRepository,
     private val logService: LogService,
-    @Lazy private val fileService: FileService
+    @Lazy private val fileService: FileService,
+    private val state: State,
 ) {
     private val fileMap = ConcurrentHashMap<Ulid, ConcurrentHashMap<String, SavedFile>>()
     private val pathToUserIdMap = ConcurrentHashMap<String, MutableSet<Ulid>>()
@@ -159,7 +161,7 @@ class SavedFileService(
         val metaList = entries.mapNotNull {
             val rawPath = FilePath.of(it.path)
 
-            val pathResult = resolvePath(rawPath)
+            val pathResult = resolvePath(rawPath, state.app.followSymlinks)
             if (pathResult.isNotSuccessful) return@mapNotNull null
             val canonicalPath = pathResult.value
 

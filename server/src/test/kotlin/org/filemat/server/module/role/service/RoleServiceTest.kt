@@ -14,7 +14,6 @@ import org.filemat.server.module.permission.model.SystemPermission
 import org.filemat.server.module.role.model.Role
 import org.filemat.server.module.role.repository.RoleRepository
 import org.filemat.server.module.user.model.UserAction
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -24,12 +23,8 @@ class RoleServiceTest {
     private val roleRepository = mockk<RoleRepository>(relaxed = true)
     private val logService = mockk<LogService>(relaxed = true)
     private val authService = mockk<AuthService>(relaxed = true)
-    private val roleService = RoleService(roleRepository, logService, authService)
-
-    @AfterEach
-    fun cleanup() {
-        State.Auth.roleMap.clear()
-    }
+    private val state = State(env = emptyMap())
+    private val roleService = RoleService(roleRepository, logService, authService, state)
 
     @Test
     fun `updatePermissionList rejects newList with higher max level than editor`() {
@@ -38,13 +33,13 @@ class RoleServiceTest {
         val userId = UlidCreator.getUlid()
         val now = unixNow()
 
-        State.Auth.roleMap[editorRoleId] = Role(
+        state.auth.roleMap[editorRoleId] = Role(
             roleId = editorRoleId,
             name = "editor",
             createdDate = now,
             permissions = listOf(SystemPermission.EDIT_ROLES),
         )
-        State.Auth.roleMap[targetRoleId] = Role(
+        state.auth.roleMap[targetRoleId] = Role(
             roleId = targetRoleId,
             name = "target",
             createdDate = now,
@@ -90,13 +85,13 @@ class RoleServiceTest {
         val targetRoleId = UlidCreator.getUlid()
         val now = unixNow()
 
-        State.Auth.roleMap[editorRoleId] = Role(
+        state.auth.roleMap[editorRoleId] = Role(
             roleId = editorRoleId,
             name = "editor",
             createdDate = now,
             permissions = listOf(SystemPermission.EDIT_ROLES),
         )
-        State.Auth.roleMap[targetRoleId] = Role(
+        state.auth.roleMap[targetRoleId] = Role(
             roleId = targetRoleId,
             name = "custom",
             createdDate = now,
@@ -118,13 +113,13 @@ class RoleServiceTest {
         val editorRoleId = UlidCreator.getUlid()
         val now = unixNow()
 
-        State.Auth.roleMap[editorRoleId] = Role(
+        state.auth.roleMap[editorRoleId] = Role(
             roleId = editorRoleId,
             name = "editor",
             createdDate = now,
             permissions = SystemPermission.entries,
         )
-        State.Auth.roleMap[roleId] = Role(
+        state.auth.roleMap[roleId] = Role(
             roleId = roleId,
             name = name,
             createdDate = now,

@@ -18,7 +18,6 @@ import org.filemat.server.module.file.service.file.ThumbnailService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.service.SettingService
 import org.filemat.server.module.setting.service.component.ThumbCacheSettingService
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -29,6 +28,7 @@ class AdminSettingsControllerContentUrlTest {
 
     private val settingService = mockk<SettingService>(relaxed = true)
     private val sensitiveAuthService = mockk<SensitiveAuthService>(relaxed = true)
+    private val state = State(env = emptyMap())
     private val controller = AdminSettingsController(
         mockk<LogService>(relaxed = true),
         settingService,
@@ -36,24 +36,14 @@ class AdminSettingsControllerContentUrlTest {
         sensitiveAuthService,
         mockk<ThumbCacheSettingService>(relaxed = true),
         mockk<ThumbnailService>(relaxed = true),
+        state,
     )
-
-    private val previousUrl = State.App.ContentBaseUrl.url
-    private val previousUnauth = State.App.ContentBaseUrl.forUnauthenticated
-    private val previousUpload = runCatching { State.App.uploadFolderPath }.getOrNull()
-
-    @AfterEach
-    fun restore() {
-        State.App.ContentBaseUrl.url = previousUrl
-        State.App.ContentBaseUrl.forUnauthenticated = previousUnauth
-        if (previousUpload != null) State.App.uploadFolderPath = previousUpload
-    }
 
     @Test
     fun `state get returns the full system bundle`() {
-        State.App.uploadFolderPath = "/tmp/filemat"
-        State.App.ContentBaseUrl.url = "https://203.0.113.10:8080"
-        State.App.ContentBaseUrl.forUnauthenticated = true
+        state.app.uploadFolderPath = "/tmp/filemat"
+        state.app.contentBaseUrl.url = "https://203.0.113.10:8080"
+        state.app.contentBaseUrl.forUnauthenticated = true
 
         val body = Json.parseToJsonElement(controller.adminGetSystemStateMapping(request()).body!!).jsonObject
         val contentBaseUrl = body["contentBaseUrl"]!!.jsonObject

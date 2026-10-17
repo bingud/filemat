@@ -1,5 +1,6 @@
 package org.filemat.server.common.util
 
+import org.filemat.server.testutil.symlinkOrSkip
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,7 +52,7 @@ class SafeWalkTest {
         val secret = Files.writeString(denied.resolve("secret.txt"), "no")
 
         val link = allowed.resolve("to-denied")
-        createSymbolicLinkOrSkip(link, denied)
+        symlinkOrSkip(link, denied)
 
         val walked = allowed.safeWalk().toList()
 
@@ -163,8 +164,8 @@ class SafeWalkTest {
 
         val dirLink = root.resolve("to-outside-dir")
         val fileLink = root.resolve("to-outside-file")
-        createSymbolicLinkOrSkip(dirLink, outsideDir)
-        createSymbolicLinkOrSkip(fileLink, outsideFile)
+        symlinkOrSkip(dirLink, outsideDir)
+        symlinkOrSkip(fileLink, outsideFile)
 
         val result = measureFolder(root)
 
@@ -233,13 +234,6 @@ class SafeWalkTest {
     private fun measureFolder(path: Path, with: FileLockService? = null) =
         runBlocking { path.measureFolderContents(with) }
 
-    private fun createSymbolicLinkOrSkip(link: Path, target: Path) {
-        try {
-            Files.createSymbolicLink(link, target)
-        } catch (_: Exception) {
-            assumeTrue(false, "Symbolic links are not available on this system")
-        }
-    }
 
     private fun makeDirectoryUnreadableOrSkip(directory: Path): () -> Unit {
         assumeTrue(

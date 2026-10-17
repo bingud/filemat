@@ -1,5 +1,7 @@
 package org.filemat.server.module.file.service.file.component
 
+import org.filemat.server.testutil.directoryLinkOrSkip
+import org.filemat.server.testutil.symlinkOrSkip
 import io.mockk.every
 import io.mockk.mockk
 import org.filemat.server.common.State
@@ -14,7 +16,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -32,22 +33,22 @@ class FileContentServiceTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private val state = State(env = emptyMap())
     private val fileService = mockk<FileService>()
     private val user = mockk<Principal>(relaxed = true)
     private val readable = mutableSetOf<Path>()
-    private var previousFollowSymlinks = false
 
     private val service = FileContentService(
         fileService = fileService,
         fileLockService = FileLockService(),
         filesystemService = mockk<FilesystemService>(relaxed = true),
         logService = mockk(relaxed = true),
+        state = state,
     )
 
     @BeforeEach
     fun setup() {
         readable.clear()
-        previousFollowSymlinks = State.App.followSymlinks
         every { fileService.resolvePathWithOptionalShare(any(), any()) } answers {
             Result.ok(invocation.args[0] as FilePath)
         }
@@ -60,14 +61,9 @@ class FileContentServiceTest {
         }
     }
 
-    @AfterEach
-    fun tearDown() {
-        State.App.followSymlinks = previousFollowSymlinks
-    }
-
     @Test
     fun `zips a regular readable file`() {
-        State.App.followSymlinks = false
+        state.app.followSymlinks = false
         val folder = Files.createDirectory(tempDir.resolve("folder"))
         val file = Files.writeString(folder.resolve("a.txt"), "hello")
         allow(folder)
@@ -80,7 +76,7 @@ class FileContentServiceTest {
 
     @Test
     fun `zip entry names use forward slashes`() {
-        State.App.followSymlinks = false
+        state.app.followSymlinks = false
         val folder = Files.createDirectory(tempDir.resolve("folder"))
         val nested = Files.createDirectory(folder.resolve("nested"))
         val file = Files.writeString(nested.resolve("a.txt"), "hello")
@@ -110,7 +106,7 @@ class FileContentServiceTest {
 
     @Test
     fun `uncompressed zip round trips a multi megabyte file`() {
-        State.App.followSymlinks = false
+        state.app.followSymlinks = false
         val folder = Files.createDirectory(tempDir.resolve("folder"))
         val payload = ByteArray(3 * 1024 * 1024) { i -> (i % 251).toByte() }
         val file = folder.resolve("big.bin")
@@ -144,14 +140,13 @@ class FileContentServiceTest {
 
     @Test
     fun `dir symlink children are authorized on the real path`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val allowed = Files.createDirectory(tempDir.resolve("allowed"))
         val denied = Files.createDirectory(tempDir.resolve("denied"))
         val visible = Files.writeString(allowed.resolve("visible.txt"), "ok")
         val secret = Files.writeString(denied.resolve("secret.txt"), "DENIED SECRET PAYLOAD")
-        createDirectoryLink(allowed.resolve("escape-to-denied-dir"), denied)
+        directoryLinkOrSkip(allowed.resolve("escape-to-denied-dir"), denied)
 
         allow(allowed)
         allow(visible)
@@ -166,14 +161,13 @@ class FileContentServiceTest {
 
     @Test
     fun `dir symlink children are included when the real path is allowed`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val allowed = Files.createDirectory(tempDir.resolve("allowed"))
         val other = Files.createDirectory(tempDir.resolve("other"))
         val visible = Files.writeString(allowed.resolve("visible.txt"), "ok")
         val shared = Files.writeString(other.resolve("shared.txt"), "from-other")
-        createDirectoryLink(allowed.resolve("to-other"), other)
+        directoryLinkOrSkip(allowed.resolve("to-other"), other)
 
         allow(allowed)
         allow(visible)
@@ -188,14 +182,13 @@ class FileContentServiceTest {
 
     @Test
     fun `file symlink is authorized on the real path`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val allowed = Files.createDirectory(tempDir.resolve("allowed"))
         val denied = Files.createDirectory(tempDir.resolve("denied"))
         val secret = Files.writeString(denied.resolve("secret.txt"), "DENIED SECRET PAYLOAD")
         val link = allowed.resolve("escape-file")
-        assumeTrue(runCatching { Files.createSymbolicLink(link, secret) }.isSuccess, "Could not create file symlink")
+        symlinkOrSkip(link, secret)
 
         allow(allowed)
 
@@ -207,8 +200,7 @@ class FileContentServiceTest {
 
     @Test
     fun `shared zip includes in-tree symlink content and skips outbound targets`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         val nested = Files.createDirectory(shareRoot.resolve("nested"))
@@ -216,9 +208,9 @@ class FileContentServiceTest {
         val outside = Files.createDirectory(tempDir.resolve("outside"))
         val secret = Files.writeString(outside.resolve("secret.txt"), "SHARED SECRET PAYLOAD")
 
-        createDirectoryLink(shareRoot.resolve("in-tree"), nested)
-        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("escape-file"), secret) }.isSuccess, "Could not create file symlink")
-        createDirectoryLink(shareRoot.resolve("escape-dir"), outside)
+        directoryLinkOrSkip(shareRoot.resolve("in-tree"), nested)
+        symlinkOrSkip(shareRoot.resolve("escape-file"), secret)
+        directoryLinkOrSkip(shareRoot.resolve("escape-dir"), outside)
 
         allow(shareRoot)
         allow(nested)
@@ -239,15 +231,14 @@ class FileContentServiceTest {
 
     @Test
     fun `shared zip skips bounce-back symlink that leaves the share`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         val visible = Files.writeString(shareRoot.resolve("inside.txt"), "inside")
         val outside = Files.createDirectory(tempDir.resolve("outside"))
         val bounce = outside.resolve("bounce")
-        assumeTrue(runCatching { Files.createSymbolicLink(bounce, visible) }.isSuccess, "Could not create bounce target")
-        assumeTrue(runCatching { Files.createSymbolicLink(shareRoot.resolve("leave-and-return"), bounce) }.isSuccess, "Could not create bounce-back symlink")
+        symlinkOrSkip(bounce, visible)
+        symlinkOrSkip(shareRoot.resolve("leave-and-return"), bounce)
 
         allow(shareRoot)
         allow(visible)
@@ -265,12 +256,11 @@ class FileContentServiceTest {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     fun `zip does not recurse forever through a directory link to an ancestor`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val folder = Files.createDirectory(tempDir.resolve("folder"))
         val hello = Files.writeString(folder.resolve("hello.txt"), "hi")
-        createDirectoryLink(folder.resolve("loop"), folder)
+        directoryLinkOrSkip(folder.resolve("loop"), folder)
 
         allow(folder)
         allow(hello)
@@ -284,15 +274,14 @@ class FileContentServiceTest {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     fun `zip does not recurse forever through sibling directory links`() {
-        State.App.followSymlinks = true
-        assumeFollowSymlinksHonored()
+        state.app.followSymlinks = true
 
         val folder = Files.createDirectory(tempDir.resolve("folder"))
         val a = Files.createDirectory(folder.resolve("a"))
         val b = Files.createDirectory(folder.resolve("b"))
         val hello = Files.writeString(a.resolve("hello.txt"), "from-a")
-        createDirectoryLink(a.resolve("to-b"), b)
-        createDirectoryLink(b.resolve("to-a"), a)
+        directoryLinkOrSkip(a.resolve("to-b"), b)
+        directoryLinkOrSkip(b.resolve("to-a"), a)
 
         allow(folder)
         allow(a)
@@ -315,6 +304,7 @@ class FileContentServiceTest {
                 resolveSharedFilePath(
                     relativePath = path,
                     shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                    followSymlinks = state.app.followSymlinks,
                 )
             }
         }
@@ -327,6 +317,7 @@ class FileContentServiceTest {
                 resolveSharedFilePath(
                     relativePath = path,
                     shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                    followSymlinks = state.app.followSymlinks,
                 )
             }
         }
@@ -370,21 +361,4 @@ class FileContentServiceTest {
         return entries
     }
 
-    private fun assumeFollowSymlinksHonored() {
-        assumeTrue(State.App.followSymlinks, "followSymlinks is locked by environment variable")
-    }
-
-    private fun createDirectoryLink(link: Path, target: Path) {
-        try {
-            Files.createSymbolicLink(link, target)
-            return
-        } catch (_: Exception) {
-        }
-
-        val process = ProcessBuilder("cmd", "/c", "mklink", "/J", link.toString(), target.toAbsolutePath().toString())
-            .redirectErrorStream(true)
-            .start()
-        val output = process.inputStream.bufferedReader().readText()
-        assumeTrue(process.waitFor() == 0 && Files.exists(link), "Could not create directory link: $output")
-    }
 }

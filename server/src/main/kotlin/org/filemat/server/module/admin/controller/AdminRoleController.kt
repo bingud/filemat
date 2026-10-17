@@ -34,6 +34,7 @@ class AdminRoleController(
     private val roleService: RoleService,
     private val userRoleService: UserRoleService,
     private val logService: LogService,
+    private val state: State,
 ) : AController() {
 
     @PostMapping("/delete")
@@ -97,7 +98,7 @@ class AdminRoleController(
             ?: return bad("List of permissions is invalid.", "validation")
 
         val principal = request.getPrincipal()!!
-        if (principal.getPermissions().hasSufficientPermissionsFor(permissions) == false) return bad("Cannot create role with higher permissions than you have.", "")
+        if (principal.getPermissions(state).hasSufficientPermissionsFor(permissions) == false) return bad("Cannot create role with higher permissions than you have.", "")
 
         val role = Role(
             roleId = UlidCreator.getUlid(),
@@ -131,7 +132,7 @@ class AdminRoleController(
     ): ResponseEntity<String> {
         val roleId = parseUlidOrNull(rawRoleId) ?: return bad("Invalid role ID.", "validation")
 
-        val role = State.Auth.roleMap[roleId] ?: return bad("This role does not exist.", "")
+        val role = state.auth.roleMap[roleId] ?: return bad("This role does not exist.", "")
 
         val userIds = userRoleService.getRoleUsers(roleId).let {
             if (it.notFound) return notFound()

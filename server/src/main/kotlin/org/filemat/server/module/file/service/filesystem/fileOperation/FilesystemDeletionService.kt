@@ -41,6 +41,7 @@ class FilesystemDeletionService(
     private val fileLockService: FileLockService,
     private val entityService: EntityService,
     private val thumbnailService: ThumbnailService,
+    private val state: State,
 ) : FilesystemDeletionOperations {
 
     override fun deleteFile(
@@ -48,7 +49,7 @@ class FilesystemDeletionService(
         user: Principal,
         ignorePermissions: Boolean?
     ): Result<Unit> = fileLockService.tryWithLock(target.path, LockType.WRITE) {
-        val isDataFolderProtected = State.App.allowWriteDataFolder == false
+        val isDataFolderProtected = state.app.allowWriteDataFolder == false
         if (!target.path.exists()) return@tryWithLock Result.notFound()
 
         if (isDataFolderProtected) {

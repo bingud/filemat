@@ -35,11 +35,11 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-	testImplementation("org.springframework.boot:spring-boot-starter-test:3.5.9") {
+	testImplementation("org.springframework.boot:spring-boot-starter-test") {
 		exclude(module = "junit")
 		exclude(module = "mockito-core")
 	}
-	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:2.2.20")
+	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("io.mockk:mockk-jvm:1.14.6")
 
 	implementation("org.bytedeco:javacv:1.5.11")

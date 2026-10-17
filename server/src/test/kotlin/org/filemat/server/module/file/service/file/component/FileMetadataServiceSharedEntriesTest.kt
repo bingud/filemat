@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.file.component
 
+import org.filemat.server.testutil.symlinkOrSkip
 import io.mockk.every
 import io.mockk.mockk
 import org.filemat.server.common.State
@@ -14,7 +15,6 @@ import org.filemat.server.module.sharedFile.resolveSharedFilePath
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -26,31 +26,21 @@ class FileMetadataServiceSharedEntriesTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private val state = State(env = emptyMap())
     private val fileService = mockk<FileService>()
     private val filesystemService = mockk<FilesystemService>()
-    private var previousFollowSymlinks = false
 
     private val service = FileMetadataService(
         fileService = fileService,
         filesystemService = filesystemService,
         savedFileService = mockk(relaxed = true),
         fileLockService = FileLockService(),
+        state = state,
     )
-
-    @BeforeEach
-    fun setup() {
-        previousFollowSymlinks = State.App.followSymlinks
-    }
-
-    @AfterEach
-    fun tearDown() {
-        State.App.followSymlinks = previousFollowSymlinks
-    }
 
     @Test
     fun `shared listing keeps in-tree links and drops outbound targets`() {
-        State.App.followSymlinks = true
-        assumeTrue(State.App.followSymlinks, "followSymlinks is locked by environment variable")
+        state.app.followSymlinks = true
 
         val shareRoot = Files.createDirectory(tempDir.resolve("share"))
         val nested = Files.createDirectory(shareRoot.resolve("nested"))
@@ -59,9 +49,9 @@ class FileMetadataServiceSharedEntriesTest {
         val secret = Files.writeString(outside.resolve("secret.txt"), "SHARED SECRET PAYLOAD")
 
         val inTree = shareRoot.resolve("in-tree")
-        assumeTrue(runCatching { Files.createSymbolicLink(inTree, nested) }.isSuccess, "Could not create in-tree symlink")
+        symlinkOrSkip(inTree, nested)
         val escapeFile = shareRoot.resolve("escape-file")
-        assumeTrue(runCatching { Files.createSymbolicLink(escapeFile, secret) }.isSuccess, "Could not create file symlink")
+        symlinkOrSkip(escapeFile, secret)
 
         mockShareResolve(shareRoot)
         every { filesystemService.getMetadata(any()) } returns folderMeta(shareRoot)
@@ -90,6 +80,7 @@ class FileMetadataServiceSharedEntriesTest {
             resolveSharedFilePath(
                 relativePath = path,
                 shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                followSymlinks = state.app.followSymlinks,
             )
         }
         every { fileService.resolvePathWithOptionalShare(any(), any(), any()) } answers {
@@ -97,6 +88,7 @@ class FileMetadataServiceSharedEntriesTest {
             resolveSharedFilePath(
                 relativePath = path,
                 shareRoot = FilePath.ofAlreadyNormalized(shareRoot),
+                followSymlinks = state.app.followSymlinks,
             )
         }
     }

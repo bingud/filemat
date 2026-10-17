@@ -206,8 +206,8 @@ fun formatMillisToSeconds(millis: Long): String {
 
 fun todo() { runCatching { TODO() }.onFailure { it.printStackTrace() } }
 
-fun runDev(block: () -> Unit) {
-    if (!State.App.isDev) return
+fun State.runDev(block: () -> Unit) {
+    if (!app.isDev) return
     runCatching {
         block()
     }
@@ -275,19 +275,19 @@ fun <K, V> HashMap<K, V>.removeAll(keys: Collection<K>): Boolean {
 
 
 
-fun resolvePath(rawPath: FilePath, allowNonExistent: Boolean = false): Result<FilePath> {
+fun resolvePath(rawPath: FilePath, followSymlinks: Boolean, allowNonExistent: Boolean = false): Result<FilePath> {
     try {
         val resolvedPath = FilePath.ofAlreadyNormalized(
             // Catch if file not found
             try {
                 rawPath.path.toRealPath()
             } catch (e: NoSuchFileException) {
-                if (allowNonExistent) return resolveNonExistent(rawPath)
+                if (allowNonExistent) return resolveNonExistent(rawPath, followSymlinks)
                 return Result.notFound()
             }
         )
 
-        if (State.App.followSymlinks) {
+        if (followSymlinks) {
             return resolvedPath.toResult()
         } else {
             val matching = rawPath == resolvedPath
@@ -302,7 +302,7 @@ fun resolvePath(rawPath: FilePath, allowNonExistent: Boolean = false): Result<Fi
 /**
  * Resolves all segments of file path that actually exist
  */
-private fun resolveNonExistent(rawPath: FilePath): Result<FilePath> {
+private fun resolveNonExistent(rawPath: FilePath, followSymlinks: Boolean): Result<FilePath> {
     // Input path: /a/b/c/d
 
     // Prefix of path that does exist
@@ -339,7 +339,7 @@ private fun resolveNonExistent(rawPath: FilePath): Result<FilePath> {
     }
 
     val resolvedPath = if (nonExistentSuffix != null) resolvedPrefixPath.resolve(nonExistentSuffix) else resolvedPrefixPath
-    if (!State.App.followSymlinks && rawPath.path != resolvedPath) {
+    if (!followSymlinks && rawPath.path != resolvedPath) {
         return Result.notFound()
     }
 

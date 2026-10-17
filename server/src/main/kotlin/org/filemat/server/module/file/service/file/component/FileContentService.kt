@@ -39,6 +39,7 @@ class FileContentService(
     private val fileLockService: FileLockService,
     private val filesystemService: FilesystemService,
     private val logService: LogService,
+    private val state: State,
 ) {
 
     /**
@@ -53,7 +54,7 @@ class FileContentService(
         range: LongRange? = null,
         ignorePermissions: Boolean = false
     ): Result<InputStream> {
-        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath).let { path ->
+        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath, state.app.followSymlinks).let { path ->
             if (path.isNotSuccessful) {
                 return path.cast()
             }
@@ -116,8 +117,8 @@ class FileContentService(
         }
 
         // 2. Setup Protection and Config
-        val isReadDataFolderProtected = State.App.allowReadDataFolder == false
-        val copyResolvedSymlinks = State.App.followSymlinks
+        val isReadDataFolderProtected = state.app.allowReadDataFolder == false
+        val copyResolvedSymlinks = state.app.followSymlinks
 
         // Cannot zip FROM protected data folder (Read protection)
         if (isReadDataFolderProtected) {
@@ -186,7 +187,7 @@ class FileContentService(
             return 1
         }
 
-        if (shareRoot != null && resolveSharedDescendant(currentSource, shareRoot).isNotSuccessful) {
+        if (shareRoot != null && resolveSharedDescendant(currentSource, shareRoot, state.app.followSymlinks).isNotSuccessful) {
             return failedCount
         }
 
@@ -209,7 +210,7 @@ class FileContentService(
         }
 
         val resolvedPath = if (isSymlink) {
-            resolvePath(sourceFilePath).let { result ->
+            resolvePath(sourceFilePath, state.app.followSymlinks).let { result ->
                 if (result.isNotSuccessful) {
                     logZipSkip(currentSource, "failed to resolve symlink")
                     return failedCount + 1
@@ -310,7 +311,7 @@ class FileContentService(
 
     data class EditFileResult(val modifiedDate: Long, val size: Long)
     fun editFile(user: Principal, rawPath: FilePath, newContent: String): Result<EditFileResult> {
-        val canonicalResult = resolvePath(rawPath)
+        val canonicalResult = resolvePath(rawPath, state.app.followSymlinks)
         val canonicalPath = canonicalResult.let {
             if (it.isNotSuccessful) return canonicalResult.cast()
             it.value
@@ -355,7 +356,7 @@ class FileContentService(
         val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
         // Get folder parent path
-        val canonicalParentResult = resolvePath(rawParentPath)
+        val canonicalParentResult = resolvePath(rawParentPath, state.app.followSymlinks)
         if (canonicalParentResult.isNotSuccessful) return canonicalParentResult.cast()
         val canonicalParent = canonicalParentResult.value
 
@@ -400,7 +401,7 @@ class FileContentService(
         val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
 
         // Get folder parent path
-        val canonicalParentResult = resolvePath(rawParentPath)
+        val canonicalParentResult = resolvePath(rawParentPath, state.app.followSymlinks)
         if (canonicalParentResult.isNotSuccessful) return canonicalParentResult.cast()
         val canonicalParent = canonicalParentResult.value
 

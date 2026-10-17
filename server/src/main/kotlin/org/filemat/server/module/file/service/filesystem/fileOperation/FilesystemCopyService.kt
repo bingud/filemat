@@ -32,6 +32,7 @@ class FilesystemCopyService(
     private val logService: LogService,
     private val fileService: FileService,
     private val fileLockService: FileLockService,
+    private val state: State,
 ) : FilesystemCopyOperations {
 
     override fun copyFile(
@@ -48,7 +49,7 @@ class FilesystemCopyService(
         val resolveSymlinks = if (copyResolvedSymlinks != null) {
             copyResolvedSymlinks
         } else {
-            if (State.App.followSymlinks) {
+            if (state.app.followSymlinks) {
                 val isMatching = isFileStoreMatching(canonicalSource.path, canonicalDestination.path.parent ?: canonicalDestination.path)
                     ?: return@tryWithLock Result.error("Failed to check if copied file path is on the same filesystem.")
 
@@ -74,8 +75,8 @@ class FilesystemCopyService(
         ignorePermissions: Boolean? = null,
         copyResolvedSymlinks: Boolean,
     ): Result<Unit> {
-        val isReadDataFolderProtected = State.App.allowReadDataFolder == false
-        val isWriteDataFolderProtected = State.App.allowWriteDataFolder == false
+        val isReadDataFolderProtected = state.app.allowReadDataFolder == false
+        val isWriteDataFolderProtected = state.app.allowWriteDataFolder == false
 
         if (!canonicalSource.path.exists()) return Result.notFound()
         if (canonicalDestination.path.startsWith(canonicalSource.path)) return Result.reject("Cannot copy folder into itself.")
@@ -130,7 +131,7 @@ class FilesystemCopyService(
         val isSymlink = if (copyResolvedSymlinks) Files.isSymbolicLink(currentSource) else null
 
         val resolvedPath = if (isSymlink == true) {
-            resolvePath(sourceFilePath).let { result ->
+            resolvePath(sourceFilePath, state.app.followSymlinks).let { result ->
                 if (result.isNotSuccessful) return failedCount + 1
                 result.value
             }.also {

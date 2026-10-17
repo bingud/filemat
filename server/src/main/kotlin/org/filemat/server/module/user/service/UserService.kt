@@ -1,6 +1,7 @@
 package org.filemat.server.module.user.service
 
 import com.atlassian.onetime.model.TOTPSecret
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -30,6 +31,7 @@ class UserService(
     private val logService: LogService,
     private val authService: AuthService,
     private val passwordEncoder: PasswordEncoder,
+    private val state: State,
 ) {
     fun changePassword(
         principal: Principal,
@@ -78,7 +80,7 @@ class UserService(
         if (!ignorePermissions) {
             if (meta.principal == null) return Result.reject("User must not be null.")
 
-            if (!meta.principal.hasPermission(SystemPermission.CHANGE_OWN_HOME_FOLDER)) return Result.reject("Missing permission to change home folder.")
+            if (!meta.principal.hasPermission(state, SystemPermission.CHANGE_OWN_HOME_FOLDER)) return Result.reject("Missing permission to change home folder.")
         }
 
         try {

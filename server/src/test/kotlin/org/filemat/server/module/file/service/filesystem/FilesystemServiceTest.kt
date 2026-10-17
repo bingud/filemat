@@ -5,9 +5,14 @@ import org.filemat.server.module.file.model.FilePath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
+import java.nio.file.Path
 
 class FilesystemServiceTest {
+    @TempDir
+    lateinit var tempDir: Path
+
     private val service = FilesystemService(
         filesystemDeletionService = mockk(),
         filesystemMoveService = mockk(),
@@ -16,9 +21,8 @@ class FilesystemServiceTest {
 
     @Test
     fun `atomic replace swaps file contents and removes source`() {
-        val directory = Files.createTempDirectory("filemat-replace-test")
-        val source = directory.resolve("source.tmp")
-        val destination = directory.resolve("destination.txt")
+        val source = tempDir.resolve("source.tmp")
+        val destination = tempDir.resolve("destination.txt")
         Files.writeString(source, "new")
         Files.writeString(destination, "old")
 
@@ -34,9 +38,8 @@ class FilesystemServiceTest {
 
     @Test
     fun `missing replacement source leaves destination intact`() {
-        val directory = Files.createTempDirectory("filemat-replace-missing-test")
-        val source = directory.resolve("missing.tmp")
-        val destination = directory.resolve("destination.txt")
+        val source = tempDir.resolve("missing.tmp")
+        val destination = tempDir.resolve("destination.txt")
         Files.writeString(destination, "old")
 
         val result = service.replaceFileContentsAtomically(

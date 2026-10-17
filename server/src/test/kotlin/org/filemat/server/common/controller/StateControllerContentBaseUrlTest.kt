@@ -6,7 +6,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.filemat.server.common.State
 import org.filemat.server.module.auth.model.Principal
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,23 +13,14 @@ import org.springframework.mock.web.MockHttpServletRequest
 
 class StateControllerContentBaseUrlTest {
 
-    private val controller = StateController()
-    private val previousUrl = State.App.ContentBaseUrl.url
-    private val previousUnauth = State.App.ContentBaseUrl.forUnauthenticated
-    private val previousSetup = runCatching { State.App.isSetup }.getOrNull()
+    private val state = State(env = emptyMap())
+    private val controller = StateController(state)
 
     @BeforeEach
     fun setup() {
-        State.App.isSetup = true
-        State.App.ContentBaseUrl.url = "https://203.0.113.10:8080"
-        State.App.ContentBaseUrl.forUnauthenticated = false
-    }
-
-    @AfterEach
-    fun restore() {
-        State.App.ContentBaseUrl.url = previousUrl
-        State.App.ContentBaseUrl.forUnauthenticated = previousUnauth
-        if (previousSetup != null) State.App.isSetup = previousSetup
+        state.app.isSetup = true
+        state.app.contentBaseUrl.url = "https://203.0.113.10:8080"
+        state.app.contentBaseUrl.forUnauthenticated = false
     }
 
     @Test
@@ -50,7 +40,7 @@ class StateControllerContentBaseUrlTest {
 
     @Test
     fun `unauthenticated select receives the URL when the unauthenticated toggle is on`() {
-        State.App.ContentBaseUrl.forUnauthenticated = true
+        state.app.contentBaseUrl.forUnauthenticated = true
         val body = selectApp(MockHttpServletRequest())
         assertEquals("https://203.0.113.10:8080", body)
     }

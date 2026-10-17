@@ -16,7 +16,7 @@ import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 
 @Service
-class AdminUserRoleService(private val userRoleService: UserRoleService, private val authService: AuthService, private val logService: LogService) {
+class AdminUserRoleService(private val userRoleService: UserRoleService, private val authService: AuthService, private val logService: LogService, private val state: State) {
 
     /**
      * Remove a list of roles from a user
@@ -24,10 +24,10 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
      * @return List of removed roles
      */
     fun removeRoles(principal: Principal, targetId: Ulid, allRoles: List<Ulid>): Result<List<Ulid>> {
-        val userPermissions = principal.getPermissions()
+        val userPermissions = principal.getPermissions(state)
 
         val roles = allRoles.map { roleId ->
-            val role = State.Auth.roleMap[roleId]
+            val role = state.auth.roleMap[roleId]
                 ?: return@map null
 
             if (userPermissions.hasSufficientPermissionsFor(role.permissions) == false) return@map null
@@ -74,10 +74,10 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
      * Assign a role to a user
      */
     fun assignRole(principal: Principal, targetId: Ulid, roleId: Ulid): Result<Unit> {
-        val role = State.Auth.roleMap[roleId]
+        val role = state.auth.roleMap[roleId]
             ?: return Result.error("This role does not exist.")
 
-        val userPermissions = principal.getPermissions()
+        val userPermissions = principal.getPermissions(state)
 
         // Check if user has high enough roles to assign role
         if (userPermissions.hasSufficientPermissionsFor(role.permissions) == false) return Result.reject("")

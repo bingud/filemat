@@ -1,6 +1,7 @@
 package org.filemat.server.module.permission.service
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -34,6 +35,7 @@ class EntityPermissionService(
     private val logService: LogService,
     private val entityService: EntityService,
     @Lazy private val fileService: FileService,
+    private val state: State,
 ) {
     /**
      * Holds user and role permissions and owner ID for file paths in a tree.
@@ -132,7 +134,7 @@ class EntityPermissionService(
         val action = UserAction.CREATE_ENTITY_PERMISSION
         if (ignorePermissions == false && user == null || ignorePermissions == true && userId == null) return Result.reject("Unauthenticated")
 
-        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath).let { result ->
+        val canonicalPath = existingCanonicalPath ?: resolvePath(rawPath, state.app.followSymlinks).let { result ->
             if (result.isNotSuccessful) return result.cast()
             result.value
         }
@@ -209,10 +211,10 @@ class EntityPermissionService(
      * Returns if user has sufficient permissions to edit an entity permission
      */
     private fun Principal.canEditEntityPermission(entityOwnerId: Ulid?): Boolean {
-        val hasManageAll = this.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
+        val hasManageAll = this.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_PERMISSIONS)
         if (hasManageAll) return true
 
-        return (this.userId == entityOwnerId) && this.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        return (this.userId == entityOwnerId) && this.hasPermission(state, SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
     }
 
     /**
@@ -279,7 +281,7 @@ class EntityPermissionService(
      * Returns list of permissions for an entity along with affected usernames
      */
     fun getEntityPermissions(user: Principal, rawPath: FilePath): Result<EntityPermissionMeta> {
-        val resolveResult = resolvePath(rawPath)
+        val resolveResult = resolvePath(rawPath, state.app.followSymlinks)
         val canonicalPath = resolveResult.let {
             if (it.isNotSuccessful) return Result.notFound()
             it.value
@@ -294,7 +296,7 @@ class EntityPermissionService(
             it.valueOrNull
         }?.ownerId
 
-        val isAllowed = user.hasPermission(SystemPermission.MANAGE_ALL_FILE_PERMISSIONS) || user.userId == ownerId && user.hasPermission(SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
+        val isAllowed = user.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_PERMISSIONS) || user.userId == ownerId && user.hasPermission(state, SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
         if (!isAllowed) return Result.reject("You do not have permission to view the permissions of this file.")
 
         val permissions = getAllEntityPermissions(canonicalPath)

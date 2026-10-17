@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service.file
 
 import kotlinx.coroutines.flow.Flow
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
@@ -37,6 +38,7 @@ class FileService(
     @Lazy private val fileMetadataService: FileMetadataService,
     @Lazy private val fileContentMetadataService: FileContentMetadataService,
     @Lazy private val fileEntryListsService: FileEntryListsService,
+    private val state: State,
 ) {
 
     // --- File Content operations ---
@@ -236,14 +238,15 @@ class FileService(
         if (shareToken != null) {
             val entity = existingEntity ?: entityService.getByShareToken(shareToken = shareToken).onFailure { return it.cast() }.value
             val sharePathStr = entity.path ?: return Result.notFound()
-            val shareRoot = resolvePath(FilePath.of(sharePathStr)).onFailure { return it.cast() }.value
+            val shareRoot = resolvePath(FilePath.of(sharePathStr), state.app.followSymlinks).onFailure { return it.cast() }.value
             return resolveSharedFilePath(
                 relativePath = path,
                 shareRoot = shareRoot,
+                followSymlinks = state.app.followSymlinks,
                 followOutboundSymlinks = FileShare.followSymlinks,
             )
         }
 
-        return resolvePath(path)
+        return resolvePath(path, state.app.followSymlinks)
     }
 }

@@ -40,6 +40,7 @@ class ThumbnailService(
     private val fileVisibilityService: FileVisibilityService,
     private val logService: LogService,
     @Lazy private val fileContentMetadataService: FileContentMetadataService,
+    private val state: State,
 ) {
 
     // --- Thumbnail cache timing (FFmpeg / decoder I/O timeouts are not configured here.) ---
@@ -60,7 +61,7 @@ class ThumbnailService(
 
     /**
      * After thumbnail activity, debounce the next cleanup by this long. When
-     * [State.ThumbCache.maxAgeMs] is set, [activityCleanupDelayMs] uses the smaller of this and that
+     * [state.thumbCache.maxAgeMs] is set, [activityCleanupDelayMs] uses the smaller of this and that
      * max age so cleanup can run before entries expire.
      */
     private val cleanupDebounceAfterActivityMs: Long =
@@ -95,7 +96,7 @@ class ThumbnailService(
     }
 
     private fun activityCleanupDelayMs(): Long {
-        val maxAgeMs = State.ThumbCache.maxAgeMs ?: return cleanupDebounceAfterActivityMs
+        val maxAgeMs = state.thumbCache.maxAgeMs ?: return cleanupDebounceAfterActivityMs
         return minOf(cleanupDebounceAfterActivityMs, maxAgeMs)
     }
 
@@ -164,7 +165,7 @@ class ThumbnailService(
             do {
                 pendingCleanup.set(false)
 
-                val cacheDirStr = State.ThumbCache.folderPath
+                val cacheDirStr = state.thumbCache.folderPath
                 val cachePath = cacheDirStr?.let { Paths.get(it) }
 
                 // Detect cache directory changes during cleanup and rerun if needed.
@@ -176,8 +177,8 @@ class ThumbnailService(
                     0L
                 }
 
-                val maxAgeMs = State.ThumbCache.maxAgeMs
-                val maxSizeMb = State.ThumbCache.maxSizeMb?.toLong()
+                val maxAgeMs = state.thumbCache.maxAgeMs
+                val maxSizeMb = state.thumbCache.maxSizeMb?.toLong()
                 cleanupResult = cleanCache(lastModifiedOlderThanMs = maxAgeMs, maxSizeMb = maxSizeMb)
 
                 // If the directory changed while cleaning, do another pass.
@@ -225,8 +226,8 @@ class ThumbnailService(
      * Builds the cache file path for a thumbnail request.
      */
     fun getCacheFile(canonicalPath: FilePath, modifiedDate: Long, fileSize: Long, targetSize: Int): File? {
-        val cacheEnabled = State.ThumbCache.isEnabled
-        val cacheDir = State.ThumbCache.folderPath ?: return null
+        val cacheEnabled = state.thumbCache.isEnabled
+        val cacheDir = state.thumbCache.folderPath ?: return null
 
         if (!cacheEnabled) return null
 
@@ -472,7 +473,7 @@ class ThumbnailService(
     }
 
     fun clearCache() {
-        val cacheDirStr = State.ThumbCache.folderPath ?: return
+        val cacheDirStr = state.thumbCache.folderPath ?: return
         val cachePath = Paths.get(cacheDirStr)
         if (!Files.exists(cachePath) || !Files.isDirectory(cachePath)) return
 
@@ -506,7 +507,7 @@ class ThumbnailService(
      * Rekeys cached thumbnails after a file move so the cache follows the new path hash.
      */
     fun moveCacheForPath(oldPath: FilePath, newPath: FilePath) {
-        val cacheDirStr = State.ThumbCache.folderPath ?: return
+        val cacheDirStr = state.thumbCache.folderPath ?: return
         val cachePath = Paths.get(cacheDirStr)
         if (!Files.exists(cachePath) || !Files.isDirectory(cachePath)) return
 
@@ -564,7 +565,7 @@ class ThumbnailService(
         lastModifiedOlderThanMs: Long? = null,
         maxSizeMb: Long? = null
     ): CleanCacheResult {
-        val cacheDirStr = State.ThumbCache.folderPath ?: return CleanCacheResult()
+        val cacheDirStr = state.thumbCache.folderPath ?: return CleanCacheResult()
         val cachePath = Paths.get(cacheDirStr)
         if (!Files.exists(cachePath) || !Files.isDirectory(cachePath)) return CleanCacheResult()
 

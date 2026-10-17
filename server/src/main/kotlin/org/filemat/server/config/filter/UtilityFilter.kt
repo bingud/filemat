@@ -22,11 +22,12 @@ import org.springframework.web.filter.OncePerRequestFilter
 @Component
 class UtilityFilter(
     private val resourceController: ResourceController,
+    private val state: State,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         // Check if application has finished starting
-        if (!State.App.isInitialized) return
+        if (!state.app.isInitialized) return
 
 
         if (false == request.requestURI.startsWith("/api")) {

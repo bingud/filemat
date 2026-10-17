@@ -1,6 +1,7 @@
 package org.filemat.server.module.sharedFile.service
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.Ulid
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
@@ -36,6 +37,7 @@ class FileShareService(
     private val entityService: EntityService,
     @Lazy private val fileService: FileService,
     private val passwordEncoder: PasswordEncoder,
+    private val state: State,
 ) {
     private final val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -147,7 +149,7 @@ class FileShareService(
                 if (it.isNotSuccessful) return it.cast()
             }
 
-        val canManageAll = principal.hasPermission(SystemPermission.MANAGE_ALL_FILE_SHARES)
+        val canManageAll = principal.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_SHARES)
 
         if (canManageAll == false && share.userId != principal.userId) {
             return Result.reject("You do not have permission to delete this share.")
@@ -193,7 +195,7 @@ class FileShareService(
         password: ArgonHash?,
         maxAge: Long?
     ): Result<FileShare> {
-        val canonicalResult = resolvePath(rawPath)
+        val canonicalResult = resolvePath(rawPath, state.app.followSymlinks)
         val canonicalPath = canonicalResult.let {
             if (it.isNotSuccessful) return canonicalResult.cast()
             it.value
@@ -281,7 +283,7 @@ class FileShareService(
     }
 
     fun getSharesByPath(principal: Principal, rawPath: FilePath): Result<List<FileShare>> {
-        val canonicalResult = resolvePath(rawPath)
+        val canonicalResult = resolvePath(rawPath, state.app.followSymlinks)
         val canonicalPath = canonicalResult.let {
             if (it.isNotSuccessful) return canonicalResult.cast()
             it.value
@@ -292,7 +294,7 @@ class FileShareService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val canManageAll = principal.hasPermission(SystemPermission.MANAGE_ALL_FILE_SHARES)
+        val canManageAll = principal.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_SHARES)
 
         val entityId = entityService.getEntityIdByPath(rawPath, UserAction.GET_FILE_SHARES).let {
             if (it.notFound) return Result.ok(emptyList())
@@ -427,7 +429,7 @@ class FileShareService(
         val rawSharePath = FilePath.of(entity.path ?: return Result.notFound())
 
         // Resolve entity path
-        val canonicalSharePathResult = resolvePath(rawSharePath)
+        val canonicalSharePathResult = resolvePath(rawSharePath, state.app.followSymlinks)
         if (canonicalSharePathResult.isNotSuccessful) return canonicalSharePathResult.cast()
         val canonicalSharePath = canonicalSharePathResult.value
 

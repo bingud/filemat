@@ -4,6 +4,7 @@ import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.isAbsoluteHttpsUrl
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.module.role.model.Role
+import org.springframework.stereotype.Component
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.properties.Delegates
@@ -12,25 +13,33 @@ import kotlin.properties.Delegates
  * Dynamic application state.
  *
  * Contains state and configuration.
+ *
+ * [env] is the source of environment variables. Tests can pass their own map
+ * so that the real environment is never read.
  */
-object State {
-    object App {
+@Component
+class State(env: Map<String, String?> = System.getenv()) {
+    val app = App(env)
+    val thumbCache = ThumbCache()
+    val auth = Auth()
+
+    class App(env: Map<String, String?>) {
         var isSetup: Boolean by Delegates.notNull()
         var isInitialized: Boolean by Delegates.notNull()
         var uploadFolderPath: String by Delegates.notNull()
 
-        val isDev = env("FM_DEV_MODE", true)?.toBooleanStrictOrNull() ?: false
+        val isDev = env.read("FM_DEV_MODE", true)?.toBooleanStrictOrNull() ?: false
 
-        val hideSensitiveFolders = env("FM_HIDE_SENSITIVE_FOLDERS", true)?.toBooleanStrictOrNull() ?: true
-        val nonSensitiveFolders = env("FM_NON_SENSITIVE_FOLDERS").parseFileList { it.print_nonSensitive() }
-        val hiddenFolders = env("FM_HIDDEN_FOLDER_PATHS").parseFileList { it.print_hiddenFolders() }
-        val forceDeletableFolders = env("FM_FORCE_DELETABLE_FOLDERS").parseFileList { it.print_forceDeletable() }
+        val hideSensitiveFolders = env.read("FM_HIDE_SENSITIVE_FOLDERS", true)?.toBooleanStrictOrNull() ?: true
+        val nonSensitiveFolders = env.read("FM_NON_SENSITIVE_FOLDERS").parseFileList { it.print_nonSensitive() }
+        val hiddenFolders = env.read("FM_HIDDEN_FOLDER_PATHS").parseFileList { it.print_hiddenFolders() }
+        val forceDeletableFolders = env.read("FM_FORCE_DELETABLE_FOLDERS").parseFileList { it.print_forceDeletable() }
 
         // Allow Filemat data folder to be accessed
-        val allowReadDataFolder = env("FM_ALLOW_READ_DATA_FOLDER", true)?.toBooleanStrictOrNull() ?: false
-        val allowWriteDataFolder = env("FM_ALLOW_WRITE_DATA_FOLDER", true)?.toBooleanStrictOrNull() ?: false
+        val allowReadDataFolder = env.read("FM_ALLOW_READ_DATA_FOLDER", true)?.toBooleanStrictOrNull() ?: false
+        val allowWriteDataFolder = env.read("FM_ALLOW_WRITE_DATA_FOLDER", true)?.toBooleanStrictOrNull() ?: false
 
-        private val followSymLinksEnv = (env("FM_FOLLOW_SYMBOLIC_LINKS", true)?.toBooleanStrictOrNull())
+        private val followSymLinksEnv = (env.read("FM_FOLLOW_SYMBOLIC_LINKS", true)?.toBooleanStrictOrNull())
         var followSymlinks: Boolean = (followSymLinksEnv ?: false).also { println("Follow symbolic links: $it\n") }
             set(new) {
                 // Environment variable overrides setting
@@ -38,8 +47,10 @@ object State {
                 field = new
             }
 
-        object ContentBaseUrl {
-            private val urlEnv = contentBaseUrlFromEnv(env("FM_CONTENT_BASE_URL", true))
+        val contentBaseUrl = ContentBaseUrl(env)
+
+        class ContentBaseUrl(env: Map<String, String?>) {
+            private val urlEnv = contentBaseUrlFromEnv(env.read("FM_CONTENT_BASE_URL", true))
             val lockedByEnv get() = urlEnv != null
             var url: String = (urlEnv ?: "").also {
                 if (urlEnv != null) println("Content base URL (env): $it\n")
@@ -49,7 +60,7 @@ object State {
                     field = new
                 }
 
-            private val forUnauthenticatedEnv = env("FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED", true)?.toBooleanStrictOrNull()
+            private val forUnauthenticatedEnv = env.read("FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED", true)?.toBooleanStrictOrNull()
             val forUnauthenticatedLockedByEnv get() = forUnauthenticatedEnv != null
             var forUnauthenticated: Boolean = (forUnauthenticatedEnv ?: false).also {
                 if (forUnauthenticatedEnv != null) println("Content base URL for unauthenticated users (env): $it\n")
@@ -60,10 +71,10 @@ object State {
                 }
         }
 
-        val printLogs = env("FM_PRINT_LOGS", true)?.toBooleanStrictOrNull() ?: true
+        val printLogs = env.read("FM_PRINT_LOGS", true)?.toBooleanStrictOrNull() ?: true
     }
 
-    object ThumbCache {
+    class ThumbCache {
         var isEnabled: Boolean by Delegates.notNull()
         var folderPath: String? = null
         var maxSizeMb: Int? = null
@@ -86,7 +97,7 @@ object State {
             }
     }
 
-    object Auth {
+    class Auth {
         // All roles
         val roleMap = ConcurrentHashMap<Ulid, Role>()
     }
@@ -101,8 +112,8 @@ private fun contentBaseUrlFromEnv(raw: String?): String? {
     return value
 }
 
-private fun env(name: String, print: Boolean = false): String? {
-    val value = System.getenv(name)
+private fun Map<String, String?>.read(name: String, print: Boolean = false): String? {
+    val value = this[name]
     val cleanName = name.removePrefix("FM_")
 
     if (print && value != null) println("---\nEnvironment variable: $cleanName\n$value\n---")

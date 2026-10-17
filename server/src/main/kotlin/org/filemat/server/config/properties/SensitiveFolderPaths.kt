@@ -4,12 +4,14 @@ import kotlinx.serialization.json.Json
 import org.filemat.server.common.State
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.config.Props
+import org.springframework.stereotype.Component
 
 
 /**
  * Blocklist of sensitive system folders
  */
-object SensitiveFolderPaths {
+@Component
+class SensitiveFolderPaths(private val state: State) {
 
     /**
      * List of sensitive folders.
@@ -29,9 +31,9 @@ object SensitiveFolderPaths {
         "/var/lib/postgresql",   // PostgreSQL data files, if applicable
         "/var/lib/docker",       // Docker’s internal data and images
         "/var/run/docker.sock",  // Docker socket, which can grant root-equivalent access
-    ).filterNot { State.App.nonSensitiveFolders.contains(it) }
+    ).filterNot { state.app.nonSensitiveFolders.contains(it) }
         .toHashSet()
-        .also { if (!State.App.allowReadDataFolder) it.add(Props.dataFolder) }
+        .also { if (!state.app.allowReadDataFolder) it.add(Props.dataFolder) }
 
 
     private val regexList: List<Regex> by lazy {

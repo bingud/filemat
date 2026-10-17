@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 
 @Service
-class FileSecurityService(private val fileVisibilityService: FileVisibilityService, private val entityPermissionService: EntityPermissionService, private val entityService: EntityService, private val filesystemService: FilesystemService) {
+class FileSecurityService(private val fileVisibilityService: FileVisibilityService, private val entityPermissionService: EntityPermissionService, private val entityService: EntityService, private val filesystemService: FilesystemService, private val state: State) {
 
         /**
      * Fully verifies if a user is allowed to read a file
@@ -180,13 +180,13 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         return Result.ok()
     }
 
-    fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
+    fun hasAdminAccess(user: Principal): Boolean = user.hasAnyPermission(state, listOf(SystemPermission.ACCESS_ALL_FILES, SystemPermission.SUPER_ADMIN))
 
     /**
      * Returns the total list of file permissions currently available for a user on a file
      */
     fun getActualFilePermissions(user: Principal, canonicalPath: FilePath): Set<FilePermission> {
-        val globalPermissions = user.getEffectiveFilePermissions()
+        val globalPermissions = user.getEffectiveFilePermissions(state)
         // Now returns a merged set from the tree, respecting inheritance depth and type priority
         val permissions = entityPermissionService.getEffectivePermissions(canonicalPath = canonicalPath, userId = user.userId, roles = user.roles)
         return globalPermissions + permissions
@@ -196,7 +196,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         if (hasAdminAccess == true) return true
         if (hasAdminAccess == null) {
             // Check for admin perms
-            principal.getPermissions().let { perms: List<SystemPermission> ->
+            principal.getPermissions(state).let { perms: List<SystemPermission> ->
                 if (perms.any { it == SystemPermission.SUPER_ADMIN || it == SystemPermission.ACCESS_ALL_FILES }) return true
             }
         }
@@ -214,7 +214,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
     }
 
     fun isPathEditable(canonicalPath: FilePath): String? {
-        if (!State.App.allowWriteDataFolder) {
+        if (!state.app.allowWriteDataFolder) {
             if (canonicalPath.path.startsWith(Props.dataFolderPath)) return "Cannot edit ${Props.appName} data folder."
         }
         return null
@@ -227,7 +227,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         // Is path a system folder
         val isProtected = Props.nonDeletableFolders.isProtected(canonicalPath.pathString, true)
         // Was path made deletable
-        val isForcedDeletable = State.App.forceDeletableFolders.contains(canonicalPath.pathString)
+        val isForcedDeletable = state.app.forceDeletableFolders.contains(canonicalPath.pathString)
 
         if (isProtected && !isForcedDeletable) return Result.reject("This system folder cannot be deleted.")
         return Result.ok()

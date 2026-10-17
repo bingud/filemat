@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service.filesystem.fileOperation
 
+import org.filemat.server.common.State
 import io.mockk.every
 import io.mockk.mockk
 import org.filemat.server.common.model.Result
@@ -31,6 +32,7 @@ class FilesystemCopyServiceTest {
         logService = logService,
         fileService = fileService,
         fileLockService = FileLockService(),
+        state = State(env = emptyMap()),
     )
 
     @BeforeEach

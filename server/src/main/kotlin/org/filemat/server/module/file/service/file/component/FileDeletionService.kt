@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.service.file.component
 
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.State
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.module.auth.model.Principal
@@ -15,7 +16,8 @@ import kotlin.io.path.isSymbolicLink
 class FileDeletionService(
     private val fileService: FileService,
     private val filesystemService: FilesystemService,
-    private val savedFileService: SavedFileService
+    private val savedFileService: SavedFileService,
+    private val state: State,
 ) {
 
     fun deleteFile(user: Principal, rawPath: FilePath): Result<Unit> {
@@ -25,7 +27,7 @@ class FileDeletionService(
         val canonicalPath = if (isSymlink) {
             rawPath
         } else {
-            resolvePath(rawPath).let { canonicalResult ->
+            resolvePath(rawPath, state.app.followSymlinks).let { canonicalResult ->
                 if (canonicalResult.isNotSuccessful) return canonicalResult.cast()
                 canonicalResult.value
             }

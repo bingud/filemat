@@ -22,30 +22,31 @@ class ThumbCacheSettingService(
     private val filesystemService: FilesystemService,
     private val thumbnailService: ThumbnailService,
     private val logService: LogService,
+    private val state: State,
 ) {
 
     fun initializeSettings() {
         // isEnabled
         settingService.getSetting(Props.Settings.ThumbCache.enabled).let { result ->
-            State.ThumbCache.isEnabled = result.valueOrNull?.value?.toBooleanStrictOrNull() ?: false
+            state.thumbCache.isEnabled = result.valueOrNull?.value?.toBooleanStrictOrNull() ?: false
         }
 
         // Folder path
         settingService.getSetting(Props.Settings.ThumbCache.folderPath).let { result ->
-            State.ThumbCache.folderPath = result.valueOrNull?.value
+            state.thumbCache.folderPath = result.valueOrNull?.value
         }
 
         // Max Size
         settingService.getSetting(Props.Settings.ThumbCache.maxSizeMb).let { result ->
-            State.ThumbCache.maxSizeMb = result.valueOrNull?.value?.toIntOrNull()
+            state.thumbCache.maxSizeMb = result.valueOrNull?.value?.toIntOrNull()
         }
 
         // Folder path
         settingService.getSetting(Props.Settings.ThumbCache.maxAge).let { result ->
-            State.ThumbCache.maxAge = result.valueOrNull?.value?.toLongOrNull()
+            state.thumbCache.maxAge = result.valueOrNull?.value?.toLongOrNull()
         }
 
-        val c = State.ThumbCache
+        val c = state.thumbCache
         if (c.isEnabled) {
             println("Thumbnail file caching is enabled.")
             c.maxSizeMb?.let { println("Max size: $it MB") }
@@ -124,10 +125,10 @@ class ThumbCacheSettingService(
             initiatorId = initiatorId,
         )
 
-        State.ThumbCache.isEnabled = isEnabled
-        State.ThumbCache.folderPath = folderPath?.pathString
-        State.ThumbCache.maxSizeMb = maxSizeMb
-        State.ThumbCache.maxAge = maxAge
+        state.thumbCache.isEnabled = isEnabled
+        state.thumbCache.folderPath = folderPath?.pathString
+        state.thumbCache.maxSizeMb = maxSizeMb
+        state.thumbCache.maxAge = maxAge
 
         return Result.ok()
     }
@@ -141,7 +142,7 @@ class ThumbCacheSettingService(
         maxSizeMb: Int?,
         maxAge: Long?,
     ): Result<FilePath?> {
-        val previousFolderPath = State.ThumbCache.folderPath?.let { FilePath.of(it) }
+        val previousFolderPath = state.thumbCache.folderPath?.let { FilePath.of(it) }
         val log = logChange(userId = user.userId)
 
         if (maxSizeMb != null && maxSizeMb < 1) return Result.reject("Max Size parameter is too low.")
@@ -155,11 +156,11 @@ class ThumbCacheSettingService(
                 }
                 log.add(Props.Settings.ThumbCache.enabled, isEnabled)
 
-                State.ThumbCache.isEnabled = isEnabled
+                state.thumbCache.isEnabled = isEnabled
             }
 
             if (folderPath != null) {
-                State.ThumbCache.folderPath = folderPath.pathString
+                state.thumbCache.folderPath = folderPath.pathString
                 settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folderPath.pathString).let {
                     if (it.isNotSuccessful) return it.cast()
                 }
@@ -221,7 +222,7 @@ class ThumbCacheSettingService(
                 }
                 log.add(Props.Settings.ThumbCache.maxSizeMb, maxSizeMb)
 
-                State.ThumbCache.maxSizeMb = maxSizeMb
+                state.thumbCache.maxSizeMb = maxSizeMb
             }
 
             if (maxAge != null) {
@@ -230,7 +231,7 @@ class ThumbCacheSettingService(
                 }
                 log.add(Props.Settings.ThumbCache.maxAge, maxAge)
 
-                State.ThumbCache.maxAge = maxAge
+                state.thumbCache.maxAge = maxAge
             }
 
             thumbnailService.triggerActivityCleanup()

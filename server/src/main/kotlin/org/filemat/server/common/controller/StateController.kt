@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController
 @BeforeSetup
 @RestController
 @RequestMapping("/v1/state")
-class StateController : AController() {
+class StateController(private val state: State) : AController() {
 
     @Unauthenticated
     @PostMapping("/select")
@@ -49,16 +49,16 @@ class StateController : AController() {
 
         builder.apply {
             putResponseField("principal", getPrincipal) { principal?.let { Json.encodeToJsonElement(it) } }
-            putResponseField("roles", getRoles) { principal?.let { Json.encodeToJsonElement(State.Auth.roleMap.values.toList()) } }
+            putResponseField("roles", getRoles) { principal?.let { Json.encodeToJsonElement(state.auth.roleMap.values.toList()) } }
 
             // for “app” and “systemRoleIds” you need a custom inner object:
             putResponseField("app", getApp) {
                 JsonBuilder().apply {
-                    put("isSetup", State.App.isSetup)
-                    put("followSymlinks", State.App.followSymlinks)
+                    put("isSetup", state.app.isSetup)
+                    put("followSymlinks", state.app.followSymlinks)
 
-                    if (principal != null || State.App.ContentBaseUrl.forUnauthenticated) {
-                        put("contentBaseUrl", State.App.ContentBaseUrl.url)
+                    if (principal != null || state.app.contentBaseUrl.forUnauthenticated) {
+                        put("contentBaseUrl", state.app.contentBaseUrl.url)
                     }
                 }.build()
             }
