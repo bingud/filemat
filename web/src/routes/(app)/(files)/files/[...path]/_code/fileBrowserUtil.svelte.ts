@@ -852,7 +852,7 @@ function isTextEntryFocused(): boolean {
 
 export function openEntry(path: string) {
     if (filesState.metaLoading) return
-    goto(getFilePagePath(path, filesState.meta.pagePath))
+    return goto(getFilePagePath(path, filesState.meta.pagePath))
 }
 
 export function getFilePagePath(path: string, pagePath: string) {
