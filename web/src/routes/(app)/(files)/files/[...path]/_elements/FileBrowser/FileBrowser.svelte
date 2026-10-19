@@ -350,7 +350,8 @@
 
 <!-- File browser -->
 {#if filesState.data.sortedEntries && filesState.data.sortedEntries.length > 0}
-    <div 
+    <div
+        data-file-list="folder"
         class="
             {filesState.isSearchOpen ? 'max-h-full overflow-y-hidden opacity-0' : ''}
         "
@@ -402,7 +403,8 @@
 <!-- Search results -->
 {#if filesState.search.sortedEntries}
     {#if filesState.search.sortedEntries.length > 0 || filesState.search.isLoading}
-        <div 
+        <div
+            data-file-list="search"
             class="
                 w-full h-fit absolute top-0 left-0
                 {filesState.path !== filesState.search.searchPath ? 'max-h-full overflow-y-hidden opacity-0' : ''}

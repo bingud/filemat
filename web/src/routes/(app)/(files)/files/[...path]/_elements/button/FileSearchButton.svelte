@@ -26,6 +26,9 @@
         if (!input) return
 
         const path = filesState.path
+        // The folder list shrinks under the results, which would lose the current scroll position
+        const container = filesState.scroll.container
+        filesState.scroll.preSearch = container ? { path, top: container.scrollTop } : null
         filesState.search.text = input
         filesState.search.entries = []
         filesState.search.isLoading = true
