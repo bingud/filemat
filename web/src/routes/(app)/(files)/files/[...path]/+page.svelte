@@ -293,10 +293,11 @@
         saveScrollPosition()
     })
 
-    function cancelSearch() {
+    async function cancelSearch() {
         const searched = filesState.search.searchPath
         if (searched && filesState.path !== searched) {
-            openEntry(searched)
+            // Wait for navigation so the pre-search scroll position can be restored
+            await openEntry(searched)
         }
 
         filesState.search.clear()
