@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { previewSizeLabels, previewSizes, type previewSize } from "$lib/code/config/values";
+    import { fullscreenPreviewSize, previewSizeLabels, previewSizes, type previewSize } from "$lib/code/config/values";
     import { setPreferenceSetting } from "$lib/code/module/settings"
     import { appState } from "$lib/code/stateObjects/appState.svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
@@ -15,6 +15,12 @@
         filesState.ui.fileViewType = view
         setPreferenceSetting("file_view_type", view)
         isOpen = false
+    }
+
+    function toggleScrollSnap() {
+        const value = !appState.settings.fullscreenScrollSnap
+        appState.settings.fullscreenScrollSnap = value
+        setPreferenceSetting("fullscreen_scroll_snap", value)
     }
 
     let currentSize = $derived.by(() => {
@@ -66,7 +72,7 @@
                     Preview Size
                 </div>
 
-                {#each previewSizes as size}
+                {#each previewSizes.filter(s => s !== fullscreenPreviewSize || filesState.ui.fileViewType === "grid") as size}
                     <button
                         onclick={() => setPreviewSize(size)}
                         class="surface-popover-button"
@@ -79,6 +85,22 @@
                         <span>{previewSizeLabels[size]}</span>
                     </button>
                 {/each}
+
+                {#if filesState.ui.fileViewType === "grid" && currentSize === fullscreenPreviewSize}
+                    <hr class="basic-hr my-2" />
+
+                    <button
+                        onclick={toggleScrollSnap}
+                        class="surface-popover-button"
+                    >
+                        <div class="size-3 flex-shrink-0">
+                            {#if appState.settings.fullscreenScrollSnap}
+                                <CircleIcon />
+                            {/if}
+                        </div>
+                        <span>Scroll snap</span>
+                    </button>
+                {/if}
             </div>
         </Popover.Content>
     </Popover.Root>

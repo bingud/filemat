@@ -1,10 +1,11 @@
 import type { SystemPermission } from "../auth/types";
+import { fullscreenPreviewSize } from "../config/values";
 import { appState, filePagePaths } from "../stateObjects/appState.svelte";
 import { filesState } from "../stateObjects/filesState.svelte";
 import { valuesOf, includesList, keysOf } from "../util/codeUtil.svelte";
 import { getCurrentPermissions } from "./permissions";
 
-export type PreferenceSetting = "load_all_previews" | "always_render_previews" | "default_page_path" | "click_to_open_file" | "preview_size_grid" | "preview_size_rows" | "file_view_type"
+export type PreferenceSetting = "load_all_previews" | "always_render_previews" | "default_page_path" | "click_to_open_file" | "preview_size_grid" | "preview_size_rows" | "file_view_type" | "fullscreen_scroll_snap"
 
 export type SettingsSection = { name: SettingSectionId; permissions: SystemPermission[]; admin: boolean; }
 export type SettingSectionId = "preferences" | "users" | "userinfo" | "roles" | "system" | "account" | "other"
@@ -43,10 +44,14 @@ export function loadFilePreferenceSettings() {
         }
     }
 
+    if (getPreferenceSetting("fullscreen_scroll_snap") === "false") {
+        appState.settings.fullscreenScrollSnap = false
+    }
+
     const previewSizeRowsStr = getPreferenceSetting("preview_size_rows")
     if (previewSizeRowsStr) {
         const int = parseInt(previewSizeRowsStr)
-        if (int) {
+        if (int && int !== fullscreenPreviewSize) {
             appState.settings.previewSize.rows = int
         }
     }

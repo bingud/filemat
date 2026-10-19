@@ -7,6 +7,7 @@
     import FileThumbnail from "./FileThumbnail.svelte";
     import TypeAheadFilename from "./TypeAheadFilename.svelte";
     import type { GridPreviewSize } from "$lib/code/config/values";
+    import { getFileCategoryFromFilename } from "$lib/code/data/files";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
 
     let {
@@ -40,6 +41,22 @@
     
     const observeEntry = visibilityManager.observeEntry
     const observeSkeleton = visibilityManager.observeSkeleton
+
+    // Fullscreen: image/video tiles fill the visible list height (the preview scales inside);
+    // everything else (folders, files without a preview) stays a compact full-width tile.
+    const fullscreenCompactHeight = `9rem`
+    let isFullscreenMedia = $derived.by(() => {
+        if (!size.fullscreen || !entry.filename || isFolder(entry)) return false
+        const category = getFileCategoryFromFilename(entry.filename)
+        return category === `image` || category === `video`
+    })
+    let entryHeight = $derived(
+        !size.fullscreen
+            ? `${size.height}rem`
+            : isFullscreenMedia
+                ? `max(var(--list-height, 0px), 12rem)`
+                : fullscreenCompactHeight
+    )
 </script>
 
 {#if isVisible}
@@ -48,7 +65,10 @@
         on:contextmenu={(e) => { entryOnContextMenu(e, entry) }}
         draggable={entry.permissions?.includes("MOVE")}
         data-entry-path={entry.path} rel="noopener noreferrer"
-        style:--entry-height="{size.height}rem"
+        style:scroll-snap-align={size.fullscreen && appState.settings.fullscreenScrollSnap ? `start` : undefined}
+        style:--entry-height={entryHeight}
+        style:--icon-padding={size.fullscreen ? `1rem` : undefined}
+        style:--icon-max={size.fullscreen ? `14rem` : undefined}
         class="
             grid-file-entry w-full min-w-0 flex flex-col items-center select-none group rounded-lg outline-0
             {isUnopenable 
@@ -100,7 +120,8 @@
 {:else}
     <div
         data-entry-path={entry.path}
-        style:--entry-height="{size.height}rem"
+        style:--entry-height={entryHeight}
+        style:scroll-snap-align={size.fullscreen && appState.settings.fullscreenScrollSnap ? `start` : undefined}
         class="grid-file-entry w-full min-w-0 rounded-lg"
         use:observeSkeleton={entry.path}
     >

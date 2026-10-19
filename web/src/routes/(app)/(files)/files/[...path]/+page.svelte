@@ -34,11 +34,12 @@
     import FileSearchButton from "./_elements/button/FileSearchButton.svelte";
     import ShareLogoutButton from "./_elements/button/ShareLogoutButton.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
-    import { openEntry } from "./_code/fileBrowserUtil.svelte";
+    import { openEntry, scrollEntryIntoViewNow } from "./_code/fileBrowserUtil.svelte";
     import OpenFileAsCategoryButton from "./_elements/button/OpenFileAsCategoryButton.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import ArrowLeftIcon from "$lib/component/icons/ArrowLeftIcon.svelte";
     import UndoIcon from "$lib/component/icons/UndoIcon.svelte";
+    import { fullscreenPreviewSize } from "$lib/code/config/values";
     import { appState } from "$lib/code/stateObjects/appState.svelte";
     import UnselectIcon from "$lib/component/icons/UnselectIcon.svelte";
 
@@ -62,6 +63,10 @@
     const pageDataPollingConfig = { idleDelay: 60, delay: 30 }
     let pollingInterval: ReturnType<typeof dynamicInterval> | null = null
     
+    let listHeight = $state(0)
+    let snapEnabled = $derived(
+        filesState.ui.fileViewType === `grid` && appState.settings.previewSize.grid === fullscreenPreviewSize && appState.settings.fullscreenScrollSnap
+    )
     let rootFolderError_lacksPermission = $state(false)
     let rootFolderError_isNotExposed = $state(false)
 
@@ -127,6 +132,9 @@
         // New path is that same already-loaded folder
         const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
 
+        // Closing an open file back to its folder (the open file may have changed via prev/next)
+        const returnedFromFilePath = pathIsParentFolder ? filesState.data.fileMeta?.path ?? null : null
+
         // Child navigations start scrolled to top
         if (pathIsChild) {
             delete filesState.scroll.pathPositions[newPath]
@@ -186,9 +194,36 @@
 
             // Only poll folder listings, not while jumping between child files
             if (!pathIsChild) pollingInterval?.reset()
-        } else { queueMicrotask(recoverScrollPosition) }
+        } else {
+            queueMicrotask(() => {
+                // Go straight to the last viewed file (prev/next scrolls the list under the viewer),
+                // restoring the old position first would show a jump. Fall back to it if the file isn't listed.
+                if (!returnedFromFilePath || !scrollEntryIntoViewNow(returnedFromFilePath, `instant`)) {
+                    recoverScrollPosition()
+                }
+            })
+        }
 
         return effectResult
+    })
+
+    // Search results are laid over the hidden folder list in the same scroll area
+    let wasSearchOpen = false
+    explicitEffect(() => [
+        filesState.isSearchOpen
+    ], () => {
+        const container = filesState.scroll.container
+        if (filesState.isSearchOpen) {
+            // Start at the top of the results instead of wherever the folder was scrolled to
+            container?.scrollTo({ top: 0 })
+        } else if (wasSearchOpen) {
+            const preSearch = filesState.scroll.preSearch
+            if (preSearch && preSearch.path === filesState.path) {
+                container?.scrollTo({ top: preSearch.top })
+            }
+            filesState.scroll.preSearch = null
+        }
+        wasSearchOpen = filesState.isSearchOpen
     })
 
     // Run when user stops being idle
@@ -383,6 +418,9 @@
                     <div 
                         bind:this={filesState.scroll.container} 
                         on:scroll|passive|self={onScroll}
+                        bind:clientHeight={listHeight}
+                        style:--list-height="{listHeight}px"
+                        style:scroll-snap-type={snapEnabled ? `y mandatory` : undefined}
                         class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar lg:gutter-stable-both relative
                             {filesState.data.fileMeta || filesState.metaLoading ? '' : ''}
                         ">

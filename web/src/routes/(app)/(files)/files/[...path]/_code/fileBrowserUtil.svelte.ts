@@ -4,7 +4,7 @@ import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
-import { config } from "$lib/code/config/values"
+import { config, fullscreenPixelSizes, fullscreenPreviewSize } from "$lib/code/config/values"
 import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl"
 import { SvelteSet } from "svelte/reactivity"
 
@@ -30,7 +30,7 @@ export async function findCachedThumbFallback(src: string): Promise<string | nul
     if (typeof window === `undefined` || !(`caches` in window)) return null
 
     const wanted = Number(new URL(src, location.href).searchParams.get(`size`))
-    const sizes = [...Object.values(config.preview.row), ...Object.values(config.preview.grid)].map(s => s.pixelSize)
+    const sizes = [...Object.values(config.preview.row), ...Object.values(config.preview.grid)].map(s => s.pixelSize).concat(fullscreenPixelSizes)
     const candidates = [...new Set(sizes)]
         .filter(size => size !== wanted)
         .sort((a, b) => (a > wanted ? 0 : 1) - (b > wanted ? 0 : 1) || Math.abs(a - wanted) - Math.abs(b - wanted))
@@ -860,16 +860,35 @@ export function getFilePagePath(path: string, pagePath: string) {
     return `${pagePath}${slash}${encodeUrlFilePath(path)}`
 }
 
-export function scrollSelectedEntryIntoView(path: string | null = null) {
+/**
+ * Finds the tile of an entry in the list the user is looking at.
+ * The folder list stays mounted (hidden) under search results, so both lists can hold the same path.
+ */
+function findEntryElement(path: string): HTMLElement | null {
+    const list = filesState.isSearchOpen ? `search` : `folder`
+    return document.querySelector(`[data-file-list="${list}"] [data-entry-path="${CSS.escape(path)}"]`)
+}
+
+/**
+ * Scrolls the entry into view right away
+ * @returns false if the entry is not in the list
+ */
+export function scrollEntryIntoViewNow(path: string, behavior: ScrollBehavior = `smooth`): boolean {
+    const element = findEntryElement(path)
+    if (!element) return false
+
+    // Fullscreen scroll snap: align the tile to the top, where its snap point is
+    const snapped = filesState.ui.fileViewType === `grid`
+        && appState.settings.previewSize.grid === fullscreenPreviewSize
+        && appState.settings.fullscreenScrollSnap
+    element.scrollIntoView({ block: snapped ? `start` : `nearest`, behavior })
+    element.focus({ preventScroll: true })
+    return true
+}
+
+export function scrollSelectedEntryIntoView(path: string | null = null, behavior: ScrollBehavior = `smooth`) {
     setTimeout(() => {
-        const targetPath = filesState.selectedEntries.singlePath || path
-        if (targetPath) {
-            const selector = `[data-entry-path="${targetPath.replace(/"/g, '\\"')}"]`
-            const element = document.querySelector(selector) as HTMLAnchorElement
-            if (element) {
-                element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-                element.focus()
-            }
-        }
+        const targetPath = path || filesState.selectedEntries.singlePath
+        if (targetPath) scrollEntryIntoViewNow(targetPath, behavior)
     }, 10)
 }

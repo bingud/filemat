@@ -3,6 +3,7 @@ import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, removeString, sortFileMetadata } from "$lib/code/util/codeUtil.svelte"
 import { SvelteSet } from "svelte/reactivity"
+import { devicePixelRatio as windowDevicePixelRatio, innerHeight as windowInnerHeight, innerWidth as windowInnerWidth } from "svelte/reactivity/window"
 import { VisibilityManager } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil.svelte"
 import { SingleChildBooleanTree } from "../../../routes/(app)/(files)/files/[...path]/_code/fileUtilities"
 import { getFileCategoryFromFilename, type FileCategory } from "../data/files"
@@ -10,7 +11,7 @@ import { fileSortingDirections, fileSortingModes, type FileSortingMode, type Sor
 import { getContentUrl } from "../util/stateUtils"
 import { appState } from "./appState.svelte"
 import { auth } from "./authState.svelte"
-import { config } from "../config/values"
+import { config, pickFullscreenPixelSize } from "../config/values"
 import { loadFilePreferenceSettings, setPreferenceSetting } from "../module/settings"
 import { textFileViewerState } from "../../../routes/(app)/(files)/files/[...path]/_code/textFileViewerState.svelte"
 
@@ -86,6 +87,8 @@ class FilesState {
     scroll = $state({
         container: null as HTMLElement | null,
         pathPositions: {} as Record<string, number>,
+        /** Folder scroll position from before a search started, restored when it closes */
+        preSearch: null as { path: string, top: number } | null,
     })
 
     /**
@@ -368,6 +371,15 @@ class FileUiStateClasss {
         return newType
     }
 
+    /**
+     * Thumbnail size for the fullscreen preview size: a fullscreen tile is at most as large as the
+     * window, so the window's longest edge in device pixels is all the detail it can show.
+     */
+    fullscreenPixelSize = $derived.by(() => {
+        const longestEdge = Math.max(windowInnerWidth.current ?? 0, windowInnerHeight.current ?? 0)
+        return pickFullscreenPixelSize(longestEdge * (windowDevicePixelRatio.current ?? 1))
+    })
+
     previewSize = $derived.by(() => {
         const isRows = this.fileViewType === "rows"
 
@@ -379,8 +391,9 @@ class FileUiStateClasss {
         } else {
             const sizes = config.preview.grid
             const size = appState.settings.previewSize.grid
+            const gridSize = sizes[size] || sizes[2]
 
-            return sizes[size] || sizes[2]
+            return gridSize.fullscreen ? { ...gridSize, pixelSize: this.fullscreenPixelSize } : gridSize
         }
     })
 

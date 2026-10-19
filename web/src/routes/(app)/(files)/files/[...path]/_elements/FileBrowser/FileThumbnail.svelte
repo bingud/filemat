@@ -102,15 +102,17 @@
         </div>
     {:else}
         <div class="w-full h-full flex items-center justify-center p-(--icon-padding)">
-            {#if entry.fileType === "FILE"}
-                <FileIcon />
-            {:else if entry.fileType === "FILE_LINK"}
-                <FileArrow />
-            {:else if entry.fileType === "FOLDER"}
-                <FolderIcon />
-            {:else if entry.fileType === "FOLDER_LINK"}
-                <FolderArrow />
-            {/if}
+            <div class="w-full h-full flex items-center justify-center" style="max-width: var(--icon-max, none); max-height: var(--icon-max, none)">
+                {#if entry.fileType === "FILE"}
+                    <FileIcon />
+                {:else if entry.fileType === "FILE_LINK"}
+                    <FileArrow />
+                {:else if entry.fileType === "FOLDER"}
+                    <FolderIcon />
+                {:else if entry.fileType === "FOLDER_LINK"}
+                    <FolderArrow />
+                {/if}
+            </div>
         </div>
     {/if}
 {/key}

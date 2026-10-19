@@ -108,6 +108,8 @@ class SettingState {
 	defaultPagePath = $state<keyof typeof filePagePaths>("/files")
     clickToOpenFile = $state(false)
     previewSize = $state({ rows: 2, grid: 2 })
+    /** Snap scrolling to fullscreen grid previews. */
+    fullscreenScrollSnap = $state(true)
     homeFolderPath = $state(null)
 }
 

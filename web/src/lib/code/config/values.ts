@@ -8,7 +8,7 @@ class AppConfig {
 }
 
 
-export const previewSizes = [1, 2, 3, 4, 5]
+export const previewSizes = [1, 2, 3, 4, 5, 6]
 export type previewSize = (typeof previewSizes)[number]
 
 export const previewSizeLabels: Record<previewSize, string> = {
@@ -17,9 +17,24 @@ export const previewSizeLabels: Record<previewSize, string> = {
     3: "Medium",
     4: "Large",
     5: "Gigantic",
+    6: "Fullscreen",
 }
 
-export type GridPreviewSize = { width: number, iconPadding: number, height: number, pixelSize: number }
+export const fullscreenPreviewSize = 6
+
+/**
+ * Thumbnail sizes (longest edge in px) the fullscreen preview size picks from, matched to the screen.
+ * Fixed steps keep the number of thumbnails cached per image small. 4096 is the server's maximum.
+ */
+export const fullscreenPixelSizes = [1024, 1536, 2048, 3072, 4096]
+
+/** The smallest step that covers `neededPixels`, the largest one if none does */
+export function pickFullscreenPixelSize(neededPixels: number): number {
+    if (!(neededPixels > 0)) return fullscreenPixelSizes[2]
+    return fullscreenPixelSizes.find(size => size >= neededPixels) ?? fullscreenPixelSizes[fullscreenPixelSizes.length - 1]
+}
+
+export type GridPreviewSize = { width: number, iconPadding: number, height: number, pixelSize: number, fullscreen?: boolean }
 export type RowPreviewSize = { height: number, iconPadding: number, menuIconPadding: number, pixelSize: number }
 const previewSizeConfig: {
     row: { [key: number]: RowPreviewSize },
@@ -87,6 +102,14 @@ const previewSizeConfig: {
             height: 20,
             iconPadding: 2.5,
             pixelSize: 1150
+        },
+        6: {
+            width: 25,
+            height: 20,
+            iconPadding: 2.5,
+            // Replaced by the screen based size, see `FileUiStateClasss.fullscreenPixelSize`
+            pixelSize: 2048,
+            fullscreen: true
         }
     }
 }
