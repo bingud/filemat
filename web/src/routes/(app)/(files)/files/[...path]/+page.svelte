@@ -220,6 +220,9 @@
             const preSearch = filesState.scroll.preSearch
             if (preSearch && preSearch.path === filesState.path) {
                 container?.scrollTo({ top: preSearch.top })
+            } else if (preSearch) {
+                // Left the searched folder; navigation saved the search's scroll (0) over the original position
+                filesState.scroll.pathPositions[preSearch.path] = preSearch.top
             }
             filesState.scroll.preSearch = null
         }
