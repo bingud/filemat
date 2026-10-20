@@ -24,13 +24,14 @@ export const fullscreenPreviewSize = 6
 
 /**
  * Thumbnail sizes (longest edge in px) the fullscreen preview size picks from, matched to the screen.
- * Fixed steps keep the number of thumbnails cached per image small. 4096 is the server's maximum.
+ * These are the sizes of the other preview sizes, so thumbnails are reused, plus larger steps for big screens.
+ * 4096 is the server's maximum.
  */
-export const fullscreenPixelSizes = [1024, 1536, 2048, 3072, 4096]
+export const fullscreenPixelSizes = [256, 420, 1150, 2048, 4096]
 
 /** The smallest step that covers `neededPixels`, the largest one if none does */
 export function pickFullscreenPixelSize(neededPixels: number): number {
-    if (!(neededPixels > 0)) return fullscreenPixelSizes[2]
+    if (!(neededPixels > 0)) return 1150
     return fullscreenPixelSizes.find(size => size >= neededPixels) ?? fullscreenPixelSizes[fullscreenPixelSizes.length - 1]
 }
 
