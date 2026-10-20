@@ -4,7 +4,7 @@ import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
-import { config, fullscreenPixelSizes, fullscreenPreviewSize } from "$lib/code/config/values"
+import { config, fullscreenPixelSizes, fullscreenPreviewSize, maxCachedPixelSize, noSwCacheParam, thumbnailCacheQuery } from "$lib/code/config/values"
 import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl"
 import { SvelteSet } from "svelte/reactivity"
 
@@ -34,7 +34,7 @@ export async function findCachedThumbFallback(src: string): Promise<string | nul
     const candidates = [...new Set(sizes)]
         .filter(size => size !== wanted)
         .sort((a, b) => (a > wanted ? 0 : 1) - (b > wanted ? 0 : 1) || Math.abs(a - wanted) - Math.abs(b - wanted))
-        .map(size => src.replace(`size=${wanted}`, `size=${size}`))
+        .map(size => src.replace(`size=${wanted}`, `size=${size}`).replace(`&${noSwCacheParam}`, ``) + thumbnailCacheQuery(size))
 
     try {
         const cache = await (thumbCachePromise ??= caches.open(`thumb-cache`))
@@ -407,6 +407,10 @@ export class VisibilityManager {
      * the headless image is replaced and the browser serves the data from the service worker cache.
      */
     preloadAllPreviews(entries: FullFileMetadata[], pixelSize: number) {
+        // Large thumbnails are not kept by the service worker, so preloading every one would only waste bandwidth.
+        // Only the previews near the viewport are loaded, by the observers.
+        if (pixelSize > maxCachedPixelSize) return
+
         this.clearUnusedPreviews(entries.map(entry => entry.path))
 
         const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``

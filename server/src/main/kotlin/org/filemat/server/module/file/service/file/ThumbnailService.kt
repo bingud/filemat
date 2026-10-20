@@ -43,6 +43,17 @@ class ThumbnailService(
     private val state: State,
 ) {
 
+    companion object {
+        /** Largest thumbnail edge (px) a request can ask for. */
+        const val MAX_THUMBNAIL_SIZE = 8192
+
+        /**
+         * Thumbnails larger than this edge (px) are not written to the disk cache,
+         * and the controller marks them as only browser-cacheable.
+         */
+        const val MAX_CACHED_THUMBNAIL_SIZE = 2048
+    }
+
     // --- Thumbnail cache timing (FFmpeg / decoder I/O timeouts are not configured here.) ---
 
     /**
@@ -211,7 +222,7 @@ class ThumbnailService(
         val minWidth = 200.0
         val maxWidth = 1150.0
         val maxQuality = 1.0
-        val minQuality = 0.60
+        val minQuality = 0.75
 
         if (width <= minWidth) return maxQuality
         if (width >= maxWidth) return minQuality
@@ -230,6 +241,9 @@ class ThumbnailService(
         val cacheDir = state.thumbCache.folderPath ?: return null
 
         if (!cacheEnabled) return null
+
+        // Large thumbnails take too much space and are rarely reused
+        if (targetSize > MAX_CACHED_THUMBNAIL_SIZE) return null
 
         val isAllowed = fileVisibilityService.isPathAllowed(canonicalPath = FilePath.of(cacheDir))
         if (isAllowed != null) return null

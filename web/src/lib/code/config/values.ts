@@ -25,9 +25,20 @@ export const fullscreenPreviewSize = 6
 /**
  * Thumbnail sizes (longest edge in px) the fullscreen preview size picks from, matched to the screen.
  * These are the sizes of the other preview sizes, so thumbnails are reused, plus larger steps for big screens.
- * 4096 is the server's maximum.
+ * 8192 is the server's maximum.
  */
-export const fullscreenPixelSizes = [256, 420, 1150, 2048, 4096]
+export const fullscreenPixelSizes = [256, 420, 1150, 2048, 4096, 8192]
+
+/** Thumbnails larger than this are not cached by the server or the service worker, only by the browser */
+export const maxCachedPixelSize = 2048
+
+/** Query parameter that makes the service worker skip its cache, appended for thumbnails above `maxCachedPixelSize` */
+export const noSwCacheParam = `noSwCache=1`
+
+/** Extra thumbnail url query for `size`, empty for sizes the service worker caches */
+export function thumbnailCacheQuery(size: number): string {
+    return size > maxCachedPixelSize ? `&${noSwCacheParam}` : ``
+}
 
 /** The smallest step that covers `neededPixels`, the largest one if none does */
 export function pickFullscreenPixelSize(neededPixels: number): number {

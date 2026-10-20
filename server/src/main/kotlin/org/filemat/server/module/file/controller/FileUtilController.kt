@@ -40,6 +40,16 @@ class FileUtilController(
     private val rateLimiter: RateLimiter,
 ) : AController() {
 
+    /**
+     * Large thumbnails are neither stored in the disk cache nor the service worker cache,
+     * so the browser's own cache is allowed to keep them for a while. The `modified` query
+     * parameter changes the URL when the file changes.
+     */
+    private fun HttpHeaders.applyLargeThumbnailCacheControl(targetSize: Int) {
+        if (targetSize <= ThumbnailService.MAX_CACHED_THUMBNAIL_SIZE) return
+        set(HttpHeaders.CACHE_CONTROL, "private, max-age=86400")
+    }
+
     @Unauthenticated
     @Cors
     @GetMapping("/image-thumbnail")
@@ -55,7 +65,7 @@ class FileUtilController(
         }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
-        val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
+        val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, ThumbnailService.MAX_THUMBNAIL_SIZE) ?: 100
         val ignorePermissions = shareToken != null
 
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken)
@@ -77,6 +87,7 @@ class FileUtilController(
 
         val headers = HttpHeaders().apply {
             set(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+            applyLargeThumbnailCacheControl(targetSize)
         }
 
         val baos = ByteArrayOutputStream(512 * 1024)
@@ -147,7 +158,7 @@ class FileUtilController(
         }
         val principal = request.getPrincipal()
         val path = FilePath.of(rawPath)
-        val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, 4096) ?: 100
+        val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, ThumbnailService.MAX_THUMBNAIL_SIZE) ?: 100
 
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken)
         val canonicalPath = canonicalPathResult.let {
@@ -177,6 +188,7 @@ class FileUtilController(
 
         val headers = HttpHeaders().apply {
             set(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+            applyLargeThumbnailCacheControl(targetSize)
         }
 
         val baos = ByteArrayOutputStream(512 * 1024)

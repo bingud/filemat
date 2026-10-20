@@ -89,6 +89,8 @@ sw.addEventListener('fetch', (event) => {
 
     if (isThumbRequest(url)) {
         if (!isAllowedThumbOrigin(url)) return
+        // Large thumbnails are left to the browser's HTTP cache
+        if (url.searchParams.has("noSwCache")) return
         event.respondWith(cacheResponse(request, caches.open(THUMB_CACHE_NAME), event))
         return
     }

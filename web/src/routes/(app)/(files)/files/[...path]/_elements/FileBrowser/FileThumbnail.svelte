@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { getFileCategoryFromFilename } from "$lib/code/data/files";
+    import { thumbnailCacheQuery } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { fallbackQueueKey, findCachedThumbFallback, type VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
     import { encodeUrlFilePath, filenameFromPath, formatMediaDuration } from "$lib/code/util/codeUtil.svelte";
@@ -28,8 +29,8 @@
     const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
     const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
     const cors = $derived(contentCrossOrigin())
-    const imageSrc = $derived(`${joinContentUrl(`/api/v1/file/image-thumbnail`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`)
-    const videoSrc = $derived(`${joinContentUrl(`/api/v1/file/video-preview`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}`)
+    const imageSrc = $derived(`${joinContentUrl(`/api/v1/file/image-thumbnail`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}${thumbnailCacheQuery(size)}`)
+    const videoSrc = $derived(`${joinContentUrl(`/api/v1/file/video-preview`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}${thumbnailCacheQuery(size)}`)
 
     let imageLoadFailed = $state(false)
 
