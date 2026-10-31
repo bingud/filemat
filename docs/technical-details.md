@@ -2,14 +2,18 @@
 
 ## Application Paths
 
-| Path | Description |
-| --- | --- |
-| `/var/lib/filemat` | Application data folder |
-| `/var/lib/filemat/filemat-server.db` | SQLite database file |
-| `/var/lib/filemat/setup-code.txt` | Initial setup code file |
-| `/var/lib/filemat/auth-code.txt` | Sensitive action auth code file |
-| `/var/cache/filemat` | Default thumbnail cache folder |
-| `/tmp/filemat` | Default upload folder |
+The data folder is `FM_DATA_DIR`, or by default `/var/lib/filemat` on Linux and `%LOCALAPPDATA%\Filemat` on Windows.
+
+| Linux | Windows | Description |
+| --- | --- | --- |
+| `/var/lib/filemat` | `%LOCALAPPDATA%\Filemat` | Application data folder |
+| `<data folder>/filemat-server.db` | same | SQLite database file |
+| `<data folder>/setup-code.txt` | same | Initial setup code file |
+| `<data folder>/auth-code.txt` | same | Sensitive action auth code file |
+| `/var/cache/filemat` | `<data folder>\cache\thumbnails` | Default thumbnail cache folder |
+| `/tmp/filemat` | `<data folder>\uploads` | Default upload folder |
+| (stdout only) | `<data folder>\logs\filemat.log` | Console output, rotated at 10 MB, 9 older files kept |
+| - | `<data folder>\native` | SQLite's native library |
 
 ## Server
 

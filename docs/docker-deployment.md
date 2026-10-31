@@ -52,6 +52,18 @@ sudo docker run -d \
 
 ---
 
+### Docker Desktop on Windows
+
+The image is a Linux image, and Docker Desktop runs it in WSL 2. For Filemat as a Windows program, see the [Windows guide](</docs/windows.md>).
+
+- Mount Windows folders with their Windows path: `-v C:\Data:/data`, or in compose `- C:\Data:/data`.
+- `user: 1111:1111` doesn't limit access to Windows folders. Docker Desktop gives the container access to every mounted Windows file.
+- **Permissions can get lost.** Filemat recognizes a file by its inode number, and Docker Desktop may give files in a mounted Windows folder new inode numbers after a restart. Permissions and shares on those files then stop working. Filemat logs a warning at startup when an exposed folder is on such a mount.
+- For best results, keep the files in a Docker volume or in the WSL file system (`\\wsl$\<distro>\home\...`, mounted as `/home/...` from inside WSL), not in a Windows folder.
+- The same applies to `/mnt/c` and other Windows drives seen from inside WSL.
+
+---
+
 ### Reverse proxy
 
 When Filemat runs behind a reverse proxy, these headers must be forwarded:

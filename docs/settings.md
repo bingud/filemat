@@ -9,7 +9,7 @@ Environment variables take precedence over these settings.
 | Setting | Description | Default | Environment Variable Override |
 | --- | --- | --- | --- |
 | `follow_symbolic_links` | Whether to follow symbolic links when browsing folders | `false` | `FM_FOLLOW_SYMBOLIC_LINKS` |
-| `upload_folder_path` | Default folder path for file uploads | `/tmp/filemat` | - |
+| `upload_folder_path` | Default folder path for file uploads | `/tmp/filemat`, Windows: `<data folder>\uploads` | - |
 | `is_thumbnail_cache_enabled` | Whether generated thumbnails are stored on disk | `false` | - |
 | `thumbnail_cache_folder_path` | Folder for cached thumbnail files | (empty) | - |
 | `thumbnail_cache_max_size_mb` | Max thumbnail cache size in megabytes | (empty) | - |

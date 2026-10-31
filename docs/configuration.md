@@ -2,15 +2,17 @@
 
 ## Environment Variables
 
-Input multiple values by putting a colon in between (`/one:/two`).
+Input multiple values by putting a colon in between (`/one:/two`). On Windows, use a semicolon (`C:\One;D:\Two`).
 
 | Name | Description | Default | Example |
 | --- | --- | --- | --- |
+| `FM_DATA_DIR` | Application data folder. Must be on a local drive | `/var/lib/filemat`, Windows: `%LOCALAPPDATA%\Filemat` | `/srv/filemat-data` |
+| `FM_FFMPEG_PATH` | Full path of an `ffmpeg` executable for video previews. Used where the FFmpeg built into Filemat doesn't load (Windows). When set, no other FFmpeg is tried | `ffmpeg` on `PATH`. The Windows zip sets its own | `C:\ffmpeg\bin\ffmpeg.exe` |
 | `FM_DEV_MODE` | Whether Filemat is in development mode | `false` | `true` |
-| `FM_HIDE_SENSITIVE_FOLDERS` | Whether to hide sensitive Linux folders | `true` | `false` |
+| `FM_HIDE_SENSITIVE_FOLDERS` | Whether to hide sensitive system folders | `true` | `false` |
 | `FM_NON_SENSITIVE_FOLDERS` | Folders to exclude from sensitive folder list | (empty) | `/root:/etc/ssh` |
-| `FM_HIDDEN_FOLDER_PATHS` | Folder paths to fully exclude and block | (empty) | `/root:/home/folder` |
-| `FM_FORCE_DELETABLE_FOLDERS` | Protected folders to make deletable | (empty) | `/root:/etc` |
+| `FM_HIDDEN_FOLDER_PATHS` | Folder paths to fully exclude and block. Full paths only: `*` is not a wildcard here | (empty) | `/root:/home/folder` |
+| `FM_FORCE_DELETABLE_FOLDERS` | Protected folders to make deletable. Full paths only: `*` is not a wildcard here | (empty) | `/root:/etc` |
 | `FM_ALLOW_READ_DATA_FOLDER` | Allow reading the application data folder | `false` | `true` |
 | `FM_ALLOW_WRITE_DATA_FOLDER` | Allow modifying the application data folder | `false` | `true` |
 | `FM_FOLLOW_SYMBOLIC_LINKS` | Whether to follow symbolic links | `false` | `true` |
@@ -18,11 +20,15 @@ Input multiple values by putting a colon in between (`/one:/two`).
 | `FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED` | Also send the content base URL to unauthenticated users | `false` | `true` |
 | `FM_PRINT_LOGS` | Whether to print logs to console | `true` | `false` |
 
+Spring Boot settings work too, for example `SERVER_PORT=9090` for another port.
+
 ## Security Defaults
 
 ### Sensitive Folder Paths
 
-These paths are blocked from access when `FM_HIDE_SENSITIVE_FOLDERS=true` (default).
+These paths are blocked from access when `FM_HIDE_SENSITIVE_FOLDERS=true` (default). The Filemat data folder is always blocked, unless `FM_ALLOW_READ_DATA_FOLDER` is set.
+
+#### Linux
 
 | Path | Description |
 | --- | --- |
@@ -40,18 +46,59 @@ These paths are blocked from access when `FM_HIDE_SENSITIVE_FOLDERS=true` (defau
 | `/var/run/docker.sock` | Docker socket |
 | `/var/lib/filemat` | Filemat data folder |
 
-Use `FM_NON_SENSITIVE_FOLDERS` to exclude paths from this list.
+#### Windows
 
-Use `FM_HIDDEN_FOLDER_PATHS` to add additional blocked paths.
+The Windows, ProgramData, Program Files and Users folders are read from the system, so they are right on any drive. `*` matches one folder name, and `*:` any drive. Names match in any case.
+
+| Path | Description |
+| --- | --- |
+| `C:\Windows\System32\config` | Registry hives with password hashes, and the system account's profile |
+| `C:\Windows\System32\Microsoft\Protect` | The system's DPAPI keys |
+| `C:\Windows\NTDS` | Active Directory database (domain controllers) |
+| `C:\Windows\repair`, `C:\Windows\Panther`, `C:\Windows\System32\Sysprep` | Registry backups and setup files, which can hold admin passwords |
+| `C:\Windows\ServiceProfiles` | Profiles of service accounts |
+| `C:\Windows\System32\inetsrv\config` | IIS configuration |
+| `C:\Windows\MEMORY.DMP`, `C:\ProgramData\Microsoft\Windows\WER` | Crash dumps, which hold memory contents |
+| `C:\Windows\CSC` | Offline Files: local copies of network files |
+| `C:\ProgramData\Microsoft\Crypto` | Machine private keys |
+| `C:\ProgramData\Docker`, `C:\ProgramData\MySQL`, `C:\Program Files\PostgreSQL\*\data` | Database and Docker data |
+| `C:\ProgramData\ssh` | OpenSSH server host keys |
+| `C:\Users\*\NTUSER.DAT*` | User registry hives |
+| `C:\Users\*\.ssh`, `.gnupg`, `.aws`, `.azure`, `.kube`, `.docker` | User keys and cloud credentials |
+| `C:\Users\*\.git-credentials`, `_netrc`, `.netrc` | Saved passwords of Git and other tools |
+| `C:\Users\*\AppData\Roaming\Microsoft\Credentials`, `Protect`, `Crypto`, `SystemCertificates` | Saved credentials and the DPAPI keys that decrypt them |
+| `C:\Users\*\AppData\Local\Microsoft\Credentials`, `Vault` | Saved credentials |
+| `C:\Users\*\AppData\Local\Microsoft\TokenBroker`, `IdentityCache` | Microsoft account and work account sign-in tokens |
+| `C:\Users\*\AppData\Local\Google\Chrome\User Data`, `AppData\Local\Microsoft\Edge\User Data`, `AppData\Roaming\Mozilla\Firefox\Profiles`, `AppData\Local\BraveSoftware`, `AppData\Local\Chromium`, `AppData\Local\Vivaldi`, `AppData\Roaming\Opera Software` | Browser profiles with saved passwords and cookies |
+| `C:\Users\*\AppData\Roaming\Thunderbird\Profiles` | Mail profiles with saved passwords |
+| `C:\Users\*\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine` | PowerShell command history, which can hold typed secrets |
+| `*:\System Volume Information`, `*:\$Recycle.Bin`, `*:\$Extend` | Shadow copies, every user's deleted files, file system data |
+| `*:\pagefile.sys`, `*:\hiberfil.sys`, `*:\swapfile.sys`, `*:\DumpStack.log*` | Memory written to disk |
+| `%LOCALAPPDATA%\Filemat` | Filemat data folder |
+
+The rest of `AppData` is not blocked.
+
+Use `FM_NON_SENSITIVE_FOLDERS` to exclude paths from this list. Write them as in the list, for example `C:/Users/*/.ssh` or `C:\Users\*\.ssh`.
+
+Use `FM_HIDDEN_FOLDER_PATHS` to add additional blocked paths. Give each folder's full path: `*` is not a wildcard there, and Filemat prints a warning at startup for each entry that has one. The same goes for `FM_FORCE_DELETABLE_FOLDERS`. Only `FM_NON_SENSITIVE_FOLDERS` takes `*`, because it names entries of the list above.
 
 ### Non-Deletable System Paths
 
 These paths cannot be deleted through Filemat (unless overridden with `FM_FORCE_DELETABLE_FOLDERS`):
 
+Linux:
+
 - `/`, `/bin`, `/sbin`, `/lib`, `/lib64`
 - `/usr`, `/etc`, `/boot`, `/dev`
 - `/proc`, `/sys`, `/var`, `/run`
 - `/opt`, `/srv`, `/root`, `/home`
+
+Windows:
+
+- every drive (`C:\`, `D:\`) and the drive list
+- `C:\Windows`, `C:\ProgramData`, `C:\Program Files`, `C:\Program Files (x86)`
+- `C:\Users` and every profile in it, including `Default` and `Public`
+- `C:\Recovery`, `C:\Boot`, `C:\EFI`, `C:\PerfLogs`
 
 ## Role permissions
 
