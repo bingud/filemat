@@ -1,7 +1,8 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { filenameFromPath, generateRandomNumber, isFolder, keysOf, prependIfMissing, removeString, sortFileMetadata } from "$lib/code/util/codeUtil.svelte"
+import { filenameFromPath, generateRandomNumber, isFolder, keysOf, removeString, sortFileMetadata } from "$lib/code/util/codeUtil.svelte"
+import { isDriveList, normalizePath, pathSegments } from "$lib/code/util/path"
 import { SvelteSet } from "svelte/reactivity"
 import { devicePixelRatio as windowDevicePixelRatio, innerHeight as windowInnerHeight, innerWidth as windowInnerWidth } from "svelte/reactivity/window"
 import { VisibilityManager } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil.svelte"
@@ -34,7 +35,8 @@ class FilesState {
         if (appState.currentPath.files || appState.currentPath.sharedFiles) {
             let path = page.params.path
             if (!path) return "/"
-            return prependIfMissing(path, "/")
+            // `/files/C:/Users` opens `C:/Users`
+            return normalizePath(path)
         } else {
             return "/"
         }
@@ -43,7 +45,7 @@ class FilesState {
     /**
      * File path segments of the current path
      */
-    segments = $derived(this.path.split("/").filter(v => v !== ""))
+    segments = $derived(pathSegments(this.path))
     
     /**
      * Loading indicators
@@ -63,6 +65,8 @@ class FilesState {
         return !!filesState.search.sortedEntries
     })
     isShared = $derived(this.meta?.type === "shared")
+    // Share paths have no drive, so a share's top folder is never the drive list
+    isDriveListOpen = $derived(this.meta?.type === "files" && isDriveList(this.path))
     getIsShared = (): this is { meta: { type: "shared"; shareToken: string } } => this.isShared
 
     /**

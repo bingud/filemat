@@ -1,5 +1,6 @@
 <script lang="ts">
     import { sensitiveAuth } from "$lib/code/state/sensitiveAuth.svelte"
+    import { appState } from "$lib/code/stateObjects/appState.svelte"
     import CodeChunk from "$lib/component/CodeChunk.svelte"
     import { Dialog } from "bits-ui"
 </script>
@@ -14,7 +15,7 @@
                     <p>The code can be found in:</p>
                     <ul class="list-disc list-inside">
                         <li>Application console or logs</li>
-                        <li><CodeChunk>/var/lib/filemat/auth-code.txt</CodeChunk></li>
+                        <li><CodeChunk>{appState.paths?.authCodeFile ?? `/var/lib/filemat/auth-code.txt`}</CodeChunk></li>
                     </ul>
                 </div>
                 <form on:submit|preventDefault={() => sensitiveAuth.verify()} class="flex flex-col w-full max-w-[18rem] mx-auto gap-2">

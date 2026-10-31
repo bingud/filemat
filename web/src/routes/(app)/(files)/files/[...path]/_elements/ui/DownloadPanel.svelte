@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { displayPath } from "$lib/code/util/path"
     import { cancelAllDownloads, cancelDownload, cancelDownloadJob } from "$lib/code/module/files/files"
     import { downloadState, type DownloadJob, type FileDownload } from "$lib/code/stateObjects/subState/downloadState.svelte"
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
@@ -82,12 +83,12 @@
     async function showPathDialog(path: string) {
         const copied = await confirmDialogState.show({
             title: null,
-            message: path,
+            message: displayPath(path),
             confirmText: `Copy`,
             cancelText: `Close`,
         })
         if (copied) {
-            navigator.clipboard.writeText(path)
+            navigator.clipboard.writeText(displayPath(path))
         }
     }
 

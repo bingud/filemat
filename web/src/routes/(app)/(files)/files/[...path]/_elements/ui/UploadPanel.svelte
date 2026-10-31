@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { displayPath } from "$lib/code/util/path"
     import { cancelAllUploads, cancelUpload, pauseAllUploads, pauseUpload, resumeAllUploads, resumeUpload, retryTusUpload } from "$lib/code/module/files/files";
     import { uploadState, type FileUpload } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
@@ -92,12 +93,12 @@
         const path = up.actualPath || up.path
         const copied = await confirmDialogState.show({
             title: null,
-            message: path,
+            message: displayPath(path),
             confirmText: `Copy`,
             cancelText: `Close`,
         })
         if (copied) {
-            navigator.clipboard.writeText(path)
+            navigator.clipboard.writeText(displayPath(path))
         }
     }
 </script>

@@ -14,6 +14,7 @@
     import Checkmark from "$lib/component/icons/CheckmarkIcon.svelte";
     import { envVars } from "$lib/code/data/environmentVariables";
     import { dev } from "$app/environment";
+    import { fetchAppState } from "$lib/code/state/stateFetcher"
 
     let alreadySetup: boolean | null = $state(null)
     let running = $state(false)
@@ -36,17 +37,31 @@
     let followSymlinks = $state(false)
 
     // Section 4
-    let uploadPathInput = $state("/tmp/filemat")
+    const linuxUploadPath = `/tmp/filemat`
+    let uploadPathInput = $state(linuxUploadPath)
 
     // Section 5
     let thumbnailCacheEnabled = $state(true)
-    let thumbnailCacheFolderInput = $state(`/var/cache/filemat`)
+    const linuxThumbnailCacheFolder = `/var/cache/filemat`
+    let thumbnailCacheFolderInput = $state(linuxThumbnailCacheFolder)
     let thumbnailCacheMaxSizeMb = $state<number | null>(512)
     let thumbnailCacheMaxAgeHours = $state<number | null>(168)
 
     onMount(async () => {
         await getSetupStatus()
+        await loadServerPaths()
     })
+
+    /**
+     * Replaces the Linux defaults with the server's defaults (they differ on Windows), unless the user already typed something
+     */
+    async function loadServerPaths() {
+        if (!await fetchAppState()) return
+        const paths = appState.paths
+        if (!paths) return
+        if (uploadPathInput === linuxUploadPath) uploadPathInput = paths.defaultUploadFolder
+        if (thumbnailCacheFolderInput === linuxThumbnailCacheFolder) thumbnailCacheFolderInput = paths.defaultThumbnailCacheFolder
+    }
 
     $effect(() => appState.title.register("Setup"))
 
@@ -258,7 +273,7 @@
                         <p>You can find it in these places:</p>
                         <ol class="list-decimal list-inside marker:text-blue-700 dark:marker:text-blue-400">
                             <li>The console or logs of the application</li>
-                            <li>The file <br class="xs:hidden"><CodeChunk>/var/lib/filemat/setup-code.txt</CodeChunk></li>
+                            <li>The file <br class="xs:hidden"><CodeChunk>{appState.paths?.setupCodeFile ?? `/var/lib/filemat/setup-code.txt`}</CodeChunk></li>
                         </ol>
                     </div>
                 </div>
@@ -354,7 +369,7 @@
                         <label for="upload-folder-path-input">Folder path</label>
                         <input type="text" bind:value={uploadPathInput} id="upload-folder-path-input" class="basic-input">
                         <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
-                        <p class="text-sm text-neutral-500">Files will appear in: <CodeChunk>{uploadPathInput}/uploads</CodeChunk></p>
+                        <p class="text-sm text-neutral-500">Uploads in progress are kept in its <CodeChunk>uploads</CodeChunk> and <CodeChunk>locks</CodeChunk> folders.</p>
                         <button type="submit" class="basic-input-button my-4">{running ? "..." : "Continue"}</button>
                         {@render backButton()}
                     </form>

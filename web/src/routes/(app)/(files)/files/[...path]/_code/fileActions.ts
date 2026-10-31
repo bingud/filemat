@@ -1,11 +1,13 @@
 import { filePermissionMeta } from "$lib/code/data/permissions";
-import { moveMultipleFiles, moveFile, deleteFiles, downloadFilesAsZip, downloadFiles, downloadFilesAsFolder, supportsDirectoryPicker } from "$lib/code/module/files/files";
+import { moveMultipleFiles, moveFile, deleteFiles, deleteWarning, downloadFilesAsZip, downloadFiles, downloadFilesAsFolder, supportsDirectoryPicker } from "$lib/code/module/files/files"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, downloadChooserState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isChildOf, isFolder, isPathDirectChild, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte";
+import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isChildOf, isFolder, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { toast } from "@jill64/svelte-toast";
 import { textFileViewerState } from "./textFileViewerState.svelte";
 import { getContentUrl } from "$lib/code/util/stateUtils";
+import { Validator } from "$lib/code/util/validation"
+import { childPath, isDirectChildOf } from "$lib/code/util/path"
 
 
 export async function option_moveSelectedFiles() {
@@ -36,7 +38,7 @@ export function option_deleteSelectedFiles() {
 
     confirmDialogState.show({
         title: "Delete File",
-        message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected file${filesState.selectedEntries.count > 1 ? 's' : ''}? This cannot be undone.`,
+        message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected file${filesState.selectedEntries.count > 1 ? 's' : ''}? ${deleteWarning()}`,
         confirmText: "Delete",
         cancelText: "Cancel"
     })?.then((confirmed: boolean) => {
@@ -118,11 +120,13 @@ export async function handleNewFolder() {
 
     const folderName = prompt("Enter folder name:")
     if (!folderName) return
+    const invalidReason = Validator.filename(folderName)
+    if (invalidReason) {
+        toast.error(invalidReason)
+        return
+    }
 
-    const currentPath = filesState.path === '/' ? '' : filesState.path
-    const targetPath = `${currentPath}/${folderName}`
-    console.log(`targetPath`, targetPath)
-    console.log(`currentPath`, currentPath)
+    const targetPath = childPath(filesState.path, folderName)
 
     const response = await safeFetch('/api/v1/folder/create', {
         method: 'POST',
@@ -220,7 +224,7 @@ export async function saveEditedFile() {
     }
 
     // Update folder data
-    if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, filePath)) {
+    if (filesState.data.folderMeta && isDirectChildOf(filePath, filesState.data.folderMeta.path)) {
         filesState.data.entries!.forEach(entry => {
             if (entry.path === filePath) {
                 entry.modifiedDate = modifiedDate

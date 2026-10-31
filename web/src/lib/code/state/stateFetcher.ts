@@ -1,6 +1,6 @@
 import { auth } from "$lib/code/stateObjects/authState.svelte"
-import { appState } from "$lib/code/stateObjects/appState.svelte"
-import { delay, handleErr, handleException, safeFetch, unixNow } from "../util/codeUtil.svelte"
+import { appState, type AppPaths, type AppPlatform } from "$lib/code/stateObjects/appState.svelte"
+import { delay, formData, handleErr, handleException, safeFetch, unixNow } from "../util/codeUtil.svelte"
 import type { HttpStatus, Principal, Role } from "../auth/types"
 import type { ErrorResponse, ulid } from "../types/types"
 import { clientState } from "../stateObjects/clientState.svelte"
@@ -8,12 +8,41 @@ import { maybeRenewContentSession } from "./contentSession"
 import { notifyServiceWorkerLastUserId } from "../util/serviceWorker"
 
 
+type AppStateResponse = {
+    isSetup: boolean,
+    followSymlinks: boolean,
+    contentBaseUrl?: string,
+    platform?: AppPlatform,
+    paths?: AppPaths,
+}
+
 type state = {
     principal: { value: Principal, status: HttpStatus }, 
     roles: { value: Role[], status: HttpStatus }, 
-    app: { value: { isSetup: boolean, followSymlinks: boolean, contentBaseUrl?: string }, status: HttpStatus },
+    app: { value: AppStateResponse, status: HttpStatus },
     systemRoleIds: { value: { user: ulid, admin: ulid }, status: HttpStatus },
     hashCode: number,
+}
+
+function applyAppState(app: AppStateResponse) {
+    appState.isSetup = app.isSetup
+    appState.followSymlinks = app.followSymlinks
+    appState.contentBaseUrl = app.contentBaseUrl || ``
+    if (app.platform) appState.platform = app.platform
+    appState.paths = app.paths ?? null
+}
+
+/**
+ * Fetches only the app state, without other side effects. Works before setup and without a login.
+ */
+export async function fetchAppState(): Promise<boolean> {
+    const response = await safeFetch(`/api/v1/state/select`, { body: formData({ app: `true` }) })
+    if (response.failed || response.code.failed) return false
+
+    const app = (response.json() as Partial<state>).app
+    if (!app || app.status !== 200) return false
+    applyAppState(app.value)
+    return true
 }
 
 /**
@@ -113,10 +142,7 @@ export async function fetchState(
             const status = data.app.status
 
             if (status === 200) {
-                const app = data.app.value
-                appState.isSetup = app.isSetup
-                appState.followSymlinks = app.followSymlinks
-                appState.contentBaseUrl = app.contentBaseUrl || ``
+                applyAppState(data.app.value)
             } else {
                 handleErr({
                     description: `Status ${status} for app state when fetching state.`,

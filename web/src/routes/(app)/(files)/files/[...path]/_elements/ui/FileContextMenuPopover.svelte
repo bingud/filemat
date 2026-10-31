@@ -2,7 +2,8 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import { parentFromPath } from "$lib/code/util/codeUtil.svelte";
+    import { filePageUrl } from "$lib/code/util/codeUtil.svelte"
+    import { displayPath, parentPath } from "$lib/code/util/path"
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
     import BookmarkXIcon from "$lib/component/icons/BookmarkXIcon.svelte";
@@ -57,12 +58,12 @@
     async function showPathDialog(path: string) {
         const copied = await confirmDialogState.show({
             title: null,
-            message: path,
+            message: displayPath(path),
             confirmText: "Copy",
             cancelText: "Close"
         })
         if (copied) {
-            navigator.clipboard.writeText(path)
+            navigator.clipboard.writeText(displayPath(path))
         }
     }
 </script>
@@ -73,7 +74,7 @@
     <Popover.Content customAnchor={entryMenuButton} align="start" >
         <div class="w-[14rem] max-w-full max-h-full rounded-lg bg-neutral-250 dark:bg-neutral-800 py-2 flex flex-col z-popover select-none">
             <a 
-                href={`${filesState.meta.pagePath}${menuEntry.path}`}
+                href={filePageUrl(menuEntry.path, filesState.meta.pagePath)}
                 on:click={close}
                 on:auxclick={close}
                 target="_blank" class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"
@@ -86,7 +87,7 @@
 
             {#if filesState.meta.type === "allShared" || filesState.isSearchOpen || filesState.meta.type === "saved"}
                 <a 
-                    href={`${filesState.meta.pagePath}${parentFromPath(menuEntry.path)}`}
+                    href={filePageUrl(parentPath(menuEntry.path) ?? `/`, filesState.meta.pagePath)}
                     on:click={close}
                     on:auxclick={close}
                     class="py-1 px-4 text-start hover:bg-neutral-400/50 dark:hover:bg-neutral-700 flex items-center gap-2" rel="noopener noreferrer"

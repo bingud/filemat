@@ -22,14 +22,18 @@ import {
     filenameOfRelativePath,
     joinRelativePath,
     parentRelativePath,
+    toLocalFilename,
+    uniqueLocalFilename,
     type FolderDownloadResolution,
     type PlannedDownloadEntry,
     type ResolvedDownloadPlan,
 } from "$lib/code/module/files/folderDownload"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+import { appState } from "$lib/code/stateObjects/appState.svelte"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import type { FileCategory } from "$lib/code/data/files"
-import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, forEachObject, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isFile, isFolder, isPathDirectChild, isSymlink, letterS, parentFromPath, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, forEachObject, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isFile, isFolder, isSymlink, filePageUrl, letterS, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { childPath, isDirectChildOf, parentPath } from "$lib/code/util/path"
 import { uploadState, type FileUpload, type PreviousTusUpload, type TusUploadOptions } from "$lib/code/stateObjects/subState/uploadState.svelte"
 import { downloadState, type FileDownload } from "$lib/code/stateObjects/subState/downloadState.svelte"
 import { toast } from "@jill64/svelte-toast"
@@ -67,7 +71,8 @@ export async function getFileData(
     if (response.failed) {
         handleErr({
             description: `Failed to fetch file data`,
-            notification: options.silent ? undefined : `Failed to open file.`,
+            // An aborted request was replaced by a newer navigation, nothing failed
+            notification: options.silent || signal?.aborted ? undefined : `Failed to open file.`,
         })
         return Result.error(`Failed to fetch folder entries`)
     }
@@ -292,14 +297,16 @@ export async function startTusUpload(file: File, options: TusUploadOptions = {})
     uploadState.panelOpen = true
 
     // Construct the full target path
-    const currentPath = filesState.path === '/' ? '' : filesState.path
     const inputFilename = file.name
 
+    // Windows folders ignore case unless the listing says otherwise
+    const caseSensitive = filesState.data.folderMeta?.caseSensitive ?? appState.platform.pathStyle !== `windows`
     const targetFilename = options.targetFilename || getUniqueFilename(
         inputFilename,
         (filesState.data.entries ?? []).map(v => v.filename!),
+        !caseSensitive,
     )
-    const targetPath = options.targetPath || `${currentPath}/${targetFilename}`
+    const targetPath = options.targetPath || childPath(filesState.path, targetFilename)
 
     // Folder sessions already resolved conflicts; a leftover incomplete for the same
     // path must not open Continue/Restart dialogs. Clear local state immediately and
@@ -443,8 +450,8 @@ function beginTusUpload(
             try {
                 const uploadedFile = upload.file as File
 
-                const uploadFolder = targetPath.substring(0, targetPath.lastIndexOf('/')) || "/"
-                const actualUploadedPath = actualFilename ? (`${uploadFolder === "/" ? "/" : `${uploadFolder}/`}${actualFilename}`) : null
+                const uploadFolder = parentPath(targetPath) ?? `/`
+                const actualUploadedPath = actualFilename ? childPath(uploadFolder, actualFilename) : null
 
                 // Add the uploaded file to entries if it belongs in the current folder
                 if (!options.refreshCurrentFolderOnSuccess && filesState.path === uploadFolder) {
@@ -632,10 +639,7 @@ async function markUploadFinalized(
     await deleteUploadFileHandle(fileUpload.path, opts.uploadUrl, opts.urlStorageKey)
     fileUpload.status = `success`
     if (opts.actualFilename) {
-        const uploadFolder = fileUpload.path.substring(0, fileUpload.path.lastIndexOf(`/`)) || `/`
-        fileUpload.actualPath = uploadFolder === `/`
-            ? `/${opts.actualFilename}`
-            : `${uploadFolder}/${opts.actualFilename}`
+        fileUpload.actualPath = childPath(parentPath(fileUpload.path) ?? `/`, opts.actualFilename)
     }
     fileUpload.options.onSuccess?.()
     toast.success(opts.assumedAlreadyFinalized ? `Upload already completed.` : `Upload finalized.`)
@@ -1049,6 +1053,15 @@ export async function retryTusUpload(fileUpload: FileUpload) {
 }
 
 
+/**
+ * Warning for delete dialogs. Windows users expect the Recycle Bin, which Filemat does not use (Q41).
+ */
+export function deleteWarning() {
+    return appState.platform.pathStyle === `windows`
+        ? `Deleted files do not go to the Recycle Bin and cannot be restored.`
+        : `This cannot be undone.`
+}
+
 export async function deleteFiles(entries: FileMetadata[]) {
     if (!entries.length) return
     const paths = entries.map(v => v.path)
@@ -1082,7 +1095,17 @@ export async function deleteFiles(entries: FileMetadata[]) {
         return
     }
 
-    const successfullyDeleted = json as string[]
+    const result = json as { deleted: string[], failed: { path: string, message: string }[] }
+    const successfullyDeleted = result.deleted
+    if (result.failed.length) {
+        const first = result.failed[0]
+        handleErr({
+            description: `Failed to delete files.`,
+            notification: result.failed.length === 1
+                ? `Failed to delete "${filenameFromPath(first.path)}": ${first.message}`
+                : `${result.failed.length} files were not deleted. ${first.message}`,
+        })
+    }
     // Remove the deleted entry from the current entries list
     if (filesState.data.entries && entries) {
         filesState.data.entries = filesState.data.entries.filter(e => successfullyDeleted.includes(e.path) === false)
@@ -1090,11 +1113,11 @@ export async function deleteFiles(entries: FileMetadata[]) {
 
     // Navigate to parent folder if current file was deleted
     const currentPath = filesState.data.currentMeta?.path || null
-    if (currentPath && entries.some(e => currentPath.startsWith(e.path))) {
-        let closestParent = parentFromPath(currentPath)
+    if (currentPath && entries.some(e => currentPath === e.path || isChildOf(currentPath, e.path))) {
+        let closestParent = parentPath(currentPath)
         entries.forEach((entry) => {
-            if (closestParent.startsWith(entry.path)) {
-                closestParent = parentFromPath(closestParent)
+            if (closestParent != null && (closestParent === entry.path || isChildOf(closestParent, entry.path))) {
+                closestParent = parentPath(closestParent)
             }
         })
 
@@ -1137,6 +1160,8 @@ type FolderSaveContext = {
     jobIds: string[]
     touchedPaths: Set<string>
     plan: PlannedDownloadEntry[]
+    // Local names given per local folder, so two server names never write one local file
+    localNames: Map<string, string[]>
 }
 
 /**
@@ -1155,6 +1180,7 @@ export async function downloadFilesAsFolder(
         jobIds: [],
         touchedPaths: new Set(),
         plan: [],
+        localNames: new Map(),
     }
 
     downloadState.batchAborts.add(batchAbort)
@@ -1351,8 +1377,6 @@ async function planFromMeta(
 
     const isRoot = jobId === null
     const currentJobId = jobId ?? meta.path
-    const relativePath = joinRelativePath(parentRelativePathValue, name)
-
     if (isRoot) {
         addSaveJob(ctx, currentJobId, {
             kind: isFolder(meta) ? `folder` : `file`,
@@ -1363,10 +1387,13 @@ async function planFromMeta(
     if (isFolderSaveAborted(ctx, currentJobId)) return
 
     if (isFolder(meta)) {
+        // A file's local name is picked in planKnownFile
+        const localName = uniqueLocalFilename(parentRelativePathValue, toLocalFilename(name), ctx.localNames)
+        const relativePath = joinRelativePath(parentRelativePathValue, localName)
         ctx.plan.push({
             remotePath: meta.path,
             relativePath,
-            name,
+            name: localName,
             kind: `directory`,
             size: 0,
             jobId: currentJobId,
@@ -1415,10 +1442,11 @@ function planKnownFile(
         return
     }
 
+    const localName = uniqueLocalFilename(parentRelativePathValue, toLocalFilename(name), ctx.localNames)
     ctx.plan.push({
         remotePath: meta.path,
-        relativePath: joinRelativePath(parentRelativePathValue, name),
-        name,
+        relativePath: joinRelativePath(parentRelativePathValue, localName),
+        name: localName,
         kind: `file`,
         size: meta.size || 0,
         jobId,
@@ -1722,7 +1750,7 @@ export function downloadFiles(
 
 
 export async function moveFile(path: string, newPath: string) {
-    const isRename = parentFromPath(path) === parentFromPath(newPath)
+    const isRename = parentPath(path) === parentPath(newPath)
 
     const removeToast = isRename === false ? persistentToast_loading("Moving file...") : () => {}
 
@@ -1791,14 +1819,14 @@ export async function copyFile(path: string, newPath: string) {
         addComputedValuesToFileMeta(meta)
 
         // Add copied file to entries of current folder
-        if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, newPath)) {
+        if (filesState.data.folderMeta && isDirectChildOf(newPath, filesState.data.folderMeta.path)) {
             filesState.data.entries?.push(meta)
         }
     } else {
         // Is destination file in current folder
-        if (filesState.data.folderMeta && isPathDirectChild(filesState.data.folderMeta.path, newPath)) {
+        if (filesState.data.folderMeta && isDirectChildOf(newPath, filesState.data.folderMeta.path)) {
             // Is original file in current folder
-            if (isPathDirectChild(filesState.data.folderMeta.path, path)) {
+            if (isDirectChildOf(path, filesState.data.folderMeta.path)) {
                 const originalEntry = filesState.data.entries!.find(v => v.path === path)
                 
                 if (originalEntry) {
@@ -1859,7 +1887,7 @@ function updateFileListAfterFileMove(oldPath: string, newPath: string) {
         const entry = filesState.data.entries?.find(v => v.path === oldPath)
         if (entry) {
             // Check if file was moved in the same folder
-            if (parentFromPath(oldPath) === parentFromPath(newPath)) {
+            if (parentPath(oldPath) === parentPath(newPath)) {
                 entry.filename = filenameFromPath(newPath)
                 entry.path = newPath
             } else {
@@ -1916,5 +1944,5 @@ export async function getFileLastModifiedDate(
 }
 
 export function navigateToFilePath(path: string, pagePath: string) {
-    return goto(`${pagePath}${path}`)
+    return goto(filePageUrl(path, pagePath))
 }

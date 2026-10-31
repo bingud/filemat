@@ -3,7 +3,9 @@ import { untrack } from "svelte"
 import type { FileMetadata, FullFileMetadata } from "../auth/types"
 import { appState } from "../stateObjects/appState.svelte"
 import type { FileSortingMode, SortingDirection } from "../types/fileTypes"
+import { withAccessDeniedHint } from "./accessDenied"
 import { credentialsForUrl, isCrossOriginUrl } from "./contentUrl"
+import { childPath, filenameOf, isChildOf as isPathChildOf } from "./path"
 
 type ObjectKey = string | number | symbol
 
@@ -66,7 +68,7 @@ export function handleErr({
     if (notification) {
         const downMessage = "Sever is unavailable."
         const containsDownMessage = notification.includes(downMessage)
-        toast.error(`${notification} ${isServerDown && !containsDownMessage ? downMessage : ""}`)
+        toast.error(`${withAccessDeniedHint(notification)} ${isServerDown && !containsDownMessage ? downMessage : ""}`)
     }
 }
 
@@ -136,17 +138,7 @@ export async function safeFetch(
  * Appends a filename to a directory path
  */
 export function appendFilename(path: string, filename: string): string {
-    // ensure directory path ends with a single slash
-    const normalizedPath = path.endsWith('/')
-        ? path
-        : path + '/'
-
-    // strip leading slash from filename if present
-    const normalizedFilename = filename.startsWith('/')
-        ? filename.substring(1)
-        : filename
-
-    return normalizedPath + normalizedFilename
+    return childPath(path, filename)
 }
 
 /**
@@ -359,9 +351,7 @@ export function letterS(count: number): "s" | "" {
  * Resolve a path from a parent and filename
  */
 export function resolvePath(inputFolder: string, inputFilename: string): string {
-    const folder = inputFolder.replace(/\/+$/, '')
-    const file = inputFilename.replace(/^\/+/, '')
-    return `${folder}/${file}`
+    return childPath(inputFolder, inputFilename)
 }
 
 /**
@@ -425,25 +415,20 @@ export function includesAny<T>(list: T[], items: T[]): boolean {
  * Returns filename from a file path
  */
 export function filenameFromPath(path: string): string {
-    return path.substring(path.lastIndexOf("/") + 1);
+    return filenameOf(path)
 }
 
 /**
  * Checks if a file path is a descendant of a given parent directory
  */
 export function isChildOf(path: string, parent: string): boolean {
-    // ensure parent ends with slash
-    const normalizedParent = parent.endsWith('/')
-        ? parent
-        : parent + '/'
-    // must start with parent path and not be exactly equal
-    return path !== parent
-        && path.startsWith(normalizedParent)
+    return isPathChildOf(path, parent)
 }
 
 
 /**
- * Returns the parent directory from a file or folder path
+ * Returns the parent directory from a file or folder path. Also works on relative paths.
+ * Top-level paths return an empty string. Use `parentPath` from `path.ts` for server paths.
  */
 export function parentFromPath(path: string): string {
     // strip trailing slash if any
@@ -507,7 +492,9 @@ export function mapToObject<K extends ObjectKey, V, T>(arr: T[], mapper: (value:
 
 export function getUniqueFilename(
     filename: string,
-    existing: string[]
+    existing: string[],
+    // Windows folders are case-insensitive unless the listing says otherwise (`FileMetadata.caseSensitive`)
+    ignoreCase: boolean = appState.platform.pathStyle === `windows`,
 ): string {
     const dotIndex = filename.lastIndexOf('.')
     const base = dotIndex !== -1
@@ -520,7 +507,8 @@ export function getUniqueFilename(
     const esc = (s: string) =>
         s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const re = new RegExp(
-        `^${esc(base)}(?: \\((\\d+)\\))?${esc(ext)}$`
+        `^${esc(base)}(?: \\((\\d+)\\))?${esc(ext)}$`,
+        ignoreCase ? `i` : ``,
     )
     let max = -1
     for (const existingName of existing) {
@@ -766,13 +754,6 @@ export function printStack() {
     console.log(new Error().stack)
 }
 
-export function isPathDirectChild(parent: string, child: string): boolean {
-    const p = parent.replace(/\/+$/, '')
-    const c = child.replace(/\/+$/, '')
-    const rel = c.slice(p.length)
-    return c.startsWith(p + '/') && !rel.slice(1).includes('/')
-}
-
 export function createLink(path: string): string {
     const url = window.location.origin
     return `${url}${path}`
@@ -939,6 +920,22 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 
 export function encodeUrlFilePath(str: string): string {
     return str.split('/').map(encodeURIComponent).join('/')
+}
+
+/**
+ * Encodes one file path segment for a page URL. `:` stays readable (`/files/C:/Users`).
+ */
+export function encodeUrlPathSegment(segment: string): string {
+    return encodeURIComponent(segment).replace(/%3A/g, `:`)
+}
+
+/**
+ * Returns the page URL of a file path, with every segment encoded (`/files/a%23b/c`)
+ */
+export function filePageUrl(path: string, pagePath: string = `/files`): string {
+    const segments = path.split(`/`).filter(v => v !== ``)
+    if (segments.length === 0) return pagePath
+    return `${pagePath}/${segments.map(encodeUrlPathSegment).join(`/`)}`
 }
 
 export function calculateFilesSize(list: FileMetadata[]): number {

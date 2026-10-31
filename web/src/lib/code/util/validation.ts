@@ -1,5 +1,6 @@
 import type { ulid } from "../types/types"
 import { isBlank } from "./codeUtil.svelte"
+import { appState } from "../stateObjects/appState.svelte"
 
 
 /**
@@ -53,6 +54,34 @@ export class Validator {
         code: string,
     ): string | null {
         if (code.length !== 12) return "Setup code must be 12 letters long."
+
+        return null
+    }
+
+    /**
+     * Checks a single file or folder name against the rules of the server OS.
+     * The server checks again, this is only early feedback.
+     */
+    public static filename(name: string): string | null {
+        const rules = appState.platform.filenameRules
+        if (name.length === 0) return `Name is empty.`
+        for (const char of name) {
+            if (rules.invalidChars.includes(char)) return `Name contains invalid characters.`
+            if (rules.rejectControlChars && char.charCodeAt(0) < 32) return `Name contains invalid characters.`
+        }
+
+        const base = name.split(`.`)[0].trimEnd().toLowerCase()
+        const isReserved = rules.reservedNames.some(reserved => {
+            if (!rules.reservedNamesIgnoreExtension) return reserved === name
+            const lower = reserved.toLowerCase()
+            return lower === name.toLowerCase() || lower === base
+        })
+        if (isReserved) return `This name is reserved.`
+
+        if (rules.rejectTrailingDotOrSpace && (name.endsWith(`.`) || name.endsWith(` `))) return `Name cannot end with a dot or space.`
+
+        const length = rules.lengthUnit === `utf8Bytes` ? new TextEncoder().encode(name).length : name.length
+        if (length > rules.maxLength) return `Name is too long.`
 
         return null
     }

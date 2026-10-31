@@ -4,6 +4,7 @@
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import InfoIcon from '$lib/component/icons/InfoIcon.svelte'
     import { calculateTextWidth } from "$lib/code/util/uiUtil"
+    import { displayPath } from "$lib/code/util/path"
     import { breadcrumbState, type Segment } from '../../_code/breadcrumbState.svelte'
     import { getFilePagePath, openEntry } from '../../_code/fileBrowserUtil.svelte';
     import CopyIcon from '$lib/component/icons/CopyIcon.svelte';
@@ -38,12 +39,12 @@
     }
 
     function option_details(segment: Segment) {
-        filesState.selectedEntries.setSelected(segment.path === "" ? `/` : `/${segment.path}`)
+        filesState.selectedEntries.setSelected(segment.path || `/`)
         filesState.ui.detailsOpen = true
         closeContextMenu()
     }
     function option_copyPath(segment: Segment) {
-        navigator.clipboard.writeText("/" + segment.path)
+        navigator.clipboard.writeText(displayPath(segment.path || `/`))
         closeContextMenu()
     }
 
@@ -81,7 +82,7 @@
                 on:click={(e) => {
                     if (o.isClickable) { 
                         filesState.search.clear()
-                        openEntry(`/${segment.path}`)
+                        openEntry(segment.path)
                         e.preventDefault()
                     }
                 }}

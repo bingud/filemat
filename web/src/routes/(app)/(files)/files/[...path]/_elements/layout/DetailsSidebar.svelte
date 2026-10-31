@@ -30,6 +30,8 @@
         permissions: EntityPermission[],
         ownerId: ulid,
         miniUserList: Record<ulid, string>
+        // Permissions stay at the path when the file is moved outside Filemat
+        isPathOnly: boolean
     }
 
     type FolderSizeResult = {
@@ -343,10 +345,11 @@
     {:else if filesState.selectedEntries.singleMeta}
         {@const selectedMeta = filesState.selectedEntries.singleMeta}
         {@const listing = filesState.selectedEntries.isCurrentFolderSelected ? filesState.data.entries : null}
+        {@const isDriveList = filesState.isDriveListOpen && filesState.selectedEntries.isCurrentFolderSelected}
         {@const fileCountValue = folderSizeResult
             ? `${folderSizeResult.fileCount} (${folderSizeResult.folderCount} folders)`
             : listing != null ? String(listing.length) : null}
-        {@const sizeBytes = folderSizeResult?.totalSize
+        {@const sizeBytes = isDriveList ? null : folderSizeResult?.totalSize
             ?? (listing != null ? calculateFilesSize(listing) : isFolder(selectedMeta) ? null : selectedMeta.size)}
 
         <div use:onActualClick={() => { filenameWrapped = !filenameWrapped }} class="w-full flex flex-col px-6 shrink-0 flex-none">
@@ -391,15 +394,17 @@
                 </div>
             {/if}
 
-            <div class="detail-container">
-                <p class="detail-title">Last modified at</p>
-                <p>{formatUnixMillis(selectedMeta.modifiedDate)}</p>
-            </div>
+            {#if !isDriveList}
+                <div class="detail-container">
+                    <p class="detail-title">Last modified at</p>
+                    <p>{formatUnixMillis(selectedMeta.modifiedDate)}</p>
+                </div>
 
-            <div class="detail-container">
-                <p class="detail-title">Created at</p>
-                <p>{formatUnixMillis(selectedMeta.createdDate)}</p>
-            </div>
+                <div class="detail-container">
+                    <p class="detail-title">Created at</p>
+                    <p>{formatUnixMillis(selectedMeta.createdDate)}</p>
+                </div>
+            {/if}
 
             {#if contentMetadata?.width && contentMetadata?.height}
                 <div class="detail-container">
@@ -418,7 +423,7 @@
         
         {#if auth.authenticated && !filesState.isShared}
             <div class="px-6 flex flex-col gap-2">
-                {#if isFolder(selectedMeta) && (!folderSizeResult || folderSizeResult.failedFolderCount > 0)}
+                {#if isFolder(selectedMeta) && !isDriveList && (!folderSizeResult || folderSizeResult.failedFolderCount > 0)}
                     <button
                         disabled={folderSizeLoading}
                         class="basic-button bg-surface-content-button! disabled:opacity-50 disabled:cursor-not-allowed"
@@ -465,6 +470,9 @@
                                                 </div>
                                             </Dialog.Close>
                                         </div>
+                                        {#if permissionData?.isPathOnly}
+                                            {@render pathOnlyNote()}
+                                        {/if}
                                         {#if permissionEntityPath}
                                             <FilePermissionCreator path={permissionEntityPath} onFinish={onFilePermissionCreated} excludedRoles={existing!.roles} excludedUsers={existing!.users}></FilePermissionCreator>
                                         {/if}
@@ -575,7 +583,18 @@
                             {/if}
                         {/if}
                     </div>
+                    {#if permissionData?.isPathOnly && permissionData.permissions.length > 0}
+                        <div class="px-2 mx-2 pt-2">
+                            {@render pathOnlyNote()}
+                        </div>
+                    {/if}
                 {/if}
+
+                {#snippet pathOnlyNote()}
+                    <p class="text-sm text-neutral-600 dark:text-neutral-400">
+                        Permissions stay with this path. If the file is moved or renamed outside Filemat, they don't follow it. This happens on FAT, exFAT and network drives, and for hard links.
+                    </p>
+                {/snippet}
             </div>
         {/if}
     {:else if appState.currentPath.accessibleFiles}

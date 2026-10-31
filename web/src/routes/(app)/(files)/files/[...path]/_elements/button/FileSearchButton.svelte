@@ -74,6 +74,9 @@
 </script>
 
 
-<button title="Search files" on:click={() => { search() }} class="file-action-button">
-    <MagnifyingGlassIcon />
-</button>
+<!-- The drive list can't be searched as a whole -->
+{#if !filesState.isDriveListOpen}
+    <button title="Search files" on:click={() => { search() }} class="file-action-button">
+        <MagnifyingGlassIcon />
+    </button>
+{/if}

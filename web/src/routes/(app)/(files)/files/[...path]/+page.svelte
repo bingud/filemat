@@ -1,6 +1,7 @@
 <script lang="ts">
     import { beforeNavigate, goto } from "$app/navigation"
-    import { appendTrailingSlash, dynamicInterval, explicitEffect, generateRandomNumber, isFile, isFolder, isPathDirectChild as isPathDirectChildOf, letterS, parentFromPath, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { dynamicInterval, explicitEffect, generateRandomNumber, isFile, isFolder, letterS, unixNow } from "$lib/code/util/codeUtil.svelte"
+    import { isChildOf, isDirectChildOf, parentPath } from "$lib/code/util/path"
     import Loader from "$lib/component/Loader.svelte"
     import { onDestroy, onMount } from "svelte"
     import { breadcrumbState, createBreadcrumbState, destroyBreadcrumbState } from "./_code/breadcrumbState.svelte"
@@ -128,7 +129,7 @@
 
         const folderMeta = filesState.data.folderMeta
         // New path is a direct child of the folder we already have loaded
-        const pathIsChild = folderMeta ? isPathDirectChildOf(folderMeta.path, newPath) : false
+        const pathIsChild = folderMeta ? isDirectChildOf(newPath, folderMeta.path) : false
         // New path is that same already-loaded folder
         const pathIsParentFolder = folderMeta ? folderMeta.path === newPath : false
 
@@ -255,11 +256,11 @@
         const current = filesState.path || "/"
         // File view: scope is the parent folder (so siblings stay valid)
         const directory = filesState.data.fileMeta
-            ? (parentFromPath(current) || `/`)
+            ? (parentPath(current) ?? `/`)
             : current
 
         // Selection is outside this directory (and isn't the directory itself)
-        if (selected && !selected.startsWith(appendTrailingSlash(directory)) && selected !== directory) {
+        if (selected && !isChildOf(selected, directory) && selected !== directory) {
             filesState.selectedEntries.reset()
         }
     })

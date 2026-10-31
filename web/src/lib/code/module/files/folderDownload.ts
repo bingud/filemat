@@ -49,6 +49,54 @@ type DirectoryRemap = {
 const FILE_VS_FILE_RESOLUTIONS: FolderDownloadResolution[] = [`overwrite`, `skip`, `keep-both`]
 const TYPE_MISMATCH_RESOLUTIONS: FolderDownloadResolution[] = [`skip`, `keep-both`]
 
+const WINDOWS_INVALID_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g
+// Like the server's rule: the part before the first dot, without trailing spaces (`CON .txt`)
+const WINDOWS_RESERVED_FILENAME = /^(con|prn|aux|nul|conin\$|conout\$|com[0-9¹²³]|lpt[0-9¹²³]) *(\..*)?$/i
+
+/**
+ * Whether the browser runs on Windows, where local filenames have extra restrictions
+ */
+function isWindowsClient(): boolean {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
+    const platform = nav.userAgentData?.platform || nav.platform || ``
+    return /^win/i.test(platform)
+}
+
+/**
+ * Makes a server filename safe to create on the local disk.
+ *
+ * Only changes names on Windows clients. Replaces `<>:"/\|?*`, control characters and trailing dots or spaces with `_`,
+ * and prefixes reserved device names (`CON`, `NUL`, `COM1`, ...) with `_`.
+ */
+export function toLocalFilename(name: string): string {
+    if (!isWindowsClient()) return name
+
+    let result = name
+        .replace(WINDOWS_INVALID_FILENAME_CHARS, `_`)
+        .replace(/[. ]+$/, match => `_`.repeat(match.length))
+    if (WINDOWS_RESERVED_FILENAME.test(result)) result = `_${result}`
+    return result || `_`
+}
+
+/**
+ * Picks a local name that no other entry of the same download has taken in that local folder.
+ * Two server names can make one local name: `a:b` and `a?b` both become `a_b` on Windows, where `A.txt` and `a.txt` are one file too.
+ * `takenByParent` maps a local folder (relative path) to the names given in it so far.
+ */
+export function uniqueLocalFilename(parentRel: string, name: string, takenByParent: Map<string, string[]>): string {
+    let taken = takenByParent.get(parentRel)
+    if (!taken) {
+        taken = []
+        takenByParent.set(parentRel, taken)
+    }
+    const ignoreCase = isWindowsClient()
+    const key = (value: string) => ignoreCase ? value.toLowerCase() : value
+    const isTaken = taken.some(existing => key(existing) === key(name))
+    const unique = isTaken ? getUniqueFilename(name, taken, ignoreCase) : name
+    taken.push(unique)
+    return unique
+}
+
 export function joinRelativePath(parent: string, name: string): string {
     return parent ? `${parent}/${name}` : name
 }

@@ -2,12 +2,15 @@
     import { adminSystemState } from "$lib/code/state/adminSystemFetcher.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
     import { formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte";
+    import { displayPath } from "$lib/code/util/path"
     import Loader from "$lib/component/Loader.svelte";
 
     let isSaving = $state(false)
     let pathInput = $state(``)
 
-    let isUnchanged = $derived(pathInput === (adminSystemState.uploadFolderPath ?? ``))
+    // Shown the way the server OS writes paths. The server reads either form.
+    let savedPath = $derived(adminSystemState.uploadFolderPath == null ? null : displayPath(adminSystemState.uploadFolderPath))
+    let isUnchanged = $derived(pathInput === (savedPath ?? ``))
     let failedToLoad = $derived(adminSystemState.loadFailed)
     let isLoading = $derived(adminSystemState.loading && adminSystemState.uploadFolderPath == null)
 
@@ -18,15 +21,15 @@
     })
 
     $effect(() => {
-        if (adminSystemState.uploadFolderPath != null) {
-            pathInput = adminSystemState.uploadFolderPath
+        if (savedPath != null) {
+            pathInput = savedPath
         }
     })
 
     async function changeUploadFolderPath() {
         const conf = await confirmDialogState.show({
             title: `Change upload folder path?`,
-            message: `This will pause all uploads, and move all upload files to the new folder.`,
+            message: `This will pause all uploads, and move the uploads in progress to the new folder.`,
             cancelText: `Cancel`,
             confirmText: `Yes`
         })
@@ -60,14 +63,16 @@
             }
 
             adminSystemState.uploadFolderPath = response.content
-            pathInput = response.content
+            // The server may answer with the path already saved (typed in another case, or with a trailing separator),
+            // and then `savedPath` doesn't change and the effect above doesn't reset the input
+            pathInput = displayPath(response.content)
         } finally {
             isSaving = false
         }
     }
 
     function cancel() {
-        pathInput = adminSystemState.uploadFolderPath ?? ``
+        pathInput = savedPath ?? ``
     }
 </script>
 

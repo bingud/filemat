@@ -3,6 +3,7 @@ import { toast } from "@jill64/svelte-toast"
 import { config } from "../config/values"
 import type { filesState } from "../stateObjects/filesState.svelte"
 import { uiState } from "../stateObjects/uiState.svelte"
+import { appState } from "../stateObjects/appState.svelte"
 import { type SettingSectionId } from "../module/settings"
 import { generateRandomString } from "./codeUtil.svelte"
 
@@ -107,6 +108,9 @@ export function autofocus(
 
 
 export function prefixSlash(node: HTMLInputElement) {
+    // Windows paths start with a drive (`C:\Data`)
+    if (appState.platform.pathStyle === `windows`) return
+
     function ensureSlashPrefix() {
         if (!node.value.startsWith('/')) {
             const cursorPos = node.selectionStart || 0

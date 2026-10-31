@@ -10,6 +10,8 @@ export type FileMetadata = {
     isExecutable: boolean,
     isWritable: boolean,
     isSymlink: boolean,
+    // Set on a listed folder: whether names in it are case-sensitive
+    caseSensitive?: boolean,
 }
 
 export type FullFileMetadata = FileMetadata & {

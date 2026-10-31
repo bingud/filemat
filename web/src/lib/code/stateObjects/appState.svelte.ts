@@ -2,7 +2,7 @@ import { page } from "$app/state"
 import { untrack } from "svelte"
 import type { Role } from "../auth/types"
 import type { ulid, ValuesOf } from "../types/types"
-import { entriesOf } from "../util/codeUtil.svelte"
+import { entriesOf, filePageUrl } from "../util/codeUtil.svelte"
 import { auth } from "./authState.svelte"
 
 export const filePagePaths = {
@@ -12,6 +12,53 @@ export const filePagePaths = {
     "/share": "sharedFiles",
     "/shared-files": "allSharedFiles",
 } as const
+
+/**
+ * Native path style of the server OS
+ */
+export type AppPlatform = { pathStyle: "posix" | "windows", separator: string, filenameRules: FilenameRules }
+
+/**
+ * Rules for a single file or folder name on the server OS (`FilenameRules` on the server)
+ */
+export type FilenameRules = {
+    invalidChars: string,
+    /**
+     * Reject characters 0x00-0x1F
+     */
+    rejectControlChars: boolean,
+    reservedNames: string[],
+    /**
+     * Reserved names also match with any extension and in any case (`con.txt` on Windows)
+     */
+    reservedNamesIgnoreExtension: boolean,
+    rejectTrailingDotOrSpace: boolean,
+    maxLength: number,
+    lengthUnit: "utf8Bytes" | "utf16Units",
+}
+
+/**
+ * Linux rules, used until the server state is loaded
+ */
+export const posixFilenameRules: FilenameRules = {
+    invalidChars: `/\u0000`,
+    rejectControlChars: false,
+    reservedNames: [`.`, `..`],
+    reservedNamesIgnoreExtension: false,
+    rejectTrailingDotOrSpace: false,
+    maxLength: 255,
+    lengthUnit: `utf8Bytes`,
+}
+
+/**
+ * Server file paths. They contain the OS username, so the server only sends them before setup or to logged-in users.
+ */
+export type AppPaths = {
+    setupCodeFile: string,
+    authCodeFile: string,
+    defaultUploadFolder: string,
+    defaultThumbnailCacheFolder: string,
+}
 
 const sitePaths = {
     ...filePagePaths,
@@ -38,6 +85,14 @@ class AppState {
      * Absolute prefix for content downloads, uploads, and thumbnails.
      */
     contentBaseUrl = $state(``)
+    /**
+     * Native path style and separator of the server OS
+     */
+    platform: AppPlatform = $state({ pathStyle: `posix`, separator: `/`, filenameRules: posixFilenameRules })
+    /**
+     * Server file paths, null until loaded or when not sent
+     */
+    paths: AppPaths | null = $state(null)
     
     /**
      * Indicates whether the first page the user entered is stil open 
@@ -93,7 +148,8 @@ class AppState {
             state[name] = matches
         })
 
-        state["home"] = current === `/files${auth.principal?.homeFolderPath}`
+        const homeFolderPath = auth.principal?.homeFolderPath
+        state["home"] = homeFolderPath != null && current === filePageUrl(homeFolderPath)
 
         return state as Record<ValuesOf<typeof sitePaths> | "home", boolean>
     })

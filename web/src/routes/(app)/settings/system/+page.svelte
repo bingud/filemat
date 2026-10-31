@@ -7,6 +7,7 @@
     import UploadFolderPathSetting from "./_setting-components/UploadFolderPathSetting.svelte";
     import ContentBaseUrlSetting from "./_setting-components/ContentBaseUrlSetting.svelte";
     import ThumbnailCacheSetting from "./_setting-components/ThumbnailCacheSetting.svelte";
+    import VideoPreviewsSetting from "./_setting-components/VideoPreviewsSetting.svelte"
 
     const title = "System Settings"
 
@@ -20,6 +21,7 @@
     {@render settingCell(UploadFolderPathSetting)}
     {@render settingCell(ContentBaseUrlSetting)}
     {@render settingCell(ThumbnailCacheSetting)}
+    {@render settingCell(VideoPreviewsSetting)}
     {@render settingCell(SymbolicLinksSetting)}
 
     <ExposedFilesSetting></ExposedFilesSetting>

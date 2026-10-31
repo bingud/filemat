@@ -1,5 +1,6 @@
 <script lang="ts">
     import { deepEqual, formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte"
+    import { displayPath } from "$lib/code/util/path"
     import Loader from "$lib/component/Loader.svelte"
     import { onMount } from "svelte"
 
@@ -123,7 +124,8 @@
                 maxAgeHours = maxAgeSeconds / 3600
             }
         }
-        const normalized = { ...json, maxAge: maxAgeHours }
+        // Shown the way the server OS writes paths (`C:\Users`). The server reads either form.
+        const normalized = { ...json, folderPath: json.folderPath == null ? null : displayPath(json.folderPath), maxAge: maxAgeHours }
         originalOptions = normalized
         options = { ...normalized }
         dataLoadError = null

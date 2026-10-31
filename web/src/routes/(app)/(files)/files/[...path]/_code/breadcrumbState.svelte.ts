@@ -2,6 +2,7 @@ import { uiState } from "$lib/code/stateObjects/uiState.svelte"
 import { arrayRemove, forEachReversed, generateRandomNumber, removeString } from "$lib/code/util/codeUtil.svelte"
 import { calculateTextWidth, remToPx } from "$lib/code/util/uiUtil"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
+import { joinSegments } from "$lib/code/util/path"
 
 export type Segment = { name: string, path: string, width: number }
 
@@ -16,7 +17,7 @@ class BreadcrumbState {
         
         let breadcrumbs = filesState.segments.map((seg, index) => {
             const width = calculateTextWidth(seg)
-            const fullPath = filesState.segments.slice(0, index + 1).join("/")
+            const fullPath = joinSegments(filesState.segments.slice(0, index + 1))
             return { name: seg, path: fullPath, width: width }
         })
 

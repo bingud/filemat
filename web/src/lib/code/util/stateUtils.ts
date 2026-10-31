@@ -171,9 +171,3 @@ export function getContentUrl(path: string, options: {
     ].filter(Boolean).join(`&`)
     return `${joinContentUrl(config.fileContentUrlPathPrefix)}?${pathParam}${extras ? `&${extras}` : ``}`
 }
-
-export function getZipContentUrl(path: string, encodeParam: boolean = false): string {
-    const pathParam = `path=${encodeParam ? encodeUrlFilePath(path) : path}`
-    const shareTokenParam = filesState.getIsShared() ? `shareToken=${filesState.meta.shareToken}` : ``
-    return `${joinContentUrl(`/api/v1/file/zip-multiple-content`)}?${pathParam}${shareTokenParam ? '&' : ''}${shareTokenParam}`
-}

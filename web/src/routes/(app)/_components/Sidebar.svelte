@@ -17,6 +17,7 @@
     import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
+    import { filePageUrl } from "$lib/code/util/codeUtil.svelte"
 
     function hide() { uiState.menuOpen = false }
 
@@ -39,7 +40,7 @@
                     </span>
                     <span class="label">All</span>
                 </a>
-                <a href="/files{auth.principal?.homeFolderPath || ""}" title="Home folder" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home} class:pointer-events-none={!auth.principal?.homeFolderPath}>
+                <a href={filePageUrl(auth.principal?.homeFolderPath || ``)} title="Home folder" on:click={hide} class="sidebar-button" class:current-button={appState.currentPath.home} class:pointer-events-none={!auth.principal?.homeFolderPath}>
                     <span class="button-icon">
                         <HomeIcon />
                     </span>

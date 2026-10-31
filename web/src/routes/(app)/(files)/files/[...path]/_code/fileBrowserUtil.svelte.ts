@@ -3,7 +3,7 @@ import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { encodeUrlFilePath, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { encodeUrlFilePath, filenameFromPath, filePageUrl } from "$lib/code/util/codeUtil.svelte"
 import { config, fullscreenPixelSizes, fullscreenPreviewSize, maxCachedPixelSize, noSwCacheParam, thumbnailCacheQuery } from "$lib/code/config/values"
 import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl"
 import { SvelteSet } from "svelte/reactivity"
@@ -860,8 +860,7 @@ export function openEntry(path: string) {
 }
 
 export function getFilePagePath(path: string, pagePath: string) {
-    const slash = path.startsWith('/') ? '' : '/'
-    return `${pagePath}${slash}${encodeUrlFilePath(path)}`
+    return filePageUrl(path, pagePath)
 }
 
 /**

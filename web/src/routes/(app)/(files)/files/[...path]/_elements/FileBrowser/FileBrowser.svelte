@@ -1,17 +1,20 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
-    import { filenameFromPath, parentFromPath, appendFilename, resolvePath, isFolder, safeFetch, formData, handleException, handleErr, includesList } from "$lib/code/util/codeUtil.svelte"
+    import { filenameFromPath, appendFilename, resolvePath, isFolder, safeFetch, formData, handleException, handleErr, includesList } from "$lib/code/util/codeUtil.svelte"
+    import { childPath, parentPath } from "$lib/code/util/path"
     import { onMount } from "svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
     import DownloadPanel from "../ui/DownloadPanel.svelte"
     import { uploadState } from "$lib/code/stateObjects/subState/uploadState.svelte"
     import { downloadState } from "$lib/code/stateObjects/subState/downloadState.svelte"
-    import { copyFile, deleteFiles, moveFile, moveMultipleFiles } from "$lib/code/module/files/files"
+    import { copyFile, deleteFiles, deleteWarning, moveFile, moveMultipleFiles } from "$lib/code/module/files/files"
     import { confirmDialogState, folderSelectorState, inputDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
     import FolderTreeSelector from "../ui/FolderTreeSelector.svelte"
     import { appState } from '$lib/code/stateObjects/appState.svelte'
     import { isDialogOpen } from "$lib/code/util/stateUtils"
+    import { Validator } from "$lib/code/util/validation"
+    import { toast } from "@jill64/svelte-toast"
     import { textFileViewerState } from "../../_code/textFileViewerState.svelte"
     import { openEntry, selectSiblingFile, scrollSelectedEntryIntoView, handleTypeAheadKey } from "../../_code/fileBrowserUtil.svelte";
     import FileList from "./FileList.svelte";
@@ -47,7 +50,7 @@
         const selectedEntryPath = filesState.selectedEntries.selectedPositions.getChild(filesState.path)
         if (!selectedEntryPath) return
 
-        const filename = filesState.path === "/" ? `${selectedEntryPath}` : `${filesState.path}/${selectedEntryPath}`
+        const filename = childPath(filesState.path, selectedEntryPath)
         
         if (filesState.data.entries?.some(v => v.path === filename)) {
             filesState.selectedEntries.setSelected(filename)
@@ -172,7 +175,7 @@
         // Show confirmation dialog and handle the result
         confirmDialogState.show({
             title: "Delete File",
-            message: `Are you sure you want to delete "${entry.filename!}"? This cannot be undone.`,
+            message: `Are you sure you want to delete "${entry.filename!}"? ${deleteWarning()}`,
             confirmText: "Delete",
             cancelText: "Cancel"
         })?.then((confirmed: boolean) => {
@@ -191,7 +194,7 @@
 
         const newPath = await folderSelectorState.show!({
             title: "Choose the new file location:",
-            initialSelection: parentFromPath(entry.path),
+            initialSelection: parentPath(entry.path) ?? `/`,
             defaultFilename: entry.filename,
             resultType: "destination"
         })
@@ -205,7 +208,7 @@
 
         const newPath = await folderSelectorState.show!({
             title: "Choose location for the copied file:",
-            initialSelection: parentFromPath(entry.path),
+            initialSelection: parentPath(entry.path) ?? `/`,
             defaultFilename: entry.filename,
             resultType: "destination"
         })
@@ -269,8 +272,13 @@
         })
         if (!newFilename) return
         if (newFilename === entry.filename) return
+        const invalidReason = Validator.filename(newFilename)
+        if (invalidReason) {
+            toast.error(invalidReason)
+            return
+        }
 
-        const parent = parentFromPath(entry.path)
+        const parent = parentPath(entry.path) ?? `/`
         const newPath = resolvePath(parent, newFilename)
         await moveFile(entry.path, newPath)
     }

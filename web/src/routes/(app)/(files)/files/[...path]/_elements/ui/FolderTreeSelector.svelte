@@ -3,6 +3,7 @@
     import { filesState } from '$lib/code/stateObjects/filesState.svelte'
     import { folderSelectorState } from '$lib/code/stateObjects/subState/utilStates.svelte'
     import { explicitEffect } from '$lib/code/util/codeUtil.svelte'
+    import { childPath, filenameOf, isRootPath, normalizePath, parentPath, pathSegments, stripSeparators } from "$lib/code/util/path"
     import { Dialog } from '$lib/component/bits-ui-wrapper'
     import ChevronDownIcon from '$lib/component/icons/ChevronDownIcon.svelte'
     import ChevronRightIcon from '$lib/component/icons/ChevronRightIcon.svelte'
@@ -37,9 +38,9 @@
 
         if (!selectedFolderPath && !filenameInput) return null
         
-        const folder = selectedFolderPath || ""
-        const divider = folder === "/" ? "" : "/" 
-        return folder + divider + filenameInput.replaceAll("/", "")
+        const folder = selectedFolderPath || `/`
+        const filename = stripSeparators(filenameInput)
+        return filename ? childPath(folder, filename) : folder
     })
 
     let initialFolder: string | null = $state(null)
@@ -64,17 +65,8 @@
                 initialFolder = options.initialSelection
             } else {
                 // No filename provided - parse it from initialSelection
-                const lastSlash = options.initialSelection.lastIndexOf(`/`)
-                if (lastSlash === 0) {
-                    initialFolder = `/`
-                    filenameInput = options.initialSelection.substring(1)
-                } else if (lastSlash > 0) {
-                    initialFolder = options.initialSelection.substring(0, lastSlash)
-                    filenameInput = options.initialSelection.substring(lastSlash + 1)
-                } else {
-                    initialFolder = `/`
-                    filenameInput = options.initialSelection
-                }
+                initialFolder = parentPath(options.initialSelection) ?? `/`
+                filenameInput = filenameOf(options.initialSelection)
             }
         }
         
@@ -149,20 +141,12 @@
         if (hideFilenameInput) {
             folder = fullPath || "/"
             file = ""
+        } else if (fullPath.endsWith(`/`)) {
+            // A trailing separator means the folder is typed, the filename comes next
+            folder = normalizePath(fullPath)
         } else {
-            const lastSlashIndex = fullPath.lastIndexOf('/')
-            
-            if (lastSlashIndex !== -1) {
-                if (lastSlashIndex === 0) {
-                    folder = "/"
-                    file = fullPath.substring(1)
-                } else {
-                    folder = fullPath.substring(0, lastSlashIndex)
-                    file = fullPath.substring(lastSlashIndex + 1)
-                }
-            } else {
-                file = fullPath
-            }
+            folder = parentPath(fullPath) ?? `/`
+            file = filenameOf(fullPath)
         }
 
         selectedFolderPath = folder
@@ -177,12 +161,12 @@
         if (!folderTree) return
         deselectAllNodes(folderTree)
 
-        if (path === "/" || path === "") {
+        if (isRootPath(path)) {
             folderTree.isSelected = true
             return
         }
 
-        const segments = path.split('/').filter(s => s.length > 0)
+        const segments = pathSegments(path)
         let currentNode = folderTree
 
         for (const segment of segments) {
@@ -196,9 +180,7 @@
     }
 
     function getParentPath(path: string): string {
-        const segments = path.split(`/`).filter(s => s.length > 0)
-        const parentSegments = segments.slice(0, -1)
-        return parentSegments.length === 0 ? `/` : `/` + parentSegments.join(`/`)
+        return parentPath(path) ?? `/`
     }
 
     async function initializeTree() {
@@ -237,9 +219,9 @@
 
     function findNodeByPath(path: string): FolderNode | null {
         if (!folderTree) return null
-        if (path === "/") return folderTree
+        if (isRootPath(path)) return folderTree
 
-        const segments = path.split('/').filter(s => s.length > 0)
+        const segments = pathSegments(path)
         let currentNode = folderTree
 
         for (const segment of segments) {
@@ -254,10 +236,10 @@
     function buildSkeleton(path: string) {
         if (!folderTree) return
         
-        const segments = path.split('/').filter(s => s.length > 0)
+        const segments = pathSegments(path)
         let currentNode = folderTree
         
-        if (path === "/") {
+        if (segments.length === 0) {
             selectFolder(currentNode)
             return
         }
@@ -270,10 +252,9 @@
             let child = currentNode.children.find(c => c.name === segment)
             
             if (!child) {
-                const parentPathPrefix = currentNode.fullPath === "/" ? "" : currentNode.fullPath
                 child = {
                     name: segment,
-                    fullPath: `${parentPathPrefix}/${segment}`,
+                    fullPath: childPath(currentNode.fullPath, segment),
                     children: null,
                     isSelected: false,
                     isLoading: false,
