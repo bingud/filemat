@@ -1,7 +1,17 @@
-# build.ps1 - Deployment building script
+# build.ps1 - Release build: the server JAR with the web app inside, and optionally the Windows zip and the Docker image.
+#
+# Usage:
+#   .\utilities\build.ps1 -ImageVersion 1.0.0                  JAR only
+#   .\utilities\build.ps1 -ImageVersion 1.0.0 -Windows         JAR and the portable Windows zips, x64 and arm64 (needs Windows)
+#   .\utilities\build.ps1 -ImageVersion 1.0.0 -Docker -Push    JAR and Docker image, pushed to Docker Hub
+#
+# The results are copied to build\ in the repository root.
 param(
+    [Parameter(Mandatory = $true)]
     [string]$ImageVersion,
-    [switch]$NoPush
+    [switch]$Windows,
+    [switch]$Docker,
+    [switch]$Push
 )
 
 # Set error action preference to stop on errors
@@ -38,160 +48,75 @@ function Invoke-WithRetry {
     }
 }
 
-
-# Get script directory and set base path
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$BasePath = Split-Path -Parent $ScriptDir
-
-# Define paths relative to base directory
-$FrontendFolder = Join-Path $BasePath "web"
+$BasePath = Split-Path -Parent $PSScriptRoot
 $BackendFolder = Join-Path $BasePath "server"
-$FrontendBuildFolder = Join-Path $FrontendFolder "build"
-$BackendStaticFolder = Join-Path $BackendFolder "src\main\resources\static"
-$DockerfilePath = Join-Path $BackendFolder "Dockerfile"
 $BackendJarFile = Join-Path $BackendFolder "build\libs\server-app.jar"
+$WindowsZipFiles = @("x64", "arm64") | ForEach-Object { Join-Path $BackendFolder "build\dist\filemat-$ImageVersion-windows-$_.zip" }
 $BuildOutputFolder = Join-Path $BasePath "build"
 
 # Docker configuration
 $DockerRepo = "bingud/filemat"
-$ImageTag = "" # Initialize variable
+$ImageTag = ""
 
 Write-Host "=== Deployment Build Script ===" -ForegroundColor Green
 Write-Host "Base Path: $BasePath" -ForegroundColor Gray
-
-if (-not (Get-Process -Name 'docker' -ErrorAction SilentlyContinue)) {
-    Write-Warning 'Docker is not running.'
-    Start-Sleep -Seconds 1
-}
-
-# Get image version from user if not provided
-if (-not $ImageVersion) {
-    $ImageVersion = Read-Host "Enter image version"
-    if (-not $ImageVersion) {
-        Write-Host "Error: Image version is required" -ForegroundColor Red
-        exit 1
-    }
-}
-
 Write-Host "Building version: $ImageVersion" -ForegroundColor Yellow
 
+Push-Location $BackendFolder
 try {
-    # Step 1: Build frontend
-    Write-Host "`n1. Building frontend..." -ForegroundColor Cyan
-    Set-Location $FrontendFolder
-    if (-not (Test-Path "package.json")) {
-        throw "package.json not found in frontend folder"
-    }
-    Invoke-WithRetry -ScriptBlock { npm install }
-    if (Test-Path $FrontendBuildFolder) {
-        Remove-Item $FrontendBuildFolder -Recurse -Force
-    }
-    npm run build
-    if ($LASTEXITCODE -ne 0) { throw "Frontend build failed" }
-    Write-Host "(Success) Frontend build completed" -ForegroundColor Green
+    # Step 1: Gradle builds the web app, the JAR and the Windows zips
+    Write-Host "`n1. Building with Gradle..." -ForegroundColor Cyan
+    $Tasks = @("build")
+    if ($Windows) { $Tasks += "windowsDist" }
+    & .\gradlew.bat @Tasks "-PreleaseVersion=$ImageVersion"
+    if ($LASTEXITCODE -ne 0) { throw "Gradle build failed" }
+    Write-Host "(Success) Gradle build completed" -ForegroundColor Green
 
-    # Step 2: Copy frontend files to backend static folder
-    Write-Host "`n2. Copying frontend files to backend..." -ForegroundColor Cyan
-    if (-not (Test-Path $BackendStaticFolder)) {
-        New-Item -ItemType Directory -Path $BackendStaticFolder -Force | Out-Null
-    }
-    if (Test-Path $BackendStaticFolder) {
-        Get-ChildItem $BackendStaticFolder -Recurse | Remove-Item -Force -Recurse
-    }
-    if (Test-Path $FrontendBuildFolder) {
-        Copy-Item -Path "$FrontendBuildFolder\*" `
-            -Destination $BackendStaticFolder -Recurse -Force
-        Write-Host `
-            "(Success) Frontend files copied to backend static folder" `
-            -ForegroundColor Green
-    }
-    else {
-        throw "Frontend build folder not found: $FrontendBuildFolder"
-    }
-
-    # Step 3: Build backend
-    Write-Host "`n3. Building backend..." -ForegroundColor Cyan
-    Set-Location $BackendFolder
-    if (-not (Test-Path "gradlew.bat") -and -not (Test-Path "gradlew")) {
-        throw "Gradle wrapper not found in backend folder"
-    }
-    $GradlewCommand = if (Test-Path "gradlew.bat") { ".\gradlew.bat" } else { ".\gradlew" }
-    & $GradlewCommand build
-    if ($LASTEXITCODE -ne 0) { throw "Backend build failed" }
-    if (-not (Test-Path $BackendJarFile)) {
-        throw "Backend jar file not found: $BackendJarFile"
-    }
-    Write-Host "(Success) Backend build completed" -ForegroundColor Green
-
-    # Step 4 & 6: Docker build and push (optional)
-    $BuildDockerChoice = Read-Host "`nDo you want to build a Docker container? (y/N)"
-    if ($BuildDockerChoice -match "^[Yy]") {
-        # Step 4: Build Docker container
-        Write-Host "`n4. Building Docker container..." -ForegroundColor Cyan
-        if (-not (Test-Path $DockerfilePath)) {
-            throw "Dockerfile not found: $DockerfilePath"
+    # Step 2: Docker image
+    if ($Docker) {
+        Write-Host "`n2. Building Docker container..." -ForegroundColor Cyan
+        if (-not (Get-Process -Name 'docker' -ErrorAction SilentlyContinue)) {
+            Write-Warning 'Docker is not running.'
         }
         $ImageTag = "${DockerRepo}:${ImageVersion}"
         $LatestTag = "${DockerRepo}:latest"
         Invoke-WithRetry -ScriptBlock {
-            docker build -t $ImageTag -t $LatestTag -f $DockerfilePath .
+            docker build -t $ImageTag -t $LatestTag -f Dockerfile .
         }
         Write-Host "(Success) Docker image built: $ImageTag" -ForegroundColor Green
 
-        # Step 6: Push to Docker Hub (optional)
-        if (-not $NoPush) {
-            Write-Host "`n6. Docker Hub push..." -ForegroundColor Cyan
-            $PushChoice = Read-Host "Do you want to push to Docker Hub? (y/N)"
-            if ($PushChoice -match "^[Yy]") {
-                Write-Host "Pushing to Docker Hub..." -ForegroundColor Yellow
-                Invoke-WithRetry -ScriptBlock { docker push $ImageTag }
-                Invoke-WithRetry -ScriptBlock { docker push $LatestTag }
-                Write-Host "(Success) Images pushed to Docker Hub" -ForegroundColor Green
-            }
-            else {
-                Write-Host "Skipping Docker Hub push" -ForegroundColor Yellow
-            }
+        if ($Push) {
+            Write-Host "Pushing to Docker Hub..." -ForegroundColor Yellow
+            Invoke-WithRetry -ScriptBlock { docker push $ImageTag }
+            Invoke-WithRetry -ScriptBlock { docker push $LatestTag }
+            Write-Host "(Success) Images pushed to Docker Hub" -ForegroundColor Green
         }
-        else {
-            Write-Host "`n6. Skipping Docker Hub push (NoPush flag specified)" `
-                -ForegroundColor Yellow
-        }
-    }
-    else {
-        Write-Host "`nSkipping Docker build and push." -ForegroundColor Yellow
     }
 
-    # Step 5: Move and rename backend JAR
-    Write-Host "`n5. Moving final backend JAR..." -ForegroundColor Cyan
-    if (-not (Test-Path $BuildOutputFolder)) {
-        New-Item -ItemType Directory -Path $BuildOutputFolder -Force | Out-Null
+    # Step 3: Copy the results to build\
+    Write-Host "`n3. Copying the results..." -ForegroundColor Cyan
+    New-Item -ItemType Directory -Path $BuildOutputFolder -Force | Out-Null
+    $DestinationJarPath = Join-Path $BuildOutputFolder "filemat-server-${ImageVersion}.jar"
+    Copy-Item -Path $BackendJarFile -Destination $DestinationJarPath -Force
+    if ($Windows) {
+        Copy-Item -Path $WindowsZipFiles -Destination $BuildOutputFolder -Force
     }
-    $NewJarFileName = "filemat-server-${ImageVersion}.jar"
-    $DestinationJarPath = Join-Path $BuildOutputFolder $NewJarFileName
-    Move-Item -Path $BackendJarFile -Destination $DestinationJarPath -Force
-    if (-not (Test-Path $DestinationJarPath)) {
-        throw "Failed to move backend JAR file"
-    }
-    Write-Host "(Success) Backend JAR moved to $DestinationJarPath" -ForegroundColor Green
 
     Write-Host "`n=== Build completed successfully! ===" -ForegroundColor Green
     if ($ImageTag) {
         Write-Host "Image: $ImageTag" -ForegroundColor White
     }
     Write-Host "JAR file: $DestinationJarPath" -ForegroundColor White
-
+    if ($Windows) {
+        foreach ($ZipFile in $WindowsZipFiles) {
+            Write-Host "Windows zip: $(Join-Path $BuildOutputFolder (Split-Path -Leaf $ZipFile))" -ForegroundColor White
+        }
+    }
 }
 catch {
     Write-Host "`nError: $($_.Exception.Message)" -ForegroundColor Red
-    Read-Host 'Press any key to exit'
     exit 1
 }
 finally {
-    Set-Location "$BasePath\utilities"
+    Pop-Location
 }
-
-# Usage examples
-Write-Host "`nUsage examples:" -ForegroundColor Gray
-Write-Host "  .\utilities\build.ps1 -ImageVersion '1.0.0'" -ForegroundColor Gray
-Write-Host "  .\utilities\build.ps1 -ImageVersion '1.0.0' -NoPush" `
-    -ForegroundColor Gray

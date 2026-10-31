@@ -30,9 +30,8 @@ Similar to other alternatives you might know: Nextcloud Files, FileBrowser.org
 
 ## Requirements
 
-- Linux
-- Java 17
-- (Or just Docker)
+- Linux with Java 21, or Docker
+- Windows 10 or 11, x64 or ARM64 (beta; the ARM64 zip is untested): the portable zip includes Java ([Windows guide](</docs/windows.md>))
 
 > To configure an alternative content server URL, your browser must allow third-party cookies.
 
@@ -48,11 +47,17 @@ Filemat is currently not available on `apt`.
 
 ### \- Running normally
 
-Make sure your machine has Linux and Java 17 installed.  
+Make sure your machine has Linux and Java 21 installed.  
 Download the JAR file from the releases section.  
   
 Use this command to run the file with Java (change the filename according to the JAR file you downloaded):  
 `java -jar filemat.jar`  
+
+
+### \- Running on Windows (beta)
+
+Download `filemat-<version>-windows-x64.zip` (`-arm64.zip` for Windows on ARM) from the releases section, unzip it and run `filemat.cmd`.  
+It includes Java and FFmpeg. [See the Windows guide](</docs/windows.md>)  
 
 
 ## Configuration
@@ -62,18 +67,20 @@ Use this command to run the file with Java (change the filename according to the
 
 ### \- Environment variables
 
-Input multiple values by putting a colon in between (`/one:/two`)
+Input multiple values by putting a colon in between (`/one:/two`). On Windows, use a semicolon (`C:\One;D:\Two`).
 
 | Name                                                                 | Description                                                          | Default value                                                        | Example value                                                        |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | FM\_HIDDEN\_FOLDER\_PATHS                                            | List of folder paths to fully exclude and block.                     |                                                                      | /root:/home/folder                                                   |
-| FM\_HIDE\_SENSITIVE\_FOLDERS                                         | Whether to hide sensitive Linux folders (like /root, .ssh)           | true                                                                 | false                                                                |
+| FM\_HIDE\_SENSITIVE\_FOLDERS                                         | Whether to hide sensitive system folders (like /root, .ssh)          | true                                                                 | false                                                                |
 | FM\_NON\_SENSITIVE\_FOLDERS                                          | List of folders to exclude from sensitive folder list                |                                                                      | /root:/etc/ssh                                                       |
 | FM\_FOLLOW\_SYMBOLIC\_LINKS                                          | Whether to follow symbolic links, or show them as normal files       | false                                                                | true                                                                 |
 | FM\_FORCE\_DELETABLE\_FOLDERS                                        | List of protected system folders to be made deletable                |                                                                      | /root:/etc                                                           |
 | FM\_ALLOW\_READ\_DATA\_FOLDER                                        | Allow the application data folder to be accessed                     | false                                                                | true                                                                 |
 | FM\_ALLOW\_WRITE\_DATA\_FOLDER                                       | Allow the application data folder to be modified                     | false                                                                | true                                                                 |
 | FM\_PRINT\_LOGS                                                      | Whether to print logs to console                                     | true                                                                 | false                                                                |
+| FM\_DATA\_DIR                                                        | Application data folder                                              | /var/lib/filemat (Windows: %LOCALAPPDATA%\Filemat)                   | /srv/filemat-data                                                    |
+| FM\_FFMPEG\_PATH                                                     | Full path of an ffmpeg executable for video previews, where the built-in FFmpeg doesn't load (Windows) | ffmpeg on PATH                                 | C:\ffmpeg\bin\ffmpeg.exe                                            |
 | FM\_DEV\_MODE                                                        | Whether Filemat is in dev mode                                       | false                                                                | true                                                                 |
 
 
@@ -121,11 +128,13 @@ For larger changes, please open an issue first to discuss what you want to add o
 
 ### Development setup
 
-1. Start the backend (`./gradlew bootRun` in `server/`) with `FM_DEV_MODE=true`. It listens on port `8080`.
+1. Start the backend (`./gradlew bootRun` in `server/`, `.\gradlew.bat bootRun` on Windows) with `FM_DEV_MODE=true`. It listens on port `8080`.
 2. Start the frontend (`npm install`, then `npm run dev` in `web/`) and open the URL Vite prints.
 
+In PowerShell, set the variables with `$env:FM_DEV_MODE = "true"` before the command.
+
 The Vite dev server proxies `/api` to `http://localhost:8080`, so no separate reverse proxy is needed.
-To use a different backend address, set `FM_DEV_BACKEND` (for example `FM_DEV_BACKEND=http://localhost:9090 npm run dev`).
+To use a different backend address, set `FM_DEV_BACKEND` (for example `FM_DEV_BACKEND=http://localhost:9090 npm run dev`, or `$env:FM_DEV_BACKEND = "http://localhost:9090"; npm run dev` in PowerShell).
 This proxy is dev-only and does not affect production builds.
 
 The alternative content server URL feature uses cross-origin requests and can't be tested through this proxy.

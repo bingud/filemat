@@ -1,0 +1,18 @@
+Filemat for Windows includes this third-party software.
+
+FFmpeg (ffmpeg\ffmpeg.exe)
+    Build @FFMPEG_BUILD@ by BtbN.
+    License: GNU GPL version 3 (FFmpeg-GPL-3.0.txt).
+    Download: https://github.com/BtbN/FFmpeg-Builds/releases/tag/@FFMPEG_RELEASE@
+    Build scripts: https://github.com/BtbN/FFmpeg-Builds
+    Source: https://github.com/FFmpeg/FFmpeg, at the commit after "-g" in the build name.
+
+Java runtime (jre)
+    Eclipse Temurin @TEMURIN_RELEASE@ (OpenJDK).
+    License: GNU GPL version 2 with the Classpath Exception. The license texts are in jre\legal.
+    Download: https://github.com/adoptium/temurin21-binaries/releases
+    Source: https://github.com/adoptium/jdk21u, at the tag of the same name.
+
+Filemat (filemat.jar)
+    License: GNU GPL version 3 (Filemat-GPL-3.0.txt).
+    Source: https://github.com/eastoid/filemat

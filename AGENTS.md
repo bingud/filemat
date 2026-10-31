@@ -15,8 +15,9 @@ Features: user auth, file permissions, public file sharing
 ## Build, Lint, and Test Commands
 
 ### Server (Kotlin/Spring Boot)
-Working Directory: `./server`
-- **Build**: `./gradlew build`
+Working Directory: `./server` (on Windows use `.\gradlew.bat`, and set env vars in PowerShell with `$env:FM_DEV_MODE = "true"`)
+- **Build**: `./gradlew build`. `bootJar` also builds `../web` with the installed npm and puts it in the JAR; `-PskipWeb` leaves it out.
+- **Windows zips**: `.\gradlew.bat windowsDist -PreleaseVersion=1.2.3` builds x64 and arm64 (`windowsDistX64` or `windowsDistArm64` for one). Windows only; downloads the pinned FFmpeg builds and Temurin JDKs for jlink.
 - **Run Tests**: `./gradlew test`
 - **Run Single Test**: `./gradlew test --tests "package.ClassName"`
 - **Run Single Test Method**: `./gradlew test --tests "package.ClassName.methodName"`
@@ -29,6 +30,7 @@ Working Directory: `./web`
 - **Dev Server**: `npm run dev`
 - **Build**: `npm run build`
 - **Type Check**: `npm run check` (Runs `svelte-check`)
+- **Unit Tests**: `npm test` (Vitest, `*.test.ts` next to the code)
 - **Watch Checks**: `npm run check:watch`
 
 ## Code Style & Conventions
@@ -65,6 +67,8 @@ Working Directory: `./web`
 ---
 
 ## Project information
+
+- Windows support: start at `docs/windows-status.md` (what's left, and which doc holds what).
 
 ### Frontend
 
