@@ -5,14 +5,11 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.isAbsoluteHttpsUrl
-import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.TusService
-import org.filemat.server.module.file.service.file.FileService
-import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.model.Setting
@@ -25,9 +22,7 @@ import kotlin.concurrent.withLock
 class SettingService(
     private val settingRepository: SettingRepository,
     private val logService: LogService,
-    private val filesystemService: FilesystemService,
     private val tusService: TusService,
-    private val fileService: FileService,
     private val state: State,
 ) {
 
@@ -35,10 +30,12 @@ class SettingService(
         tusService.uploadLock.writeLock().withLock {
             val oldPath = FilePath.of(state.app.uploadFolderPath)
 
-            val newPath = resolvePath(rawNewPath, state.app.followSymlinks, allowNonExistent = true).let { result ->
-                if (result.isNotSuccessful) return result.cast()
-                result.value
+            // Filemat moves and deletes its own files there, so it can't be a root or hold the data folder
+            val newPath = state.realInternalFolder(rawNewPath).let { result ->
+                if (result.isNotSuccessful) return Result.reject("Upload folder: ${result.error}")
+                FilePath.ofAlreadyNormalized(result.value)
             }
+            if (newPath.pathKey == oldPath.pathKey) return Result.ok(newPath)
 
             db_setSetting(Props.Settings.uploadFolderPath, newPath.pathString).let {
                 if (it.isNotSuccessful) return it.cast()
@@ -53,31 +50,21 @@ class SettingService(
                 message = "Old path:\n$oldPath\n\nNew path:\n$newPath",
                 initiatorId = user.userId,
             )
-            val createdTusService = tusService.initializeTusService()
-            val tusMessage = if (createdTusService) "" else "Failed to start upload service."
 
-            val previousFolderExists = filesystemService.exists(oldPath.path, false)
-
-            if (previousFolderExists) {
-                // Move files to new location
-                fileService.moveFile(user, oldPath, newPath).let {
-                    if (it.isNotSuccessful) {
-                        logService.info(
-                            type = LogType.SYSTEM,
-                            action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
-                            description = "Failed to move upload files to new upload folder.",
-                            message = "str",
-                            initiatorId = user.userId,
-                        )
-
-                        val tusError = if (tusMessage.isNotBlank()) "($tusMessage)" else ""
-                        val error = "${it.errorOrNull ?: ""} $tusError"
-                        return Result.error("Upload folder was changed. Failed to move upload folder: $error")
-                    }
-                }
+            // Uploads in progress move along, so they can resume
+            val moved = tusService.moveUploadsInProgress(from = oldPath.path, to = newPath.path)
+            if (moved.isNotSuccessful) {
+                logService.warn(
+                    type = LogType.SYSTEM,
+                    action = UserAction.UPDATE_UPLOAD_FOLDER_PATH,
+                    description = "Uploads in progress were not moved to the new upload folder.",
+                    message = "Old path:\n$oldPath\n\nNew path:\n$newPath\n\n${moved.errorOrNull ?: ""}",
+                    initiatorId = user.userId,
+                )
             }
 
-            if (tusMessage.isNotBlank()) return Result.error("Upload folder was changed. $tusMessage")
+            if (!tusService.initializeTusService()) return Result.error("Upload folder was changed. Failed to start upload service.")
+            if (moved.isNotSuccessful) return Result.error("Upload folder was changed. Uploads in progress stay in $oldPath: ${moved.errorOrNull ?: ""}")
             return Result.ok(newPath)
         }
     }

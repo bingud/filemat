@@ -4,7 +4,6 @@ import jakarta.annotation.PostConstruct
 import org.filemat.server.config.properties.SensitiveFolderPaths
 import org.filemat.server.common.State
 import org.filemat.server.config.database.DatabaseSetup
-import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.permission.service.EntityPermissionService
@@ -30,6 +29,8 @@ class Initialization(
     fun initialize() {
         databaseSetup.initialize_setUpSchema().line()
         databaseSetup.runFlywayMigrations().line()
+        databaseSetup.initialize_rebuildPathKeys().line()
+        databaseSetup.initialize_repairFileKeys().line()
 
         databaseSetup.initialize_systemRoles().line()
         databaseSetup.initialize_loadRolesToMemory().line()
@@ -55,6 +56,9 @@ class Initialization(
                 }.line()
 
             tusService.initializeTusService()
+                .also {
+                    if (!it) println("Failed to start the upload service. Uploads are unavailable.")
+                }.line()
         }
 
         println("${Props.appName} is initialized.")

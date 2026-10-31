@@ -7,6 +7,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.State
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
@@ -65,9 +66,10 @@ class FileServiceTest {
             FilesystemEntity(
                 entityId = Ulid.fast(),
                 path = shareRoot.toString(),
-                inode = 1L,
+                fileKey = "posix:1:1",
                 isFilesystemSupported = true,
                 ownerId = null,
+                pathKey = PathPolicy.pathKey(shareRoot.toString()),
             )
         )
 

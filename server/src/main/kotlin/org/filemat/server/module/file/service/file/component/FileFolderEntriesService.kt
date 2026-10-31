@@ -9,6 +9,7 @@ import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.FolderSize
 import org.filemat.server.common.util.measureFolderContents
 import org.filemat.server.common.util.resolvePath
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.file.service.FileLockService
@@ -78,18 +79,22 @@ class FileFolderEntriesService(
             it.value
         }
         val rawEntries: List<FileMetadata> = if (foldersOnly == false) rawAllEntries else rawAllEntries.filter { it.fileType == FileType.FOLDER || (it.fileType == FileType.FOLDER_LINK && followSymlinks) }
+        // The Windows drive list shows every drive. Opening one is checked like any folder.
+        val isDriveList = PathPolicy.isVirtualRoot(canonicalPath.path)
 
         // Filter entries which are allowed and user has sufficient permission
         // Resolve entries which are symlinks
         val entries: List<T> = rawEntries.mapNotNull { meta: FileMetadata ->
             val entryPath = FilePath.of(meta.path)
 
-            fileService.isAllowedToAccessFile(
-                user = user,
-                canonicalPath = entryPath,
-                ignorePermissions = ignorePermissions
-            ).let {
-                if (it.isNotSuccessful) return@mapNotNull null
+            if (!isDriveList) {
+                fileService.isAllowedToAccessFile(
+                    user = user,
+                    canonicalPath = entryPath,
+                    ignorePermissions = ignorePermissions
+                ).let {
+                    if (it.isNotSuccessful) return@mapNotNull null
+                }
             }
 
             val fullMeta: T? = metaMapper(meta) { mappedMeta ->
@@ -97,7 +102,7 @@ class FileFolderEntriesService(
 
                 // Check permissions for entry
                 val hasPermission = permissions.contains(FilePermission.READ)
-                if (!hasPermission) return@metaMapper null
+                if (!hasPermission && !isDriveList) return@metaMapper null
 
                 val isSaved = if (user != null) savedFileService.isSaved(user.userId, mappedMeta.path) else null
 
@@ -124,6 +129,8 @@ class FileFolderEntriesService(
         val pathResult = resolvePath(rawPath, state.app.followSymlinks)
         if (pathResult.isNotSuccessful) return pathResult.cast()
         val canonicalPath = pathResult.value
+        // Every user can open the Windows drive list, but counting it would walk every drive
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return Result.reject("The size of the drive list is not counted. Open a drive instead.")
 
         val isAllowed = fileService.isAllowedToAccessFile(user, canonicalPath)
         if (isAllowed.isNotSuccessful) return isAllowed.cast()
@@ -151,6 +158,10 @@ class FileFolderEntriesService(
      * Directly gets entries from a folder. Is not authenticated.
      */
     private fun internalGetFolderEntries(canonicalPath: FilePath, userAction: UserAction): Result<List<FileMetadata>> {
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) {
+            return PathPolicy.virtualRootEntries().mapNotNull { filesystemService.getMetadata(FilePath.ofAlreadyNormalized(it)) }.toResult()
+        }
+
         try {
             // Check if the resolved path is a folder
             if (!Files.isDirectory(canonicalPath.path, *if (state.app.followSymlinks) arrayOf() else arrayOf(LinkOption.NOFOLLOW_LINKS))) {
@@ -166,7 +177,7 @@ class FileFolderEntriesService(
             val entries: List<Path> = Files.newDirectoryStream(canonicalPath.path).use { it.toList() }
 
             val files: List<FileMetadata> = entries.map { path: Path ->
-                val entryPath = FilePath(path)
+                val entryPath = FilePath.ofAlreadyNormalized(path)
                 return@map filesystemService.getMetadata(entryPath)
                     ?: throw IllegalStateException("Metadata object was null for a known file.")
 

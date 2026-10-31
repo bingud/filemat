@@ -1,7 +1,5 @@
 package org.filemat.server.module.file.service.file.component
 
-import org.filemat.server.testutil.directoryLinkOrSkip
-import org.filemat.server.testutil.symlinkOrSkip
 import io.mockk.every
 import io.mockk.mockk
 import org.filemat.server.common.State
@@ -12,13 +10,18 @@ import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.sharedFile.resolveSharedFilePath
-import org.junit.jupiter.api.AfterEach
+import org.filemat.server.testutil.directoryLinkOrSkip
+import org.filemat.server.testutil.setReadOnly
+import org.filemat.server.testutil.symlinkOrSkip
+import org.filemat.server.testutil.withFileLocked
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -37,11 +40,12 @@ class FileContentServiceTest {
     private val fileService = mockk<FileService>()
     private val user = mockk<Principal>(relaxed = true)
     private val readable = mutableSetOf<Path>()
+    private val filesystemService = mockk<FilesystemService>(relaxed = true)
 
     private val service = FileContentService(
         fileService = fileService,
         fileLockService = FileLockService(),
-        filesystemService = mockk<FilesystemService>(relaxed = true),
+        filesystemService = filesystemService,
         logService = mockk(relaxed = true),
         state = state,
     )
@@ -59,6 +63,27 @@ class FileContentServiceTest {
             val path = (invocation.args[1] as FilePath).path
             if (isReadable(path)) Result.ok() else Result.reject("You do not have permission to access this file.")
         }
+    }
+
+    @Test
+    fun `file content is read for a regular file`() {
+        state.app.followSymlinks = false
+        val file = Files.writeString(tempDir.resolve("a.txt"), "hello")
+        allow(file)
+
+        val result = service.getFileContent(user, FilePath.ofAlreadyNormalized(file))
+
+        assertTrue(result.isSuccessful)
+        assertEquals("hello", result.value.use { String(it.readAllBytes()) })
+    }
+
+    @Test
+    fun `file content of a folder is not found`() {
+        state.app.followSymlinks = false
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        allow(folder)
+
+        assertTrue(service.getFileContent(user, FilePath.ofAlreadyNormalized(folder)).notFound)
     }
 
     @Test
@@ -361,4 +386,74 @@ class FileContentServiceTest {
         return entries
     }
 
+    private fun edit(file: Path, content: String): Result<FileContentService.EditFileResult> {
+        every { fileService.isAllowedToEditFile(any(), any(), any()) } returns Result.ok()
+        every { filesystemService.getSize(any()) } answers { Result.ok(Files.size((invocation.args[0] as FilePath).path)) }
+        return service.editFile(user, FilePath.ofAlreadyNormalized(file), content)
+    }
+
+    @Test
+    fun `editing replaces the whole content`() {
+        val file = Files.writeString(tempDir.resolve("a.txt"), "a longer old text")
+
+        assertTrue(edit(file, "new").isSuccessful)
+
+        assertEquals("new", Files.readString(file))
+    }
+
+    @Test
+    fun `editing to a longer text replaces the whole content`() {
+        val file = Files.writeString(tempDir.resolve("a.txt"), "old")
+
+        assertTrue(edit(file, "a much longer new text").isSuccessful)
+
+        assertEquals("a much longer new text", Files.readString(file))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `editing a file that another program has locked part of is a conflict and keeps its content`() {
+        val old = "0123456789".repeat(10)
+        val file = Files.writeString(tempDir.resolve("a.txt"), old)
+        // Bytes 50-59 locked by another process: a write would stop there, with the start already new
+        val locker = ProcessBuilder(
+            "powershell", "-NoProfile", "-Command",
+            "\$f = [IO.File]::Open('$file', 'Open', 'ReadWrite', 'ReadWrite'); \$f.Lock(50, 10); 'locked'; Start-Sleep 60",
+        ).redirectErrorStream(true).start()
+        val result = try {
+            assertEquals("locked", locker.inputStream.bufferedReader().readLine()?.trim())
+            edit(file, "new")
+        } finally {
+            locker.destroyForcibly().waitFor()
+        }
+
+        assertTrue(result.isConflict, "Got $result")
+        // Read once the lock is gone: Windows locks keep other handles from reading the range too
+        assertEquals(old, Files.readString(file))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `editing a read-only file is refused`() {
+        val file = Files.writeString(tempDir.resolve("a.txt"), "old")
+        setReadOnly(file)
+
+        val result = edit(file, "new")
+
+        assertTrue(result.rejected)
+        assertEquals("File is read-only.", result.error)
+        assertEquals("old", Files.readString(file))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `editing a locked file is a conflict and keeps its content`() {
+        val file = Files.writeString(tempDir.resolve("a.txt"), "old")
+
+        val result = withFileLocked(file) { edit(file, "new") }
+
+        assertTrue(result.isConflict, "Got $result")
+        assertEquals("File is in use.", result.error)
+        assertEquals("old", Files.readString(file))
+    }
 }

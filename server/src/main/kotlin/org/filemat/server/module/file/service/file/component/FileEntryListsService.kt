@@ -12,6 +12,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.safeWalk
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
@@ -42,6 +43,10 @@ class FileEntryListsService(
     private val state: State,
 ) {
 
+    /**
+     * Searches file names below [canonicalPath]. The folder itself is checked before the walk starts,
+     * because the walk reaches folders the user can't open (only matching files are checked one by one).
+     */
     fun searchFiles(
         user: Principal?,
         canonicalPath: FilePath,
@@ -50,12 +55,18 @@ class FileEntryListsService(
         shareRelativePath: FilePath? = null,
         shareToken: String? = null,
         userAction: UserAction
-    ): Flow<Result<FullFileMetadata>> {
+    ): Result<Flow<Result<FullFileMetadata>>> {
+        // Every user can open the Windows drive list, but searching it would walk every drive
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return Result.reject("The drive list can't be searched. Open a drive instead.")
+        fileService.isAllowedToAccessFile(user, canonicalPath, ignorePermissions = if (isShared) true else null).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+
         val lowercaseText = text.lowercase()
 
         val walk = if (shareToken != null) {
-            val shareRoot = fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken)
-            if (shareRoot.isNotSuccessful) return emptyFlow()
+            val shareRoot = fileService.resolvePathWithOptionalShare(FilePath.of(PathPolicy.root), shareToken)
+            if (shareRoot.isNotSuccessful) return Result.ok(emptyFlow())
             canonicalPath.path.safeWalk(
                 with = fileLockService,
                 include = { resolveSharedDescendant(it, shareRoot.value, state.app.followSymlinks).isSuccessful },
@@ -64,7 +75,7 @@ class FileEntryListsService(
             canonicalPath.path.safeWalk(with = fileLockService)
         }
 
-        return walk
+        return Result.ok(walk
             .mapNotNull { path ->
                 try {
                     // Check searched text
@@ -79,7 +90,7 @@ class FileEntryListsService(
 
                             val relativePath = canonicalPath.path.relativize(path)
                             val clientPath = shareRelativePath.path.resolve(relativePath)
-                            return@mapNotNull Result.ok(meta.copy(path = clientPath.toString()))
+                            return@mapNotNull Result.ok(meta.copy(path = PathPolicy.toApiString(clientPath)))
                         }
                     } else return@mapNotNull null
                 } catch (e: Exception) {
@@ -87,7 +98,7 @@ class FileEntryListsService(
                 }
             }
             .take(10_000)
-            .flowOn(Dispatchers.IO)
+            .flowOn(Dispatchers.IO))
     }
 
     /**

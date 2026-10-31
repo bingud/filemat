@@ -1,11 +1,12 @@
 package org.filemat.server.module.setting.service
 
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.State
+import org.filemat.server.common.model.Result
 import org.filemat.server.config.Props
-import org.filemat.server.module.file.service.file.FileService
-import org.filemat.server.module.file.service.filesystem.FilesystemService
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.TusService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.repository.SettingRepository
@@ -14,23 +15,22 @@ import org.filemat.server.testutil.assertSuccess
 import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 
 class SettingServiceTest {
 
     private val settingRepository = mockk<SettingRepository>(relaxed = true)
     private val logService = mockk<LogService>(relaxed = true)
-    private val filesystemService = mockk<FilesystemService>(relaxed = true)
     private val tusService = mockk<TusService>(relaxed = true)
-    private val fileService = mockk<FileService>(relaxed = true)
     private val state = State(env = emptyMap())
     private val service = newService(state)
 
     private fun newService(state: State) = SettingService(
         settingRepository,
         logService,
-        filesystemService,
         tusService,
-        fileService,
         state,
     )
 
@@ -119,5 +119,33 @@ class SettingServiceTest {
 
         assertRejected(result)
         verify(exactly = 0) { settingRepository.setSetting(any(), any(), any()) }
+    }
+
+    @Test
+    fun `the upload folder can't be a root, the data folder or a folder that contains it`(@TempDir tempDir: Path) {
+        val dataFolder = Files.createDirectory(tempDir.resolve("data")).toRealPath()
+        val state = State(env = emptyMap(), dataFolderPath = dataFolder).apply { app.uploadFolderPath = dataFolder.resolve("uploads").toString() }
+        val service = newService(state)
+
+        listOf(dataFolder, tempDir, dataFolder.root).forEach { folder ->
+            assertRejected(service.set_uploadFolderPath(testPrincipal(), FilePath.ofAlreadyNormalized(folder)))
+        }
+        verify(exactly = 0) { settingRepository.setSetting(Props.Settings.uploadFolderPath, any(), any()) }
+    }
+
+    @Test
+    fun `changing the upload folder moves the uploads in progress`(@TempDir tempDir: Path) {
+        val dataFolder = Files.createDirectory(tempDir.resolve("data")).toRealPath()
+        val oldFolder = dataFolder.resolve("uploads")
+        val state = State(env = emptyMap(), dataFolderPath = dataFolder).apply { app.uploadFolderPath = oldFolder.toString() }
+        every { tusService.moveUploadsInProgress(any(), any()) } returns Result.ok()
+        every { tusService.initializeTusService() } returns true
+        val newFolder = tempDir.resolve("uploads")
+
+        val result = newService(state).set_uploadFolderPath(testPrincipal(), FilePath.ofAlreadyNormalized(newFolder))
+
+        assertSuccess(result)
+        assertEquals(FilePath.ofAlreadyNormalized(newFolder).pathString, state.app.uploadFolderPath)
+        verify { tusService.moveUploadsInProgress(oldFolder, newFolder) }
     }
 }

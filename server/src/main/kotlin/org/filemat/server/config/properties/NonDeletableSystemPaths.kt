@@ -2,16 +2,20 @@ package org.filemat.server.config.properties
 
 import kotlinx.serialization.json.Json
 import org.filemat.server.common.util.normalizePath
+import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsSystemFolders
 
 /**
  * Defines core system folders that should generally be non-deletable.
+ *
+ * Root folders (`/` and Windows drive roots) are never deletable, which `FileSecurityService` checks.
  */
 object NonDeletableSystemPaths {
 
     /**
      * List of critical system folders that should not be deleted.
      */
-    private val protectedList = setOf(
+    private val posixList = listOf(
         "/",                   // The root directory itself
         "/bin",                // Essential user command binaries
         "/sbin",               // Essential system binaries
@@ -31,7 +35,26 @@ object NonDeletableSystemPaths {
         "/home"                // Contains users' home directories (parent folder)
     )
 
-    private val protectedSetNormalized = protectedList.map { it.normalizePath() }.toHashSet()
+    /**
+     * Windows list (§4.2). Contains stars as wildcards.
+     */
+    internal fun windowsList(folders: WindowsSystemFolders): List<String> {
+        val drive = folders.systemDrive
+        return listOf(
+            folders.systemRoot,
+            folders.programData,
+            folders.profiles,
+            "${folders.profiles}/*",   // Each user profile, including Default and Public
+            "$drive/Recovery",
+            "$drive/Boot",
+            "$drive/EFI",
+            "$drive/PerfLogs",
+        ) + folders.programFiles
+    }
+
+    private val protectedList = if (Platform.isWindows) windowsList(WindowsSystemFolders.current) else posixList
+
+    private val protectedRegex = toExactRegexList(protectedList, ignoreCase = Platform.isWindows)
 
     /**
      * Checks if the given path exactly matches one of the non-deletable system folders.
@@ -42,10 +65,17 @@ object NonDeletableSystemPaths {
      */
     fun isProtected(rawPath: String, isPathNormalized: Boolean = false): Boolean {
         val path = if (isPathNormalized) rawPath else rawPath.normalizePath()
-        // Check for an exact match against the normalized protected paths
-        return protectedSetNormalized.contains(path)
+        return protectedRegex.any { it.matches(path) }
     }
 
+    /**
+     * Each pattern matches only its own path. A star matches one segment.
+     */
+    internal fun toExactRegexList(patterns: Collection<String>, ignoreCase: Boolean): List<Regex> = patterns.map { pattern ->
+        val escapedPattern = pattern.split("*").joinToString("[^/]+") { Regex.escape(it) }
+        val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+        Regex("^$escapedPattern$", options)
+    }
 
     private val serializedList: String by lazy { Json.encodeToString(protectedList) }
 

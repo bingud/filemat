@@ -10,6 +10,9 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.config.Props
 import org.filemat.server.config.TransactionTemplateConfig
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsNative
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.log.service.LogService
@@ -216,15 +219,14 @@ fun State.runDev(block: () -> Unit) {
 /**
  * Fully normalizes a path, makes it absolute
  */
-fun String.getNormalizedPath(): Path = Paths.get("/").resolve(this.trimStart('/')).normalize()
-fun Path.getNormalizedPath(): Path =
-    if (this.isAbsolute) normalize()
-    else Paths.get("/").resolve(this).normalize()
+fun String.getNormalizedPath(): Path = PathPolicy.parse(this)
+fun Path.getNormalizedPath(): Path = PathPolicy.normalize(this)
 
-fun String.normalizePath() = this.getNormalizedPath().toString()
+/**
+ * Normalizes a path string into the API format
+ */
+fun String.normalizePath() = PathPolicy.toApiString(this.getNormalizedPath())
 
-
-fun String.addPrefixIfNotPresent(prefix: Char) = if (this.startsWith(prefix)) this else prefix + this
 
 fun String.isAbsoluteHttpsUrl(): Boolean {
     if (isBlank()) return false
@@ -276,27 +278,104 @@ fun <K, V> HashMap<K, V>.removeAll(keys: Collection<K>): Boolean {
 
 
 fun resolvePath(rawPath: FilePath, followSymlinks: Boolean, allowNonExistent: Boolean = false): Result<FilePath> {
+    // The Windows drive list is not a real folder, and `toRealPath` would resolve it to the current drive
+    if (PathPolicy.isVirtualRoot(rawPath.path)) return rawPath.toResult()
+    // Paths without a drive on Windows are only valid inside a share
+    if (!rawPath.path.isAbsolute) return Result.notFound()
+    // Network drives are never opened, and `subst` drives resolve to their folder (§4.3, Q34)
+    val inputPath = if (Platform.isWindows) localDrivePath(rawPath) ?: return Result.notFound() else rawPath
+    // Checked before `toRealPath`, which would already connect
+    if (reachesNetwork(inputPath.path)) return Result.notFound()
+
     try {
         val resolvedPath = FilePath.ofAlreadyNormalized(
             // Catch if file not found
             try {
-                rawPath.path.toRealPath()
+                inputPath.path.toRealPath()
             } catch (e: NoSuchFileException) {
-                if (allowNonExistent) return resolveNonExistent(rawPath, followSymlinks)
+                if (allowNonExistent) return resolveNonExistent(inputPath, followSymlinks)
                 return Result.notFound()
             }
         )
+        if (isUncPath(resolvedPath.path) || isOnNetworkDrive(resolvedPath.path)) return Result.notFound()
 
         if (followSymlinks) {
             return resolvedPath.toResult()
         } else {
-            val matching = rawPath == resolvedPath
+            val matching = PathPolicy.isSamePath(inputPath.path, resolvedPath.path)
             if (!matching) return Result.notFound()
             return resolvedPath.toResult()
         }
     } catch (e: Exception) {
         return Result.error("Failed to resolve file path.")
     }
+}
+
+/**
+ * Windows: moves a path on a `subst` drive to the folder the drive points to.
+ * Null for a network drive, a drive whose type can't be read, or a `subst` drive on a network folder. Neither check reaches the network.
+ * A `subst` drive can point to a folder on another `subst` or network drive, so the folder it points to is checked the same way.
+ */
+internal fun localDrivePath(path: FilePath, depth: Int = 0): FilePath? {
+    val root = path.path.root ?: return path
+    if (WindowsNative.isOnNetworkDrive(path.path) != false) return null
+    val target = WindowsNative.substTarget(root.toString().trimEnd('\\')) ?: return path
+    if (target.startsWith("UNC\\") || depth >= maxSubstDepth) return null
+    return localDrivePath(FilePath.ofAlreadyNormalized(PathPolicy.normalize(Paths.get(target).resolve(root.relativize(path.path)))), depth + 1)
+}
+
+// One per drive letter
+private const val maxSubstDepth = 26
+
+/**
+ * Windows: the path with the real name of each existing segment, without following links.
+ * An 8.3 short name (`CREDEN~1`) or a name in another case names the same file, but the block lists compare names,
+ * so a path that is checked without [resolvePath] (a link itself, or the last name of a move) must use the real names.
+ * A path that does not exist, and every path on other systems, is returned as it is.
+ */
+fun withRealNames(path: FilePath): FilePath {
+    if (!Platform.isWindows || PathPolicy.isVirtualRoot(path.path) || !path.path.isAbsolute) return path
+    val real = try {
+        path.path.toRealPath(LinkOption.NOFOLLOW_LINKS)
+    } catch (e: Exception) {
+        return path
+    }
+    return FilePath.ofAlreadyNormalized(PathPolicy.normalize(real))
+}
+
+/**
+ * A link to a network folder resolves to a UNC path (`\\server\share`), which is never served
+ */
+private fun isUncPath(path: Path) = PathPolicy.isUncPath(path.toString())
+
+/**
+ * Windows: whether [path] is on a network drive (`Z:`), a `subst` drive of a network folder, or a drive whose type can't be read
+ */
+private fun isOnNetworkDrive(path: Path) = Platform.isWindows && localDrivePath(FilePath.ofAlreadyNormalized(path)) == null
+
+private const val maxLinkDepth = 40
+
+/**
+ * Windows: whether following the symbolic links in [path] leads to a network folder (`\\server\share`) or a network drive (`Z:`).
+ * Opening such a link makes Windows connect and send the account's credentials, before the result can be checked,
+ * so the links are read without being followed. Junctions and mount points can't point to the network.
+ * A link that can't be read, or too many links in a row, count as the network.
+ */
+fun reachesNetwork(path: Path, depth: Int = 0): Boolean {
+    if (!Platform.isWindows) return false
+    if (depth > maxLinkDepth || isUncPath(path)) return true
+    var current = path.root ?: return false
+    for (index in 0 until path.nameCount) {
+        current = current.resolve(path.getName(index))
+        if (!Files.isSymbolicLink(current)) continue
+        val target = runCatching { Files.readSymbolicLink(current) }.getOrNull() ?: return true
+        var next = current.parent.resolve(target)
+        // A link can point to another drive, which can be a mapped network drive
+        if (next.root != current.root && isOnNetworkDrive(next)) return true
+        if (index + 1 < path.nameCount) next = next.resolve(path.subpath(index + 1, path.nameCount))
+        return reachesNetwork(next.normalize(), depth + 1)
+    }
+    return false
 }
 
 /**
@@ -339,7 +418,8 @@ private fun resolveNonExistent(rawPath: FilePath, followSymlinks: Boolean): Resu
     }
 
     val resolvedPath = if (nonExistentSuffix != null) resolvedPrefixPath.resolve(nonExistentSuffix) else resolvedPrefixPath
-    if (!followSymlinks && rawPath.path != resolvedPath) {
+    if (isUncPath(resolvedPath) || isOnNetworkDrive(resolvedPath)) return Result.notFound()
+    if (!followSymlinks && !PathPolicy.isSamePath(rawPath.path, resolvedPath)) {
         return Result.notFound()
     }
 

@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 
 class EntityPermissionTreeManagementTest {
 
@@ -124,6 +126,53 @@ class EntityPermissionTreeManagementTest {
         // Moving root is conceptually trying to make root a child of something else
         val result = tree.movePath("/", "/subfolder")
         assertFalse(result)
+    }
+
+    @Test
+    fun `should move a nested path to the root level`() {
+        tree.addPermission("/a/b", createPerm(userId = userId, permissions = listOf(FilePermission.READ)))
+
+        assertTrue(tree.movePath("/a/b", "/b"))
+
+        assertEquals(setOf(FilePermission.READ), tree.resolveEffectivePermissions("/b/child", userId, emptyList()))
+        assertTrue(tree.resolveEffectivePermissions("/a/b", userId, emptyList()).isEmpty())
+    }
+
+    @Test
+    fun `should move a path under a parent that does not exist yet`() {
+        tree.addPermission("/a", createPerm(userId = userId, permissions = listOf(FilePermission.READ)))
+
+        assertTrue(tree.movePath("/a", "/x/y/a"))
+
+        assertEquals(setOf(FilePermission.READ), tree.resolveEffectivePermissions("/x/y/a", userId, emptyList()))
+        assertTrue(tree.resolveEffectivePermissions("/x/y", userId, emptyList()).isEmpty())
+    }
+
+    @Test
+    fun `should ignore extra and trailing slashes in paths`() {
+        val perm = createPerm(userId = userId, permissions = listOf(FilePermission.READ))
+        tree.addPermission("/a//b/", perm)
+
+        assertEquals(perm, tree.getDirectPermissionForUser("/a/b", userId))
+        assertTrue(tree.movePath("/a/b/", "//c"))
+        assertEquals(perm, tree.getDirectPermissionForUser("/c", userId))
+    }
+
+    @Test
+    fun `should apply a permission on the root to every path`() {
+        tree.addPermission("/", createPerm(userId = userId, permissions = listOf(FilePermission.READ)))
+
+        assertEquals(setOf(FilePermission.READ), tree.resolveEffectivePermissions("/any/path", userId, emptyList()))
+    }
+
+    @Test
+    // On Windows `\` is a separator
+    @DisabledOnOs(OS.WINDOWS)
+    fun `should treat a backslash as part of the name`() {
+        tree.addPermission("/a\\b", createPerm(userId = userId, permissions = listOf(FilePermission.READ)))
+
+        assertTrue(tree.resolveEffectivePermissions("/a/b", userId, emptyList()).isEmpty())
+        assertEquals(setOf(FilePermission.READ), tree.resolveEffectivePermissions("/a\\b", userId, emptyList()))
     }
 
     // --- Helpers ---

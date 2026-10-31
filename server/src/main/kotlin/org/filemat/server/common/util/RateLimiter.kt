@@ -21,6 +21,7 @@ enum class RateLimitId {
     SHARED_FILE_LOGIN_ANON,
     SHARED_FILE_PROBE,
     SHARED_FILE_ACCESS,
+    FILE_SEARCH,
     VERIFY_TOTP,
 }
 
@@ -72,6 +73,8 @@ class RateLimiter(
         configureBucket(RateLimitId.SHARED_FILE_PROBE, 30, 2_000)
         // Any request using a share token (per IP): 200 burst, then 10 per second
         configureBucket(RateLimitId.SHARED_FILE_ACCESS, 300, 100)
+        // Searches walk whole folder trees (per user): 30 burst, then 1 every 2 seconds
+        configureBucket(RateLimitId.FILE_SEARCH, 30, 2_000)
         configureBucket(RateLimitId.VERIFY_TOTP, 8, 30_000)
 
         // Ensure all IDs are included in the configuration

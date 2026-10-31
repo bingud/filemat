@@ -5,13 +5,15 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.FileErrors
 import org.filemat.server.common.util.StringUtils
-import org.filemat.server.common.util.getPathRelationship
-import org.filemat.server.common.util.resolvePath
-import org.filemat.server.common.util.safeStreamSkip
 import org.filemat.server.common.util.isAlreadyWalked
 import org.filemat.server.common.util.plusWalkIdentity
-import org.filemat.server.config.Props
+import org.filemat.server.common.util.reachesNetwork
+import org.filemat.server.common.util.resolvePath
+import org.filemat.server.common.util.safeStreamSkip
+import org.filemat.server.config.platform.LinkInspector
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
@@ -25,10 +27,15 @@ import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import java.io.BufferedInputStream
+import java.io.IOException
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.channels.OverlappingFileLockException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.invariantSeparatorsPathString
@@ -65,7 +72,8 @@ class FileContentService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        if (!Files.isRegularFile(canonicalPath.path, LinkOption.NOFOLLOW_LINKS)) return Result.notFound()
+        // OneDrive placeholders are downloaded by reading them (Q42)
+        if (!LinkInspector.isRegularFile(canonicalPath.path)) return Result.notFound()
 
         val lock = fileLockService.getLock(canonicalPath.path, LockType.READ)
         if (!lock.successful) return Result.reject("This file is currently being modified.")
@@ -99,7 +107,7 @@ class FileContentService(
     ) {
         val isShared = shareToken != null
         val shareRoot: FilePath? = if (isShared) {
-            fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken).let {
+            fileService.resolvePathWithOptionalShare(FilePath.of(PathPolicy.root), shareToken).let {
                 if (it.isNotSuccessful) return
                 it.value
             }
@@ -115,6 +123,8 @@ class FileContentService(
             if (it.isNotSuccessful) return
             it.value
         }
+        // The Windows drive list cannot be zipped as a whole
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return
 
         // 2. Setup Protection and Config
         val isReadDataFolderProtected = state.app.allowReadDataFolder == false
@@ -122,8 +132,7 @@ class FileContentService(
 
         // Cannot zip FROM protected data folder (Read protection)
         if (isReadDataFolderProtected) {
-            val sourceRelation = getPathRelationship(path = canonicalPath.path, target = Props.dataFolderPath)
-            if (sourceRelation.isInsideTarget) {
+            if (state.app.isInDataFolder(canonicalPath.path)) {
                 return
             }
         }
@@ -136,7 +145,7 @@ class FileContentService(
             currentZipPath = baseZipPath, // Can be null if zipping root, usually handled by caller
             zip = zip,
             user = principal,
-            protectedPath = if (isReadDataFolderProtected) Props.dataFolderPath else null,
+            protectedPath = if (isReadDataFolderProtected) state.app.dataFolderPath else null,
             ignorePermissions = isShared,
             copyResolvedSymlinks = copyResolvedSymlinks,
             shareRoot = shareRoot,
@@ -193,6 +202,11 @@ class FileContentService(
 
         val isSymlink = Files.isSymbolicLink(currentSource)
         if (isSymlink && !copyResolvedSymlinks) return 0
+        // A link to a network folder is never followed (§4.3)
+        if (isSymlink && reachesNetwork(currentSource)) {
+            logZipSkip(currentSource, "link to a network folder")
+            return failedCount + 1
+        }
 
         val realPath = try {
             if (copyResolvedSymlinks) currentSource.toRealPath()
@@ -333,8 +347,10 @@ class FileContentService(
         if (!lock.successful) return Result.reject("This file is currently being modified.")
         try {
             try {
-                file.writeText(newContent)
+                FileErrors.retryWhenInUse { writeInPlace(canonicalPath.path, newContent) }
             } catch (e: Exception) {
+                // Read-only files stay read-only (Q38)
+                FileErrors.failureOf(e, canonicalPath.path)?.let { return FileErrors.resultOf(it) }
                 return Result.error("An error occurred while saving file.")
             }
 
@@ -350,6 +366,46 @@ class FileContentService(
         } finally {
             lock.unlock()
         }
+    }
+
+    /**
+     * Writes over a file, then cuts it to size. NIO opens it with share-delete, unlike java.io (§6.1).
+     * The file stays the same file (file ID, ACL, hard links), which a temp file swapped in would not.
+     * Truncating first would empty a file that another program has locked, before the write fails.
+     *
+     * A failure leaves the old content, so the save can't end half old and half new:
+     * - the whole file is locked first, so another program's lock on part of it stops the save before anything is written;
+     * - the bytes past the old end are written first, so running out of space happens before the old content is touched.
+     */
+    private fun writeInPlace(path: Path, content: String) {
+        val bytes = content.toByteArray(Charsets.UTF_8)
+        FileChannel.open(path, StandardOpenOption.WRITE).use { channel ->
+            val lock = try {
+                channel.tryLock()
+            } catch (e: OverlappingFileLockException) {
+                null
+            } ?: throw FileErrors.lockViolation(path)
+
+            lock.use {
+                val oldSize = channel.size()
+                val overwritten = minOf(bytes.size.toLong(), oldSize).toInt()
+                if (bytes.size > overwritten) {
+                    try {
+                        writeFully(channel, ByteBuffer.wrap(bytes, overwritten, bytes.size - overwritten), oldSize)
+                    } catch (e: IOException) {
+                        runCatching { channel.truncate(oldSize) }
+                        throw e
+                    }
+                }
+                writeFully(channel, ByteBuffer.wrap(bytes, 0, overwritten), 0)
+                channel.truncate(bytes.size.toLong())
+            }
+        }
+    }
+
+    private fun writeFully(channel: FileChannel, buffer: ByteBuffer, position: Long) {
+        var at = position
+        while (buffer.hasRemaining()) at += channel.write(buffer, at)
     }
 
     fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {

@@ -3,6 +3,8 @@ package org.filemat.server.module.auth.service
 import com.github.benmanes.caffeine.cache.Caffeine
 import org.filemat.server.common.util.StringUtils
 import org.filemat.server.config.Props
+import org.filemat.server.config.platform.AclPolicy
+import org.filemat.server.config.platform.Platform
 import org.springframework.stereotype.Service
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -67,6 +69,8 @@ class SensitiveAuthService(private val logService: LogService) {
     private fun saveOtpToFile(otp: String): Result<Unit> {
         try {
             val file = File(Props.authCodeFile)
+            // Windows: the file gets an owner-only ACL before the code is written
+            if (Platform.isWindows && !file.exists()) AclPolicy.createPrivateFile(file.toPath(), null)
             file.writeText(otp)
         } catch (e: Exception) {
             logService.error(

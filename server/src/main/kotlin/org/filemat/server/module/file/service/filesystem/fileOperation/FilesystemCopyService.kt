@@ -4,11 +4,13 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.*
 import org.filemat.server.config.Props
+import org.filemat.server.config.platform.LinkInspector
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
+import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -41,32 +43,38 @@ class FilesystemCopyService(
         user: Principal,
         ignorePermissions: Boolean?,
         copyResolvedSymlinks: Boolean?,
-    ): Result<Unit> = fileLockService.tryWithLock(
-        canonicalSource.path to LockType.READ,
-        canonicalDestination.path to LockType.WRITE,
-        checkChildren = true
-    ) {
-        val resolveSymlinks = if (copyResolvedSymlinks != null) {
-            copyResolvedSymlinks
-        } else {
-            if (state.app.followSymlinks) {
-                val isMatching = isFileStoreMatching(canonicalSource.path, canonicalDestination.path.parent ?: canonicalDestination.path)
-                    ?: return@tryWithLock Result.error("Failed to check if copied file path is on the same filesystem.")
+    ): Result<Unit> {
+        // A name that differs only in case is the same file in a case-insensitive folder.
+        // Checked before locking, because both names share one lock.
+        if (isCaseOnlyRename(canonicalSource, canonicalDestination)) return Result.reject("A file or folder already exists at the destination.")
 
-                isMatching == false
+        return fileLockService.tryWithLock(
+            canonicalSource.path to LockType.READ,
+            canonicalDestination.path to LockType.WRITE,
+            checkChildren = true
+        ) {
+            val resolveSymlinks = if (copyResolvedSymlinks != null) {
+                copyResolvedSymlinks
             } else {
-                false
-            }
-        }
+                if (state.app.followSymlinks) {
+                    val isMatching = isFileStoreMatching(canonicalSource.path, canonicalDestination.path.parent ?: canonicalDestination.path)
+                        ?: return@tryWithLock Result.error("Failed to check if copied file path is on the same filesystem.")
 
-        copyFile(
-            canonicalSource = canonicalSource,
-            canonicalDestination = canonicalDestination,
-            user = user,
-            ignorePermissions = ignorePermissions,
-            copyResolvedSymlinks = resolveSymlinks
-        )
-    }.onFailure { Result.reject("Could not copy. The file is currently being modified.") }
+                    isMatching == false
+                } else {
+                    false
+                }
+            }
+
+            copyFile(
+                canonicalSource = canonicalSource,
+                canonicalDestination = canonicalDestination,
+                user = user,
+                ignorePermissions = ignorePermissions,
+                copyResolvedSymlinks = resolveSymlinks
+            )
+        }.onFailure { Result.reject("Could not copy. The file is currently being modified.") }
+    }
 
     private fun copyFile(
         canonicalSource: FilePath,
@@ -79,48 +87,61 @@ class FilesystemCopyService(
         val isWriteDataFolderProtected = state.app.allowWriteDataFolder == false
 
         if (!canonicalSource.path.exists()) return Result.notFound()
-        if (canonicalDestination.path.startsWith(canonicalSource.path)) return Result.reject("Cannot copy folder into itself.")
+        if (PathPolicy.isKeyWithin(canonicalDestination.pathKey, canonicalSource.pathKey)) return Result.reject("Cannot copy folder into itself.")
         if (canonicalDestination.path.exists(LinkOption.NOFOLLOW_LINKS)) return Result.reject("A file or folder already exists at the destination.")
 
         // Cannot copy INTO protected data folder (Write protection)
-        val destRelation = getPathRelationship(path = canonicalDestination.path, target = Props.dataFolderPath)
-        if (destRelation.isInsideTarget && isWriteDataFolderProtected) {
+        if (state.app.isInDataFolder(canonicalDestination.path) && isWriteDataFolderProtected) {
             return Result.reject("Cannot copy files into ${Props.appName} data folder.")
         }
 
         // Cannot copy FROM protected data folder (Read protection)
         if (isReadDataFolderProtected) {
-            val sourceRelation = getPathRelationship(path = canonicalSource.path, target = Props.dataFolderPath)
-            if (sourceRelation.isInsideTarget) {
+            if (state.app.isInDataFolder(canonicalSource.path)) {
                 return Result.reject("Cannot copy ${Props.appName} data folder contents.")
             }
         }
 
-        val failedCount = copyRecursiveSafe(
-            currentSource = canonicalSource.path,
-            currentDest = canonicalDestination.path,
-            user = user,
-            protectedPath = if (isReadDataFolderProtected) Props.dataFolderPath else null,
-            ignorePermissions = ignorePermissions,
-            copyResolvedSymlinks = copyResolvedSymlinks,
-        )
+        val isFolder = Files.isDirectory(canonicalSource.path, LinkOption.NOFOLLOW_LINKS) && !LinkInspector.isDirectoryLink(canonicalSource.path)
+        val failures = FileFailures()
+        val failedCount = FileErrors.withRetryBudget {
+            copyRecursiveSafe(
+                sourceRoot = canonicalSource.path,
+                currentSource = canonicalSource.path,
+                currentDest = canonicalDestination.path,
+                user = user,
+                protectedPath = if (isReadDataFolderProtected) state.app.dataFolderPath else null,
+                ignorePermissions = ignorePermissions,
+                copyResolvedSymlinks = copyResolvedSymlinks,
+                failures = failures,
+            )
+        }
 
-        return if (failedCount == 0) Result.ok() else Result.error("$failedCount items could not be copied.")
+        return if (failedCount == 0) Result.ok() else failures.toResult("$failedCount items could not be copied.", isSingleFile = !isFolder)
     }
 
     private fun copyRecursiveSafe(
+        sourceRoot: Path,
         currentSource: Path,
         currentDest: Path,
         user: Principal,
         protectedPath: Path?,
         ignorePermissions: Boolean?,
         copyResolvedSymlinks: Boolean,
+        failures: FileFailures,
     ): Int {
         var failedCount = 0
         val sourceFilePath = FilePath.ofAlreadyNormalized(currentSource)
 
         // Explicit protection check
         if (protectedPath != null && currentSource == protectedPath) return 1
+
+        // Junctions and mount points are skipped: recursing would copy the link target's contents,
+        // and Files.copy would make an empty real folder in their place. Symbolic links are copied as links below.
+        if (LinkInspector.isDirectoryLink(currentSource)) {
+            failures.add(FileFailure.FOLDER_LINK)
+            return 1
+        }
 
         val isDirectory = if (copyResolvedSymlinks) {
             Files.isDirectory(currentSource)
@@ -148,12 +169,14 @@ class FilesystemCopyService(
                 Files.newDirectoryStream(currentSource).use { stream ->
                     for (child in stream) {
                         failedCount += copyRecursiveSafe(
+                            sourceRoot = sourceRoot,
                             currentSource = child,
                             currentDest = currentDest.resolve(child.fileName),
                             user = user,
                             protectedPath = protectedPath,
                             ignorePermissions = ignorePermissions,
-                            copyResolvedSymlinks = copyResolvedSymlinks
+                            copyResolvedSymlinks = copyResolvedSymlinks,
+                            failures = failures,
                         )
                     }
                 }
@@ -169,7 +192,7 @@ class FilesystemCopyService(
             // Empty folder, or all children succeeded and already created dest.
             try {
                 if (Files.notExists(currentDest)) {
-                    Files.createDirectories(currentDest)
+                    createFoldersLike(currentDest, currentSource, sourceRoot)
                 }
             } catch (e: Exception) {
                 return failedCount + 1
@@ -199,9 +222,10 @@ class FilesystemCopyService(
         }
 
         try {
+            // Folders keep their case sensitivity, so names that differ only in case still fit
             currentDest.parent?.let { parent ->
                 if (Files.notExists(parent)) {
-                    Files.createDirectories(parent)
+                    createFoldersLike(parent, currentSource.parent.takeIf { currentSource != sourceRoot }, sourceRoot)
                 }
             }
         } catch (e: Exception) {
@@ -211,7 +235,8 @@ class FilesystemCopyService(
         val copyResult = internal_copy(
             source = currentSource,
             dest = currentDest,
-            copyResolvedSymlinks = copyResolvedSymlinks
+            copyResolvedSymlinks = copyResolvedSymlinks,
+            failures = failures,
         )
 
         if (copyResult.isNotSuccessful) failedCount++
@@ -238,16 +263,21 @@ class FilesystemCopyService(
         source: Path,
         dest: Path,
         copyResolvedSymlinks: Boolean,
+        failures: FileFailures,
     ): Result<Unit> {
         return try {
             try {
-                // Try copying with attributes first
-                if (copyResolvedSymlinks) {
-                    Files.copy(source, dest, StandardCopyOption.COPY_ATTRIBUTES)
-                } else {
-                    Files.copy(source, dest, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES)
+                // Try copying with attributes first. On Windows this keeps the read-only attribute (§6.2).
+                FileErrors.retryWhenInUse {
+                    if (copyResolvedSymlinks) {
+                        Files.copy(source, dest, StandardCopyOption.COPY_ATTRIBUTES)
+                    } else {
+                        Files.copy(source, dest, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES)
+                    }
                 }
             } catch (fallbackEx: Exception) {
+                // A file in use fails the same way without attributes
+                if (FileErrors.isInUse(fallbackEx)) throw fallbackEx
                 // Fallback: Copy without attributes
                 if (copyResolvedSymlinks) {
                     Files.copy(source, dest)
@@ -261,6 +291,10 @@ class FilesystemCopyService(
         } catch (e: FileAlreadyExistsException) {
             Result.reject("File already exists.")
         } catch (e: FileSystemException) {
+            if (FileErrors.isInUse(e)) {
+                failures.add(FileFailure.IN_USE)
+                return FileErrors.resultOf(FileFailure.IN_USE)
+            }
             val isPermissionError = e.suppressed.any { it is AccessDeniedException } || e is AccessDeniedException
             if (isPermissionError) {
                 Result.error("Missing permission to copy file.")

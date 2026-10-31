@@ -5,6 +5,8 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.isFileStoreMatching
 import org.filemat.server.common.util.resolvePath
+import org.filemat.server.common.util.withRealNames
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
@@ -29,7 +31,7 @@ class FileCopyService(private val fileService: FileService, private val filesyst
                 result.value
             }
 
-        if (canonicalPath.pathString == "/") return Result.reject("Cannot copy root folder.")
+        if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("Cannot copy root folder.")
 
         val rawParentDestinationPath = FilePath.of(rawDestinationPath.path.parent.pathString)
 
@@ -48,10 +50,11 @@ class FileCopyService(private val fileService: FileService, private val filesyst
 
         val copyResolvedSymlinks = state.app.followSymlinks && isSymlink && isFileStoreMatching == false
 
+        // The path as given, so a link is copied as a link. Its real names are checked, not 8.3 short names.
         val actualCanonicalPath = if (copyResolvedSymlinks) {
             canonicalPath
         } else {
-            rawPath
+            withRealNames(rawPath)
         }
 
         // Check if user is permitted to copy the file

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface SavedFileRepository : CrudRepository<SavedFile, Ulid> {
-    @Query("SELECT EXISTS(SELECT 1 FROM saved_files WHERE user_id = :userId && path = :path)")
+    @Query("SELECT EXISTS(SELECT 1 FROM saved_files WHERE user_id = :userId AND path = :path)")
     fun exists(userId: Ulid, path: String): Boolean
 
     @Modifying
@@ -31,8 +31,8 @@ interface SavedFileRepository : CrudRepository<SavedFile, Ulid> {
     @Query(
         """
         UPDATE saved_files 
-        SET path = CONCAT(:newPath, SUBSTRING(path, LENGTH(:path) + 1)) 
-        WHERE path = :path OR path LIKE CONCAT(:path, '/%')
+        SET path = CONCAT(:newPath, SUBSTRING(path, LENGTH(RTRIM(:path, '/')) + 1))
+        WHERE path = :path OR SUBSTRING(path, 1, LENGTH(RTRIM(:path, '/')) + 1) = CONCAT(RTRIM(:path, '/'), '/')
     """
     )
     fun updatePath(path: String, newPath: String): Int

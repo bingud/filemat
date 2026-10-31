@@ -51,7 +51,6 @@ CREATE TABLE IF NOT EXISTS files (
     FOREIGN KEY (owner_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_files_path ON files(path);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_files_inode ON files(inode);
 
 CREATE TABLE IF NOT EXISTS auth_token (
     auth_token TEXT PRIMARY KEY,

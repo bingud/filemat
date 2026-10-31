@@ -1,7 +1,9 @@
 package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.config.platform.Platform
 import org.filemat.server.config.properties.NonDeletableSystemPaths
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /**
@@ -10,17 +12,44 @@ import java.nio.file.Path
 object Props {
 
     const val appName = "Filemat"
-    const val dataFolder = "/var/lib/filemat"
-    val dataFolderPath = Path.of(dataFolder)
 
-    const val setupCodeFile = "$dataFolder/setup-code.txt"
-    const val authCodeFile = "$dataFolder/auth-code.txt"
-    const val defaultUploadFolderPath = "/tmp/filemat"
-    const val defaultThumbnailCacheFolderPath = "/var/cache/filemat"
+    /**
+     * Data folder as configured with `FM_DATA_DIR`, made absolute.
+     * Defaults to `%LOCALAPPDATA%\Filemat` on Windows and `/var/lib/filemat` elsewhere.
+     */
+    val configuredDataFolderPath: Path = resolveDataFolder(
+        env = System.getenv(),
+        isWindows = Platform.isWindows,
+        userHome = System.getProperty("user.home"),
+    )
+
+    /**
+     * Data folder with links resolved. Read it after `initializeFileStructure` has created the folder.
+     * Services read it from `State.app.dataFolderPath`, so tests can use their own folder.
+     */
+    val dataFolderPath: Path by lazy {
+        runCatching { configuredDataFolderPath.toRealPath() }.getOrDefault(configuredDataFolderPath)
+    }
+
+    val databaseFile: Path = configuredDataFolderPath.resolve("filemat-server.db")
+    val setupCodeFile: String get() = dataFolderPath.resolve("setup-code.txt").toString()
+    val authCodeFile: String get() = dataFolderPath.resolve("auth-code.txt").toString()
+
+    /**
+     * Windows keeps uploads and the thumbnail cache in the data folder, because Storage Sense purges temp folders.
+     * Built from the real data folder, like every check against it.
+     */
+    val defaultUploadFolderPath: String get() =
+        if (Platform.isWindows) dataFolderPath.resolve("uploads").toString() else "/tmp/filemat"
+    val defaultThumbnailCacheFolderPath: String get() =
+        if (Platform.isWindows) dataFolderPath.resolve("cache").resolve("thumbnails").toString() else "/var/cache/filemat"
     const val defaultThumbnailCacheMaxSizeMb = 512
     const val defaultThumbnailCacheMaxAgeSeconds = 604800L
 
-    val nonDeletableFolders = NonDeletableSystemPaths
+    /**
+     * A getter, so reading `Props` doesn't load the Windows list, which calls JNA before `main` has set `jna.tmpdir`
+     */
+    val nonDeletableFolders get() = NonDeletableSystemPaths
 
     /**
      * Holds role-related values
@@ -62,5 +91,25 @@ object Props {
     object ContentSession {
         const val ticketTtlSeconds = 60L
         const val cookieMaxAgeSeconds = 3600L
+    }
+
+    /**
+     * Resolves the data folder from `FM_DATA_DIR`, or the OS default when it is not set
+     */
+    internal fun resolveDataFolder(env: Map<String, String>, isWindows: Boolean, userHome: String): Path {
+        val raw = env["FM_DATA_DIR"]?.takeIf { it.isNotBlank() }
+            ?: if (isWindows) {
+                val localAppData = env["LOCALAPPDATA"]?.takeIf { it.isNotBlank() }
+                    ?: Path.of(userHome, "AppData", "Local").toString()
+                Path.of(localAppData, appName).toString()
+            } else {
+                "/var/lib/filemat"
+            }
+
+        return try {
+            Path.of(raw).toAbsolutePath().normalize()
+        } catch (e: InvalidPathException) {
+            throw IllegalArgumentException("FM_DATA_DIR is not a valid path: $raw", e)
+        }
     }
 }

@@ -14,10 +14,12 @@ abstract class AController {
     fun bad(body: String, error: String): ResponseEntity<String> = ResponseEntity.badRequest().body(ErrorResponse(body, error).serialize())
     fun bad(body: String): ResponseEntity<String> = ResponseEntity.badRequest().body(ErrorResponse(body, "").serialize())
     fun notFound(body: String? = null): ResponseEntity<String> = ResponseEntity.status(404).body(ErrorResponse(body ?: "", "").serialize())
+    fun conflict(body: String, error: String = ""): ResponseEntity<String> = ResponseEntity.status(409).body(ErrorResponse(body, error).serialize())
     fun unauthenticated(body: String, error: String): ResponseEntity<String> = ResponseEntity.status(401).body(ErrorResponse(body, error).serialize())
     fun unauthenticated(body: String): ResponseEntity<String> = ResponseEntity.status(401).body(ErrorResponse(body, "").serialize())
     fun internal(body: String, error: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, error).serialize())
     fun internal(body: String): ResponseEntity<String> = ResponseEntity.internalServerError().body(ErrorResponse(body, "").serialize())
+    fun unavailable(body: String): ResponseEntity<String> = ResponseEntity.status(503).body(ErrorResponse(body, "").serialize())
 
     fun forbidden(body: String, error: String): ResponseEntity<String> = ResponseEntity.status(403).body(ErrorResponse(body, error).serialize())
     fun forbidden(body: String): ResponseEntity<String> = ResponseEntity.status(403).body(ErrorResponse(body, "").serialize())
@@ -32,6 +34,7 @@ abstract class AController {
     fun streamNotFound() = ResponseEntity.status(404).build<StreamingResponseBody>()
     fun streamUnauthenticated(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 401)
     fun streamInternal(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 500)
+    fun streamUnavailable(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 503)
     fun streamOk(body: StreamingResponseBody): ResponseEntity<StreamingResponseBody> = ResponseEntity.ok().body(body)
 
     fun streamResponse(body: String, status: Int): ResponseEntity<StreamingResponseBody> {

@@ -2,14 +2,20 @@ package org.filemat.server.module.file.service.filesystem
 
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
-import org.filemat.server.common.util.FileUtils
+import org.filemat.server.common.util.FileErrors
+import org.filemat.server.common.util.FileFailure
+import org.filemat.server.common.util.reachesNetwork
+import org.filemat.server.config.platform.FileIdentity
+import org.filemat.server.config.platform.LinkInspector
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
 import org.filemat.server.module.file.model.FileMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
 import org.filemat.server.module.file.service.filesystem.fileOperation.*
 import org.springframework.stereotype.Service
 import java.nio.file.*
-import java.nio.file.attribute.PosixFileAttributes
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.UUID
 import kotlin.io.path.*
 
@@ -39,6 +45,7 @@ class FilesystemService(
     }
 
     fun createFolder(folder: FilePath): Result<Unit> {
+        if (!folder.path.isAbsolute) return Result.reject("Cannot create a folder here.")
         return try {
             Files.createDirectories(folder.path)
             Result.ok()
@@ -48,6 +55,7 @@ class FilesystemService(
     }
 
     fun createBlankFile(path: FilePath): Result<Unit> {
+        if (!path.path.isAbsolute) return Result.reject("Cannot create a file here.")
         return try {
             Files.createFile(path.path)
             Result.ok()
@@ -57,22 +65,34 @@ class FilesystemService(
     }
 
     fun replaceFileContentsAtomically(source: FilePath, destination: FilePath): Result<Unit> {
+        // Read-only files stay read-only (Q38). Checked first, so the upload isn't copied for nothing.
+        if (FileErrors.isReadOnlyFile(destination.path)) return FileErrors.resultOf(FileFailure.READ_ONLY)
+
         val replacementTemp = destination.path.resolveSibling(".filemat-replace-${destination.path.fileName}-${UUID.randomUUID()}.tmp")
+        // Access denied while the temp file is made or filled is a missing right. Only the swap of an open file looks like it (§6.1).
+        var isSwapping = false
 
         return try {
             // Keep the original TUS source in place until the destination swap succeeds.
             // If the final move fails, the caller can still clean up or retry with source intact.
-            Files.copy(source.path, replacementTemp, StandardCopyOption.REPLACE_EXISTING)
+            Files.createFile(replacementTemp)
+            // Windows shows dot files, so the temp file is hidden while the upload is copied
+            setHidden(replacementTemp, true)
+            Files.newOutputStream(replacementTemp, StandardOpenOption.TRUNCATE_EXISTING).use { Files.copy(source.path, it) }
+            setHidden(replacementTemp, false)
 
-            try {
-                Files.move(
-                    replacementTemp,
-                    destination.path,
-                    StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE,
-                )
-            } catch (e: AtomicMoveNotSupportedException) {
-                Files.move(replacementTemp, destination.path, StandardCopyOption.REPLACE_EXISTING)
+            isSwapping = true
+            FileErrors.retryWhenInUse({ FileErrors.isTargetInUse(it, destination.path) }) {
+                try {
+                    Files.move(
+                        replacementTemp,
+                        destination.path,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE,
+                    )
+                } catch (e: AtomicMoveNotSupportedException) {
+                    Files.move(replacementTemp, destination.path, StandardCopyOption.REPLACE_EXISTING)
+                }
             }
             runCatching { Files.deleteIfExists(source.path) }
 
@@ -80,34 +100,51 @@ class FilesystemService(
         } catch (e: NoSuchFileException) {
             Result.notFound()
         } catch (e: Exception) {
+            if (if (isSwapping) FileErrors.isTargetInUse(e, destination.path) else FileErrors.isInUse(e)) return FileErrors.resultOf(FileFailure.IN_USE)
+            if (e is AccessDeniedException) return Result.reject("Missing permission to replace file.")
             Result.error("Failed to replace file contents.", exception = e)
         } finally {
             runCatching { Files.deleteIfExists(replacementTemp) }
         }
     }
 
+    private fun setHidden(path: Path, hidden: Boolean) {
+        if (!Platform.isWindows) return
+        runCatching { Files.setAttribute(path, "dos:hidden", hidden, LinkOption.NOFOLLOW_LINKS) }
+    }
+
     /**
-     * Returns whether file is in a supported filesystem
+     * Returns whether file keys are stable on the filesystem of a file. Null when the file does not exist.
      */
     fun isSupportedFilesystem(path: FilePath): Boolean? {
-        return FileUtils.isSupportedFilesystem(path.path)
+        return FileIdentity.isSupported(path.path)
     }
 
     /**
      * Gets metadata for a file.
      */
     fun getMetadata(path: FilePath): FileMetadata? {
-        val attributes: PosixFileAttributes = readAttributes(path.path, followSymbolicLinks = false)
+        if (PathPolicy.isVirtualRoot(path.path)) return virtualRootMetadata()
+
+        val attributes: BasicFileAttributes = readAttributes(path.path, followSymbolicLinks = false)
             ?: return null
 
+        val linkKind = LinkInspector.kindOf(path.path, attributes)
+        // A link to a network folder is never followed, not even to tell a folder from a file (§4.3)
+        val isNetworkLink = attributes.isSymbolicLink && reachesNetwork(path.path)
         val type = when {
+            isNetworkLink -> FileType.FILE_LINK
             attributes.isRegularFile -> FileType.FILE
+            // Junctions and volume mount points
+            attributes.isDirectory && linkKind == LinkInspector.Kind.LINK -> FileType.FOLDER_LINK
             attributes.isDirectory -> FileType.FOLDER
             attributes.isSymbolicLink -> {
                 val target = Files.readSymbolicLink(path.path)
                 val resolved = path.path.parent.resolve(target).normalize()
                 if (Files.isDirectory(resolved)) FileType.FOLDER_LINK else FileType.FILE_LINK
             }
+            // OneDrive placeholders and deduplicated files (Q42)
+            linkKind == LinkInspector.Kind.DATA -> FileType.FILE
             else -> FileType.OTHER
         }
         val creationTime = attributes.creationTime().toMillis()
@@ -119,20 +156,33 @@ class FilesystemService(
             createdDate = creationTime,
             fileType = type,
             size = attributes.size(),
-            isExecutable = Files.isExecutable(path.path),
-            isWritable = Files.isWritable(path.path),
+            isExecutable = !isNetworkLink && Files.isExecutable(path.path),
+            isWritable = !isNetworkLink && Files.isWritable(path.path),
         )
     }
 
     /**
-     * Returns basic file attributes of path
+     * The Windows drive list, shown as a read-only folder
      */
-    fun readAttributes(path: Path, followSymbolicLinks: Boolean): PosixFileAttributes? {
+    private fun virtualRootMetadata() = FileMetadata(
+        path = PathPolicy.root,
+        modifiedDate = 0,
+        createdDate = 0,
+        fileType = FileType.FOLDER,
+        size = 0,
+        isExecutable = true,
+        isWritable = false,
+    )
+
+    /**
+     * Returns basic file attributes of path (one call per file on every OS)
+     */
+    fun readAttributes(path: Path, followSymbolicLinks: Boolean): BasicFileAttributes? {
         return runCatching {
             if (followSymbolicLinks) {
-                Files.readAttributes(path, PosixFileAttributes::class.java)
+                Files.readAttributes(path, BasicFileAttributes::class.java)
             } else {
-                Files.readAttributes(path, PosixFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
             }
         }.getOrNull()
     }
@@ -178,8 +228,8 @@ class FilesystemService(
     }
 
     /**
-     * Returns inode number for input path
+     * Returns the file key of a file or link (links are not followed)
      */
-    fun getInode(path: Path, followSymbolicLinks: Boolean) = FileUtils.getInode(path, followSymbolicLinks)
+    fun getFileKey(path: Path) = FileIdentity.fileKey(path)
 
 }

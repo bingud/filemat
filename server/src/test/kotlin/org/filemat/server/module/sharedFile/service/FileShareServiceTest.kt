@@ -10,6 +10,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.RateLimiter
 import org.filemat.server.common.util.dto.ArgonHash
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
@@ -89,7 +90,7 @@ class FileShareServiceTest {
         every { repository.getSharesByFileId(share.fileId) } returns listOf(share)
     }
 
-    private fun entity(path: String) = FilesystemEntity(entityId, path, 1, true, ownerId)
+    private fun entity(path: String) = FilesystemEntity(entityId, path, "posix:1:1", true, ownerId, PathPolicy.pathKey(path))
 
     @Nested
     inner class Expiry {

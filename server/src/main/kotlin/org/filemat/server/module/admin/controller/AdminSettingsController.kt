@@ -2,6 +2,7 @@ package org.filemat.server.module.admin.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import org.filemat.server.common.State
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.controller.AController
@@ -11,6 +12,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileVisibility
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.file.ThumbnailService
+import org.filemat.server.module.file.service.file.media.MediaPreviewService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.log.service.meta
@@ -39,6 +41,7 @@ class AdminSettingsController(
     private val sensitiveAuthService: SensitiveAuthService,
     private val thumbCacheSettingService: ThumbCacheSettingService,
     private val thumbnailService: ThumbnailService,
+    private val mediaPreviewService: MediaPreviewService,
     private val state: State,
 ) : AController() {
 
@@ -85,6 +88,20 @@ class AdminSettingsController(
             put("folderPath", state.thumbCache.folderPath)
             put("maxSizeMb", state.thumbCache.maxSizeMb)
             put("maxAge", state.thumbCache.maxAge)
+        })
+    }
+
+    /**
+     * Whether video previews work, and with which FFmpeg (Q47)
+     */
+    @GetMapping("/video-previews")
+    fun adminGetVideoPreviewStatusMapping(): ResponseEntity<String> {
+        val status = mediaPreviewService.status
+        return ok(json {
+            put("isAvailable", status.backend != null)
+            put("source", JsonPrimitive(status.source))
+            put("version", JsonPrimitive(status.version))
+            put("problem", JsonPrimitive(status.problem))
         })
     }
 

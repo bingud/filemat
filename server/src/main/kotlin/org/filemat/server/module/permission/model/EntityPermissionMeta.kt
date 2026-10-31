@@ -11,5 +11,7 @@ data class EntityPermissionMeta(
     @Serializable(UlidSerializer::class)
     val ownerId: Ulid?,
     val permissions: List<EntityPermission>,
+    /** Permissions follow the path only, not the file when it's moved outside Filemat (FAT, exFAT, network volumes and hard links) */
+    val isPathOnly: Boolean = false,
     var miniUserList: List<MiniUser>? = null,
 )

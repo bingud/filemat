@@ -3,7 +3,7 @@ spring:
     name: filemat-server
 
   datasource:
-    url: jdbc:sqlite:/var/lib/filemat/filemat-server.db
+    # url is set in ServerApplication.kt from FM_DATA_DIR
     hikari:
       connection-init-sql: PRAGMA foreign_keys=ON;
     driver-class-name: org.sqlite.JDBC

@@ -5,6 +5,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.State
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.sharedFile.model.FileShare
 import org.filemat.server.testutil.assertNotFound
@@ -14,6 +15,8 @@ import org.filemat.server.testutil.symlinkOrSkip
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.api.Test
@@ -187,6 +190,43 @@ class SharePathTest {
         val result = resolveSharedDescendant(outside.resolve("secret.txt"), FilePath.ofAlreadyNormalized(shareRoot), state.app.followSymlinks)
 
         assertNotFound(result)
+    }
+
+    @Test
+    fun `a path inside the share becomes share-relative, and back`() {
+        val file = shareRoot.resolve("a").resolve("b.txt")
+
+        assertEquals(FilePath.of("a/b.txt"), toShareRelativePath(file, shareRoot))
+        assertEquals(file, joinSharePath(shareRoot, FilePath.of("a/b.txt")))
+    }
+
+    @Test
+    fun `the share root is the root of its share`() {
+        assertEquals(FilePath.of(PathPolicy.root), toShareRelativePath(shareRoot, shareRoot))
+        assertEquals(shareRoot, joinSharePath(shareRoot, FilePath.of(PathPolicy.root)))
+    }
+
+    @Test
+    fun `a path outside the share, or in a folder that only starts with its name, has no share-relative path`() {
+        assertNull(toShareRelativePath(outside.resolve("secret.txt"), shareRoot))
+        assertNull(toShareRelativePath(tempDir.resolve("share-other").resolve("a.txt"), shareRoot))
+    }
+
+    @Test
+    fun `symbolic links that point inside the share stay inside`() {
+        val nested = Files.createDirectory(shareRoot.resolve("nested"))
+        symlinkOrSkip(shareRoot.resolve("in-tree"), nested)
+
+        assertTrue(symlinkImmediateTargetsStayInside(shareRoot.resolve("inside.txt"), shareRoot))
+        assertTrue(symlinkImmediateTargetsStayInside(shareRoot.resolve("in-tree").resolve("a.txt"), shareRoot))
+    }
+
+    @Test
+    fun `a symbolic link that points outside the share, anywhere in the path, leaves it`() {
+        symlinkOrSkip(shareRoot.resolve("escape"), outside)
+
+        assertFalse(symlinkImmediateTargetsStayInside(shareRoot.resolve("escape"), shareRoot))
+        assertFalse(symlinkImmediateTargetsStayInside(shareRoot.resolve("escape").resolve("secret.txt"), shareRoot))
     }
 
     private fun resolve(relative: String, followOutbound: Boolean = FileShare.followSymlinks): Result<FilePath> {

@@ -122,6 +122,7 @@ class SetupController(
             ?: Validator.username(username)
         )?.let { return@run bad(it, "validation") }
         val uploadFolderPath = FilePath.of(rawUploadFolderPath)
+        state.realInternalFolder(uploadFolderPath).let { if (it.isNotSuccessful) return@run bad("Upload folder: ${it.error}", "validation") }
         val thumbnailCacheEnabled = rawThumbnailCacheEnabled.toBooleanStrictOrNull()
             ?: return@run bad("Thumbnail caching must be true or false.", "validation")
         val thumbnailCacheFolderPath = rawThumbnailCacheFolderPath

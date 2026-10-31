@@ -6,6 +6,10 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.State
+import org.filemat.server.config.Props
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsSystemFolders
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
@@ -24,6 +28,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 
@@ -48,7 +54,7 @@ class FileSecurityServiceTest {
     }
 
     private val file = FilePath.of("/data/report.txt")
-    private val fileInode = 42L
+    private val fileKey = "posix:1:42"
 
     private val state = State(env = emptyMap())
     private val fileVisibilityService = mockk<FileVisibilityService>()
@@ -61,9 +67,9 @@ class FileSecurityServiceTest {
     init {
         allowAllPaths()
         every { entityPermissionService.getEffectivePermissions(any(), any(), any()) } returns emptySet()
-        // The file exists and its stored inode is up to date, so no repair is needed.
+        // The file exists and its stored file key is up to date, so no repair is needed.
         every { entityService.getByPath(any(), any()) } returns Result.ok(entity(file))
-        every { filesystemService.getInode(any(), any()) } returns fileInode
+        every { filesystemService.getFileKey(any()) } returns fileKey
     }
 
     // region Fixtures
@@ -100,9 +106,10 @@ class FileSecurityServiceTest {
     private fun entity(path: FilePath) = FilesystemEntity(
         entityId = UlidCreator.getUlid(),
         path = path.pathString,
-        inode = fileInode,
+        fileKey = fileKey,
         isFilesystemSupported = true,
         ownerId = null,
+        pathKey = path.pathKey,
     )
 
     // endregion
@@ -243,7 +250,7 @@ class FileSecurityServiceTest {
 
     @Nested
     inner class DataFolder {
-        private val dataFile = FilePath.of("/var/lib/filemat/database.sqlite")
+        private val dataFile = FilePath.ofAlreadyNormalized(Props.dataFolderPath.resolve("database.sqlite"))
 
         @ParameterizedTest(name = "{0}")
         @EnumSource(Operation::class, names = ["EDIT", "MOVE", "RENAME", "DELETE"])
@@ -274,19 +281,23 @@ class FileSecurityServiceTest {
     @Nested
     inner class SystemFolders {
 
+        // A protected folder of the OS the tests run on
+        private val systemFolder = if (Platform.isWindows) WindowsSystemFolders.current.systemRoot else "/etc"
+        private val systemFolderName = systemFolder.substringAfterLast('/')
+
         @Test
         fun `system folder cannot be deleted`() {
-            assertRejected(service.isPathDeletable(FilePath.of("/etc")))
+            assertRejected(service.isPathDeletable(FilePath.of(systemFolder)))
         }
 
         @Test
         fun `system folder cannot be deleted through a non-normalized path`() {
-            assertRejected(service.isPathDeletable(FilePath.of("/etc/../etc/")))
+            assertRejected(service.isPathDeletable(FilePath.of("$systemFolder/../$systemFolderName/")))
         }
 
         @Test
         fun `content inside a system folder can be deleted`() {
-            assertSuccess(service.isPathDeletable(FilePath.of("/etc/app.conf")))
+            assertSuccess(service.isPathDeletable(FilePath.of("$systemFolder/app.conf")))
         }
 
         @Test
@@ -296,17 +307,51 @@ class FileSecurityServiceTest {
 
         @Test
         fun `system folder marked force-deletable can be deleted`() {
-            val forcedState = State(env = mapOf("FM_FORCE_DELETABLE_FOLDERS" to "/etc"))
+            val forcedState = State(env = mapOf("FM_FORCE_DELETABLE_FOLDERS" to systemFolder))
 
-            assertSuccess(serviceWith(forcedState).isPathDeletable(FilePath.of("/etc")))
+            assertSuccess(serviceWith(forcedState).isPathDeletable(FilePath.of(systemFolder)))
         }
 
         @Test
         fun `deleting a system folder is rejected even for a super admin`() {
-            val etc = FilePath.of("/etc")
+            val etc = FilePath.of(systemFolder)
             every { entityService.getByPath(any(), any()) } returns Result.ok(entity(etc))
 
             assertRejected(service.isAllowedToDeleteFile(superAdmin(), etc))
+        }
+
+        @Test
+        fun `the root folder cannot be deleted, even when marked force-deletable`() {
+            val forcedState = State(env = mapOf("FM_FORCE_DELETABLE_FOLDERS" to PathPolicy.root))
+
+            assertRejected(serviceWith(forcedState).isPathDeletable(FilePath.of(PathPolicy.root)))
+        }
+
+        @Test
+        @EnabledOnOs(OS.WINDOWS)
+        fun `drive roots cannot be deleted`() {
+            assertRejected(service.isPathDeletable(FilePath.of("C:/")))
+            assertRejected(service.isPathDeletable(FilePath.of("Z:/")))
+        }
+
+        @Test
+        @EnabledOnOs(OS.WINDOWS)
+        fun `Windows system folders and profiles cannot be deleted`() {
+            val folders = WindowsSystemFolders.current
+
+            assertRejected(service.isPathDeletable(FilePath.of(folders.systemRoot)))
+            assertRejected(service.isPathDeletable(FilePath.of(folders.systemRoot.lowercase())))
+            assertRejected(service.isPathDeletable(FilePath.of("${folders.profiles}/someone")))
+            assertSuccess(service.isPathDeletable(FilePath.of("${folders.profiles}/someone/Documents")))
+        }
+
+        @Test
+        @EnabledOnOs(OS.WINDOWS)
+        fun `force-deletable folders ignore case on Windows`() {
+            val folders = WindowsSystemFolders.current
+            val forcedState = State(env = mapOf("FM_FORCE_DELETABLE_FOLDERS" to "${folders.profiles}/someone".lowercase()))
+
+            assertSuccess(serviceWith(forcedState).isPathDeletable(FilePath.of("${folders.profiles}/someone")))
         }
     }
 
@@ -361,5 +406,29 @@ class FileSecurityServiceTest {
 
             verify(exactly = 0) { entityPermissionService.getEffectivePermissions(any(), any(), any()) }
         }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `the drive list cannot be edited or deleted`() {
+        val driveList = FilePath.of("/")
+
+        assertEquals("The drive list cannot be changed.", service.isPathEditable(driveList))
+        assertRejected(service.isPathDeletable(driveList))
+        assertRejected(service.isAllowedToShareFile(superAdmin(), driveList))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `every signed-in user can open the drive list, even when it is not exposed`() {
+        blockAllPaths()
+        val driveList = FilePath.of("/")
+        val user = regularUser()
+
+        assertSuccess(service.isAllowedToAccessFile(user, driveList))
+        assertTrue(service.getActualFilePermissions(user, driveList).contains(FilePermission.READ))
+        assertRejected(service.isAllowedToAccessFile(user = null, canonicalPath = driveList))
+        // A drive itself is still checked
+        assertRejected(service.isAllowedToAccessFile(user, FilePath.of("C:/")))
     }
 }

@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.State
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
@@ -14,6 +15,7 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.EntityPermission
+import org.filemat.server.module.permission.model.EntityPermissionMeta
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.PermissionType
 import org.filemat.server.module.permission.model.SystemPermission
@@ -23,9 +25,13 @@ import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
 import org.filemat.server.testutil.principalWith
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 
 /**
  * Tests who may change the permissions of a file, and that the database and the in-memory permission tree
@@ -53,9 +59,10 @@ class EntityPermissionServiceTest {
     private val entity = FilesystemEntity(
         entityId = UlidCreator.getUlid(),
         path = path.pathString,
-        inode = 1,
+        fileKey = "posix:1:1",
         isFilesystemSupported = true,
         ownerId = ownerId,
+        pathKey = path.pathKey,
     )
 
     /** The user receiving permissions in these tests. */
@@ -63,7 +70,7 @@ class EntityPermissionServiceTest {
 
     init {
         every { fileService.isAllowedToAccessFile(any(), any(), any()) } returns Result.ok()
-        every { fileService.verifyEntityInode(any(), any()) } returns Result.ok()
+        every { fileService.verifyEntityIdentity(any(), any()) } returns Result.ok()
         every { fileService.ensureEntityIndexed(any(), any(), any(), any()) } returns Result.ok()
         every { entityService.getByPath(any(), any()) } returns Result.ok(entity)
         every { entityService.getById(entity.entityId, any()) } returns Result.ok(entity)
@@ -291,7 +298,7 @@ class EntityPermissionServiceTest {
             grant(FilePermission.READ)
             val newPath = FilePath.of("/data/archive/report.txt")
 
-            service.memory_movePath(path.pathString, newPath.pathString, entity.entityId)
+            service.memory_movePath(path.pathKey, newPath.pathKey, entity.entityId)
 
             assertEquals(setOf(FilePermission.READ), service.getEffectivePermissions(newPath, targetUserId, emptyList()))
             assertEquals(emptySet<FilePermission>(), effective())
@@ -301,7 +308,7 @@ class EntityPermissionServiceTest {
         fun `permissions of a deleted file are dropped`() {
             grant(FilePermission.READ)
 
-            service.memory_removeEntity(path.pathString, entity.entityId)
+            service.memory_removeEntity(path.pathKey, entity.entityId)
 
             assertEquals(emptySet<FilePermission>(), effective())
         }
@@ -314,6 +321,38 @@ class EntityPermissionServiceTest {
 
             assertEquals(emptySet<FilePermission>(), effective())
             assertTrue(service.getPermittedEntities(user(userId = targetUserId)).isEmpty())
+        }
+    }
+
+    @Nested
+    inner class PathOnlyWarning {
+
+        @TempDir
+        lateinit var dir: Path
+
+        private fun metaOf(entity: FilesystemEntity?): EntityPermissionMeta {
+            val file = FilePath.of(PathPolicy.toApiString(Files.writeString(dir.toRealPath().resolve("a.txt"), "a")))
+            every { fileService.hasPermissionToAccessFile(any(), any()) } returns Result.ok()
+            every { entityService.getByPath(any(), any()) } returns if (entity == null) Result.notFound() else Result.ok(entity)
+
+            val result = service.getEntityPermissions(manager, file)
+            assertSuccess(result)
+            return result.value
+        }
+
+        @Test
+        fun `a tracked file is not path-only`() {
+            assertFalse(metaOf(entity).isPathOnly)
+        }
+
+        @Test
+        fun `an entity on an unsupported volume is path-only`() {
+            assertTrue(metaOf(entity.copy(fileKey = null, isFilesystemSupported = false)).isPathOnly)
+        }
+
+        @Test
+        fun `a file without an entity uses its volume`() {
+            assertFalse(metaOf(null).isPathOnly)
         }
     }
 }

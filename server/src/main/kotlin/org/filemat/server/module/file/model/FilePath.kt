@@ -1,9 +1,9 @@
 package org.filemat.server.module.file.model
 
 import org.filemat.server.common.util.getNormalizedPath
+import org.filemat.server.config.platform.PathPolicy
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.file.Paths
 import kotlin.io.path.exists
 
 data class FilePath(
@@ -11,7 +11,21 @@ data class FilePath(
     private val normalizedPath: Path? = null,
 ) {
     val path: Path by lazy { normalizedPath ?: originalInputPath.getNormalizedPath() }
-    val pathString: String by lazy { path.toString() }
+
+    /**
+     * API path string (`/a/b`, or `C:/a/b` on Windows). Stored in the database and sent to clients.
+     */
+    val pathString: String by lazy { PathPolicy.toApiString(path) }
+
+    /**
+     * Lookup key (`PathPolicy.pathKey`). Equal to [pathString] on Linux.
+     */
+    val pathKey: String by lazy { PathPolicy.pathKey(path) }
+
+    /**
+     * Last path segment. A root (`/`, `C:/`) has none, so it returns the whole path.
+     */
+    val filename: String get() = path.fileName?.toString() ?: pathString
 
     override fun toString() = pathString
     override fun equals(other: Any?): Boolean {
@@ -29,7 +43,10 @@ data class FilePath(
     fun exists(vararg options: LinkOption) = this.path.exists(*options)
 
     companion object {
-        fun of(rawPath: String) = FilePath(Paths.get(rawPath))
+        /**
+         * Parses an API path string. Throws `InvalidPathException` for paths the server OS does not allow.
+         */
+        fun of(rawPath: String) = ofAlreadyNormalized(PathPolicy.parse(rawPath))
         fun ofAlreadyNormalized(path: Path) = FilePath(path, path)
     }
 }

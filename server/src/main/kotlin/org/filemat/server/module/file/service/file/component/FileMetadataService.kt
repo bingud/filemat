@@ -4,7 +4,11 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.common.util.localDrivePath
 import org.filemat.server.common.util.resolvePath
+import org.filemat.server.config.platform.CaseSensitivity
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.file.service.FileLockService
@@ -15,7 +19,6 @@ import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.savedFile.SavedFileService
 import org.filemat.server.module.sharedFile.resolveSharedDescendant
 import org.springframework.stereotype.Service
-import java.nio.file.Path
 
 @Service
 class FileMetadataService(
@@ -56,7 +59,7 @@ class FileMetadataService(
                     it.value
                 }
 
-                Result.ok(metadata to entries)
+                Result.ok(metadata.copy(caseSensitive = caseSensitivityOf(canonicalPath)) to entries)
             } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
                 Result.ok(metadata to null)
             } else {
@@ -74,7 +77,7 @@ class FileMetadataService(
      * if file is a folder, also returns entries
      */
     fun getSharedFileOrFolderEntries(rawPath: FilePath, foldersOnly: Boolean = false, shareToken: String): Result<Pair<FileMetadata, List<FileMetadata>?>> {
-        val shareRoot = fileService.resolvePathWithOptionalShare(FilePath.of("/"), shareToken).let {
+        val shareRoot = fileService.resolvePathWithOptionalShare(FilePath.of(PathPolicy.root), shareToken).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -105,16 +108,16 @@ class FileMetadataService(
                     if (it.isNotSuccessful) return it.cast()
                     it.value
                 }.mapNotNull { entry ->
-                    val entryPath = Path.of(entry.path)
+                    val entryPath = PathPolicy.parse(entry.path)
                     if (resolveSharedDescendant(entryPath, shareRoot, state.app.followSymlinks).isNotSuccessful) return@mapNotNull null
 
                     val relativePath = canonicalPath.path.relativize(entryPath)
                     val newPath = rawPath.path.resolve(relativePath)
 
-                    entry.copy(path = newPath.toString())
+                    entry.copy(path = PathPolicy.toApiString(newPath))
                 }
 
-                return Result.ok(metadata to entries)
+                return Result.ok(metadata.copy(caseSensitive = caseSensitivityOf(canonicalPath)) to entries)
             } else if (type == FileType.FILE || type == FileType.FILE_LINK || type == FileType.FOLDER_LINK) {
                 return Result.ok(metadata to null)
             } else {
@@ -149,7 +152,7 @@ class FileMetadataService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        return filesystemService.getMetadata(rawPath)?.toResult()
+        return filesystemService.getMetadata(displayPath(rawPath, canonicalPath))?.toResult()
             ?: Result.notFound()
     }
 
@@ -182,7 +185,7 @@ class FileMetadataService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val meta = filesystemService.getMetadata(rawPath)
+        val meta = filesystemService.getMetadata(displayPath(rawPath, canonicalPath))
             ?: return Result.notFound()
 
         val permissions: Set<FilePermission> = user?.let { fileService.getActualFilePermissions(user, canonicalPath) } ?: setOf(FilePermission.READ)
@@ -192,4 +195,17 @@ class FileMetadataService(
         return fullMeta.toResult()
     }
 
+    /**
+     * The requested path, so that a followed link keeps its own path. On Windows a path in the wrong case
+     * names the same file, and then the real case is shown (the web app rewrites its URL to it).
+     * A path on a `subst` drive is shown on the drive it points to, like the entries of a listing.
+     */
+    private fun displayPath(rawPath: FilePath, canonicalPath: FilePath): FilePath {
+        val requested = if (Platform.isWindows) localDrivePath(rawPath) ?: rawPath else rawPath
+        return if (PathPolicy.isSamePath(requested.path, canonicalPath.path)) canonicalPath else requested
+    }
+
+    // The drive list is not a real folder, so it has no flag
+    private fun caseSensitivityOf(folder: FilePath): Boolean? =
+        if (PathPolicy.isVirtualRoot(folder.path)) null else CaseSensitivity.isCaseSensitive(folder.path)
 }

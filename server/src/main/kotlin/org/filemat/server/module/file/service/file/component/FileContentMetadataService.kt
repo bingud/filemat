@@ -1,26 +1,32 @@
 package org.filemat.server.module.file.service.file.component
 
 import com.github.benmanes.caffeine.cache.Caffeine
-import org.bytedeco.ffmpeg.global.avutil.AV_LOG_QUIET
-import org.bytedeco.ffmpeg.global.avutil.av_log_set_level
-import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.md5hash
+import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FileContentMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
 import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.file.media.FfmpegBusyException
+import org.filemat.server.module.file.service.file.media.MediaPreviewService
 import org.springframework.stereotype.Service
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.channels.SeekableByteChannel
+import java.nio.file.Files
+import java.nio.file.Path
 import javax.imageio.ImageIO
+import javax.imageio.stream.ImageInputStreamImpl
 
 @Service
 class FileContentMetadataService(
     private val fileService: FileService,
     private val fileLockService: FileLockService,
+    private val mediaPreviewService: MediaPreviewService,
 ) {
 
     // Width, height, and duration. Key is path hash, modified time, and size.
@@ -52,7 +58,9 @@ class FileContentMetadataService(
         try {
             val file = canonicalPath.path.toFile()
             if (!file.isFile || !file.canRead()) return Result.notFound()
-            val filename = rawPath.pathString.substringAfterLast("/")
+            // Reading a OneDrive online-only file downloads it, so it has no media metadata, like it has no preview (Q42)
+            if (LinkInspector.kindOf(canonicalPath.path) == LinkInspector.Kind.DATA) return Result.ok(FileContentMetadata())
+            val filename = rawPath.filename
             return Result.ok(getCachedOrExtract(file, filename, canonicalPath))
         } finally {
             lock.unlock()
@@ -66,7 +74,12 @@ class FileContentMetadataService(
     ): Map<String, FileContentMetadata> {
         val result = linkedMapOf<String, FileContentMetadata>()
         for (rawPath in rawPaths) {
-            val meta = getContentMetadata(user, rawPath, shareToken)
+            // The rest are left out, and the web asks for them again later
+            val meta = try {
+                getContentMetadata(user, rawPath, shareToken)
+            } catch (_: FfmpegBusyException) {
+                break
+            }
             if (!meta.isSuccessful) continue
             result[rawPath.pathString] = meta.value
         }
@@ -84,6 +97,9 @@ class FileContentMetadataService(
         cache.put(cacheKey(canonicalPath, modifiedDate, fileSize), meta)
     }
 
+    /**
+     * Throws [FfmpegBusyException], which caches nothing, when FFmpeg is needed and busy
+     */
     internal fun getCachedOrExtract(file: File, filename: String, canonicalPath: FilePath): FileContentMetadata {
         val key = cacheKey(canonicalPath, file.lastModified(), file.length())
         return cache.get(key) { extractFromFile(file, filename) }
@@ -92,7 +108,7 @@ class FileContentMetadataService(
     internal fun extractFromFile(file: File, filename: String): FileContentMetadata {
         return when (mediaKindFromFilename(filename)) {
             MediaKind.IMAGE -> {
-                readImageSize(file)?.toMetadata()
+                readImageSize(file.toPath())?.toMetadata()
                     // Stills have no duration; drop whatever ffmpeg reports.
                     ?: readWithFfmpeg(file)?.copy(durationMs = null)
                     ?: FileContentMetadata()
@@ -101,51 +117,15 @@ class FileContentMetadataService(
             // Audio has no frame size.
             MediaKind.AUDIO -> readWithFfmpeg(file)?.copy(width = null, height = null) ?: FileContentMetadata()
             null -> {
-                readImageSize(file)?.toMetadata()
+                readImageSize(file.toPath())?.toMetadata()
                     ?: readWithFfmpeg(file)
                     ?: FileContentMetadata()
             }
         }
     }
 
-    private fun readImageSize(file: File): Pair<Int, Int>? {
-        return try {
-            val stream = ImageIO.createImageInputStream(file) ?: return null
-            stream.use {
-                val readers = ImageIO.getImageReaders(it)
-                if (!readers.hasNext()) return null
-                val reader = readers.next()
-                try {
-                    reader.input = it
-                    val width = reader.getWidth(0)
-                    val height = reader.getHeight(0)
-                    if (width > 0 && height > 0) width to height else null
-                } finally {
-                    reader.dispose()
-                }
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     private fun readWithFfmpeg(file: File): FileContentMetadata? {
-        var grabber: FFmpegFrameGrabber? = null
-        return try {
-            av_log_set_level(AV_LOG_QUIET)
-            grabber = FFmpegFrameGrabber(file)
-            grabber.setOption("probesize", "524288")
-            grabber.setOption("analyzeduration", "1000000")
-            grabber.start()
-            metadataFromGrabber(grabber, includeDuration = true)
-        } catch (_: Throwable) {
-            null
-        } finally {
-            grabber?.let {
-                runCatching { it.stop() }
-                runCatching { it.release() }
-            }
-        }
+        return mediaPreviewService.backend?.probe(file.toPath())
     }
 
     private enum class MediaKind { IMAGE, VIDEO, AUDIO }
@@ -161,15 +141,6 @@ class FileContentMetadataService(
             return "${md5hash(canonicalPath.pathString)}_${modifiedDate}_${fileSize}"
         }
 
-        fun metadataFromGrabber(grabber: FFmpegFrameGrabber, includeDuration: Boolean): FileContentMetadata? {
-            val width = grabber.imageWidth.takeIf { it > 0 }
-            val height = grabber.imageHeight.takeIf { it > 0 }
-            // FFmpeg lengthInTime is microseconds.
-            val durationMs = if (includeDuration) grabber.lengthInTime.takeIf { it > 0 }?.div(1000) else null
-            if (width == null && height == null && durationMs == null) return null
-            return FileContentMetadata(width = width, height = height, durationMs = durationMs)
-        }
-
         private fun mediaKindFromFilename(filename: String): MediaKind? {
             val extension = filename.substringAfterLast('.', missingDelimiterValue = "").lowercase()
             if (extension.isEmpty() || extension == filename.lowercase()) return null
@@ -182,5 +153,80 @@ class FileContentMetadataService(
         }
 
         private fun Pair<Int, Int>.toMetadata() = FileContentMetadata(width = first, height = second)
+    }
+}
+
+/**
+ * Reads the width and height from the image header, without decoding the pixels. Null when ImageIO cannot read the format.
+ */
+internal fun readImageSize(path: Path): Pair<Int, Int>? {
+    return try {
+        // NIO opens files with share-delete, so a file being read can still be renamed or deleted on Windows (§6.1).
+        // The stream seeks in the file: a header at the end of a large TIFF is read there, not copied into memory first.
+        Files.newByteChannel(path).use { channel ->
+            ChannelImageInputStream(channel).use {
+                val readers = ImageIO.getImageReaders(it)
+                if (!readers.hasNext()) return null
+                val reader = readers.next()
+                try {
+                    reader.input = it
+                    val width = reader.getWidth(0)
+                    val height = reader.getHeight(0)
+                    if (width > 0 && height > 0) width to height else null
+                } finally {
+                    reader.dispose()
+                }
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
+ * An `ImageInputStream` that reads a file through a NIO channel, with random access.
+ * Only the last 8 KB read are kept, because readers read headers a byte at a time.
+ */
+private class ChannelImageInputStream(private val channel: SeekableByteChannel) : ImageInputStreamImpl() {
+    private val buffer = ByteArray(8192)
+    private var bufferStart = 0L
+    private var bufferLength = 0
+
+    override fun read(): Int {
+        checkClosed()
+        bitOffset = 0
+        if (!fill()) return -1
+        return buffer[(streamPos++ - bufferStart).toInt()].toInt() and 0xFF
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        checkClosed()
+        bitOffset = 0
+        if (len == 0) return 0
+        if (!fill()) return -1
+        val count = minOf(len, (bufferStart + bufferLength - streamPos).toInt())
+        System.arraycopy(buffer, (streamPos - bufferStart).toInt(), b, off, count)
+        streamPos += count
+        return count
+    }
+
+    /**
+     * Makes the buffer hold the byte at the stream position. Returns false at the end of the file.
+     */
+    private fun fill(): Boolean {
+        if (streamPos >= bufferStart && streamPos < bufferStart + bufferLength) return true
+        channel.position(streamPos)
+        val count = channel.read(ByteBuffer.wrap(buffer))
+        if (count <= 0) return false
+        bufferStart = streamPos
+        bufferLength = count
+        return true
+    }
+
+    override fun length(): Long = runCatching { channel.size() }.getOrDefault(-1L)
+
+    override fun close() {
+        super.close()
+        channel.close()
     }
 }

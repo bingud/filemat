@@ -5,6 +5,7 @@ import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.model.toResult
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.repository.EntityRepository
@@ -51,6 +52,7 @@ class EntityService(
     }
 
     private val entityMap = ConcurrentHashMap<Ulid, FilesystemEntity>()
+    // Path key to entity ID
     private val pathMap = ConcurrentHashMap<String, Ulid>()
     private val mapLock = ReentrantReadWriteLock()
     private val repairLock = ReentrantLock()
@@ -59,20 +61,20 @@ class EntityService(
 
     fun map_put(entity: FilesystemEntity, lock: Boolean = true) {
         val action = {
-            entity.path?.let { path ->
-                val currentOwnerId = pathMap[path]
+            entity.pathKey?.let { key ->
+                val currentOwnerId = pathMap[key]
                 check(currentOwnerId == null || currentOwnerId == entity.entityId) {
-                    "Path cache collision: '$path' is already owned by $currentOwnerId"
+                    "Path cache collision: '$key' is already owned by $currentOwnerId"
                 }
             }
 
             val previousEntity = entityMap.put(entity.entityId, entity)
             if (previousEntity != null) {
-                previousEntity.path?.let { pathMap.remove(it, previousEntity.entityId) }
+                previousEntity.pathKey?.let { pathMap.remove(it, previousEntity.entityId) }
             }
 
-            if (entity.path != null) {
-                pathMap.put(entity.path, entity.entityId)
+            if (entity.pathKey != null) {
+                pathMap.put(entity.pathKey, entity.entityId)
             }
         }
 
@@ -88,7 +90,7 @@ class EntityService(
     fun map_remove(entityId: Ulid) {
         mapLock.write {
             val entity = entityMap.remove(entityId) ?: return
-            entity.path?.let { pathMap.remove(it) }
+            entity.pathKey?.let { pathMap.remove(it) }
         }
     }
 
@@ -99,17 +101,17 @@ class EntityService(
     }
 
     fun getByOwnerUserId(userId: Ulid): List<FilesystemEntity> = entityRepository.getByOwnerUserId(userId)
-    fun map_getByPath(path: String): FilesystemEntity? {
+    fun map_getByPath(pathKey: String): FilesystemEntity? {
         mapLock.read {
-            return pathMap[path]?.let { entityId ->
+            return pathMap[pathKey]?.let { entityId ->
                 entityMap[entityId]
             }
         }
     }
 
     fun getEntityIdByPath(path: FilePath, action: UserAction): Result<Ulid> {
-        pathMap[path.pathString]?.let { return it.toResult() }
-        getByPath(path.pathString, action).let {
+        pathMap[path.pathKey]?.let { return it.toResult() }
+        getByPath(path.pathKey, action).let {
             if (it.isNotSuccessful) return it.cast()
             return it.value.entityId.toResult()
         }
@@ -120,8 +122,8 @@ class EntityService(
             entityRepository.delete(entity.entityId)
             map_remove(entity.entityId)
 
-            if (entity.path != null) {
-                entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
+            if (entity.pathKey != null) {
+                entityPermissionService.memory_removeEntity(entity.pathKey, entity.entityId)
             }
 
             Result.ok()
@@ -138,7 +140,7 @@ class EntityService(
     }
 
     fun duplicateEntity(canonicalPath: FilePath, canonicalDestinationPath: FilePath, userAction: UserAction = UserAction.DUPLICATE_ENTITY): Result<FilesystemEntity> {
-        val sourceEntity = getByPath(canonicalPath.pathString, userAction)
+        val sourceEntity = getByPath(canonicalPath.pathKey, userAction)
             .let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
@@ -153,7 +155,7 @@ class EntityService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val newEntity = getByPath(canonicalDestinationPath.pathString, userAction).let {
+        val newEntity = getByPath(canonicalDestinationPath.pathKey, userAction).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -177,25 +179,36 @@ class EntityService(
     }
 
     fun create(canonicalPath: FilePath, ownerId: Ulid?, userAction: UserAction): Result<FilesystemEntity> {
-        val isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
+        var isFilesystemSupported = filesystemService.isSupportedFilesystem(canonicalPath)
             ?: return Result.notFound()
 
-        val inode = if (isFilesystemSupported == true) {
-            // Get the Inode of file or symlink due to path-based permissions
-            filesystemService.getInode(canonicalPath.path, false)
+        var fileKey = if (isFilesystemSupported) {
+            // The key of the file or link itself, because permissions are path-based
+            filesystemService.getFileKey(canonicalPath.path)
                 ?: return Result.notFound()
         } else null
 
-        val existingEntity = getByPath(canonicalPath.pathString, userAction)
+        // Hard links share a key, which stays with the first path. The other paths follow their path only.
+        if (fileKey != null) {
+            val keyEntity = getByFileKey(fileKey, userAction)
+            if (keyEntity.hasError) return Result.error("Failed to check if this file has been indexed yet.")
+            if (keyEntity.isSuccessful) {
+                fileKey = null
+                isFilesystemSupported = false
+            }
+        }
+
+        val existingEntity = getByPath(canonicalPath.pathKey, userAction)
         if (existingEntity.notFound == false) return Result.reject("A file with this path has already been indexed.")
         if (existingEntity.notFound != true && existingEntity.isNotSuccessful) return Result.error("Failed to check if this file has been indexed yet.")
 
         val entity = FilesystemEntity(
             entityId = UlidCreator.getUlid(),
             path = canonicalPath.pathString,
-            inode = inode,
+            fileKey = fileKey,
             isFilesystemSupported = isFilesystemSupported,
             ownerId = ownerId,
+            pathKey = canonicalPath.pathKey,
         )
 
         db_create(entity, userAction).let {
@@ -210,7 +223,8 @@ class EntityService(
             entityRepository.insert(
                 entityId = entity.entityId,
                 path = entity.path,
-                inode = entity.inode,
+                pathKey = entity.pathKey,
+                fileKey = entity.fileKey,
                 isFilesystemSupported = entity.isFilesystemSupported,
                 ownerId = entity.ownerId,
             )
@@ -237,36 +251,49 @@ class EntityService(
         newPath: FilePath?,
         userAction: UserAction
     ): Result<Unit> {
-        val oldBase = path.path
-
-        if (newPath != null && (path == newPath || newPath.startsWith(path))) return Result.error("Cannot move a folder into itself.")
+        // Keys are equal for a case-only rename in a case-insensitive folder, which is allowed
+        if (newPath != null && (path == newPath || (newPath.pathKey != path.pathKey && PathPolicy.isKeyWithin(newPath.pathKey, path.pathKey)))) {
+            return Result.error("Cannot move a folder into itself.")
+        }
 
         // Do all operations in a DB transaction
         return runCatching {
             transactionTemplate.execute<Result<Unit>> { status ->
                 // Get entities that start with the current path
-                val entities = getAllByPathPrefix(oldBase.pathString, userAction).let {
+                val entities = getAllByPathPrefix(path.pathKey, userAction).let {
                     if (it.isNotSuccessful) return@execute it.cast()
                     it.value
-                }.sortedBy { it.path?.length }
+                }.sortedBy { it.pathKey?.length }
+                val depth = PathPolicy.segments(path.pathKey).size
 
                 // move entities
-                data class NewPair(val entity: FilesystemEntity, val newPath: String?)
+                data class NewPair(val entity: FilesystemEntity, val newEntity: FilesystemEntity)
                 val newEntities: List<NewPair> = entities.map { entity: FilesystemEntity ->
-                    val suffix = entity.path!!
-                        .removePrefix(oldBase.pathString)
-                        .trimStart('/')
+                    // Names below the moved file keep their case and their key, because their folders move with them
+                    val suffix = PathPolicy.segments(entity.path.orEmpty()).drop(depth)
+                    val keySuffix = PathPolicy.segments(entity.pathKey.orEmpty()).drop(depth)
+                    val newEntityPath = newPath?.let { PathPolicy.join(PathPolicy.segments(it.pathString) + suffix) }
+                    val newEntityKey = newPath?.let { PathPolicy.join(PathPolicy.segments(it.pathKey) + keySuffix) }
 
-                    val newEntityPath = newPath?.let { "$it/$suffix" }?.removeSuffix("/")
-
-                    updatePath(entity.entityId, newEntityPath, entity, userAction, updateEntityMap = false).let {
+                    updatePath(entity.entityId, newEntityPath, entity, userAction, updateEntityMap = false, newPathKey = newEntityKey).let {
                         if (it.isNotSuccessful) {
                             status.setRollbackOnly()
                             return@execute it
                         }
                     }
 
-                    return@map NewPair(entity = entity, newPath = newEntityPath)
+                    val movedEntity = entity.copy(path = newEntityPath, pathKey = newEntityKey)
+                    val newEntity = if (newEntityPath == null) movedEntity else {
+                        db_refreshFileKey(movedEntity, newEntityPath, userAction).let {
+                            if (it.isNotSuccessful) {
+                                status.setRollbackOnly()
+                                return@execute it.cast()
+                            }
+                            it.value
+                        }
+                    }
+
+                    return@map NewPair(entity = entity, newEntity = newEntity)
                 }
 
                 // after all entities moved successfully, change the paths in memory cache
@@ -275,10 +302,8 @@ class EntityService(
                         override fun afterCommit() {
                             mapLock.write {
                                 newEntities.forEach { entity: NewPair ->
-                                    val newEntity = entity.entity.copy(path = entity.newPath)
-
-                                    map_put(entity = newEntity, lock = false)
-                                    updatePermissionPath(entity = entity.entity, newPath = entity.newPath)
+                                    map_put(entity = entity.newEntity, lock = false)
+                                    updatePermissionPath(entity = entity.entity, newPathKey = entity.newEntity.pathKey)
                                 }
                             }
                         }
@@ -290,9 +315,40 @@ class EntityService(
         }
     }
 
-    fun getAllByPathPrefix(prefix: String, userAction: UserAction): Result<List<FilesystemEntity>> {
+    /**
+     * Reads the file key again after Filemat moved a file, because a move to another volume gives the file a new key (§3.4).
+     * Keeps the stored key when the file can't be read.
+     */
+    private fun db_refreshFileKey(entity: FilesystemEntity, apiPath: String, userAction: UserAction): Result<FilesystemEntity> {
+        val path = runCatching { PathPolicy.parse(apiPath) }.getOrNull() ?: return entity.toResult()
+        var isSupported = filesystemService.isSupportedFilesystem(FilePath.ofAlreadyNormalized(path)) ?: return entity.toResult()
+        var fileKey = if (isSupported) filesystemService.getFileKey(path) ?: return entity.toResult() else null
+
         try {
-            return entityRepository.getAllByPathPrefix(prefix).toResult()
+            // Another path of a hard-linked file keeps the key
+            val keyEntity = fileKey?.let { entityRepository.getByFileKey(it) }
+            if (keyEntity != null && keyEntity.entityId != entity.entityId) {
+                fileKey = null
+                isSupported = false
+            }
+            if (fileKey == entity.fileKey && isSupported == entity.isFilesystemSupported) return entity.toResult()
+
+            entityRepository.updateFileKey(entity.entityId, fileKey, isSupported)
+            return entity.copy(fileKey = fileKey, isFilesystemSupported = isSupported).toResult()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to update file key in database.",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to update file key in database.")
+        }
+    }
+
+    fun getAllByPathPrefix(prefixKey: String, userAction: UserAction): Result<List<FilesystemEntity>> {
+        try {
+            return entityRepository.getAllByPathPrefix(prefixKey).toResult()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -304,7 +360,14 @@ class EntityService(
         }
     }
 
-    fun updatePath(entityId: Ulid, newPath: String?, existingEntity: FilesystemEntity?, userAction: UserAction, updateEntityMap: Boolean = true): Result<Unit> {
+    fun updatePath(
+        entityId: Ulid,
+        newPath: String?,
+        existingEntity: FilesystemEntity?,
+        userAction: UserAction,
+        updateEntityMap: Boolean = true,
+        newPathKey: String? = newPath?.let { PathPolicy.pathKey(it) },
+    ): Result<Unit> {
         val entity = existingEntity ?: let {
             val entityR = getById(entityId, userAction)
             if (entityR.isNotSuccessful) return Result.error(entityR.error)
@@ -312,9 +375,9 @@ class EntityService(
         }
 
         try {
-            entityRepository.updatePath(entityId, newPath)
+            entityRepository.updatePath(entityId, newPath, newPathKey)
 
-            val newEntity = entity.copy(path = newPath)
+            val newEntity = entity.copy(path = newPath, pathKey = newPathKey)
             if (updateEntityMap) map_put(newEntity)
         } catch (e: Exception) {
             logService.error(
@@ -327,12 +390,21 @@ class EntityService(
         }
 
         // Update path of permissions that are tied to this entity ID
-        if (updateEntityMap) updatePermissionPath(entity, newPath)
+        if (updateEntityMap) updatePermissionPath(entity, newPathKey)
 
         return Result.ok(Unit)
     }
 
-    fun updateInode(entityId: Ulid, newInode: Long?, existingEntity: FilesystemEntity?, userAction: UserAction): Result<Unit> {
+    /**
+     * Sets the file key of an entity. [isFilesystemSupported] null keeps the stored value.
+     */
+    fun updateFileKey(
+        entityId: Ulid,
+        newFileKey: String?,
+        existingEntity: FilesystemEntity?,
+        userAction: UserAction,
+        isFilesystemSupported: Boolean? = null,
+    ): Result<Unit> {
         val entity = existingEntity ?: let {
             val entityR = getById(entityId, userAction)
             if (entityR.isNotSuccessful) return Result.error(entityR.error)
@@ -340,16 +412,17 @@ class EntityService(
         }
 
         try {
-            entityRepository.updateInode(entityId, newInode)
-            map_put(entity.copy(inode = newInode))
+            val supported = isFilesystemSupported ?: entity.isFilesystemSupported
+            entityRepository.updateFileKey(entityId, newFileKey, supported)
+            map_put(entity.copy(fileKey = newFileKey, isFilesystemSupported = supported))
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
                 action = userAction,
-                description = "Failed to update file inode in database.",
+                description = "Failed to update file key in database.",
                 message = e.stackTraceToString()
             )
-            return Result.error("Failed to update file inode in database.")
+            return Result.error("Failed to update file key in database.")
         }
 
         return Result.ok(Unit)
@@ -378,23 +451,26 @@ class EntityService(
         return Result.ok(Unit)
     }
 
-    private fun updatePermissionPath(entity: FilesystemEntity, newPath: String?) {
-        if (entity.path != null) {
-            if (newPath != null) {
-                entityPermissionService.memory_movePath(entity.path, newPath, entity.entityId)
+    private fun updatePermissionPath(entity: FilesystemEntity, newPathKey: String?) {
+        if (entity.pathKey != null) {
+            if (newPathKey != null) {
+                entityPermissionService.memory_movePath(entity.pathKey, newPathKey, entity.entityId)
             } else {
-                entityPermissionService.memory_removeEntity(entity.path, entity.entityId)
+                entityPermissionService.memory_removeEntity(entity.pathKey, entity.entityId)
             }
         }
     }
 
-    fun getByPath(path: String, userAction: UserAction): Result<FilesystemEntity> {
+    /**
+     * Returns the entity of a path key (`FilePath.pathKey`)
+     */
+    fun getByPath(pathKey: String, userAction: UserAction): Result<FilesystemEntity> {
         return try {
             // Get from cache
-            map_getByPath(path)?.let { return it.toResult() }
+            map_getByPath(pathKey)?.let { return it.toResult() }
 
             // Get from DB
-            val result = entityRepository.getByPath(path) ?: return Result.notFound()
+            val result = entityRepository.getByPathKey(pathKey) ?: return Result.notFound()
             map_put(result)
 
             return result.toResult()
@@ -428,14 +504,14 @@ class EntityService(
         return getById(share.fileId, userAction)
     }
 
-    fun getByInode(inode: Long, userAction: UserAction): Result<FilesystemEntity> {
+    fun getByFileKey(fileKey: String, userAction: UserAction): Result<FilesystemEntity> {
         return try {
-            entityRepository.getByInode(inode)?.toResult() ?: Result.notFound()
+            entityRepository.getByFileKey(fileKey)?.toResult() ?: Result.notFound()
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
                 action = userAction,
-                description = "Failed to get file by inode from database.",
+                description = "Failed to get file by file key from database.",
                 message = e.stackTraceToString()
             )
             Result.error("Failed to get file from database.")

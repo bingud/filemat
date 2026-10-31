@@ -1,5 +1,6 @@
 package org.filemat.server.module.file.service
 
+import org.filemat.server.config.platform.PathPolicy
 import org.springframework.stereotype.Service
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -19,32 +20,37 @@ class LockResult<T>(private val value: T?, private val acquired: Boolean) {
 
 data class FileLock(val successful: Boolean, val unlock: () -> Unit)
 
+/**
+ * In-process file locks, keyed by path key (`PathPolicy.pathKey`).
+ * `Path` keys would ignore case on Windows, so `a.txt` and `A.txt` in a case-sensitive folder would share a lock.
+ */
 @Service
 class FileLockService {
-    private val lockRegistry = ConcurrentHashMap<Path, ReentrantReadWriteLock>()
+    private val lockRegistry = ConcurrentHashMap<String, ReentrantReadWriteLock>()
 
     fun getLock(
         path: Path,
         type: LockType,
         checkChildren: Boolean = false
     ): FileLock {
-        if (isAncestorLocked(path, type)) return FileLock(false) {}
-        if (type == LockType.WRITE && checkChildren && isChildLocked(path)) return FileLock(false) {}
+        val key = PathPolicy.pathKey(path)
+        if (isAncestorLocked(key, type)) return FileLock(false) {}
+        if (type == LockType.WRITE && checkChildren && isChildLocked(key)) return FileLock(false) {}
 
-        val lock = lockRegistry.computeIfAbsent(path) { ReentrantReadWriteLock() }
+        val lock = lockRegistry.computeIfAbsent(key) { ReentrantReadWriteLock() }
         val selectedLock = if (type == LockType.WRITE) lock.writeLock() else lock.readLock()
 
         if (!selectedLock.tryLock()) return FileLock(false) {}
 
-        if (isAncestorLocked(path, type) || (type == LockType.WRITE && checkChildren && isChildLocked(path))) {
+        if (isAncestorLocked(key, type) || (type == LockType.WRITE && checkChildren && isChildLocked(key))) {
             selectedLock.unlock()
-            cleanup(path, lock)
+            cleanup(key, lock)
             return FileLock(false) {}
         }
 
         return FileLock(true) {
             selectedLock.unlock()
-            cleanup(path, lock)
+            cleanup(key, lock)
         }
     }
 
@@ -104,28 +110,25 @@ class FileLockService {
         }
     }
 
-    private fun isAncestorLocked(path: Path, type: LockType): Boolean {
-        var parent = path.parent
-        while (parent != null) {
-            val lock = lockRegistry[parent]
-            if (lock != null) {
-                if (lock.isWriteLocked && !lock.isWriteLockedByCurrentThread) return true
-                if (type == LockType.WRITE && lock.readLockCount > 0) return true
-            }
-            parent = parent.parent
+    private fun isAncestorLocked(key: String, type: LockType): Boolean {
+        val segments = PathPolicy.segments(key)
+        for (depth in segments.lastIndex downTo 0) {
+            val lock = lockRegistry[PathPolicy.join(segments.subList(0, depth))] ?: continue
+            if (lock.isWriteLocked && !lock.isWriteLockedByCurrentThread) return true
+            if (type == LockType.WRITE && lock.readLockCount > 0) return true
         }
         return false
     }
 
-    private fun isChildLocked(path: Path): Boolean {
-        return lockRegistry.entries.any { (lockPath, lock) ->
-            lockPath.startsWith(path) && lockPath != path && (lock.readLockCount > 0 || lock.isWriteLocked)
+    private fun isChildLocked(key: String): Boolean {
+        return lockRegistry.entries.any { (lockKey, lock) ->
+            lockKey != key && PathPolicy.isKeyWithin(lockKey, key) && (lock.readLockCount > 0 || lock.isWriteLocked)
         }
     }
 
-    private fun cleanup(path: Path, lock: ReentrantReadWriteLock) {
+    private fun cleanup(key: String, lock: ReentrantReadWriteLock) {
         if (!lock.hasQueuedThreads() && lock.readLockCount == 0 && !lock.isWriteLocked) {
-            lockRegistry.remove(path, lock)
+            lockRegistry.remove(key, lock)
         }
     }
 }

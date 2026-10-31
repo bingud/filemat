@@ -28,6 +28,10 @@ data class FileMetadata(
     override val size: Long,
     override val isExecutable: Boolean,
     override val isWritable: Boolean,
+    /**
+     * Set on the listed folder: whether names in it are case-sensitive (§2.3)
+     */
+    val caseSensitive: Boolean? = null,
 ) : AbstractFileMetadata()
 
 
@@ -42,6 +46,10 @@ data class FullFileMetadata(
     override val isWritable: Boolean,
     override val permissions: Collection<FilePermission>,
     override val isSaved: Boolean?,
+    /**
+     * Set on the listed folder: whether names in it are case-sensitive (§2.3)
+     */
+    val caseSensitive: Boolean? = null,
 ) : AbstractFullFileMetadata() {
     companion object {
         fun from(m: FileMetadata, isSaved: Boolean?, permissions: Collection<FilePermission>): FullFileMetadata {

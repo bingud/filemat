@@ -13,6 +13,7 @@ import org.filemat.server.common.util.controller.AController
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.Cors
 import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.file.FileService
@@ -70,11 +71,15 @@ class FileController(
         @RequestParam("shareToken") shareToken: String?,
         @RequestParam("text") text: String,
     ): ResponseEntity<StreamingResponseBody> {
+        val user = request.getPrincipal()
+        // Unauthenticated only for share links. Without one, search is for signed-in users like every other file endpoint.
         if (shareToken != null) {
             val ip = request.realIp()
             rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return streamRateLimited(it.millisUntilRefill) }
+        } else {
+            if (user == null) return streamUnauthenticated("Unauthenticated")
+            rateLimiter.consume(RateLimitId.FILE_SEARCH, user.userId.toString()).let { if (!it.isAllowed) return streamRateLimited(it.millisUntilRefill) }
         }
-        val user = request.getPrincipal()
         val path = FilePath.of(rawPath)
 
         val resolvedPath = fileService.resolvePathWithOptionalShare(path, shareToken).let {
@@ -92,7 +97,11 @@ class FileController(
             isShared = shareToken != null,
             shareRelativePath = if (shareToken != null) path else null,
             shareToken = shareToken,
-        )
+        ).let {
+            if (it.hasError) return streamInternal(it.error)
+            if (it.isNotSuccessful) return streamBad(it.errorOrNull ?: "This file was not found.")
+            it.value
+        }
 
         val body = StreamingResponseBody { out ->
             out.bufferedWriter().use { writer ->
@@ -143,6 +152,7 @@ class FileController(
             .let {
                 if (it.hasError) return internal(it.error)
                 if (it.notFound) return bad("This file does not exist.")
+                if (it.isConflict) return conflict(it.error, "in-use")
                 if (it.rejected) return bad(it.error)
 
                 val result = it.value
@@ -239,6 +249,7 @@ class FileController(
             rawDestinationPath = newPath
         ).let {
             if (it.notFound) return notFound()
+            if (it.isConflict) return conflict(it.error, "in-use")
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
             return ok(JsonNonNull.encodeToString(it.value))
@@ -257,6 +268,7 @@ class FileController(
 
         fileService.moveFile(user = user, rawPath = path, rawNewPath = newPath).let {
             if (it.notFound) return notFound()
+            if (it.isConflict) return conflict(it.error, "in-use")
             if (it.rejected) return bad(it.error, "")
             if (it.hasError) return internal(it.error, "")
             return ok("ok")
@@ -280,7 +292,7 @@ class FileController(
             if (it.hasError) return internal(it.error, "")
 
             val movedFiles = it.value
-            val serialized = Json.encodeToString(movedFiles.map { it.originalInputPath.pathString })
+            val serialized = Json.encodeToString(movedFiles.map { PathPolicy.toApiString(it.originalInputPath) })
             return ok(serialized)
         }
     }
@@ -296,8 +308,7 @@ class FileController(
         val pathList = stringList.map { FilePath.of(it) }
 
         fileService.deleteFiles(user, pathList).let {
-            val serialized = Json.encodeToString(it.map { it.pathString })
-            return ok(serialized)
+            return ok(Json.encodeToString(it))
         }
     }
 
@@ -372,7 +383,7 @@ class FileController(
             BufferedInputStream(it.value)
         }
 
-        val filename = path.pathString.substringAfterLast("/")
+        val filename = path.filename
 
         // Get mimetype from either byte stream or filename extension
         val mimeType = if (range == null) {

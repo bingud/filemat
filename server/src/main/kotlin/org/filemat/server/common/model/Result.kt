@@ -8,6 +8,7 @@ data class Result<T>(
     private val inputNotFound: Boolean = false,
     private val rejectInput: String? = null,
     private val inputException: Exception? = null,
+    private val inputConflict: Boolean = false,
 ) {
 
     companion object {
@@ -16,6 +17,11 @@ data class Result<T>(
         fun <T> error(message: String, exception: Exception? = null): Result<T> = Result(inputError = message, inputException = exception)
         fun <T> notFound(exception: Exception? = null): Result<T> = Result(inputNotFound = true, inputException = exception)
         fun <T> reject(message: String, exception: Exception? = null): Result<T> = Result(rejectInput = message, inputException = exception)
+
+        /**
+         * A rejection caused by the current state of a file, like a file in use. Callers that don't check [isConflict] see a rejection.
+         */
+        fun <T> conflict(message: String): Result<T> = Result(rejectInput = message, inputConflict = true)
 
 //        fun <T> error(message: String, source: String? = null): Result<T> = Result(inputError = message, source = source)
 //        fun <T> notFound(source: String? = null): Result<T> = Result(inputNotFound = true, source = source)
@@ -36,6 +42,9 @@ data class Result<T>(
 
     val rejected
         get() = rejectInput != null
+
+    val isConflict
+        get() = inputConflict
 
     val value: T
         get() {

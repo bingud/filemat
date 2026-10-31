@@ -92,12 +92,12 @@ class FileService(
     fun editFile(user: Principal, rawPath: FilePath, newContent: String): Result<EditFileResult>
             = fileContentService.editFile(user = user, rawPath = rawPath, newContent = newContent)
 
-    // --- Folder Entries ---
-
     /**
-     * @return List of successfully deleted paths
+     * @return The deleted paths, and the paths that failed with why
      */
-    fun deleteFiles(user: Principal, rawPathList: List<FilePath>): List<FilePath> = fileDeletionService.deleteFiles(user = user, rawPathList = rawPathList)
+    fun deleteFiles(user: Principal, rawPathList: List<FilePath>): DeleteFilesResult = fileDeletionService.deleteFiles(user = user, rawPathList = rawPathList)
+
+    // --- Folder Entries ---
 
     fun <T : AbstractFileMetadata> getFolderEntries(
         user: Principal?,
@@ -164,7 +164,7 @@ class FileService(
         shareRelativePath: FilePath? = null,
         shareToken: String? = null,
         userAction: UserAction
-    ): Flow<Result<FullFileMetadata>> = fileEntryListsService.searchFiles(
+    ): Result<Flow<Result<FullFileMetadata>>> = fileEntryListsService.searchFiles(
         user = user,
         canonicalPath = canonicalPath,
         text = text,
@@ -208,8 +208,8 @@ class FileService(
 
     fun hasAdminAccess(user: Principal): Boolean = fileSecurityService.hasAdminAccess(user = user)
 
-    fun verifyEntityInode(path: FilePath, userAction: UserAction): Result<Unit>
-            = fileSecurityService.verifyEntityInode(path = path, userAction = userAction)
+    fun verifyEntityIdentity(path: FilePath, userAction: UserAction): Result<Unit>
+            = fileSecurityService.verifyEntityIdentity(path = path, userAction = userAction)
 
     fun ensureEntityIndexed(
         path: FilePath,

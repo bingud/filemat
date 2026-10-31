@@ -1,13 +1,20 @@
 package org.filemat.server.module.file.service
 
 import com.github.f4b6a3.ulid.Ulid
+import org.filemat.server.common.InternalFolder
 import org.filemat.server.common.State
 import com.github.f4b6a3.ulid.UlidCreator
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.getFilenameFromPath
+import org.filemat.server.common.util.getParentFromPath
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.splitByLast
+import org.filemat.server.common.util.withRealNames
+import org.filemat.server.config.platform.CaseSensitivity
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsPathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.*
 import org.filemat.server.module.file.service.file.FileService
@@ -50,9 +57,9 @@ class FolderUploadService(
     @Lazy private val thumbnailService: ThumbnailService,
     private val state: State,
 ) {
-    // Keep platform-specific rules behind one switch so Windows support can be added
-    // later without scattering OS checks through the upload flow.
-    private val platform = FolderUploadPlatform.LINUX
+    // Keep platform-specific rules behind one switch so OS checks are not
+    // scattered through the upload flow.
+    private val platform = if (Platform.isWindows) FolderUploadPlatform.WINDOWS else FolderUploadPlatform.LINUX
 
     // Short-lived server-side plans. TUS requests send session id + relative path,
     // then the server looks up the trusted target path and resolution here.
@@ -93,10 +100,12 @@ class FolderUploadService(
         // Existing folders are merge targets. A file or non-directory where an
         // incoming directory must exist is a conflict the user has to resolve.
         normalized.directories.forEach { relativePath ->
-            val target = resolveUploadTarget(destinationParent, relativePath)
-            if (target == null) {
-                blocked += blocked(relativePath, target, "Path escapes the destination folder.")
-                return@forEach
+            val target = resolveUploadTarget(destinationParent, relativePath).let {
+                if (it.isNotSuccessful) {
+                    blocked += blocked(relativePath, null, it.error)
+                    return@forEach
+                }
+                it.value
             }
 
             val existingType = existingType(target)
@@ -117,10 +126,12 @@ class FolderUploadService(
         // File conflicts are resolved per file. File-vs-directory conflicts stay
         // non-destructive in v1: users can skip or keep both, not replace a folder.
         normalized.files.forEach { file ->
-            val target = resolveUploadTarget(destinationParent, file.relativePath)
-            if (target == null) {
-                blocked += blocked(file.relativePath, target, "Path escapes the destination folder.")
-                return@forEach
+            val target = resolveUploadTarget(destinationParent, file.relativePath).let {
+                if (it.isNotSuccessful) {
+                    blocked += blocked(file.relativePath, null, it.error)
+                    return@forEach
+                }
+                it.value
             }
 
             val existingType = existingType(target)
@@ -220,8 +231,10 @@ class FolderUploadService(
                 when (resolution) {
                     FolderUploadResolution.SKIP -> skippedPrefixes += addSlash(conflict.relativePath)
                     FolderUploadResolution.KEEP_BOTH -> {
-                        val target = resolveUploadTarget(destinationParent, conflict.relativePath)
-                            ?: return Result.reject("Path escapes the destination folder.")
+                        val target = resolveUploadTarget(destinationParent, conflict.relativePath).let {
+                            if (it.isNotSuccessful) return it.cast()
+                            it.value
+                        }
                         directoryRemaps += DirectoryRemap(conflict.relativePath, resolveKeepBothPath(target))
                     }
                     FolderUploadResolution.OVERWRITE -> return Result.reject("Cannot overwrite a file with a folder.")
@@ -239,7 +252,10 @@ class FolderUploadService(
                 ?: return Result.reject("Missing resolution for ${file.relativePath}.")
 
             if (resolution == FolderUploadResolution.OVERWRITE) {
-                val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps)
+                val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps).let {
+                    if (it.isNotSuccessful) return it.cast()
+                    it.value
+                }
                 val canOverwrite = conflict.allowedResolutions.contains(FolderUploadResolution.OVERWRITE)
                     && fileService.isAllowedToDeleteFile(user, baseTarget).isSuccessful
                 if (!canOverwrite) {
@@ -264,7 +280,12 @@ class FolderUploadService(
 
         val targetDirectories = normalized.directories
             .filter { relativePath -> skippedPrefixes.none { prefix -> relativePath == prefix.removeSuffix("/") || relativePath.startsWith(prefix) } }
-            .map { relativePath -> applyDirectoryRemaps(relativePath, destinationParent, directoryRemaps) }
+            .map { relativePath ->
+                applyDirectoryRemaps(relativePath, destinationParent, directoryRemaps).let {
+                    if (it.isNotSuccessful) return it.cast()
+                    it.value
+                }
+            }
             .distinct()
             .sortedBy { it.path.nameCount }
 
@@ -301,7 +322,10 @@ class FolderUploadService(
                 return@forEach
             }
 
-            val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps)
+            val baseTarget = applyDirectoryRemaps(file.relativePath, destinationParent, directoryRemaps).let {
+                if (it.isNotSuccessful) return it.cast()
+                it.value
+            }
 
             // Keep-both names are computed now for the session response, and again
             // under lock at final write time to handle races.
@@ -396,15 +420,15 @@ class FolderUploadService(
         if (!lock.successful) return Result.reject("This file is currently being modified.")
 
         try {
-            val destinationParent = FilePath.ofAlreadyNormalized(plan.targetPath.path.parent)
-            fileService.isAllowedToEditFile(user, destinationParent).let {
+            val realTarget = resolveWritableTarget(user, plan.targetPath).let {
                 if (it.isNotSuccessful) return it.cast()
+                it.value
             }
 
             val result = when (plan.resolution) {
                 FolderUploadResolution.SKIP -> Result.ok(FolderUploadFinalizeResult(actualFilename = null, skipped = true))
-                FolderUploadResolution.KEEP_BOTH -> finalizeKeepBoth(user, uploadLocation, plan.targetPath)
-                FolderUploadResolution.OVERWRITE -> finalizeOverwrite(user, uploadLocation, plan.targetPath)
+                FolderUploadResolution.KEEP_BOTH -> finalizeKeepBoth(user, uploadLocation, realTarget)
+                FolderUploadResolution.OVERWRITE -> finalizeOverwrite(user, uploadLocation, realTarget)
             }
             if (result.isSuccessful) markSessionFileCompleted(session, relativePath)
             return result
@@ -432,16 +456,16 @@ class FolderUploadService(
         if (!lock.successful) return Result.reject("This file is currently being modified.")
 
         try {
-            val destinationParent = FilePath.ofAlreadyNormalized(targetPath.path.parent)
-            fileService.isAllowedToEditFile(user, destinationParent).let {
+            val realTarget = resolveWritableTarget(user, targetPath).let {
                 if (it.isNotSuccessful) return it.cast()
+                it.value
             }
 
             return when (resolution) {
-                FolderUploadResolution.OVERWRITE -> finalizeOverwrite(user, uploadLocation, targetPath)
-                FolderUploadResolution.KEEP_BOTH -> finalizeKeepBoth(user, uploadLocation, targetPath)
+                FolderUploadResolution.OVERWRITE -> finalizeOverwrite(user, uploadLocation, realTarget)
+                FolderUploadResolution.KEEP_BOTH -> finalizeKeepBoth(user, uploadLocation, realTarget)
                 FolderUploadResolution.SKIP -> Result.ok(FolderUploadFinalizeResult(actualFilename = null, skipped = true))
-                null -> finalizeNewOrUnique(user, uploadLocation, targetPath)
+                null -> finalizeNewOrUnique(user, uploadLocation, realTarget)
             }
         } finally {
             lock.unlock()
@@ -499,7 +523,9 @@ class FolderUploadService(
 
     // Overwrite keeps the path entity, claims ownership, and requires DELETE.
     // If the destination vanished after preflight, treat it as a normal create.
-    private fun finalizeOverwrite(user: Principal, uploadLocation: FilePath, plannedTarget: FilePath): Result<FolderUploadFinalizeResult> {
+    private fun finalizeOverwrite(user: Principal, uploadLocation: FilePath, target: FilePath): Result<FolderUploadFinalizeResult> {
+        // The replaced file by its real name, not an 8.3 short name, because the checks below compare names
+        val plannedTarget = withRealNames(target)
         val exists = plannedTarget.exists(LinkOption.NOFOLLOW_LINKS)
         if (exists && !plannedTarget.path.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
             return Result.reject(CONFLICT_PREFIX + "Target is no longer a regular file.")
@@ -532,7 +558,7 @@ class FolderUploadService(
             if (it.isNotSuccessful) return Result.error(it.errorOrNull ?: "Failed to index overwritten file.")
         }
 
-        entityService.getByPath(plannedTarget.pathString, UserAction.UPLOAD_FILE).let { entityResult ->
+        entityService.getByPath(plannedTarget.pathKey, UserAction.UPLOAD_FILE).let { entityResult ->
             if (entityResult.isNotSuccessful) return Result.error(entityResult.errorOrNull ?: "Failed to load overwritten file entity.")
             entityService.updateOwner(
                 entityId = entityResult.value.entityId,
@@ -554,7 +580,7 @@ class FolderUploadService(
             user = user,
             source = uploadLocation,
             destination = target,
-            ignorePermissions = true,
+            internalFolder = InternalFolder.UPLOADS,
         )
     }
 
@@ -572,8 +598,12 @@ class FolderUploadService(
     }
 
     // Idempotent mkdir: if another session already created this folder, success is
-    // fine as long as the path is a directory.
-    private fun ensureDirectory(user: Principal, path: FilePath, createdDirectories: MutableList<String>): Result<Unit> {
+    // fine as long as the path is a directory. Resolved and checked again, because a link may have appeared since the preflight.
+    private fun ensureDirectory(user: Principal, folder: FilePath, createdDirectories: MutableList<String>): Result<Unit> {
+        val path = resolveWritablePath(user, folder).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
         if (path.exists(LinkOption.NOFOLLOW_LINKS)) {
             if (!path.path.isDirectory(LinkOption.NOFOLLOW_LINKS)) return Result.reject("A file exists where a folder is needed.")
             return Result.ok(Unit)
@@ -599,9 +629,9 @@ class FolderUploadService(
     // Build the concrete target paths used for permission preflight.
     private fun preflightTargetPaths(destinationParent: FilePath, normalized: NormalizedManifest): List<Pair<String, FilePath>> {
         return normalized.directories.mapNotNull { relativePath ->
-            resolveUploadTarget(destinationParent, relativePath)?.let { relativePath to it }
+            resolveUploadTarget(destinationParent, relativePath).valueOrNull?.let { relativePath to it }
         } + normalized.files.mapNotNull { file ->
-            resolveUploadTarget(destinationParent, file.relativePath)?.let { file.relativePath to it }
+            resolveUploadTarget(destinationParent, file.relativePath).valueOrNull?.let { file.relativePath to it }
         }
     }
 
@@ -711,7 +741,8 @@ class FolderUploadService(
             NormalizedFile(relativePath = normalized, size = file.size, lastModified = file.lastModified)
         }
 
-        val duplicateFile = files.groupBy { duplicateKey(it.relativePath) }.entries.firstOrNull { it.value.size > 1 }
+        val isCaseSensitive = isDestinationCaseSensitive(manifest.destinationPath)
+        val duplicateFile = files.groupBy { duplicateKey(it.relativePath, isCaseSensitive) }.entries.firstOrNull { it.value.size > 1 }
         if (duplicateFile != null) return Result.reject("Duplicate file path in upload manifest: ${duplicateFile.value.first().relativePath}")
 
         val filePaths = files.map { it.relativePath }.toSet()
@@ -796,19 +827,23 @@ class FolderUploadService(
         return Result.ok(normalized)
     }
 
+    // PathPolicy has the OS rules, Windows' trailing dot or space included
     private fun validateSegmentForPlatform(segment: String): Result<Unit> {
         if (segment.contains('/')) return Result.reject("Path segment contains a separator.")
-        if (platform == FolderUploadPlatform.WINDOWS) {
-            if (segment.endsWith(" ") || segment.endsWith(".")) return Result.reject("Windows paths cannot end with a space or dot.")
-        }
-        return Result.ok(Unit)
+        return PathPolicy.validateFileName(segment)
     }
 
-    private fun duplicateKey(path: String): String {
-        return when (platform) {
-            FolderUploadPlatform.LINUX -> path
-            FolderUploadPlatform.WINDOWS -> path.lowercase()
-        }
+    /**
+     * Returns whether the files go into a folder that tells `a.txt` and `A.txt` apart.
+     * Folders made by the upload have the flag of this folder; existing folders inside it are not looked at.
+     */
+    private fun isDestinationCaseSensitive(destinationPath: String): Boolean {
+        if (platform == FolderUploadPlatform.LINUX) return true
+        return runCatching { CaseSensitivity.isCaseSensitive(PathPolicy.parse(destinationPath)) }.getOrDefault(false)
+    }
+
+    private fun duplicateKey(path: String, isCaseSensitive: Boolean): String {
+        return if (isCaseSensitive) path else WindowsPathPolicy.foldCase(path)
     }
 
     private fun isUnderRoot(path: String, root: String): Boolean {
@@ -854,17 +889,17 @@ class FolderUploadService(
     }
 
     // Applies a directory conflict's keep-both remap to all descendants in that branch.
-    private fun applyDirectoryRemaps(relativePath: String, destinationParent: FilePath, remaps: List<DirectoryRemap>): FilePath {
+    private fun applyDirectoryRemaps(relativePath: String, destinationParent: FilePath, remaps: List<DirectoryRemap>): Result<FilePath> {
         val remap = remaps
             .filter { relativePath == it.relativePath || relativePath.startsWith(addSlash(it.relativePath)) }
             .maxByOrNull { it.relativePath.length }
-            ?: return resolveUploadTarget(destinationParent, relativePath) ?: destinationParent
+            ?: return resolveUploadTarget(destinationParent, relativePath)
 
         val suffix = relativePath.removePrefix(remap.relativePath).trimStart('/')
         return if (suffix.isBlank()) {
-            remap.targetPath
+            Result.ok(remap.targetPath)
         } else {
-            FilePath.ofAlreadyNormalized(remap.targetPath.path.resolve(suffix).normalize())
+            Result.ok(FilePath.ofAlreadyNormalized(remap.targetPath.path.resolve(suffix).normalize()))
         }
     }
 
@@ -877,11 +912,41 @@ class FolderUploadService(
     }
 
     // Converts a safe browser-relative path into a concrete Filemat path under the
-    // selected destination. Returning null means the path escaped the destination.
-    private fun resolveUploadTarget(destinationParent: FilePath, relativePath: String): FilePath? {
+    // selected destination, resolved like any other path (see resolveUploadPath).
+    private fun resolveUploadTarget(destinationParent: FilePath, relativePath: String): Result<FilePath> {
         val target = destinationParent.path.resolve(relativePath).normalize()
-        if (!target.startsWith(destinationParent.path)) return null
-        return FilePath.ofAlreadyNormalized(target)
+        if (!target.startsWith(destinationParent.path)) return Result.reject("Path escapes the destination folder.")
+        return resolveUploadPath(FilePath.ofAlreadyNormalized(target))
+    }
+
+    // Folders that already exist on the way are resolved like everywhere else, so every check sees the folder
+    // the files really land in. A link is followed only when the setting allows it. Otherwise it is refused,
+    // because the checks would see the link's path while the files land in its target.
+    private fun resolveUploadPath(path: FilePath): Result<FilePath> {
+        val resolved = resolvePath(path, state.app.followSymlinks, allowNonExistent = true)
+        return if (resolved.isSuccessful) resolved else Result.reject("Uploads cannot go through links to other folders.")
+    }
+
+    // Resolves a folder the upload writes into and checks it again right before writing, because a link
+    // may have appeared since the preflight. A folder that doesn't exist yet is checked through its closest existing parent.
+    private fun resolveWritablePath(user: Principal, folder: FilePath): Result<FilePath> {
+        val path = resolveUploadPath(folder).let {
+            if (it.isNotSuccessful) return it
+            it.value
+        }
+        fileService.isAllowedToEditFile(user, nearestExistingPath(path)).let {
+            if (it.isNotSuccessful) return it.cast()
+        }
+        return Result.ok(path)
+    }
+
+    // An uploaded file is checked through the folder it lands in
+    private fun resolveWritableTarget(user: Principal, target: FilePath): Result<FilePath> {
+        val parent = resolveWritablePath(user, getParentFromPath(target)).let {
+            if (it.isNotSuccessful) return it
+            it.value
+        }
+        return Result.ok(FilePath.ofAlreadyNormalized(parent.path.resolve(target.path.fileName)))
     }
 
     private fun addSlash(path: String) = "$path/"

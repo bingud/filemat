@@ -32,8 +32,8 @@ import java.nio.file.Files
 class ApplicationContextTest {
 
     /**
-     * Thumbnail and media metadata services load FFmpeg native libraries when constructed, which are only bundled
-     * for Linux. Startup is what is under test here, not media decoding, so they are replaced by mocks.
+     * Startup is what is under test here, not media decoding, so the thumbnail and media metadata services are mocks.
+     * `MediaPreviewService` stays real, so its wiring and startup log are covered.
      */
     @TestConfiguration
     class WithoutNativeMedia {

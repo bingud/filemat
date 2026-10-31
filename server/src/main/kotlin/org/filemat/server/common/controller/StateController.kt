@@ -11,6 +11,8 @@ import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.config.Props
 import org.filemat.server.config.auth.BeforeSetup
 import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -59,6 +61,22 @@ class StateController(private val state: State) : AController() {
 
                     if (principal != null || state.app.contentBaseUrl.forUnauthenticated) {
                         put("contentBaseUrl", state.app.contentBaseUrl.url)
+                    }
+
+                    put("platform", JsonBuilder().apply {
+                        put("pathStyle", Platform.pathStyle)
+                        put("separator", Platform.separator)
+                        put("filenameRules", PathPolicy.filenameRules)
+                    }.build())
+
+                    // The paths contain the OS username, so they are only sent before setup or to logged-in users
+                    if (principal != null || !state.app.isSetup) {
+                        put("paths", JsonBuilder().apply {
+                            put("setupCodeFile", Props.setupCodeFile)
+                            put("authCodeFile", Props.authCodeFile)
+                            put("defaultUploadFolder", Props.defaultUploadFolderPath)
+                            put("defaultThumbnailCacheFolder", Props.defaultThumbnailCacheFolderPath)
+                        }.build())
                     }
                 }.build()
             }

@@ -5,12 +5,15 @@ import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.*
 import me.desair.tus.server.TusFileUploadService
 import me.desair.tus.server.upload.UploadInfo
+import org.filemat.server.common.InternalFolder
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.wrappers.BufferedResponseWrapper
 import org.filemat.server.common.util.classes.wrappers.RequestPathOverrideWrapper
+import org.filemat.server.common.util.controller.ErrorResponse
+import org.filemat.server.config.SerialFilter
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FolderUploadResolution
@@ -21,7 +24,11 @@ import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
+import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
@@ -47,6 +54,14 @@ class TusService(
 
     fun initializeTusService(): Boolean {
         try {
+            // Finished uploads are moved out as Filemat's own files, which a root or the data folder can't hold
+            state.realInternalFolder(FilePath.of(state.app.uploadFolderPath)).let {
+                if (it.isNotSuccessful) throw IllegalStateException("The upload folder can't be used. ${it.error}")
+            }
+
+            // tus deserializes each upload's info file, which users may be able to write (set in main() too)
+            SerialFilter.install()
+
             tusFileService = TusFileUploadService()
                 .withUploadUri("/api/v1/file/upload")
                 .withStoragePath(state.app.uploadFolderPath)
@@ -56,8 +71,41 @@ class TusService(
             startTusCleanupLoop()
             return true
         } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to start the upload service.",
+                message = "Upload folder: ${runCatching { state.app.uploadFolderPath }.getOrNull()}\n\n${e.stackTraceToString()}",
+            )
             return false
         }
+    }
+
+    /**
+     * Moves the uploads in progress to a new upload folder, so they can resume there. tus keeps them in `uploads` and `locks`.
+     * Only renames: on another drive, or when the new folder has its own, they stay where they are.
+     * Both move or neither does, so the uploads are never in one folder and their locks in the other.
+     * Call it with [uploadLock] held, before the service starts on the new folder.
+     */
+    fun moveUploadsInProgress(from: Path, to: Path): Result<Unit> {
+        val names = listOf("uploads", "locks").filter { Files.exists(from.resolve(it), LinkOption.NOFOLLOW_LINKS) }
+        names.firstOrNull { Files.exists(to.resolve(it), LinkOption.NOFOLLOW_LINKS) }?.let {
+            return Result.error("The new folder already has a `$it` folder.")
+        }
+
+        val moved = mutableListOf<String>()
+        for (name in names) {
+            try {
+                Files.createDirectories(to)
+                Files.move(from.resolve(name), to.resolve(name))
+                moved += name
+            } catch (e: Exception) {
+                moved.forEach { runCatching { Files.move(to.resolve(it), from.resolve(it)) } }
+                if (e is FileAlreadyExistsException) return Result.error("The new folder already has a `$name` folder.")
+                return Result.error("The `$name` folder could not be moved there (${e.message}).")
+            }
+        }
+        return Result.ok()
     }
 
     private var isCleanupRunning = false
@@ -248,6 +296,8 @@ class TusService(
                 if (result.isNotSuccessful) {
                     if (result.notFound) {
                         response.respond(400, "Target folder does not exist.")
+                    } else if (result.isConflict) {
+                        response.respond(409, result.error, "in-use")
                     } else if (result.errorOrNull?.startsWith(FolderUploadService.CONFLICT_PREFIX) == true) {
                         response.respond(409, result.error.removePrefix(FolderUploadService.CONFLICT_PREFIX), "conflict")
                     } else if (result.hasError) {
@@ -273,8 +323,8 @@ class TusService(
      */
     private fun handleUploadedFile(user: Principal, info: UploadInfo): Result<String?> {
         // Get the current uploaded file location
-        val sourceFolder = "${state.app.uploadFolderPath}/uploads/${info.id}"
-        val uploadLocation = "$sourceFolder/data".toFilePath()
+        val sourceFolder = FilePath.ofAlreadyNormalized(FilePath.of(state.app.uploadFolderPath).path.resolve("uploads").resolve(info.id.toString()))
+        val uploadLocation = FilePath.ofAlreadyNormalized(sourceFolder.path.resolve("data"))
 
         val folderUploadSessionId = info.metadata["folderUploadSessionId"]
         val relativePath = info.metadata["relativePath"]
@@ -292,7 +342,7 @@ class TusService(
                     uploadLocation = uploadLocation,
                 )
                 if (folderResult.isSuccessful) {
-                    filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
+                    deleteUploadFolder(user, sourceFolder)
                     return Result.ok(folderResult.value.actualFilename)
                 }
                 // Session gone after tab refresh — fall through to path + resolution metadata.
@@ -312,7 +362,7 @@ class TusService(
         user: Principal,
         info: UploadInfo,
         uploadLocation: FilePath,
-        sourceFolder: String,
+        sourceFolder: FilePath,
     ): Result<String?> {
         val rawDestinationPath = info.metadata["path"]?.toFilePath()
             ?: return Result.error("Destination path is not in upload metadata.")
@@ -347,13 +397,27 @@ class TusService(
             it.value
         }
 
-        filesystem.deleteFile(user = user, target = sourceFolder.toFilePath(), ignorePermissions = true)
+        deleteUploadFolder(user, sourceFolder)
         return Result.ok(finalized.actualFilename)
+    }
+
+    /**
+     * Deletes the temp folder of a finished upload. A folder that is left behind is removed when it expires, so a failure is only logged.
+     */
+    private fun deleteUploadFolder(user: Principal, folder: FilePath) {
+        val result = filesystem.deleteFile(target = folder, user = user, internalFolder = InternalFolder.UPLOADS)
+        if (result.isSuccessful) return
+        logService.warn(
+            type = LogType.SYSTEM,
+            action = UserAction.UPLOAD_FILE,
+            description = "Failed to delete the temp folder of a finished upload.",
+            message = "Folder: $folder\n\n${result.errorOrNull ?: ""}",
+        )
     }
 
     private fun HttpServletResponse.respond(code: Int, message: String, error: String = "custom") {
         this.status = code
-        val json = """ {"message":"$message","error":"$error"} """
-        this.writer.write(json)
+        // Serialized, so a message with a quote or a backslash (a Windows path) stays valid JSON
+        this.writer.write(ErrorResponse(message, error).serialize())
     }
 }

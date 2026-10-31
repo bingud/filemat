@@ -3,23 +3,24 @@ package org.filemat.server.module.file.service.file
 import net.coobird.thumbnailator.Thumbnails
 import net.coobird.thumbnailator.resizers.configurations.ScalingMode
 import org.apache.commons.io.output.TeeOutputStream
-import org.bytedeco.ffmpeg.global.avutil.AV_LOG_QUIET
-import org.bytedeco.ffmpeg.global.avutil.av_log_set_level
-import org.bytedeco.javacv.FFmpegFrameGrabber
-import org.bytedeco.javacv.Java2DFrameConverter
+import org.filemat.server.common.InternalFolder
 import org.filemat.server.common.State
 import org.filemat.server.common.util.RateLimitedLog
 import org.filemat.server.common.util.md5hash
 import org.filemat.server.module.file.model.FileContentMetadata
 import org.filemat.server.module.file.model.FilePath
-import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.file.component.FileContentMetadataService
+import org.filemat.server.module.file.service.file.component.readImageSize
+import org.filemat.server.module.file.service.file.media.FfmpegBusyException
+import org.filemat.server.module.file.service.file.media.MediaPreviewService
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import java.awt.image.BufferedImage
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.file.Files
@@ -37,10 +38,10 @@ import kotlinx.coroutines.*
 
 @Service
 class ThumbnailService(
-    private val fileVisibilityService: FileVisibilityService,
     private val logService: LogService,
     @Lazy private val fileContentMetadataService: FileContentMetadataService,
     private val state: State,
+    private val mediaPreviewService: MediaPreviewService,
 ) {
 
     companion object {
@@ -52,6 +53,14 @@ class ThumbnailService(
          * and the controller marks them as only browser-cacheable.
          */
         const val MAX_CACHED_THUMBNAIL_SIZE = 2048
+
+        init {
+            // Thumbnailator reads a large image reduced (ImageReadParam source subsampling) only with this switch on,
+            // and only when the full image would take a good part of the free heap. Read at each use, so setting it here is enough.
+            if (System.getProperty("thumbnailator.conserveMemoryWorkaround") == null) {
+                System.setProperty("thumbnailator.conserveMemoryWorkaround", "true")
+            }
+        }
     }
 
     // --- Thumbnail cache timing (FFmpeg / decoder I/O timeouts are not configured here.) ---
@@ -98,8 +107,6 @@ class ThumbnailService(
     private var scheduledCleanupAtMs: Long? = null
 
     init {
-        av_log_set_level(AV_LOG_QUIET)
-
         // Run one cleanup immediately after startup.
         scope.launch {
             runFullCleanup()
@@ -245,11 +252,11 @@ class ThumbnailService(
         // Large thumbnails take too much space and are rarely reused
         if (targetSize > MAX_CACHED_THUMBNAIL_SIZE) return null
 
-        val isAllowed = fileVisibilityService.isPathAllowed(canonicalPath = FilePath.of(cacheDir))
-        if (isAllowed != null) return null
+        // The cache folder is Filemat's own, so it needs no exposure, and may be in the data folder (the Windows default)
+        val cacheRoot = state.internalFolderPath(InternalFolder.THUMBNAIL_CACHE) ?: return null
 
         // Prevent caching if the file is already inside the cache directory
-        if (canonicalPath.startsWith(cacheDir)) return null
+        if (canonicalPath.startsWith(cacheRoot)) return null
 
         val pathHash = md5hash(canonicalPath.pathString)
         val cacheName = "${pathHash}_${modifiedDate}_${fileSize}_${targetSize}.jpg"
@@ -486,31 +493,39 @@ class ThumbnailService(
         cleanCache(targetPathHash = hash)
     }
 
-    fun clearCache() {
-        val cacheDirStr = state.thumbCache.folderPath ?: return
-        val cachePath = Paths.get(cacheDirStr)
-        if (!Files.exists(cachePath) || !Files.isDirectory(cachePath)) return
+    /**
+     * Deletes the cache files in [folder]. Other files there are never touched, wherever the cache folder points.
+     */
+    fun clearCache(folder: Path? = state.thumbCache.folderPath?.let { Paths.get(it) }) {
+        forEachCacheFile(folder, logKey = "thumbnail_cache_clear") { deleteCacheFileIfIdle(it) }
+    }
+
+    /**
+     * Moves the cache files in [from] to [to], when the cache folder changes. Other files stay where they are.
+     */
+    fun moveCache(from: Path, to: Path) {
+        forEachCacheFile(from, logKey = "thumbnail_cache_relocate") { moveCacheFileIfIdle(sourcePath = it, targetPath = to.resolve(it.fileName)) }
+    }
+
+    private fun forEachCacheFile(folder: Path?, logKey: String, action: (Path) -> Unit) {
+        if (folder == null || !Files.isDirectory(folder)) return
 
         try {
-            Files.newDirectoryStream(cachePath).use { dirStream ->
+            Files.newDirectoryStream(folder).use { dirStream ->
                 for (path in dirStream) {
                     try {
-                        if (Files.isRegularFile(path)) {
-                            if (isCacheFileName(path.fileName.toString())) {
-                                deleteCacheFileIfIdle(path)
-                            }
-                        }
+                        if (Files.isRegularFile(path) && isCacheFileName(path.fileName.toString())) action(path)
                     } catch (e: Exception) {
                         // Ignore
                     }
                 }
             }
         } catch (e: Exception) {
-            RateLimitedLog.ifDue("thumbnail_cache_clear") {
+            RateLimitedLog.ifDue(logKey) {
                 logService.error(
                     type = LogType.SYSTEM,
                     action = UserAction.NONE,
-                    description = "Thumbnail cache clear failed while listing cache directory.",
+                    description = "Failed to list the thumbnail cache directory.",
                     message = e.stackTraceToString(),
                 )
             }
@@ -769,12 +784,19 @@ class ThumbnailService(
         val cacheFile = getCacheFile(canonicalPath, modifiedDate, fileSize, targetSize)
 
         streamCachedOrGenerate(cacheFile, outputStream) { targetCacheFile ->
-            val inputStream = inputStreamProvider()
+            // The size comes from the header, so a large image is not decoded in full just to learn it.
+            // When it is unknown, the old full decode finds it.
+            val headerSize = readImageSize(canonicalPath.path)
 
             // FFmpeg fallback when Thumbnailator cannot decode the stream (e.g. AVIF/HEIC).
-            val image = try {
-                inputStream.use {
-                    Thumbnails.of(it).scale(1.0).asBufferedImage()
+            val image: BufferedImage = try {
+                inputStreamProvider().use {
+                    if (headerSize != null && max(headerSize.first, headerSize.second) > targetSize) {
+                        // Thumbnailator subsamples while reading when it knows the target size (see the companion init).
+                        Thumbnails.of(it).size(targetSize, targetSize).asBufferedImage()
+                    } else {
+                        Thumbnails.of(it).scale(1.0).asBufferedImage()
+                    }
                 }
             } catch (_: Exception) {
                 fallbackFfmpegImageThumbnail(
@@ -788,23 +810,27 @@ class ThumbnailService(
                 return@streamCachedOrGenerate
             }
 
-            // Save the decoded size so a later content-metadata request can reuse it.
+            // Not the decoded size: the image may already be reduced to the target.
+            val sourceWidth = headerSize?.first ?: image.width
+            val sourceHeight = headerSize?.second ?: image.height
+
+            // Save the size so a later content-metadata request can reuse it.
             fileContentMetadataService.putFromProbe(
                 canonicalPath = canonicalPath,
                 modifiedDate = modifiedDate,
                 fileSize = fileSize,
-                meta = FileContentMetadata(width = image.width, height = image.height),
+                meta = FileContentMetadata(width = sourceWidth, height = sourceHeight),
             )
 
-            val sourceSize = max(image.width, image.height)
+            val sourceSize = max(sourceWidth, sourceHeight)
             val finalSize = min(sourceSize, targetSize)
 
             val thumbnail = Thumbnails.of(image)
                 .outputFormat("jpg")
                 .outputQuality(calculateQuality(finalSize))
 
-            // Only apply size reduction if the image exceeds the bounds
-            if (sourceSize > targetSize) {
+            // Usually at most the target size already (reduced while reading). Only a full decode of an unreadable header can still be larger.
+            if (max(image.width, image.height) > targetSize) {
                 thumbnail.size(targetSize, targetSize).keepAspectRatio(true)
             } else {
                 // Keep original dimensions and only compress/convert.
@@ -826,21 +852,17 @@ class ThumbnailService(
         outputStream: OutputStream,
         cacheFile: File?
     ) {
-        val imageFile = File(canonicalPath.pathString)
-        val grabber = FFmpegFrameGrabber(imageFile)
-        grabber.setOption("probesize", "524288")
-        grabber.setOption("analyzeduration", "1000000")
-        grabber.start()
+        val backend = mediaPreviewService.backend ?: throw IllegalStateException("No media backend to decode the image")
 
         try {
+            val frame = backend.firstFrame(canonicalPath.path) ?: throw Exception("Could not decode image")
+
             // Save the decoded size. Stills have no duration.
-            FileContentMetadataService.metadataFromGrabber(grabber, includeDuration = false)?.let { meta ->
-                fileContentMetadataService.putFromProbe(canonicalPath, modifiedDate, fileSize, meta)
+            frame.metadata?.let { meta ->
+                fileContentMetadataService.putFromProbe(canonicalPath, modifiedDate, fileSize, meta.copy(durationMs = null))
             }
 
-            val frame = grabber.grabImage() ?: throw Exception("Could not decode image")
-            val converter = Java2DFrameConverter()
-            val image = converter.convert(frame) ?: throw Exception("Could not convert frame to image")
+            val image = frame.image
 
             val sourceSize = max(image.width, image.height)
             val finalSize = min(sourceSize, targetSize)
@@ -858,19 +880,11 @@ class ThumbnailService(
                 }
 
                 saveAndStreamThumbnail(thumbnail, outputStream, cacheFile)
+        } catch (e: FfmpegBusyException) {
+            throw e
         } catch (e: Exception) {
-            RateLimitedLog.ifDue("thumbnail_cache_ffmpeg_image") {
-                logService.error(
-                    type = LogType.SYSTEM,
-                    action = UserAction.NONE,
-                    description = "FFmpeg fallback failed while generating an image thumbnail.",
-                    message = e.stackTraceToString(),
-                )
-            }
-            outputStream.write("Error generating image thumbnail".toByteArray())
-        } finally {
-            grabber.stop()
-            grabber.release()
+            // The caller answers with an error status. Text written here would be sent as a JPEG.
+            throw Exception("FFmpeg fallback failed while generating an image thumbnail.", e)
         }
     }
 
@@ -889,38 +903,21 @@ class ThumbnailService(
         val cacheFile = getCacheFile(canonicalPath, modifiedDate, fileSize, targetSize)
 
         streamCachedOrGenerate(cacheFile, outputStream) { targetCacheFile ->
-            val videoFile = File(canonicalPath.pathString)
+            val videoFile = canonicalPath.path.toFile()
 
-            if (!videoFile.exists() || !videoFile.canRead()) {
-                outputStream.write("File not found or cannot be read".toByteArray())
-                return@streamCachedOrGenerate
-            }
+            if (!videoFile.exists() || !videoFile.canRead()) throw IOException("File not found or cannot be read")
 
-            val grabber = FFmpegFrameGrabber(videoFile)
-            grabber.setOption("probesize", "524288")
-            grabber.setOption("analyzeduration", "1000000")
-            grabber.start()
+            val backend = mediaPreviewService.backend ?: throw IllegalStateException("Video previews are not available")
 
             try {
+                val frame = backend.firstFrame(canonicalPath.path) ?: throw IOException("Could not extract frame from video")
+
                 // Save frame size and duration from this decode.
-                FileContentMetadataService.metadataFromGrabber(grabber, includeDuration = true)?.let { meta ->
+                frame.metadata?.let { meta ->
                     fileContentMetadataService.putFromProbe(canonicalPath, modifiedDate, fileSize, meta)
                 }
 
-                val frame = grabber.grabImage()
-
-                if (frame == null) {
-                    outputStream.write("Could not extract frame from video".toByteArray())
-                    return@streamCachedOrGenerate
-                }
-
-                val converter = Java2DFrameConverter()
-                val originalImage = converter.convert(frame)
-
-                if (originalImage == null) {
-                    outputStream.write("Invalid video format or frame".toByteArray())
-                    return@streamCachedOrGenerate
-                }
+                val originalImage = frame.image
                 val sourceSize = max(originalImage.width, originalImage.height)
                 val finalSize = min(sourceSize, targetSize)
 
@@ -936,19 +933,10 @@ class ThumbnailService(
                 }
 
                 saveAndStreamThumbnail(thumbnail, outputStream, targetCacheFile)
+            } catch (e: FfmpegBusyException) {
+                throw e
             } catch (e: Exception) {
-                RateLimitedLog.ifDue("thumbnail_cache_ffmpeg_video") {
-                    logService.error(
-                        type = LogType.SYSTEM,
-                        action = UserAction.NONE,
-                        description = "Failed while generating a video preview thumbnail.",
-                        message = e.stackTraceToString(),
-                    )
-                }
-                outputStream.write("Error generating video preview".toByteArray())
-            } finally {
-                grabber.stop()
-                grabber.release()
+                throw Exception("Failed while generating a video preview thumbnail.", e)
             }
         }
     }

@@ -4,6 +4,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.common.util.isPathInside
 import org.filemat.server.common.util.resolvePath
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.sharedFile.model.FileShare
 import java.nio.file.Files
@@ -68,7 +69,7 @@ internal fun toShareRelativePath(absolutePath: Path, shareRoot: Path): FilePath?
     if (!isPathInside(absolutePath, shareRoot)) return null
     val relative = shareRoot.normalize().relativize(absolutePath.normalize())
     val relativeStr = relative.toString().replace('\\', '/')
-    if (relativeStr.isEmpty() || relativeStr == ".") return FilePath.of("/")
+    if (relativeStr.isEmpty() || relativeStr == ".") return FilePath.of(PathPolicy.root)
     return FilePath.of(relativeStr)
 }
 

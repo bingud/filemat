@@ -5,11 +5,14 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.config.Props
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.getEffectiveFilePermissions
 import org.filemat.server.module.auth.model.Principal.Companion.getPermissions
 import org.filemat.server.module.auth.model.Principal.Companion.hasAnyPermission
 import org.filemat.server.module.file.model.FilePath
+import org.filemat.server.module.file.model.FilesystemEntity
 import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
@@ -37,6 +40,9 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             return Result.reject("Unauthenticated")
         }
 
+        // Every user can see the Windows drive list. Opening a drive is checked like any folder.
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return Result.ok()
+
         // Deny blocked folder
         isPathAllowed(canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
@@ -56,7 +62,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
     fun hasPermissionToAccessFile(user: Principal?, canonicalPath: FilePath): Result<Unit> {
         val u = user ?: return Result.reject("Unauthenticated")
         // Verify the file location and handle conflicts
-        val isFileAvailable = verifyEntityInode(canonicalPath, UserAction.READ_FOLDER)
+        val isFileAvailable = verifyEntityIdentity(canonicalPath, UserAction.READ_FOLDER)
         if (isFileAvailable.isNotSuccessful) return Result.error("This folder is not available.")
 
         val permissionResult = hasFilePermission(canonicalPath = canonicalPath, principal = u, permission = FilePermission.READ)
@@ -95,6 +101,8 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         isAllowedToAccessFile(user, canonicalPath, ignorePermissions = ignorePerms).let {
             if (it.isNotSuccessful) return it.cast()
         }
+
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return Result.reject("The drive list cannot be shared.")
 
         if (ignorePerms == false) {
             // Check write permissions
@@ -189,6 +197,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         val globalPermissions = user.getEffectiveFilePermissions(state)
         // Now returns a merged set from the tree, respecting inheritance depth and type priority
         val permissions = entityPermissionService.getEffectivePermissions(canonicalPath = canonicalPath, userId = user.userId, roles = user.roles)
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return globalPermissions + permissions + FilePermission.READ
         return globalPermissions + permissions
     }
 
@@ -214,8 +223,10 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
     }
 
     fun isPathEditable(canonicalPath: FilePath): String? {
+        // Java resolves the Windows drive list to the current drive, so nothing may be written there
+        if (PathPolicy.isVirtualRoot(canonicalPath.path)) return "The drive list cannot be changed."
         if (!state.app.allowWriteDataFolder) {
-            if (canonicalPath.path.startsWith(Props.dataFolderPath)) return "Cannot edit ${Props.appName} data folder."
+            if (state.app.isInDataFolder(canonicalPath.path)) return "Cannot edit ${Props.appName} data folder."
         }
         return null
     }
@@ -224,10 +235,13 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         val editable = isPathEditable(canonicalPath)
         if (editable != null) return Result.reject(editable)
 
+        // `/` and Windows drive roots
+        if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("This system folder cannot be deleted.")
+
         // Is path a system folder
         val isProtected = Props.nonDeletableFolders.isProtected(canonicalPath.pathString, true)
         // Was path made deletable
-        val isForcedDeletable = state.app.forceDeletableFolders.contains(canonicalPath.pathString)
+        val isForcedDeletable = state.app.forceDeletableFolders.any { it.equals(canonicalPath.pathString, ignoreCase = Platform.isWindows) }
 
         if (isProtected && !isForcedDeletable) return Result.reject("This system folder cannot be deleted.")
         return Result.ok()
@@ -239,12 +253,12 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
     /**
      * Verifies whether a file exists.
      *
-     * Handles file conflicts like moved files. Can reassign inode or path of an entity.
+     * Handles file conflicts like moved files. Can reassign the file key or path of an entity.
      * Does not create entities for unindexed paths.
      */
-    fun verifyEntityInode(path: FilePath, userAction: UserAction): Result<Unit> {
+    fun verifyEntityIdentity(path: FilePath, userAction: UserAction): Result<Unit> {
         return withVerifyPathLock(path) {
-            repairEntityInode(path = path, userAction = userAction, reusePathEntity = true)
+            repairEntityIdentity(path = path, userAction = userAction, reusePathEntity = true)
         }
     }
 
@@ -252,10 +266,10 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
      * Ensures that a file has a DB entity.
      *
      * [reusePathEntity] = true keeps the path entity identity (overwrite / claim path slot).
-     * [reusePathEntity] = false is for new objects: reconnect by inode only; orphan a path entity
-     * whose inode does not match, then create a new entity if still missing.
+     * [reusePathEntity] = false is for new objects: reconnect by file key only; orphan a path entity
+     * whose file key does not match, then create a new entity if still missing.
      *
-     * Holds the path verify lock across repair and create to avoid unique-inode races.
+     * Holds the path verify lock across repair and create to avoid unique file key races.
      */
     fun ensureEntityIndexed(
         path: FilePath,
@@ -264,17 +278,17 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         reusePathEntity: Boolean = false,
     ): Result<Unit> {
         return withVerifyPathLock(path) {
-            repairEntityInode(path = path, userAction = userAction, reusePathEntity = reusePathEntity).let {
+            repairEntityIdentity(path = path, userAction = userAction, reusePathEntity = reusePathEntity).let {
                 if (it.isNotSuccessful) return@withVerifyPathLock it
             }
 
-            entityService.getByPath(path.pathString, userAction).let {
+            entityService.getByPath(path.pathKey, userAction).let {
                 if (it.hasError) return@withVerifyPathLock it.cast()
                 if (it.isSuccessful) return@withVerifyPathLock Result.ok()
             }
 
             entityService.withEntityRepairLock {
-                entityService.getByPath(path.pathString, userAction).let {
+                entityService.getByPath(path.pathKey, userAction).let {
                     if (it.hasError) return@withEntityRepairLock it.cast()
                     if (it.isSuccessful) return@withEntityRepairLock Result.ok()
                 }
@@ -291,56 +305,88 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
         }
     }
 
+    /**
+     * Stores the current case of a path whose key still matches, for example after a case-only rename outside Filemat
+     */
+    private fun refreshEntityPath(entity: FilesystemEntity, path: FilePath, userAction: UserAction): Result<Unit> {
+        if (entity.path == path.pathString) return Result.ok()
+        return entityService.updatePath(
+            entityId = entity.entityId,
+            newPath = path.pathString,
+            existingEntity = entity,
+            userAction = userAction,
+            newPathKey = path.pathKey,
+        )
+    }
+
+    private fun verifyPathOnly(entity: FilesystemEntity, path: FilePath, userAction: UserAction): Result<Unit> {
+        val exists = filesystemService.exists(path.path, followSymbolicLinks = false)
+        return if (exists) refreshEntityPath(entity, path, userAction) else Result.reject("Path does not exist.")
+    }
+
+    /**
+     * Returns whether the stored path of an entity still has this file key, so the file has more than one path
+     */
+    private fun isFileKeyAt(entity: FilesystemEntity, fileKey: String): Boolean {
+        val entityPath = entity.path?.let { runCatching { PathPolicy.parse(it) }.getOrNull() } ?: return false
+        return filesystemService.getFileKey(entityPath) == fileKey
+    }
+
     private fun <T> withVerifyPathLock(path: FilePath, block: () -> T): T {
-        val lock = verifyLocks.computeIfAbsent(path.pathString) { ReentrantLock() }
+        val lock = verifyLocks.computeIfAbsent(path.pathKey) { ReentrantLock() }
         lock.lock()
         try {
             return block()
         } finally {
             lock.unlock()
-            verifyLocks.remove(path.pathString, lock)
+            verifyLocks.remove(path.pathKey, lock)
         }
     }
 
     /**
      * Tries to repair dangling entities and match them with a file. Caller must hold [withVerifyPathLock].
      */
-    private fun repairEntityInode(path: FilePath, userAction: UserAction, reusePathEntity: Boolean): Result<Unit> {
-        val entityResult = entityService.getByPath(path.pathString, UserAction.NONE)
+    private fun repairEntityIdentity(path: FilePath, userAction: UserAction, reusePathEntity: Boolean): Result<Unit> {
+        val entityResult = entityService.getByPath(path.pathKey, UserAction.NONE)
         if (entityResult.hasError) return entityResult.cast()
         val entity = entityResult.valueOrNull
 
-        // Do not do inode check on unsupported filesystem.
-        if (entity != null && (!entity.isFilesystemSupported || entity.inode == null)) {
-            val exists = filesystemService.exists(path.path, followSymbolicLinks = false)
-            return if (exists) Result.ok() else Result.reject("Path does not exist.")
-        }
+        // Entities on unsupported filesystems follow the path only
+        if (entity != null && !entity.isFilesystemSupported) return verifyPathOnly(entity, path, userAction)
 
-        val newInode = filesystemService.getInode(path.path, followSymbolicLinks = false)
-        // Inode matches normally
-        if (entity?.inode == newInode) return Result.ok()
+        val newFileKey = filesystemService.getFileKey(path.path)
+        // A supported entity without a key was missing when keys were added. It gets its key once the file is back.
+        if (entity != null && entity.fileKey == null && newFileKey == null) return verifyPathOnly(entity, path, userAction)
 
-        // Handle if a file with a different inode exists on the path
-        if (newInode != null) {
+        // File key matches normally
+        if (entity?.fileKey == newFileKey) return entity?.let { refreshEntityPath(it, path, userAction) } ?: Result.ok()
+
+        // Handle if a file with a different file key exists on the path
+        if (newFileKey != null) {
             return entityService.withEntityRepairLock {
-                val existingEntityR = entityService.getByInode(newInode, userAction)
+                val existingEntityR = entityService.getByFileKey(newFileKey, userAction)
                 if (existingEntityR.hasError) return@withEntityRepairLock existingEntityR.cast()
+                // Another path of the same file (a hard link) keeps the key, because the first path wins
+                val keyHeldElsewhere = existingEntityR.valueOrNull?.let { it.pathKey != path.pathKey && isFileKeyAt(it, newFileKey) } == true
 
                 // Re-read path entity under the repair lock to close races with concurrent indexers.
-                val pathEntityResult = entityService.getByPath(path.pathString, userAction)
+                val pathEntityResult = entityService.getByPath(path.pathKey, userAction)
                 if (pathEntityResult.hasError) return@withEntityRepairLock pathEntityResult.cast()
                 val pathEntity = pathEntityResult.valueOrNull
 
                 if (pathEntity != null) {
-                    if (pathEntity.inode == newInode) return@withEntityRepairLock Result.ok()
+                    if (pathEntity.fileKey == newFileKey) return@withEntityRepairLock Result.ok()
 
                     if (reusePathEntity) {
+                        if (keyHeldElsewhere) {
+                            return@withEntityRepairLock entityService.updateFileKey(pathEntity.entityId, null, pathEntity, userAction, isFilesystemSupported = false)
+                        }
                         if (existingEntityR.isSuccessful && existingEntityR.value.entityId != pathEntity.entityId) {
-                            entityService.updateInode(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
+                            entityService.updateFileKey(existingEntityR.value.entityId, null, existingEntityR.value, userAction).let {
                                 if (it.isNotSuccessful) return@withEntityRepairLock it.cast()
                             }
                         }
-                        return@withEntityRepairLock entityService.updateInode(pathEntity.entityId, newInode, pathEntity, userAction)
+                        return@withEntityRepairLock entityService.updateFileKey(pathEntity.entityId, newFileKey, pathEntity, userAction)
                     }
 
                     // New object at this path: orphan the stale path entity instead of reusing it.
@@ -354,15 +400,16 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
                     }
                 }
 
-                // No entity at path (or just orphaned): reconnect a dangling inode entity if one exists.
-                if (existingEntityR.isSuccessful) {
-                    val inodeEntity = existingEntityR.value
-                    if (inodeEntity.path != path.pathString) {
+                // No entity at path (or just orphaned): reconnect a dangling file key entity if one exists.
+                if (existingEntityR.isSuccessful && !keyHeldElsewhere) {
+                    val keyEntity = existingEntityR.value
+                    if (keyEntity.path != path.pathString) {
                         return@withEntityRepairLock entityService.updatePath(
-                            entityId = inodeEntity.entityId,
+                            entityId = keyEntity.entityId,
                             newPath = path.pathString,
-                            existingEntity = inodeEntity,
+                            existingEntity = keyEntity,
                             userAction = userAction,
+                            newPathKey = path.pathKey,
                         )
                     }
                     return@withEntityRepairLock Result.ok()
@@ -376,7 +423,7 @@ class FileSecurityService(private val fileVisibilityService: FileVisibilityServi
             }
         }
 
-        // Path has unexpected Inode, so remove the path from the entity in database.
+        // The file at the path can't be read, so remove the path from the entity in database.
         return entityService.withEntityRepairLock {
             entityService.move(
                 path = path,

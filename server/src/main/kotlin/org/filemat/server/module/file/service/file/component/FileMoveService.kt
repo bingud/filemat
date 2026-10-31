@@ -3,7 +3,10 @@ package org.filemat.server.module.file.service.file.component
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.State
 import org.filemat.server.common.model.cast
+import org.filemat.server.common.util.isCaseOnlyRename
 import org.filemat.server.common.util.resolvePath
+import org.filemat.server.common.util.withRealNames
+import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.file.FileService
@@ -29,10 +32,11 @@ class FileMoveService(
                 canonicalResult.value
             }
 
-        val canonicalPath = FilePath.ofAlreadyNormalized(sourceParent.path.resolve(rawPath.path.fileName))
+        // The moved name itself is not resolved, so a link is moved as a link. Its real name is checked, not an 8.3 short name.
+        val canonicalPath = withRealNames(FilePath.ofAlreadyNormalized(sourceParent.path.resolve(rawPath.path.fileName)))
 
         // Safety checks
-        if (canonicalPath.pathString == "/") return Result.reject("Cannot move root folder.")
+        if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("Cannot move root folder.")
 
         // Get the target parent folder
         val rawDestinationParentPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent)
@@ -47,10 +51,11 @@ class FileMoveService(
         // Get the target path
         val canonicalDestinationPath = FilePath.ofAlreadyNormalized(destinationParentPath.path.resolve(rawDestinationPath.path.fileName))
 
-        // Check if file is being moved into itself
-        if (canonicalPath == canonicalDestinationPath || canonicalDestinationPath.startsWith(canonicalPath)) return Result.reject("File cannot be moved into itself.")
+        // Check if file is being moved into itself. A change of case only (`photo.jpg` to `Photo.jpg`) is a rename.
+        val isIntoItself = PathPolicy.isKeyWithin(canonicalDestinationPath.pathKey, canonicalPath.pathKey)
+        if (isIntoItself && !isCaseOnlyRename(canonicalPath, canonicalDestinationPath)) return Result.reject("File cannot be moved into itself.")
 
-        val isRename = destinationParentPath.path == sourceParent.path
+        val isRename = destinationParentPath.pathKey == sourceParent.pathKey
 
         if (!isRename) {
             // Check target parent folder `WRITE` permission

@@ -13,10 +13,18 @@ data class FilesystemEntity(
     val entityId: Ulid,
     @Column("path")
     val path: String?,
-    @Column("inode")
-    val inode: Long?,
+    /**
+     * `FileIdentity.fileKey` of the file. Null on unsupported filesystems and for extra paths of a hard-linked file.
+     */
+    @Column("file_key")
+    val fileKey: String?,
     @Column("is_filesystem_supported")
     val isFilesystemSupported: Boolean,
     @Column("owner_user_id")
     val ownerId: Ulid?,
+    /**
+     * `PathPolicy.pathKey` of [path]. Entities are looked up by this, not by [path].
+     */
+    @Column("path_key")
+    val pathKey: String?,
 )

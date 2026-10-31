@@ -225,7 +225,7 @@ class FileShareService(
         ).let {
             if (it.isNotSuccessful) return it.cast()
         }
-        val entity = entityService.getByPath(canonicalPath.pathString, UserAction.SHARE_FILE).let {
+        val entity = entityService.getByPath(canonicalPath.pathKey, UserAction.SHARE_FILE).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
         }
@@ -436,7 +436,7 @@ class FileShareService(
 
         return Result.ok(FileShareMetadata(
             shareId = share.shareId,
-            topLevelFilename = canonicalSharePath.path.fileName.toString()
+            topLevelFilename = canonicalSharePath.filename
         ))
     }
 }

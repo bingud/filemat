@@ -2,6 +2,7 @@ package org.filemat.server.module.permission.model
 
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.util.*
+import org.filemat.server.config.platform.PathPolicy
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -95,16 +96,12 @@ class EntityPermissionTree() {
      */
     private fun getOrCreateTreePath(path: String): Node {
         treeLock.write {
-            val trim = path.trim('/')
-            val segments = trim.split('/')
             var current = root
 
-            if (trim.isNotBlank()) {
-                // Descend or create nodes, attaching each child’s parent
-                for (segment in segments) {
-                    current = current.children.getOrPut(segment) {
-                        return@getOrPut Node(segment = segment, parent = current)
-                    }
+            // Descend or create nodes, attaching each child’s parent
+            for (segment in PathPolicy.segments(path)) {
+                current = current.children.getOrPut(segment) {
+                    return@getOrPut Node(segment = segment, parent = current)
                 }
             }
 
@@ -141,8 +138,8 @@ class EntityPermissionTree() {
      * Returns the node for the input path.
      */
     private fun findNode(path: String, getClosestNode: Boolean = false): Node? {
-        if (path == "/") return root
-        val segments = path.trim('/').split('/')
+        if (path == PathPolicy.root) return root
+        val segments = PathPolicy.segments(path)
         var current = root
 
 
@@ -191,13 +188,12 @@ class EntityPermissionTree() {
             if (findNode(newPath, getClosestNode = false) != null) return false
 
             // split newPath into parent path and new name
-            val trimmed = newPath.trim('/')
-            val segments = if (trimmed.isBlank()) emptyList() else trimmed.split('/')
+            val segments = PathPolicy.segments(newPath)
             val newName = segments.lastOrNull().orEmpty()
-            val parentPath = "/" + segments.dropLast(1).joinToString("/")
+            val parentPath = PathPolicy.join(segments.dropLast(1))
 
             // get or create the new parent node
-            val newParent = if (parentPath == "/") root else getOrCreateTreePath(parentPath)
+            val newParent = if (parentPath == PathPolicy.root) root else getOrCreateTreePath(parentPath)
 
             // Prevent creating a cycle: do not move a node into its own subtree.
             // Walk up from newParent to root; if we encounter `node`, newParent is

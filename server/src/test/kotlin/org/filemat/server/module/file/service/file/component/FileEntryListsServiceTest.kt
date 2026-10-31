@@ -15,12 +15,16 @@ import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.sharedFile.resolveSharedFilePath
 import org.filemat.server.module.user.model.UserAction
-import org.junit.jupiter.api.AfterEach
+import io.mockk.verify
+import org.filemat.server.testutil.assertRejected
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
@@ -48,10 +52,47 @@ class FileEntryListsServiceTest {
 
     @BeforeEach
     fun setup() {
+        every { fileService.isAllowedToAccessFile(any(), any(), any()) } returns Result.ok()
         every { fileService.getFullMetadata(any(), any(), any(), any()) } answers {
             val path = invocation.args[1] as FilePath
             Result.ok(fileMeta(path.path))
         }
+    }
+
+    private fun search(folder: FilePath) = service.searchFiles(
+        user = user,
+        canonicalPath = folder,
+        text = "hello",
+        userAction = UserAction.SEARCH_FILE,
+    )
+
+    @Test
+    fun `a folder the user can't open is not searched`() {
+        val folder = Files.createDirectory(tempDir.resolve("private"))
+        Files.writeString(folder.resolve("hello.txt"), "x")
+        every { fileService.isAllowedToAccessFile(user, FilePath.ofAlreadyNormalized(folder), null) } returns Result.reject("This file is not exposed.")
+
+        val result = search(FilePath.ofAlreadyNormalized(folder))
+
+        assertRejected(result)
+        verify(exactly = 0) { fileService.getFullMetadata(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a folder the user can open is searched`() = runBlocking {
+        val folder = Files.createDirectory(tempDir.resolve("open"))
+        Files.writeString(folder.resolve("hello.txt"), "x")
+
+        val hits = search(FilePath.ofAlreadyNormalized(folder)).value.toList()
+
+        assertEquals(1, hits.size)
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `the drive list is never searched`() {
+        assertRejected(search(FilePath.of("/")))
+        verify(exactly = 0) { fileService.isAllowedToAccessFile(any(), any(), any()) }
     }
 
     @Test
@@ -77,7 +118,7 @@ class FileEntryListsServiceTest {
             shareRelativePath = FilePath.of("/"),
             shareToken = "share-token",
             userAction = UserAction.SEARCH_FILE,
-        ).toList().mapNotNull { it.valueOrNull?.path }
+        ).value.toList().mapNotNull { it.valueOrNull?.path }
 
         assertTrue(hits.any { it.replace('\\', '/').endsWith("nested/hello.txt") })
         assertFalse(hits.any { it.replace('\\', '/').contains("in-tree") })
@@ -90,7 +131,7 @@ class FileEntryListsServiceTest {
             shareRelativePath = FilePath.of("/"),
             shareToken = "share-token",
             userAction = UserAction.SEARCH_FILE,
-        ).toList().mapNotNull { it.valueOrNull?.path }
+        ).value.toList().mapNotNull { it.valueOrNull?.path }
 
         assertFalse(escapeHits.any { it.contains("escape") })
         assertFalse(escapeHits.any { it.contains("secret") })
@@ -115,7 +156,7 @@ class FileEntryListsServiceTest {
             shareRelativePath = FilePath.of("/"),
             shareToken = "share-token",
             userAction = UserAction.SEARCH_FILE,
-        ).toList().mapNotNull { it.valueOrNull?.path }
+        ).value.toList().mapNotNull { it.valueOrNull?.path }
 
         assertTrue(hits.any { it.replace('\\', '/').endsWith("hello.txt") })
         assertFalse(hits.any { it.replace('\\', '/').contains("loop/") })
@@ -143,7 +184,7 @@ class FileEntryListsServiceTest {
             shareRelativePath = FilePath.of("/"),
             shareToken = "share-token",
             userAction = UserAction.SEARCH_FILE,
-        ).toList().mapNotNull { it.valueOrNull?.path }
+        ).value.toList().mapNotNull { it.valueOrNull?.path }
 
         assertTrue(hits.any { it.replace('\\', '/').endsWith("hello.txt") })
     }

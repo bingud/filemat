@@ -18,4 +18,13 @@ open class Migration : BaseJavaMigration() {
 
     open fun run(st: Statement) {}
     open fun execute(): String? = null
+
+    protected fun hasColumn(st: Statement, table: String, column: String): Boolean {
+        st.executeQuery("PRAGMA table_info($table)").use { rs ->
+            while (rs.next()) {
+                if (rs.getString("name") == column) return true
+            }
+        }
+        return false
+    }
 }

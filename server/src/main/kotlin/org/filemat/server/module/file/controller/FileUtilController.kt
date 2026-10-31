@@ -12,9 +12,11 @@ import org.filemat.server.common.util.decodeFromStringOrNull
 import org.filemat.server.common.util.getPrincipal
 import org.filemat.server.config.auth.Cors
 import org.filemat.server.config.auth.Unauthenticated
+import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.file.ThumbnailService
+import org.filemat.server.module.file.service.file.media.FfmpegBusyException
 import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
@@ -28,7 +30,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.nio.charset.StandardCharsets
 
 @RestController
@@ -80,7 +81,9 @@ class FileUtilController(
             it.value
         }
 
-        val filename = path.pathString.substringAfterLast("/") + "_${targetSize}p.jpg"
+        if (LinkInspector.isNotStoredLocally(canonicalPath.path)) return streamBad("No preview for this file.", "")
+
+        val filename = path.filename + "_${targetSize}p.jpg"
         val cd = ContentDisposition.inline()
             .filename(filename, StandardCharsets.UTF_8)
             .build()
@@ -111,6 +114,8 @@ class FileUtilController(
                 },
                 outputStream = baos,
             )
+        } catch (e: FfmpegBusyException) {
+            return streamUnavailable(FfmpegBusyException.MESSAGE)
         } catch (e: Exception) {
             RateLimitedLog.ifDue("file_util_image_thumbnail") {
                 logService.error(
@@ -177,11 +182,13 @@ class FileUtilController(
             if (it.isNotSuccessful) return streamBad(it.errorOrNull ?: "Cannot access this file.", "")
         }
 
-        val videoFile = File(canonicalPath.pathString)
+        if (LinkInspector.isNotStoredLocally(canonicalPath.path)) return streamBad("No preview for this file.", "")
+
+        val videoFile = canonicalPath.path.toFile()
         val modifiedDate = videoFile.lastModified()
         val fileSize = videoFile.length()
 
-        val filename = path.pathString.substringAfterLast("/") + "_preview.jpg"
+        val filename = path.filename + "_preview.jpg"
         val cd = ContentDisposition.inline()
             .filename(filename, StandardCharsets.UTF_8)
             .build()
@@ -200,6 +207,8 @@ class FileUtilController(
                 fileSize = fileSize,
                 outputStream = baos,
             )
+        } catch (e: FfmpegBusyException) {
+            return streamUnavailable(FfmpegBusyException.MESSAGE)
         } catch (e: Exception) {
             RateLimitedLog.ifDue("file_util_video_preview") {
                 logService.error(

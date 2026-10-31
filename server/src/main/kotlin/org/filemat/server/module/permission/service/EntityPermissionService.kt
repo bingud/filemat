@@ -10,6 +10,7 @@ import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.classes.Token
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
+import org.filemat.server.config.platform.FileIdentity
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.model.Principal.Companion.hasPermission
 import org.filemat.server.module.file.model.FilePath
@@ -113,7 +114,7 @@ class EntityPermissionService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        pathTree.addPermission(entity.path, newPermission)
+        pathTree.addPermission(entity.pathKey ?: return Result.error("The path for the indexed file for this permission is null."), newPermission)
 
         return Result.ok()
     }
@@ -146,12 +147,12 @@ class EntityPermissionService(
 
         if (!ignorePermissions) {
             // Verify / validate the file without creating yet (owner check first).
-            fileService.verifyEntityInode(path = canonicalPath, userAction = action).let {
+            fileService.verifyEntityIdentity(path = canonicalPath, userAction = action).let {
                 if (it.isNotSuccessful) return it.cast()
             }
         }
 
-        val existingEntity = entityService.getByPath(path = canonicalPath.pathString, userAction = action).let {
+        val existingEntity = entityService.getByPath(pathKey = canonicalPath.pathKey, userAction = action).let {
             if (it.hasError) return it.cast()
             it.valueOrNull
         }
@@ -164,9 +165,9 @@ class EntityPermissionService(
 
         // Check existing permission
         val existingPermission = if (mode == PermissionType.USER) {
-            pathTree.getDirectPermissionForUser(canonicalPath.pathString, targetId)
+            pathTree.getDirectPermissionForUser(canonicalPath.pathKey, targetId)
         } else {
-            pathTree.getDirectPermissionForRole(canonicalPath.pathString, targetId)
+            pathTree.getDirectPermissionForRole(canonicalPath.pathKey, targetId)
         }
         if (existingPermission != null) return Result.reject("This ${mode.name.lowercase()} already has a permission.")
 
@@ -181,7 +182,7 @@ class EntityPermissionService(
             ).let {
                 if (it.isNotSuccessful) return it.cast()
             }
-            entityService.getByPath(path = canonicalPath.pathString, userAction = action).let {
+            entityService.getByPath(pathKey = canonicalPath.pathKey, userAction = action).let {
                 if (it.isNotSuccessful) return it.cast()
                 it.value
             }
@@ -202,7 +203,7 @@ class EntityPermissionService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        pathTree.addPermission(canonicalPath.pathString, permission)
+        pathTree.addPermission(canonicalPath.pathKey, permission)
 
         return permission.toResult()
     }
@@ -291,10 +292,11 @@ class EntityPermissionService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        val ownerId = entityService.getByPath(path = canonicalPath.pathString, userAction = UserAction.GET_ENTITY_PERMISSIONS).let {
+        val entity = entityService.getByPath(pathKey = canonicalPath.pathKey, userAction = UserAction.GET_ENTITY_PERMISSIONS).let {
             if (it.hasError) return it.cast()
             it.valueOrNull
-        }?.ownerId
+        }
+        val ownerId = entity?.ownerId
 
         val isAllowed = user.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_PERMISSIONS) || user.userId == ownerId && user.hasPermission(state, SystemPermission.MANAGE_OWN_FILE_PERMISSIONS)
         if (!isAllowed) return Result.reject("You do not have permission to view the permissions of this file.")
@@ -303,31 +305,32 @@ class EntityPermissionService(
 
         val result = EntityPermissionMeta(
             ownerId = ownerId,
-            permissions = permissions
+            permissions = permissions,
+            isPathOnly = entity?.let { !it.isFilesystemSupported } ?: (FileIdentity.isSupported(canonicalPath.path) == false),
         )
 
         return result.toResult()
     }
 
     fun getAllEntityPermissions(canonicalPath: FilePath): List<EntityPermission> {
-        return pathTree.getAllPermissionsForPath(canonicalPath.pathString)
+        return pathTree.getAllPermissionsForPath(canonicalPath.pathKey)
     }
 
     /**
      * Remove permission for an entity ID from a specific file path
      */
-    fun memory_removeEntity(path: String, entityId: Ulid) = pathTree.removePermissionByEntityId(path, entityId, null)
+    fun memory_removeEntity(pathKey: String, entityId: Ulid) = pathTree.removePermissionByEntityId(pathKey, entityId, null)
 
     /**
      * Update the file path of an entity
      */
-    fun memory_movePath(oldPath: String, newPath: String, entityId: Ulid) = pathTree.movePath(oldPath, newPath)
+    fun memory_movePath(oldPathKey: String, newPathKey: String, entityId: Ulid) = pathTree.movePath(oldPathKey, newPathKey)
 
     /**
      * Get the effective (inherited & merged) file permissions for a user.
      */
     fun getEffectivePermissions(canonicalPath: FilePath, userId: Ulid, roles: List<Ulid>): Set<FilePermission> {
-        return pathTree.resolveEffectivePermissions(canonicalPath.pathString, userId, roles)
+        return pathTree.resolveEffectivePermissions(canonicalPath.pathKey, userId, roles)
     }
 
     fun removeAllPermissionsForUser(userId: Ulid) {
@@ -382,8 +385,8 @@ class EntityPermissionService(
         // Add permissions to tree
         permissions.forEach { permission ->
             val entity = entities[permission.entityId]
-            if (entity == null || entity.path == null) return@forEach
-            pathTree.addPermission(entity.path, permission)
+            if (entity?.pathKey == null) return@forEach
+            pathTree.addPermission(entity.pathKey, permission)
         }
 
         return true

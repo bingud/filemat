@@ -9,37 +9,20 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import org.apache.tika.Tika
 import org.filemat.server.common.model.Result
+import org.filemat.server.config.platform.LinkInspector
+import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsNative
+import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 
 val tika = Tika()
-
-
-object FileUtils {
-    fun getInode(path: Path, followSymbolicLinks: Boolean): Long? {
-        val options = if (followSymbolicLinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
-        return try {
-            Files.getAttribute(path, "unix:ino", *options) as Long
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-
-    fun isSupportedFilesystem(path: Path): Boolean? {
-        if (!Files.exists(path)) return null
-        return try {
-            Files.getFileStore(path).supportsFileAttributeView("unix")
-        } catch (e: Exception) {
-            false
-        }
-    }
-}
-
 
 
 /**
@@ -93,6 +76,16 @@ private fun Path.safeWalk(
     onListFailed: () -> Unit,
     ancestorRealPaths: Set<Path>,
 ): Flow<Path> = flow {
+    // The Windows drive list is not a real folder, so walk each drive
+    if (PathPolicy.isVirtualRoot(this@safeWalk)) {
+        if (!include(this@safeWalk)) return@flow
+        emit(this@safeWalk)
+        for (drive in PathPolicy.virtualRootEntries()) {
+            emitAll(drive.safeWalk(with, followDirectoryLinks, include, onListFailed, ancestorRealPaths))
+        }
+        return@flow
+    }
+
     val lock = with?.getLock(this@safeWalk, LockType.READ)
     if (lock?.successful == false) return@flow
 
@@ -102,9 +95,14 @@ private fun Path.safeWalk(
         // Emit the current path itself
         emit(this@safeWalk)
 
-        // Traverse children if directory
-        val directoryOptions = if (followDirectoryLinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
-        if (Files.isDirectory(this@safeWalk, *directoryOptions)) {
+        // Traverse children if directory. Junctions and mount points look like directories even without following links.
+        val isWalkedDirectory = if (followDirectoryLinks) {
+            // A link to a network folder is never followed (§4.3)
+            !(Files.isSymbolicLink(this@safeWalk) && reachesNetwork(this@safeWalk)) && Files.isDirectory(this@safeWalk)
+        } else {
+            Files.isDirectory(this@safeWalk, LinkOption.NOFOLLOW_LINKS) && !LinkInspector.isDirectoryLink(this@safeWalk)
+        }
+        if (isWalkedDirectory) {
             if (this@safeWalk.isAlreadyWalked(ancestorRealPaths)) return@flow
             val childAncestors = ancestorRealPaths.plusWalkIdentity(this@safeWalk)
 
@@ -144,7 +142,7 @@ data class FolderSize(
 
 /**
  * Counts nested files and folders under this path. The starting folder is not included in [FolderSize.folderCount].
- * Directory sizes are not summed. Symlinks count as files and are not followed.
+ * Directory sizes are not summed. Links (symlinks, junctions) count as files and are not followed.
  *
  * Fails when the root path is never visited (for example a missed read lock) or when the root directory cannot be listed.
  */
@@ -179,7 +177,7 @@ suspend fun Path.measureFolderContents(with: FileLockService? = null): Result<Fo
             return@collect
         }
 
-        if (attrs.isDirectory && !attrs.isSymbolicLink) {
+        if (attrs.isDirectory && !attrs.isSymbolicLink && !LinkInspector.isDirectoryLink(path)) {
             folderCount++
             return@collect
         }
@@ -209,29 +207,53 @@ suspend fun Path.measureFolderContents(with: FileLockService? = null): Result<Fo
     )
 }
 
-data class PathRelationship(
-    val isInsideTarget: Boolean,
-    val containsTarget: Boolean,
-    val isEqual: Boolean
-)
-
-fun getPathRelationship(path: Path, target: Path): PathRelationship {
-    val isInside = path.startsWith(target)
-    val contains = target.startsWith(path)
-    return PathRelationship(
-        isInsideTarget = isInside,
-        containsTarget = contains,
-        isEqual = isInside && contains
-    )
-}
-
 /**
  * True when [path] is [root] or a descendant. Uses path components, so `/share` does not match `/share-extra`.
  */
 fun isPathInside(path: Path, root: Path): Boolean {
     val normalizedPath = path.normalize()
     val normalizedRoot = root.normalize()
-    return normalizedPath.startsWith(normalizedRoot)
+    if (!normalizedPath.startsWith(normalizedRoot)) return false
+    if (!Platform.isWindows) return true
+    // Windows `startsWith` ignores case, but a case-sensitive folder can hold both `Share` and `SHARE` (§2.3)
+    return PathPolicy.isKeyWithin(PathPolicy.pathKey(normalizedPath), PathPolicy.pathKey(normalizedRoot))
+}
+
+/**
+ * Creates the folder [dest] and the missing folders above it, for a move or copy of [sourceRoot] that rebuilds folders one by one.
+ * [source] is the folder within [sourceRoot] that [dest] stands for, or null when it is above it.
+ * On Windows each new folder within the tree is made case-sensitive when its source folder is (§2.3), or a folder holding
+ * `a.txt` and `A.txt` would lose one. Folders above it are created plainly.
+ * Throws when a folder can't be created or can't be made case-sensitive.
+ */
+fun createFoldersLike(dest: Path, source: Path?, sourceRoot: Path) {
+    if (!Platform.isWindows) {
+        Files.createDirectories(dest)
+        return
+    }
+    createFolderLike(dest, source, sourceRoot)
+}
+
+private fun createFolderLike(dest: Path, source: Path?, sourceRoot: Path) {
+    if (Files.exists(dest, LinkOption.NOFOLLOW_LINKS)) return
+    val parentSource = if (source == null || source == sourceRoot) null else source.parent
+    dest.parent?.let { createFolderLike(it, parentSource, sourceRoot) }
+
+    Files.createDirectory(dest)
+    if (source != null && WindowsNative.isCaseSensitiveDirectory(source) == true && WindowsNative.setCaseSensitiveDirectory(dest) != true) {
+        runCatching { Files.delete(dest) }
+        throw IOException("A case-sensitive folder can't be created at $dest.")
+    }
+}
+
+/**
+ * Returns whether moving [source] to [destination] only changes the case of its name (`photo.jpg` to `Photo.jpg`).
+ * Both paths then name the same file, in a case-insensitive folder. Always false on Linux.
+ */
+fun isCaseOnlyRename(source: FilePath, destination: FilePath): Boolean {
+    if (source.pathString == destination.pathString) return false
+    if (source.pathKey != destination.pathKey) return false
+    return runCatching { Files.isSameFile(source.path, destination.path) }.getOrDefault(false)
 }
 
 fun isFileStoreMatching(

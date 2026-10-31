@@ -20,6 +20,7 @@ import org.filemat.server.module.file.service.LockType
 import org.filemat.server.testutil.assertError
 import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.junctionOrSkip
 import org.filemat.server.testutil.symlinkOrSkip
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -33,6 +34,22 @@ class SafeWalkTest {
 
     @TempDir
     lateinit var tempDir: Path
+
+    @Test
+    fun `a link back to a folder above counts as already walked`() {
+        val root = tempDir.toRealPath()
+        val sub = Files.createDirectory(root.resolve("sub"))
+        val loop = sub.resolve("loop")
+        symlinkOrSkip(loop, root)
+        val ancestors = emptySet<Path>().plusWalkIdentity(root).plusWalkIdentity(sub)
+
+        assertTrue(loop.isAlreadyWalked(ancestors))
+        assertFalse(Files.createDirectory(sub.resolve("other")).isAlreadyWalked(ancestors))
+        assertFalse(root.isAlreadyWalked(emptySet()))
+        // The same folder through the link is not added twice
+        assertEquals(ancestors, ancestors.plusWalkIdentity(loop))
+        assertEquals(2, ancestors.size)
+    }
 
     @Test
     fun `walks nested real directories`() = runBlocking {
@@ -64,6 +81,48 @@ class SafeWalkTest {
         assertTrue(walked.contains(link))
         assertFalse(walked.contains(secret))
         assertFalse(walked.any { it.fileName.toString() == "secret.txt" })
+    }
+
+    @Test
+    fun `does not walk into junctions`() = runBlocking {
+        val allowed = Files.createDirectory(tempDir.resolve("allowed"))
+        val denied = Files.createDirectory(tempDir.resolve("denied"))
+        Files.writeString(denied.resolve("secret.txt"), "no")
+        val junction = allowed.resolve("to-denied")
+        junctionOrSkip(junction, denied)
+
+        val walked = allowed.safeWalk().toList()
+
+        assertTrue(walked.contains(junction))
+        assertFalse(walked.any { it.fileName.toString() == "secret.txt" })
+    }
+
+    @Test
+    fun `walks into junctions when links are followed`() = runBlocking {
+        val root = Files.createDirectory(tempDir.resolve("root"))
+        val target = Files.createDirectory(tempDir.resolve("target"))
+        Files.writeString(target.resolve("inside.txt"), "x")
+        val junction = root.resolve("junction")
+        junctionOrSkip(junction, target)
+
+        val walked = root.safeWalk(followDirectoryLinks = true).toList()
+
+        assertTrue(walked.contains(junction.resolve("inside.txt")))
+    }
+
+    @Test
+    fun `measureFolderContents counts junctions as files`() {
+        val root = Files.createDirectory(tempDir.resolve("root"))
+        val target = Files.createDirectory(tempDir.resolve("target"))
+        Files.writeString(target.resolve("secret.txt"), "secret")
+        Files.writeString(root.resolve("local.txt"), "ok")
+        junctionOrSkip(root.resolve("junction"), target)
+
+        val result = measureFolder(root)
+
+        assertSuccess(result)
+        assertEquals(2, result.value.fileCount)
+        assertEquals(0, result.value.folderCount)
     }
 
     @Test

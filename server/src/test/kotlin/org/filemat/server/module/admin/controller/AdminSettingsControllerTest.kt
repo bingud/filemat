@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -15,6 +16,8 @@ import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.auth.service.SensitiveAuthService
 import org.filemat.server.module.file.service.FileVisibilityService
 import org.filemat.server.module.file.service.file.ThumbnailService
+import org.filemat.server.module.file.service.file.media.MediaPreviewService
+import org.filemat.server.module.file.service.file.media.MediaPreviewStatus
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.setting.service.SettingService
 import org.filemat.server.module.setting.service.component.ThumbCacheSettingService
@@ -29,6 +32,7 @@ class AdminSettingsControllerTest {
     private val settingService = mockk<SettingService>(relaxed = true)
     private val sensitiveAuthService = mockk<SensitiveAuthService>(relaxed = true)
     private val state = State(env = emptyMap())
+    private val mediaPreviewService = mockk<MediaPreviewService>()
     private val controller = AdminSettingsController(
         mockk<LogService>(relaxed = true),
         settingService,
@@ -36,8 +40,20 @@ class AdminSettingsControllerTest {
         sensitiveAuthService,
         mockk<ThumbCacheSettingService>(relaxed = true),
         mockk<ThumbnailService>(relaxed = true),
+        mediaPreviewService,
         state,
     )
+
+    @Test
+    fun `video preview status says why previews are off`() {
+        every { mediaPreviewService.status } returns MediaPreviewStatus(problem = "FFmpeg was not found.")
+
+        val body = Json.parseToJsonElement(controller.adminGetVideoPreviewStatusMapping().body.orEmpty()).jsonObject
+
+        assertEquals(false, body["isAvailable"]?.jsonPrimitive?.boolean)
+        assertEquals(JsonNull, body["source"])
+        assertEquals("FFmpeg was not found.", body["problem"]?.jsonPrimitive?.content)
+    }
 
     @Test
     fun `state get returns the full system bundle`() {

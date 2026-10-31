@@ -70,8 +70,14 @@ class ThumbCacheSettingService(
     ): Result<Unit> {
         if (maxSizeMb != null && maxSizeMb < 1) return Result.reject("Max Size parameter is too low.")
         if (maxAge != null && maxAge < 1) return Result.reject("Expiration time is too low.")
-        if (folderPath != null && folderPath.pathString == "/") return Result.reject("Thumbnail folder cannot be root.")
-        if (isEnabled && folderPath == null) {
+        // Stored as its real path, like the upload folder, so a link or an 8.3 name compares the same everywhere
+        val folder = folderPath?.let { path ->
+            state.realInternalFolder(path).let {
+                if (it.isNotSuccessful) return Result.reject("Thumbnail cache folder: ${it.error}")
+                FilePath.ofAlreadyNormalized(it.value)
+            }
+        }
+        if (isEnabled && folder == null) {
             return Result.reject("Thumbnail cache folder is required when caching is enabled.")
         }
 
@@ -79,18 +85,18 @@ class ThumbCacheSettingService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        if (folderPath != null) {
-            settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folderPath.pathString).let {
+        if (folder != null) {
+            settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folder.pathString).let {
                 if (it.isNotSuccessful) return it.cast()
             }
             if (isEnabled) {
-                filesystemService.createFolder(folderPath).let {
+                filesystemService.createFolder(folder).let {
                     if (it.isSuccessful) return@let
 
                     logService.error(
                         type = LogType.SYSTEM,
                         action = UserAction.APP_SETUP,
-                        description = "Failed to create thumbnail cache folder during setup. Path: [$folderPath]",
+                        description = "Failed to create thumbnail cache folder during setup. Path: [$folder]",
                         message = it.exception?.stackTraceToString() ?: (it.errorOrNull ?: ""),
                         initiatorId = initiatorId,
                     )
@@ -118,7 +124,7 @@ class ThumbCacheSettingService(
             description = "Thumbnail cache settings saved during application setup.",
             message = buildString {
                 append("Enabled: $isEnabled")
-                folderPath?.let { append("\nFolder: $it") }
+                folder?.let { append("\nFolder: $it") }
                 maxSizeMb?.let { append("\nMax size: $it MB") }
                 maxAge?.let { append("\nMax age: ${formatSecondsToReadableTime(it)}") }
             },
@@ -126,7 +132,7 @@ class ThumbCacheSettingService(
         )
 
         state.thumbCache.isEnabled = isEnabled
-        state.thumbCache.folderPath = folderPath?.pathString
+        state.thumbCache.folderPath = folder?.pathString
         state.thumbCache.maxSizeMb = maxSizeMb
         state.thumbCache.maxAge = maxAge
 
@@ -147,7 +153,13 @@ class ThumbCacheSettingService(
 
         if (maxSizeMb != null && maxSizeMb < 1) return Result.reject("Max Size parameter is too low.")
         if (maxAge != null && maxAge < 1) return Result.reject("Expiration time is too low.")
-        if (folderPath != null && folderPath.pathString == "/") return Result.reject("Thumbnail folder cannot be root.")
+        // Stored as its real path, like the upload folder, so a link or an 8.3 name compares the same everywhere
+        val folder = folderPath?.let { path ->
+            state.realInternalFolder(path).let {
+                if (it.isNotSuccessful) return Result.reject("Thumbnail cache folder: ${it.error}")
+                FilePath.ofAlreadyNormalized(it.value)
+            }
+        }
 
         try {
             if (isEnabled != null) {
@@ -159,60 +171,44 @@ class ThumbCacheSettingService(
                 state.thumbCache.isEnabled = isEnabled
             }
 
-            if (folderPath != null) {
-                state.thumbCache.folderPath = folderPath.pathString
-                settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folderPath.pathString).let {
+            if (folder != null) {
+                state.thumbCache.folderPath = folder.pathString
+                settingService.db_setSetting(Props.Settings.ThumbCache.folderPath, folder.pathString).let {
                     if (it.isNotSuccessful) return it.cast()
                 }
-                log.add(Props.Settings.ThumbCache.folderPath, folderPath)
+                log.add(Props.Settings.ThumbCache.folderPath, folder)
 
-                // Move existing cache files
-                val folderPathChanged = folderPath != previousFolderPath
+                // Only the cache files are moved or deleted, so a cache folder that holds other files keeps them.
+                // A change of case names the same folder.
+                val folderPathChanged = folder.pathKey != previousFolderPath?.pathKey
                 val shouldMoveCache = moveCache == true &&
                         folderPathChanged &&
                         previousFolderPath != null &&
                         previousFolderPath.exists()
 
-                if (shouldMoveCache) {
-                    filesystemService.moveFile(
-                        source = previousFolderPath,
-                        destination = folderPath,
-                        user = user,
-                        ignorePermissions = true,
-                    ).let {
-                        if (it.isNotSuccessful) return it.cast()
-                    }
-                    log.append("Existing cache folder was moved.")
-                } else if (folderPathChanged) {
-                    filesystemService.createFolder(folderPath).let {
+                if (folderPathChanged) {
+                    filesystemService.createFolder(folder).let {
                         if (it.isNotSuccessful) return it.cast()
                     }
                 }
 
+                if (shouldMoveCache && previousFolderPath != null) {
+                    thumbnailService.moveCache(from = previousFolderPath.path, to = folder.path)
+                    log.append("Existing cache files were moved.")
+                }
+
                 if (deleteCache == true && !shouldMoveCache) {
-                    val deleteTarget = if (folderPathChanged) previousFolderPath else folderPath
+                    val deleteTarget = if (folderPathChanged) previousFolderPath else folder
 
                     if (deleteTarget != null && deleteTarget.exists()) {
-                        filesystemService.deleteFile(
-                            target = deleteTarget,
-                            user = user,
-                            ignorePermissions = true,
-                        ).let {
-                            if (it.isNotSuccessful) return it.cast()
-                        }
-                        log.append("Existing cache folder was deleted.")
+                        thumbnailService.clearCache(deleteTarget.path)
+                        log.append("Existing cache files were deleted.")
                     }
                 }
             }
 
-            if (deleteCache == true && folderPath == null && previousFolderPath != null && previousFolderPath.exists()) {
-                filesystemService.deleteFile(
-                    target = previousFolderPath,
-                    user = user,
-                    ignorePermissions = true,
-                ).let {
-                    if (it.isNotSuccessful) return it.cast()
-                }
+            if (deleteCache == true && folder == null && previousFolderPath != null && previousFolderPath.exists()) {
+                thumbnailService.clearCache(previousFolderPath.path)
                 log.append("Existing cache was cleared.")
             }
 
@@ -236,7 +232,7 @@ class ThumbCacheSettingService(
 
             thumbnailService.triggerActivityCleanup()
 
-            return Result.ok(folderPath)
+            return Result.ok(folder)
         } finally {
             log.log()
         }

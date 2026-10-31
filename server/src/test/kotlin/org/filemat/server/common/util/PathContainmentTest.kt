@@ -2,7 +2,6 @@ package org.filemat.server.common.util
 
 import java.nio.file.Path
 import java.nio.file.Paths
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
@@ -55,33 +54,6 @@ class PathContainmentTest {
         fun `root with dot-dot segments is normalized too`() {
             assertTrue(isPathInside(p("/share/a.txt"), p("/share/sub/..")))
             assertFalse(isPathInside(p("/share/a.txt"), p("/share/sub/../other")))
-        }
-    }
-
-    @Nested
-    inner class PathRelationshipTest {
-
-        @Test
-        fun `path inside the target`() {
-            assertEquals(PathRelationship(isInsideTarget = true, containsTarget = false, isEqual = false), getPathRelationship(p("/a/b/c"), p("/a/b")))
-        }
-
-        @Test
-        fun `path containing the target`() {
-            assertEquals(PathRelationship(isInsideTarget = false, containsTarget = true, isEqual = false), getPathRelationship(p("/a"), p("/a/b")))
-        }
-
-        @Test
-        fun `equal paths`() {
-            assertEquals(PathRelationship(isInsideTarget = true, containsTarget = true, isEqual = true), getPathRelationship(p("/a/b"), p("/a/b")))
-        }
-
-        @Test
-        fun `unrelated paths and name prefixes`() {
-            val unrelated = PathRelationship(isInsideTarget = false, containsTarget = false, isEqual = false)
-
-            assertEquals(unrelated, getPathRelationship(p("/a/b"), p("/a/c")))
-            assertEquals(unrelated, getPathRelationship(p("/a/bc"), p("/a/b")))
         }
     }
 }
