@@ -5,6 +5,7 @@ import com.sun.jna.platform.win32.Kernel32
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.mockk.verify
 import java.nio.file.FileSystems
 import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.config.platform.WindowsNative
@@ -245,6 +246,23 @@ class WindowsPathSecurityTest {
             assertTrue(reachesNetwork(link.resolve("sub").resolve("file.txt")), "$link")
             assertNotFound(resolvePath(FilePath.ofAlreadyNormalized(link), followSymlinks = true))
             assertNotFound(resolvePath(FilePath.ofAlreadyNormalized(link.resolve("file.txt")), followSymlinks = true, allowNonExistent = true))
+        }
+    }
+
+    @Test
+    fun `a link to a network folder is recognized without asking Windows about it`() {
+        // Asking Windows about the drive of a \\server\share path makes it connect to the server
+        val link = tempDir.resolve("direct")
+        symlinkOrSkip(link, Path.of("\\\\192.0.2.1\\share"))
+
+        mockkObject(WindowsNative)
+        try {
+            every { WindowsNative.isOnNetworkDrive(any()) } answers { throw AssertionError("Windows was asked about ${firstArg<Path>()}") }
+            assertTrue(reachesNetwork(link))
+            assertTrue(reachesNetwork(link.resolve("sub").resolve("file.txt")))
+            verify(exactly = 0) { WindowsNative.isOnNetworkDrive(any()) }
+        } finally {
+            unmockkObject(WindowsNative)
         }
     }
 

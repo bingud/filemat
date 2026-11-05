@@ -370,6 +370,8 @@ fun reachesNetwork(path: Path, depth: Int = 0): Boolean {
         if (!Files.isSymbolicLink(current)) continue
         val target = runCatching { Files.readSymbolicLink(current) }.getOrNull() ?: return true
         var next = current.parent.resolve(target)
+        // Checked first and by text: asking Windows about a UNC root makes it connect to the server
+        if (isUncPath(next)) return true
         // A link can point to another drive, which can be a mapped network drive
         if (next.root != current.root && isOnNetworkDrive(next)) return true
         if (index + 1 < path.nameCount) next = next.resolve(path.subpath(index + 1, path.nameCount))
