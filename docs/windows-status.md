@@ -22,9 +22,21 @@ The other docs, and what each is for:
 - **Manual tests:** every check an agent can run has run: 40 PASS, 7 PART, 3 SKIP, 0 FAIL. W45 ran in full on 2026-10-30 (the zip's own runtime: TOTP sign-in and zip download pass), and W37 passes in the page since fixes 25. What's left needs a person (below).
 - **Nothing blocks a release** except the two blocking checks for a person, W35 and W38.
 
+## Found on 2026-11-05 (run with admin rights, not fixed)
+
+Details in the test plan under "Found 2026-11-05". Not committed as code changes.
+
+- [x] **F1 (W29, security)** Listing a folder with a symlink to `\\server\share` made Windows connect to the server (26.7 s; credentials go out to a real server). Fixed 2026-11-05: `reachesNetwork` checks `isUncPath(next)` before `isOnNetworkDrive(next)`, with a unit test. Still to do: rerun W29 on a fresh build.
+- [ ] **F2 (W21, blocking check)** As a normal user, copy and move of a case-sensitive folder fail (Windows needs admin to set the flag). Passes elevated.
+- [ ] **F3 (W15, W40)** Ending the scheduled task leaves `java.exe` running.
+- [ ] **F4 (W38, blocking check)** Exposing a network drive/UNC path is accepted (inert); a start with `FM_DATA_DIR` on a network drive writes the JNA DLL there first.
+- [ ] **F5 (W47)** A file the Windows account can't open gives generic 500s.
+
 ## To finish, in order
 
 ### 1. Checks for a person
+
+Done 2026-11-05 with admin rights (see the test plan): W3, W10, W20, W36 PASS; W21, W29, W15 FAIL; W38 PART; new W46 PASS, W47 PART. Still not done: W2, W5 default folder, W9, W14, W31 delete/move of `C:\Windows` and `C:\Users` (left on purpose, it is a real PC), W35, W39, W40 console-window close, W43, W44, L8 `.heic`, L16-L18.
 
 Steps are in the test plan under each ID. Record the result in its Status table.
 

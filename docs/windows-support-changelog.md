@@ -2,6 +2,14 @@
 
 A short write-up of each finished chunk of work toward [windows-support-plan.md](windows-support-plan.md), newest first. Open items are in [windows-status.md](windows-status.md).
 
+## 2026-11-05: Fix F1, a link to a network folder made Windows connect
+
+TL;DR: `reachesNetwork` asked Windows for the drive type of a link target before checking that it is a `\\server\share` path, and that query connects to the server. It now checks the path text first (`utilFunctions.kt`). New test `a link to a network folder is recognized without asking Windows about it` in `WindowsPathSecurityTest`. Run elevated with `--no-daemon` (a normal shell, or an elevated client that reuses a normal daemon, skips the symlink tests): 22 pass, 0 skipped; with the fix removed the new test fails. Not done: W29 on a fresh build with `netstat`.
+
+## 2026-11-05: Test run with admin rights
+
+TL;DR: ran the checks that needed admin or a scheduled task, on the owner's PC with the build in `Downloads\filemat`. No code changed. PASS: W3, W10, W20, W36 (FAT32 and exFAT, letter change), W46 (permission follows a move between drives, also to FAT). FAIL: W29 (a symlink to `\\server\share` makes Windows connect when its folder is listed), W21 (a case-sensitive folder can't be copied or moved without admin), W15 (ending the scheduled task leaves Filemat running). PART: W38 (network drive refused everywhere except that exposing it is accepted), W40, W47 (a file the Windows account can't open gives 500s). Findings F1-F5 are in the test plan and `windows-status.md`. Test leftovers removed: the `.vhdx` disks, the SMB share, the `Z:` mapping, the scheduled task, temp data folders. `C:\FmTest\cs` now holds its files again and `C:\FmTest\links` has the two symlinks.
+
 ## 2026-10-31: History squashed into 4 commits
 
 - The branch's 60 incremental commits are now four, one per area: build and packaging, server with its tests, web, docs. The server code and its tests share one commit because the code alone breaks `main`'s old tests. The final tree is byte for byte the one tested below.
