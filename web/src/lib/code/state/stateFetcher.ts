@@ -185,6 +185,14 @@ async function notifyLastUserId() {
 
 
 let autoSyncRunning = false
+
+/**
+ * Re-fetch state every 20 seconds, unless idle (then 60 seconds)
+ */
+export function autoSyncDelayMillis(isIdle: boolean): number {
+    return isIdle ? 60_000 : 20_000
+}
+
 /**
  * Re-fetches the application state o
  */
@@ -194,8 +202,7 @@ export async function startStateAutoSync() {
     
     while (true) {
         try {
-            // Re-fetch state every 20 seconds, unless idle (then 60 seconds)
-            await delay(clientState.isIdle ? 20_000 : 60_000)
+            await delay(autoSyncDelayMillis(clientState.isIdle))
 
             await fetchState(undefined, appState.stateHashCode || undefined)
         } catch (e) {}

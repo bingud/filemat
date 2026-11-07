@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { appState, posixFilenameRules, type AppPlatform } from "$lib/code/stateObjects/appState.svelte"
-import { fetchAppState } from "./stateFetcher"
+import { autoSyncDelayMillis, fetchAppState } from "./stateFetcher"
 
 const windowsPlatform: AppPlatform = {
     pathStyle: `windows`,
@@ -69,5 +69,12 @@ describe(`fetchAppState`, () => {
         vi.stubGlobal(`fetch`, vi.fn(async () => { throw new Error(`offline`) }))
 
         expect(await fetchAppState()).toBe(false)
+    })
+})
+
+describe(`autoSyncDelayMillis`, () => {
+    it(`syncs every 20 seconds while active and every 60 seconds while idle`, () => {
+        expect(autoSyncDelayMillis(false)).toBe(20_000)
+        expect(autoSyncDelayMillis(true)).toBe(60_000)
     })
 })
