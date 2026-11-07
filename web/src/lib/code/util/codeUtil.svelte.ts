@@ -468,7 +468,10 @@ export function formatBytesRounded(bytes: number): string {
 }
 
 export function getFileExtension(name: string): string {
-    return name.substring(name.lastIndexOf(".") + 1)
+    const dot = name.lastIndexOf(".")
+    // A name without a dot has no extension: a file named `pdf` is not a PDF
+    if (dot === -1) return ``
+    return name.substring(dot + 1)
 }
 
 export function forEachReversed<T>(array: T[], callback: (value: T, index: number) => any) {
