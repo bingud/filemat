@@ -361,7 +361,7 @@ function beginTusUpload(
             ...(options.metadata || {}),
             path: targetPath,
         },
-        chunkSize: 64 * 1024 * 1024, // 128 MB chunk
+        chunkSize: 64 * 1024 * 1024, // 64 MB chunk
         removeFingerprintOnSuccess: true,
         onBeforeRequest: (req) => {
             const xhr = req.getUnderlyingObject() as XMLHttpRequest | null
