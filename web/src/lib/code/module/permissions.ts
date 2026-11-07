@@ -41,8 +41,9 @@ export function hasAnyPermission(requiredPermissions: SystemPermission[], ignore
     const permissions = auth.permissions
     if (!permissions) return false
 
-    if (!ignoreSuperAdmin) requiredPermissions.push("SUPER_ADMIN")
-    if (includesAny<SystemPermission>(permissions, requiredPermissions)) return true;
+    // A copy, so the caller's array is never changed
+    const accepted: SystemPermission[] = ignoreSuperAdmin ? requiredPermissions : [...requiredPermissions, `SUPER_ADMIN`]
+    if (includesAny<SystemPermission>(permissions, accepted)) return true;
     return false;
 }
 
