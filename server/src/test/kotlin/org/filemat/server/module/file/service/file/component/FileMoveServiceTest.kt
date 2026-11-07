@@ -84,4 +84,24 @@ class FileMoveServiceTest {
 
         verify { filesystemService.moveFile(source = FilePath.ofAlreadyNormalized(folder), destination = any(), user = user, isRename = true) }
     }
+
+    @Test
+    fun `moving a root folder is refused, not a crash`() {
+        val root = tempDir.toRealPath().root
+
+        val result = move(root, tempDir.toRealPath().resolve("moved"))
+
+        assertRejected(result)
+        assertEquals("Cannot move root folder.", result.error)
+    }
+
+    @Test
+    fun `moving onto a root folder is refused, not a crash`() {
+        val file = Files.writeString(tempDir.toRealPath().resolve("file.txt"), "x")
+
+        val result = move(file, file.root)
+
+        assertRejected(result)
+        assertEquals("A file can't be moved here.", result.error)
+    }
 }

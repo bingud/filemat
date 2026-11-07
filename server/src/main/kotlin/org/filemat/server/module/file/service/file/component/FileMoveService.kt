@@ -24,7 +24,7 @@ class FileMoveService(
 
     fun moveFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<Unit> {
         // Resolve the target path
-        val rawParent = FilePath.ofAlreadyNormalized(rawPath.path.parent)
+        val rawParent = FilePath.ofAlreadyNormalized(rawPath.path.parent ?: return Result.reject("Cannot move root folder."))
 
         val sourceParent = resolvePath(rawParent, state.app.followSymlinks)
             .let { canonicalResult ->
@@ -39,7 +39,7 @@ class FileMoveService(
         if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("Cannot move root folder.")
 
         // Get the target parent folder
-        val rawDestinationParentPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent)
+        val rawDestinationParentPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent ?: return Result.reject("A file can't be moved here."))
 
         // Resolve the target path
         val destinationParentPath = resolvePath(rawDestinationParentPath, state.app.followSymlinks)

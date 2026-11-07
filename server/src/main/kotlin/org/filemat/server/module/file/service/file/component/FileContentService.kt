@@ -409,7 +409,7 @@ class FileContentService(
     }
 
     fun createFolder(user: Principal, rawPath: FilePath): Result<Unit> {
-        val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
+        val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent ?: return Result.reject("A folder can't be created here."))
 
         // Get folder parent path
         val canonicalParentResult = resolvePath(rawParentPath, state.app.followSymlinks)
@@ -454,7 +454,7 @@ class FileContentService(
     }
 
     fun createBlankFile(user: Principal, rawPath: FilePath): Result<FullFileMetadata> {
-        val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent)
+        val rawParentPath = FilePath.ofAlreadyNormalized(rawPath.path.parent ?: return Result.reject("A file can't be created here."))
 
         // Get folder parent path
         val canonicalParentResult = resolvePath(rawParentPath, state.app.followSymlinks)

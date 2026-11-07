@@ -456,4 +456,20 @@ class FileContentServiceTest {
         assertEquals("File is in use.", result.error)
         assertEquals("old", Files.readString(file))
     }
+
+    @Test
+    fun `creating a folder at a root path is refused, not a crash`() {
+        val result = service.createFolder(user, FilePath.ofAlreadyNormalized(tempDir.toRealPath().root))
+
+        assertTrue(result.rejected)
+        assertEquals("A folder can't be created here.", result.error)
+    }
+
+    @Test
+    fun `creating a file at a root path is refused, not a crash`() {
+        val result = service.createBlankFile(user, FilePath.ofAlreadyNormalized(tempDir.toRealPath().root))
+
+        assertTrue(result.rejected)
+        assertEquals("A file can't be created here.", result.error)
+    }
 }
