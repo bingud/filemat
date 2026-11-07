@@ -8,6 +8,7 @@ import { textFileViewerState } from "./textFileViewerState.svelte";
 import { getContentUrl } from "$lib/code/util/stateUtils";
 import { Validator } from "$lib/code/util/validation"
 import { childPath, isDirectChildOf } from "$lib/code/util/path"
+import type { FullFileMetadata } from "$lib/code/auth/types"
 
 
 export async function option_moveSelectedFiles() {
@@ -32,19 +33,30 @@ export async function option_moveSelectedFiles() {
 }
 
 
+/**
+ * The selected entries: the selected search results while searching, else the selection in the folder.
+ * Search results are looked up in the results, since most of them are not in the open folder.
+ */
+function selectedMetaList(): FullFileMetadata[] {
+    const selected = filesState.selectedEntries
+    if (!filesState.isSearchOpen) return selected.metaList
+
+    const results = new Map((filesState.search.entries ?? []).map((entry) => [entry.path, entry]))
+    return selected.searchList.map((path) => results.get(path)).filter((entry) => !!entry)
+}
+
 export function option_deleteSelectedFiles() {
-    const selected = filesState.selectedEntries.list;
-    if (!selected.length) return;
+    const list = selectedMetaList()
+    if (!list.length) return;
 
     confirmDialogState.show({
         title: "Delete File",
-        message: `Are you sure you want to delete ${filesState.selectedEntries.count} selected file${filesState.selectedEntries.count > 1 ? 's' : ''}? ${deleteWarning()}`,
+        message: `Are you sure you want to delete ${list.length} selected file${list.length > 1 ? 's' : ''}? ${deleteWarning()}`,
         confirmText: "Delete",
         cancelText: "Cancel"
     })?.then((confirmed: boolean) => {
         if (!confirmed) return;
 
-        const list = filesState.selectedEntries.metaList
         deleteFiles(list)
     })
 }

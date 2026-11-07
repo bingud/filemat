@@ -1110,6 +1110,10 @@ export async function deleteFiles(entries: FileMetadata[]) {
     if (filesState.data.entries && entries) {
         filesState.data.entries = filesState.data.entries.filter(e => successfullyDeleted.includes(e.path) === false)
     }
+    // And from the search results, where files can be deleted too
+    if (filesState.search.entries) {
+        filesState.search.entries = filesState.search.entries.filter(e => successfullyDeleted.includes(e.path) === false)
+    }
 
     // Navigate to parent folder if current file was deleted
     const currentPath = filesState.data.currentMeta?.path || null
