@@ -12,13 +12,43 @@ Findings are written down as they are found and checked against the code. Nothin
 | Severity | Findings |
 | --- | --- |
 | **High** | R1 rate limits bypassable via `X-Forwarded-For` · R9 `MANAGE_USERS` can take over the super admin · R13 stored XSS through files served inline (one click on a fake `.pdf`) · R23 copy reads through links into hidden/sensitive folders (links on) · R30 content-origin cookie is the full session |
-| **Medium** | R2 `Secure` cookies break HTTP LAN login · R3 authorization fails open · R10 disabling 2FA clears enforcement · R11 backup codes unusable · R14 no clickjacking/security headers · R15 inode reuse moves permissions and shares · R16 permission tree drifts after moves · R18 user delete erases audit log · R19 shares outlive sharer's access · R22 overwrite transfers ownership · R25 hidden folders not hidden until restart after setup · R28 log table disk-fill · R36 Argon2 memory exhaustion · R38 Linux FAT/CIFS/NFS keys treated as stable · R39 thin Linux sensitive list (`/proc`, cloud keys) · R40 walks block all writes below them · R42 folder rename rebuilds the folder (permissions lost, not atomic) · R46 Linux FFmpeg in-process, unlimited, no timeout · R47 image thumbnails unlimited, 8192 px · R48 `MANAGE_SYSTEM` reads others' files via internal folders · R53 guessable share links · R56 Docker image runs as root · R57 delete in search mode deletes the wrong files |
-| **Low** | R4, R5, R6, R7, R12, R17, R20, R21, R24, R26, R27, R29, R31, R32, R33, R34, R35, R37, R41, R43, R44, R45, R49, R50, R51, R52, R54, R55, R58 |
+| **Medium** | R2 `Secure` cookies break HTTP LAN login · R3 authorization fails open · R10 disabling 2FA clears enforcement · R11 backup codes unusable · R14 no clickjacking/security headers · R15 inode reuse moves permissions and shares · R16 permission tree drifts after moves · R18 user delete erases audit log · R19 shares outlive sharer's access · R22 overwrite transfers ownership · R25 hidden folders not hidden until restart after setup (fixed) · R28 log table disk-fill · R36 Argon2 memory exhaustion · R38 Linux FAT/CIFS/NFS keys treated as stable · R39 thin Linux sensitive list (`/proc`, cloud keys) · R40 walks block all writes below them · R42 folder rename rebuilds the folder (permissions lost, not atomic) · R46 Linux FFmpeg in-process, unlimited, no timeout · R47 image thumbnails unlimited, 8192 px · R48 `MANAGE_SYSTEM` reads others' files via internal folders · R53 guessable share links · R56 Docker image runs as root · R57 delete in search mode deletes the wrong files (fixed) |
+| **Low** | R4, R5 (fixed), R6, R7, R12, R17, R20, R21, R24, R26, R27, R29, R31, R32, R33, R34, R35, R37, R41, R43, R44, R45, R49, R50 (fixed), R51, R52, R54, R55, R58 |
 | **Info** | R8 |
 
 Suggested order: R13 + R14 + R30 (one header/CSP filter and a scoped content token), R9, R1, R23, R3; then R46 + R47 + R36 (bounded work per request), R53, R48, R56; then the rest of the Medium list.
 
 **Coverage.** Pass 1 (2026-11-06) read the security-critical paths: auth, admin, roles, permissions, sharing, uploads, file operations, file serving, setup, and the web's fetch, content URL, viewer and service worker code. Pass 2 (resumed on request, R36-R56) went through the rest of `server/src/main`, the web's logic files, the build, the Docker image and the release workflow. Pass 3 (R57-R58) finished the web app and surveyed the tests. The [coverage list](#coverage-list) at the end records what each pass read and what was only scanned.
+
+## Fix status (2026-11-07)
+
+28 commits after `3c3533f` fix every finding (or the part of one) that had a single clear repair and no design choice: one commit per issue, each with a unit test where the code allows one. The four Svelte page fixes have none, since the web has no component test setup; they were type-checked with `npm run check`. Everything else needs a decision. Quick questions for those, and a short changelog of each fix, are in [full-code-review-fixes.md](full-code-review-fixes.md).
+
+| Finding | Status | Fixed | Still open |
+| --- | --- | --- | --- |
+| R5 | Fixed | Cleanup runs every 90 s | |
+| R7 | Partly | Static file stream closed | No `Cache-Control`; `HEAD`/`POST` to page paths answer `index.html` |
+| R10 | Partly | A failed DB write when disabling 2FA is an error | Disabling still clears the admin's "2FA required" flag |
+| R21 | Partly | Share list found through links | Orphaned-entity NPE on delete, Argon2 before the permission check, empty share password, short IDs |
+| R24 | Partly | Create/move at a root path is a 400 | Read lock released before streaming, re-encoding on save, duplicate zip names |
+| R25 | Fixed | Hidden list loaded before setup | |
+| R29 | Partly | Failed rule removal answers 500; unknown log filters answer 400 | Follow-symlinks toggle without the code; unbounded `amount` |
+| R34 | Partly | Logout clears the cookie | `localStorage.clear()`, `is_banned`, shared `Principal.roles`, 1-year tokens |
+| R35 | Partly | Entity move failures logged; 2FA disable result checked | Stale entity after delete reported as success; empty zip on bad share |
+| R41 | Partly | Role rank refusal has a message (403) | E-mail normalisation, case-sensitive and Unicode usernames, 4-character passwords |
+| R45 | Partly | A vanished entry no longer fails the listing | Folder size counts blocked folders; blocked file metadata in shares; per-entry DB cost |
+| R49 | Partly | Setup code deleted from the database | Secret file modes on Linux, codes on stdout, follow-symlinks env lock, thumbnail write order |
+| R50 | Fixed | E-mail and username validated | |
+| R52 | Partly | Failed log query logged with the right user | Dropped `SYSTEM` logs, `package` metadata, tokens stored in plain text |
+| R54 | Partly | Delete error toast, move offline, files without a dot, chunk size comment | Text viewer size, folder link cycles, `OTHER` entries, `ANY_LINK`, 404 taken as "completed" |
+| R55 | Partly | Sync interval, setup step 1, share password double submit, `loadPageData`, unload listener, role refusal shown as "not found" | Non-ASCII usernames, tus uploads not tied to their owner, `shareToken` encoding, "Dropped folders" |
+| R57 | Fixed | Delete in search mode deletes the selected results (and removes them from the results) | Dialog doesn't name the files; the folder selection isn't cleared when a search starts |
+| R58 | Partly | File visibility rule list, page titles, `hasAnyPermission` | Permission levels differ from the server, upload handles after logout, blocking restored uploads, "Raw Content", quadratic select-all |
+
+**Found while fixing:**
+- **N1. Search-mode selection metadata looks in the wrong list.** Low, CONFIRMED. `selectedEntries.searchMetaList` (and through it `activeMetaList`, `singleMeta`, `isCurrentFolderSelected`) looks selected search results up in the *open folder's* entries (`filesState.data.entryMap`). A selected result from a subfolder resolves to nothing, so in search mode those values fall back to the open folder. The R57 fix looks results up in `filesState.search.entries` instead and doesn't use it. [filesState.svelte.ts:192](../web/src/lib/code/stateObjects/filesState.svelte.ts#L192)
+- **N2. R26 is smaller than written.** `State.internalFolderPath` resolves the stored upload folder to its real path every time, so `isInInternalFolder` compares real paths whatever setup stored. What remains is cosmetic: setup stores and shows the path as typed, the settings page stores the real one.
+- **N3. Web unit tests can't see `$derived` updates.** Vitest loads Svelte's server runtime, which computes a `$derived` once. Tests set `$state` directly or stub the derived value. Switching to the client runtime also loads SvelteKit's client code, which needs a DOM (`location`), so it would need a `jsdom` environment.
 
 ## Findings
 
@@ -49,6 +79,7 @@ An unknown username returns before any password hashing; a known one runs Argon2
 Fix: run `passwordEncoder.matches` against a fixed dummy hash when the user doesn't exist.
 
 ### R5. Rate-limiter cleanup runs every second, a debug value left in. **Low**, CONFIRMED
+**Status 2026-11-07: fixed** (`f1dab41`).
 [RateLimiter.kt:91](../server/src/main/kotlin/org/filemat/server/common/util/RateLimiter.kt#L91)
 `// delay(90_000)` is commented out and `delay(1000)` used. Every second it walks every bucket of every limit. Harmless at low load; with R1 an attacker controls how many buckets exist.
 
@@ -57,6 +88,7 @@ Fix: run `passwordEncoder.matches` against a fixed dummy hash when the user does
 `verify` accepts the previous, current and next code and keeps no record of used ones, so a code seen once (shoulder-surfed, phished in real time) works again for up to ~90 s. Fix: remember the last accepted time step per user and refuse codes at or before it.
 
 ### R7. Static file streams are never closed. **Low**, PLAUSIBLE
+**Status 2026-11-07: stream leak fixed** (`5f3e37a`). `Cache-Control` and the `HEAD`/`POST` answers are open.
 [UtilityFilter.kt:42](../server/src/main/kotlin/org/filemat/server/config/filter/UtilityFilter.kt#L42)
 `result.body?.inputStream?.copyTo(response.outputStream)` opens a stream on a classpath resource (an entry in the JAR) and never closes it. Each page load leaks a JAR entry stream (an `Inflater` with native memory) until GC. Fix: `.use { it.copyTo(...) }`. Related: static responses have no `Cache-Control`, so the hashed `_app/immutable/*` assets are revalidated or refetched on every load, and `HEAD`/`POST` to any non-`/api` path return `index.html` with 200.
 
@@ -70,6 +102,7 @@ Also: `assignRole` compares only the *highest level* (`hasSufficientPermissionsF
 Fix: run the same target check as `deleteUser` in every admin action on another user (and refuse self-targeted ones where it matters). Decide on one rule for granting: `userPermissions.containsAll(granted)` (with `SUPER_ADMIN` implying all) is the strict one; the level rule lets equals grant each other's powers.
 
 ### R10. Disabling 2FA clears the admin's "2FA required" flag. **Medium**, CONFIRMED
+**Status 2026-11-07: partly fixed.** A failed DB write in `disable` now answers an error (`e926b2a`). The flag itself is open (question Q3).
 [MfaService.kt:127](../server/src/main/kotlin/org/filemat/server/module/auth/service/MfaService.kt#L127)
 `disable` calls `updateUserMfa(..., isRequired = false)`. A user whose 2FA was enforced by an admin (`resetTotpMfa(enforce = true)` → `mfa_totp_required = 1`) can turn 2FA off in their account settings, and the enforcement is gone for good; the next login doesn't ask to set it up again. `enable_confirmSecret` also writes `isRequired = false`, which loses the flag the same way once the user later disables it.
 Fix: pass the user's current `mfaTotpRequired` through, and refuse `disable` while it is set. The return value of `updateUserMfa` in `disable` is also ignored: a DB failure logs "User disabled TOTP 2FA" and answers OK.
@@ -132,6 +165,7 @@ Fix: at access time, check `isAllowedToShareFile(shareOwnerPrincipal, shareRoot)
 `tokenMap` maps a token to a *share ID* for 8 hours, and share IDs are chosen by the user (`sharePath`). Delete a password-protected share and create a new one with the same ID (another file, another password): tokens issued for the old share still unlock the new one. Map the token to `(shareId, createdDate)` or to the entity ID and compare.
 
 ### R21. Small share-service bugs. **Low**, CONFIRMED
+**Status 2026-11-07: first bullet fixed** (`9213d65`). The others are open.
 - `getSharesByPath` checks access on the canonical path but looks the entity up by the *raw* path (`getEntityIdByPath(rawPath)`), so through a link or a different-case/8.3 path the share list is empty (or another entity's). [FileShareService.kt:309](../server/src/main/kotlin/org/filemat/server/module/sharedFile/service/FileShareService.kt#L309)
 - `deleteShare` does `FilePath.of(entity.path!!)`: an orphaned entity (path null) throws an NPE → 500, and the share can't be deleted from the UI.
 - `FileShareController.create` hashes the share password with Argon2 *before* any permission check, so any logged-in user can make the server burn Argon2 time with failing requests. The password isn't validated at all (an empty string makes a "protected" share).
@@ -152,12 +186,14 @@ This is the same class as the Windows review's M4 (fixed for delete), not fixed 
 Fix: resolve the source's parent with `resolvePath` and append the name, as `FileMoveService` and `FileDeletionService` now do; in the recursion, check each child on its resolved path.
 
 ### R24. Smaller file-operation bugs. **Low**, CONFIRMED
+**Status 2026-11-07: third bullet fixed** (`9983bd0`): a root path answers 400. The others are open.
 - `getFileContent` takes a READ lock and releases it in `finally` *before* the caller streams the file, so the lock never covers the read; a delete or overwrite can run during a download. [FileContentService.kt:79](../server/src/main/kotlin/org/filemat/server/module/file/service/file/component/FileContentService.kt#L79)
 - `editFile` writes `newContent.toByteArray(UTF_8)`. A file in another encoding (Latin-1, UTF-16 with BOM) is silently re-encoded on save, and any bytes the browser decoded as U+FFFD are lost. Either refuse to edit non-UTF-8 files or round-trip the detected charset.
 - `createFolder`/`createBlankFile`/`moveFile` call `FilePath.ofAlreadyNormalized(rawPath.path.parent)` with no null check: `path=/` (or a drive root) gives an NPE → 500 instead of a 400.
 - Multi-file zip: two selected items with the same name (`/a/x.txt`, `/b/x.txt`) or one item selected twice give `ZipException: duplicate entry`, which is caught and logged as a skip. The user gets a zip silently missing files. Same for anything skipped for permissions: the download looks complete.
 
 ### R25. Right after setup, `FM_HIDDEN_FOLDER_PATHS` and the auth-code file are not hidden until a restart. **Medium**, CONFIRMED
+**Status 2026-11-07: fixed** (`4e5eeaf`). `loadHiddenFiles()` runs at startup before setup too; `initialize()` still loads it after setup.
 [Initialization.kt:44](../server/src/main/kotlin/org/filemat/server/config/Initialization.kt#L44), [FileVisibilityService.kt:40](../server/src/main/kotlin/org/filemat/server/module/file/service/FileVisibilityService.kt#L40), [SetupController.kt:99](../server/src/main/kotlin/org/filemat/server/common/controller/SetupController.kt#L99)
 `FileVisibilityService.initialize()` is what fills `hiddenFileTrie` (the env hidden folders and `Props.authCodeFile`), and it runs at startup *only when the app is already set up*. `SetupController.submit` inserts the exposed paths but never calls `initialize()`. On a fresh install, from setup until the first restart, every folder in `FM_HIDDEN_FOLDER_PATHS` inside an exposed folder is fully visible. The same holds for `EntityPermissionService.loadPermissionsFromDatabase` (harmless: no permissions yet) and is a sign that "initialised" is a startup-only notion.
 Fix: split `initialize()` into "load hidden lists" (always, at startup) and "load DB rules"; or call the full initialisation at the end of setup.
@@ -176,6 +212,7 @@ Every failed login writes a row whose `metadata` holds the raw `username` and `U
 Fix: truncate logged user input (e.g. 256 chars), add retention (age or row count) and `CREATE INDEX idx_log_created_date ON log(created_date)`.
 
 ### R29. Turning "follow symbolic links" on doesn't need the physical-access code that exposing a folder needs. **Low** (design), CONFIRMED
+**Status 2026-11-07: two of the "smaller" items fixed**: the removal result (`b5c31fc`) and unknown log filters (`4c0e6b5`). The toggle's gate and `amount` are open.
 [AdminSettingsController.kt:217](../server/src/main/kotlin/org/filemat/server/module/admin/controller/AdminSettingsController.kt#L217)
 Adding/removing visibility rules and changing the content URL require `verifyOtp` (a code printed to the server console). `set/follow-symlinks` and `set/upload-folder-path` only need `MANAGE_SYSTEM`. With links followed, any symlink inside an exposed folder (to `/`, a home folder) effectively exposes its target, so the toggle is as powerful as an exposure rule. Gate it the same way, or document why not.
 Smaller: `remove-file-visibility` ignores the result of `removePath` and logs/answers success even when the DB delete failed; `parseEnumList` in the log endpoint throws on an unknown name (500 instead of 400); `amount` is unbounded.
@@ -193,6 +230,7 @@ Hikari's default pool is 10 connections. Without WAL, any write locks the whole 
 `/util` is an "SVG Padding Cropper" with a link to the author's site, reachable without login in every build. `createSafePreview` is not safe: it parses the pasted SVG and injects `root.innerHTML` with `{@html}`, so `<image href=x onerror=…>` runs script. It's self-XSS only (the user pastes it), but the name promises otherwise and the page has no business in a release. Move it out of `src/routes` (or behind `dev`).
 
 ### R34. Auth odds and ends. **Low**, CONFIRMED
+**Status 2026-11-07: cookie part of the first bullet fixed** (`c76e4cb`). `localStorage.clear()` and the rest are open.
 - `/v1/auth/logout` deletes the token server-side but never clears the cookie (no `Max-Age=0`), and the web then does `localStorage.clear()`, wiping unrelated preferences (dark mode, sort order, volume) along with tus resume data. [AuthController.kt:28](../server/src/main/kotlin/org/filemat/server/module/auth/controller/AuthController.kt#L28), [LogoutSetting.svelte:16](../web/src/routes/(app)/settings/account/_setting-components/LogoutSetting.svelte#L16)
 - `is_banned` exists in the schema, the model, the principal and the login check, but nothing can set it: no endpoint, no service method. Either a dead feature or a missing one; if added later, note that the principal cache and existing tokens are never re-checked against it.
 - `web/src/lib/code/auth/auth.svelte.ts` is an empty file.
@@ -200,6 +238,7 @@ Hikari's default pool is 10 connections. Without WAL, any write locks the whole 
 - Auth tokens live 1 year with no sliding expiry or idle timeout, and there is no UI to list or revoke other sessions (only "log out all" on password change).
 
 ### R35. Errors swallowed without a trace. **Low**, CONFIRMED
+**Status 2026-11-07: first two bullets fixed** (`51085c0`, `e926b2a`). The delete and zip bullets are open.
 - `EntityService.move` wraps the whole transaction in `runCatching { … }.getOrElse { Result.error("Failed to move file.") }` and drops the exception: a failed DB update during a move (the file is then moved back) leaves nothing in the log to explain it. [EntityService.kt:316](../server/src/main/kotlin/org/filemat/server/module/file/service/EntityService.kt#L316)
 - `MfaService.disable` ignores the result of `updateUserMfa` (R10).
 - `FileDeletionService.deleteFiles` turns every failure into a message, but `FilesystemDeletionService.deleteRecursiveSafe` returns `failedCount` *without* incrementing when `entityService.getByPath` errors, so a DB failure after a successful delete leaves a stale entity and reports success.
@@ -230,6 +269,7 @@ Fix: bring the POSIX list to parity with the Windows one (same tool folders unde
 Fix: a walk needs consistency for the file it is reading, not the whole tree. Lock each file only while it is read (zip) and don't lock folders during search/size at all.
 
 ### R41. Account identity: inconsistent e-mail normalisation, case-sensitive usernames, a 4-character minimum password. **Low**, CONFIRMED
+**Status 2026-11-07: last bullet fixed** (`9bbcb5e`): the refusal says why and answers 403. The rest is open.
 [AdminUserController.kt:125](../server/src/main/kotlin/org/filemat/server/module/admin/controller/AdminUserController.kt#L125), [StringUtils.kt:25](../server/src/main/kotlin/org/filemat/server/common/util/StringUtils.kt#L25), [Validator.kt:28](../server/src/main/kotlin/org/filemat/server/common/util/Validator.kt#L28)
 - Only admin user creation runs `normalizeEmail`, which *rewrites* the stored address (drops dots and `+tags` for Gmail). Setup, `changeEmail` and login use the address as typed. A user created as `john.doe@gmail.com` is stored as `johndoe@gmail.com` and can't log in with the address they were given. None of the paths fold case, so `Bob@x.com` and `bob@x.com` are two accounts.
 - Usernames are compared case-sensitively (`admin` and `Admin` are different accounts) and accept any Unicode letter, so `аdmin` (Cyrillic а) can sit next to `admin` in user lists and logs.
@@ -257,6 +297,7 @@ Fix: first try `Files.move(folder, dest, ATOMIC_MOVE)` when the user may move ev
 Fix: count sessions per user only (or expire idle sessions after, say, an hour without a PATCH), add a cancel endpoint, check "file used as folder" with a set of directory prefixes, and run the manifest normalisation once.
 
 ### R45. One file vanishing during a listing fails the whole folder; folder size counts hidden folders. **Low**, CONFIRMED
+**Status 2026-11-07: first bullet fixed** (`46ffb0b`). The others are open.
 [FileFolderEntriesService.kt:174](../server/src/main/kotlin/org/filemat/server/module/file/service/file/component/FileFolderEntriesService.kt#L174), [FileFolderEntriesService.kt:125](../server/src/main/kotlin/org/filemat/server/module/file/service/file/component/FileFolderEntriesService.kt#L125)
 - `internalGetFolderEntries` lists the folder, then stats each entry and throws `IllegalStateException("Metadata object was null for a known file.")` when one is gone. A folder where programs create and delete temp files (Downloads during a browser download, a build folder) intermittently fails to open with "Failed to get contents of this folder" and an ERROR log row. Skip entries whose metadata is null.
 - `calculateFolderSize` checks READ on the requested folder only and counts every descendant, including the data folder, sensitive folders (`.ssh`) and folders the user is explicitly denied. It reveals how many files and how many bytes they hold. Documented in the KDoc, but it's still a leak; skip what `isPathAllowed` blocks at least.
@@ -284,6 +325,7 @@ Fix: allow a few fixed sizes (the web uses a handful), cap parallel image decode
 Fix: refuse an internal folder that is inside (or contains) an exposed folder (`visibilityTrie` says exposed) and create it owner-only like the data folder; or require the sensitive code for these settings.
 
 ### R49. The setup code is never removed from the database, and some secret files aren't private on Linux. **Low**, CONFIRMED
+**Status 2026-11-07: first bullet fixed** (`225a773`). The others are open.
 [SettingService.kt:173](../server/src/main/kotlin/org/filemat/server/module/setting/service/SettingService.kt#L173), [AppService.kt:36](../server/src/main/kotlin/org/filemat/server/module/service/AppService.kt#L36), [SensitiveAuthService.kt:73](../server/src/main/kotlin/org/filemat/server/module/auth/service/SensitiveAuthService.kt#L73)
 - `SettingService.removeSetting` calls `settingRepository.getSetting(name)` instead of `removeSetting(name)`, so `deleteSetupCode` leaves `application_setup_code` in the `settings` table forever (and returns success). `SettingRepository.removeSetting` exists and is unused.
 - The setup code file is created `rwxrwx---` (group can read and change it, and it's marked executable). The admin auth code (`auth-code.txt`, the "physical access" proof) is written with `File.writeText` on Linux, so it gets the umask (usually `0644`); only Windows makes it private. The data folder is `rwxr-x---`, so the group of the Filemat account can read both.
@@ -291,6 +333,7 @@ Fix: refuse an internal folder that is inside (or contains) an exposed folder (`
 - `set_followSymLinks` writes the DB and logs "Symlinks enabled" even when `FM_FOLLOW_SYMBOLIC_LINKS` locks the value, so the setting silently doesn't change; `set_thumbnail` updates `state.thumbCache.folderPath` before the DB write, so a failed write leaves memory and DB disagreeing.
 
 ### R50. Admin user creation skips the e-mail and username checks. **Low**, CONFIRMED
+**Status 2026-11-07: fixed** (`46f67ad`).
 [AdminUserController.kt:127](../server/src/main/kotlin/org/filemat/server/module/admin/controller/AdminUserController.kt#L127)
 ```kotlin
 Validator.email(email)
@@ -307,6 +350,7 @@ Validator.email(email)
 - `MANAGE_OWN_FILE_PERMISSIONS` is enough to list every username (`/v1/user/minilist?allUsers=true`); fine for a picker, but worth knowing that it's an enumeration of all accounts for anyone who can share their own files.
 
 ### R52. System errors are dropped by a hidden rate limit; session tokens are stored in plain text. **Low**, CONFIRMED
+**Status 2026-11-07: `getLogs` bullet fixed** (`6ec3046`). The others are open.
 [LogService.kt:90](../server/src/main/kotlin/org/filemat/server/module/log/service/LogService.kt#L90), [AuthTokenRepository.kt:13](../server/src/main/kotlin/org/filemat/server/module/auth/repository/AuthTokenRepository.kt#L13)
 - `LogService.log` keeps one `SYSTEM` log per *calling method* per 10 seconds and silently drops the rest. Twenty different files failing to delete in one operation leave one row; a "failed to save auth token" right after an unrelated error from the same method is lost. Nothing says that rows were dropped. Each log call also builds a full stack trace (`getActualCallerPackage`) just to find the caller.
 - `metadata["package"] = caller` is put into a *new* map when `meta` is null, but `createLog` is then called with the original `meta`, so the package is recorded only for logs that already had metadata (and the caller's map is mutated).
@@ -319,6 +363,7 @@ The share dialog has one free-text "link" field and no generated default; the se
 Fix: generate a random ID (≥ 22 URL-safe characters) by default and let the user add a readable *prefix*; or require a password for short, dictionary-like IDs.
 
 ### R54. Web file handling bugs. **Low**, CONFIRMED
+**Status 2026-11-07: partly fixed**: the delete toast (`9710645`), moving offline (`5098b37`), files without a dot (`d4b3f02`) and the chunk size comment (`8b9ea31`). The rest is open.
 - **Text viewer downloads the whole file into memory.** `loadFileContent` → `streamFileContent` reads the full response into a `Blob`, then `blob.text()` into CodeMirror, with no size check. Opening a multi-GB `.log`, or "open as text" on any large file, hangs or crashes the tab. Cap text view at a few MB and offer download instead. [files.ts:156](../web/src/lib/code/module/files/files.ts#L156)
 - **Saving a folder to disk follows folder-link cycles forever.** `planPathForDownload` recurses into every entry `isFolder` accepts, and with follow-links on that includes `FOLDER_LINK`. A link to an ancestor (`/data/loop -> /data`) makes the client list `/data/loop/loop/loop/…` until the server's path length limit, building a huge plan first. The server's zip has cycle detection; the client walk has none. [files.ts:1340](../web/src/lib/code/module/files/files.ts#L1340)
 - `deleteFiles` builds its network-error toast from `entries.join('
@@ -331,6 +376,7 @@ Fix: generate a random ID (≥ 22 URL-safe characters) by default and let the us
 - When the client sees a 404 from `HEAD` on an upload whose bytes it had sent, it marks the upload "already completed", but a 404 also follows the 48 h expiry of an upload whose finalize failed; the user is told it succeeded when it didn't. [files.ts:665](../web/src/lib/code/module/files/files.ts#L665)
 
 ### R55. More web/server mismatches and small bugs. **Low**, CONFIRMED
+**Status 2026-11-07: partly fixed**: the sync interval (`a6abcff`), setup step 1 (`65c214e`), the share password form (`3d5dd33`), `loadPageData` (`34f2067`), the unload listener (`64278e2`) and the role refusal shown as "not found" (`9bbcb5e`). The rest is open.
 - **Users with non-ASCII usernames can't log in by name from the web.** The web `Validator.username` allows `[A-Za-z0-9_-]` only; the server's allows any Unicode letter or digit (`isLetterOrDigit`). An account `Jürgen` (the Windows test plan's W14 user) can be created by an admin, but the login form refuses the name before sending it. [validation.ts:48](../web/src/lib/code/util/validation.ts#L48)
 - **tus uploads aren't tied to the user who started them.** `HEAD`/`PATCH`/`DELETE /api/v1/file/upload/{id}` only need *a* login; the upload ID (a UUID) is the only secret. Anyone who learns one (shared computer: tus keeps upload URLs and their `path` metadata in `localStorage`, which survives a session expiry, not just a logout) can read the target path and size, append to, finalize or cancel another user's upload. Store the owner in the upload metadata at POST and compare it on every request.
 - `startStateAutoSync` says "every 20 seconds, unless idle (then 60)" and does the opposite: `clientState.isIdle ? 20_000 : 60_000`. [stateFetcher.ts:198](../web/src/lib/code/state/stateFetcher.ts#L198)
@@ -352,6 +398,7 @@ Fix: generate a random ID (≥ 22 URL-safe characters) by default and let the us
 - The JAR ships javacv's Linux x64 and arm64 FFmpeg natives in every build, the Windows zip included, where they can't load.
 
 ### R57. In search results, the trash button deletes the folder view's selection, not the selected search results. **Medium** (data loss), CONFIRMED
+**Status 2026-11-07: fixed** (`260d4d8`). Not with `activeMetaList` as suggested below: it is broken for search results too (N1). The dialog still doesn't name the files.
 [fileActions.ts:35](../web/src/routes/(app)/(files)/files/[...path]/_code/fileActions.ts#L35), [+page.svelte:361](../web/src/routes/(app)/(files)/files/[...path]/+page.svelte#L361)
 `filesState.selectedEntries` keeps two selections: `list` for the folder view and `searchList` for search results. Starting a search doesn't clear `list`. The trash button is shown whenever `hasSelected` (search-aware) is true, including in search mode, and `option_deleteSelectedFiles` then:
 - reads `selectedEntries.list` and deletes `selectedEntries.metaList`, both from the **folder view**,
@@ -361,6 +408,7 @@ So: click `report.pdf` in a folder (a single click selects it), search, select o
 Fix: use `activeMetaList` (already defined: search-aware) in `option_deleteSelectedFiles`, list the file names in the dialog, and clear `list` when a search starts.
 
 ### R58. Web UI odds and ends from the last pass. **Low**, CONFIRMED
+**Status 2026-11-07: partly fixed**: the file visibility list (`081897d`), page titles (`a10c147`) and `hasAnyPermission` (`d9aae33`). The rest is open.
 - **Removing an exposure rule looks done even when it failed.** The exposed-files page deletes the row from its list after `doRequest` whatever the answer (wrong or expired code, server error). Combined with R29 (the server answers OK even when the DB delete failed), an admin can believe a "hide" or "expose" rule is gone when it isn't. [exposed-files/+page.svelte](../web/src/routes/(app)/settings/system/exposed-files/+page.svelte)
 - **The web's permission levels differ from the server's.** `data/permissions.ts` gives `ACCESS_ALL_FILES` level 1 and `MANAGE_ALL_FILE_PERMISSIONS` level 2; the server's `SystemPermission` has them as 2 and 1. The role editor and "new role" page offer or hide permissions by the web's numbers, and the System and Users settings pages open for any level-3 permission (an `EDIT_ROLES`-only user sees System settings and gets 403s). The server already sends roles; it could send the levels too.
 - **Page titles pile up.** `TitleState.register` builds a cleanup function inside `untrack(...)` but doesn't return it, so `$effect(() => appState.title.register(...))` never removes its segment. Every folder opened adds one to `appState.title.segments`, and a page that registers no title shows the previous page's.
