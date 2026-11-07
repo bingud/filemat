@@ -178,11 +178,16 @@ class TitleState {
         return `${title} — Filemat`
     })
 
-    register(segment: string) {
-        untrack(() => {
+    /**
+     * Adds a title segment. Returns the cleanup that removes it, so `$effect(() => appState.title.register(...))` removes it again.
+     */
+    register(segment: string): () => void {
+        return untrack(() => {
             this.segments.push(segment)
             return () => {
-                this.segments = this.segments.filter((s) => s !== segment)
+                // Only this registration's segment: another page may have registered the same text
+                const index = this.segments.lastIndexOf(segment)
+                if (index !== -1) this.segments = this.segments.filter((_, i) => i !== index)
             }
         })
     }
