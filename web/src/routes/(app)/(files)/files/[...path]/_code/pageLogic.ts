@@ -91,11 +91,12 @@ export async function loadPageData(
 
         const pagePath = filesState.isShared ? filesState.meta.pagePath : "/files"
         await navigateToFilePath(parentPath(filesState.path) ?? `/`, pagePath)
+        // The failed load has no data to show
+        return null
     }
     const dataResult = result.value
 
     if (filesState.lastFilePathLoaded !== filePath) return null
-    if (!result) return null
 
     if (options.fileDataType === "object") {
         const data = dataResult as FileData
