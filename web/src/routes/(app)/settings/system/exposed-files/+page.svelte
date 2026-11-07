@@ -117,12 +117,14 @@
         if (loading) return
 
         loading = true
+        let removed = false
         await doRequest({
             method: `POST`,
             path: `/api/v1/admin/system/remove-file-visibility`,
             body: formData({ auth_code: sensitiveAuth.code, path: path }),
-            afterResponse: () => {
+            afterResponse: (response) => {
                 loading = false
+                removed = !response.failed && response.code.ok
             },
             errors: {
                 exception: {
@@ -136,7 +138,8 @@
             }
         })
 
-        delete visibilities[path]
+        // The rule stays in the list when it wasn't removed (an expired code, a server error)
+        if (removed) delete visibilities[path]
     }
 </script>
 
