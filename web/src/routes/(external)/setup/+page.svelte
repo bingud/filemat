@@ -95,6 +95,7 @@
             const response = await safeFetch(`/api/v1/setup/verify`, { method: "POST", body: body })
             if (response.failed) {
                 handleException(`Failed to verify setup code`, `Failed to verify setup code.`, response.exception)
+                return
             }
             const status = response.code
 
