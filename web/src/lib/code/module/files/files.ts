@@ -1078,7 +1078,7 @@ export async function deleteFiles(entries: FileMetadata[]) {
     if (response.failed) {
         handleErr({
             description: response.exception,
-            notification: `Failed to delete files: \n"${entries.join('\n')}"`
+            notification: `Failed to delete files: \n"${paths.join('\n')}"`
         })
         return
     }
