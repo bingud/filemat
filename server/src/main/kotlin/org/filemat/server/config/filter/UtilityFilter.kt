@@ -38,7 +38,7 @@ class UtilityFilter(
             result.headers.forEach { (name, values) ->
                 values.forEach { value -> response.addHeader(name, value) }
             }
-            result.body?.inputStream?.copyTo(response.outputStream)
+            result.body?.inputStream?.use { it.copyTo(response.outputStream) }
 
             return
         }
