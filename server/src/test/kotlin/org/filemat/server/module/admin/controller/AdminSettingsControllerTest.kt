@@ -33,10 +33,11 @@ class AdminSettingsControllerTest {
     private val sensitiveAuthService = mockk<SensitiveAuthService>(relaxed = true)
     private val state = State(env = emptyMap())
     private val mediaPreviewService = mockk<MediaPreviewService>()
+    private val fileVisibilityService = mockk<FileVisibilityService>(relaxed = true)
     private val controller = AdminSettingsController(
         mockk<LogService>(relaxed = true),
         settingService,
-        mockk<FileVisibilityService>(relaxed = true),
+        fileVisibilityService,
         sensitiveAuthService,
         mockk<ThumbCacheSettingService>(relaxed = true),
         mockk<ThumbnailService>(relaxed = true),
@@ -113,6 +114,27 @@ class AdminSettingsControllerTest {
 
         assertEquals(401, response.statusCode.value())
         assertFalse(CorsOriginRegistry.isAllowed(origin))
+    }
+
+    @Test
+    fun `remove file visibility answers an error when the rule was not removed`() {
+        every { sensitiveAuthService.verifyOtp("ABCDEFGH12345678") } returns Result.ok(1L)
+        every { fileVisibilityService.removePath("/data", any()) } returns Result.error("Failed to remove file visibility configuration.")
+
+        val response = controller.adminRemoveFileVisibilityMapping(request(), "ABCDEFGH12345678", "/data")
+
+        assertEquals(500, response.statusCode.value())
+        assertTrue(response.body!!.contains("Failed to remove file visibility configuration."))
+    }
+
+    @Test
+    fun `remove file visibility answers ok when the rule was removed`() {
+        every { sensitiveAuthService.verifyOtp("ABCDEFGH12345678") } returns Result.ok(1L)
+        every { fileVisibilityService.removePath("/data", any()) } returns Result.ok()
+
+        val response = controller.adminRemoveFileVisibilityMapping(request(), "ABCDEFGH12345678", "/data")
+
+        assertEquals(200, response.statusCode.value())
     }
 
     private fun request(origin: String? = null): MockHttpServletRequest {

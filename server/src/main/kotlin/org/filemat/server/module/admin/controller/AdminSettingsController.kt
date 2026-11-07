@@ -125,7 +125,9 @@ class AdminSettingsController(
             if (it.hasError) return internal(it.error)
         }
 
-        fileVisibilityService.removePath(path, UserAction.REMOVE_FILE_VISIBILITY_CONFIGURATION)
+        fileVisibilityService.removePath(path, UserAction.REMOVE_FILE_VISIBILITY_CONFIGURATION).let {
+            if (it.isNotSuccessful) return internal(it.error)
+        }
 
         logService.info(
             LogType.AUDIT,
