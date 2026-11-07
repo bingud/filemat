@@ -91,8 +91,7 @@ class RateLimiter(
 
     private val cleanupJob: Job = globalCoroutineScope.launch {
         while (true) {
-//            delay(90_000)
-            delay(1000)
+            delay(90_000)
             removeUnusedBuckets()
         }
     }
