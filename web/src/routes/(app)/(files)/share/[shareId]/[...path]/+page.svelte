@@ -125,6 +125,7 @@
     async function submit_login() {
         if (loading) return
         if (!passwordInput) return
+        loading = true
 
         const response = await safeFetch(`/api/v1/file/share/login`, {
             body: formData({ shareId: shareId, password: passwordInput })
