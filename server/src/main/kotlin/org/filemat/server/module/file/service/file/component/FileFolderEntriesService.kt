@@ -176,11 +176,9 @@ class FileFolderEntriesService(
             // List entries
             val entries: List<Path> = Files.newDirectoryStream(canonicalPath.path).use { it.toList() }
 
-            val files: List<FileMetadata> = entries.map { path: Path ->
-                val entryPath = FilePath.ofAlreadyNormalized(path)
-                return@map filesystemService.getMetadata(entryPath)
-                    ?: throw IllegalStateException("Metadata object was null for a known file.")
-
+            // An entry that can't be read anymore (deleted since it was listed) is left out
+            val files: List<FileMetadata> = entries.mapNotNull { path: Path ->
+                filesystemService.getMetadata(FilePath.ofAlreadyNormalized(path))
             }
 
             return files.toResult()
