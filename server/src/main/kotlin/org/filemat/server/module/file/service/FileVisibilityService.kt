@@ -38,8 +38,7 @@ class FileVisibilityService(
     fun initialize() {
         println("Loading file visibility configurations...\n")
 
-        // Hide authentication code file
-        hiddenFileTrie.insert(PathPolicy.pathKey(Props.authCodeFile), true)
+        loadHiddenFiles()
 
         val visibilityData = runCatching { fileVisibilityRepository.getAll() }
             .onFailure {
@@ -60,7 +59,14 @@ class FileVisibilityService(
         }
 
         visibilityData.filter { it.isExposed }.forEach { warnIfUnstableMount(it.path) }
+    }
 
+    /**
+     * Hides the authentication code file and the folders from `FM_HIDDEN_FOLDER_PATHS`.
+     * Needs no database, so it also runs before setup: folders exposed during setup are covered right away.
+     */
+    fun loadHiddenFiles() {
+        hiddenFileTrie.insert(PathPolicy.pathKey(Props.authCodeFile), true)
         // Insert true because VisibilityTrie returns false by default
         state.app.hiddenFolders.forEach { hiddenFileTrie.insert(PathPolicy.pathKey(it), true) }
     }

@@ -59,6 +59,9 @@ class Initialization(
                 .also {
                     if (!it) println("Failed to start the upload service. Uploads are unavailable.")
                 }.line()
+        } else {
+            // Setup exposes folders without a restart, so the hidden ones must be hidden from the start
+            fileVisibilityService.loadHiddenFiles()
         }
 
         println("${Props.appName} is initialized.")

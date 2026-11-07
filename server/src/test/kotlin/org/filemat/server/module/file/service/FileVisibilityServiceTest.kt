@@ -9,6 +9,7 @@ import org.filemat.server.config.properties.SensitiveFolderPaths
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileVisibility
 import org.filemat.server.module.file.repository.FileVisibilityRepository
+import org.filemat.server.module.user.model.UserAction
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -72,5 +73,21 @@ class FileVisibilityServiceTest {
         // Whether or not Q: exists, the check is by name
         assertEquals("This file is blocked.", service.isPathAllowed(FilePath.of("Q:/\$Recycle.Bin/S-1-5-21")))
         assertEquals("This file is blocked.", service.isPathAllowed(FilePath.of("Q:/system volume information")))
+    }
+
+    @Test
+    fun `hidden folders are hidden for folders exposed during setup, before any restart`() {
+        val hidden = "${root}srv/private"
+        // Not set up yet: Initialization only loads the hidden list
+        val state = State(env = mapOf("FM_HIDDEN_FOLDER_PATHS" to hidden))
+        val repository = mockk<FileVisibilityRepository>(relaxed = true)
+        val service = FileVisibilityService(repository, mockk(relaxed = true), state, SensitiveFolderPaths(state))
+        service.loadHiddenFiles()
+
+        // What setup does
+        service.insertPath(FileVisibility(path = root, isExposed = true, createdDate = 0), UserAction.APP_SETUP)
+
+        assertEquals("This file is blocked.", service.isPathAllowed(FilePath.of("$hidden/file")))
+        assertNull(service.isPathAllowed(FilePath.of("${root}srv/public")))
     }
 }
