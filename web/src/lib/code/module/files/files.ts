@@ -1846,11 +1846,16 @@ export async function copyFile(path: string, newPath: string) {
 export async function moveMultipleFiles(newParentPath: string, paths: string[]) {
     const removeToast = persistentToast_loading("Moving files...")
     
-    const response = await safeFetch(`/api/v1/file/move-multiple`, { 
+    const response = await safeFetch(`/api/v1/file/move-multiple`, {
         body: formData({ newParent: newParentPath, paths: JSON.stringify(paths) })
     })
     removeToast()
-    
+
+    if (response.failed) {
+        handleException(`Failed to move files.`, `Failed to move files.`, response.exception)
+        return
+    }
+
     const status = response.code
     const json = response.json()
 
