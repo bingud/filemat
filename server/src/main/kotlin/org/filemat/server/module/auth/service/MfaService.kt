@@ -124,7 +124,9 @@ class MfaService(
             secret = null,
             codes = null,
             isRequired = false
-        )
+        ).let {
+            if (it.isNotSuccessful) return it
+        }
 
         logService.info(
             type = LogType.AUDIT,
