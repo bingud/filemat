@@ -80,7 +80,7 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
         val userPermissions = principal.getPermissions(state)
 
         // Check if user has high enough roles to assign role
-        if (userPermissions.hasSufficientPermissionsFor(role.permissions) == false) return Result.reject("")
+        if (userPermissions.hasSufficientPermissionsFor(role.permissions) == false) return Result.reject("You can't assign a role with higher permissions than your own.")
 
         // Get targets principal
         val targetPrincipal = authService.getPrincipalByUserId(targetId, false).let {

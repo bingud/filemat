@@ -63,7 +63,8 @@ class AdminUserRoleController(
             ?: return bad("Invalid role ID.", "validation")
 
         val r = adminUserRoleService.assignRole(principal = principal, targetId = userId, roleId = roleId)
-        if (r.rejected || r.notFound) return notFound()
+        if (r.notFound) return notFound()
+        if (r.rejected) return forbidden(r.error)
         if (r.isNotSuccessful) return internal(r.error, "")
 
         return ok()
