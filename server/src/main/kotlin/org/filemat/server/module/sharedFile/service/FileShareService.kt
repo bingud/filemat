@@ -297,7 +297,8 @@ class FileShareService(
 
         val canManageAll = principal.hasPermission(state, SystemPermission.MANAGE_ALL_FILE_SHARES)
 
-        val entityId = entityService.getEntityIdByPath(rawPath, UserAction.GET_FILE_SHARES).let {
+        // Shares are made on the resolved file, so they are looked up there too
+        val entityId = entityService.getEntityIdByPath(canonicalPath, UserAction.GET_FILE_SHARES).let {
             if (it.notFound) return Result.ok(emptyList())
             if (it.isNotSuccessful) return it.cast()
             it.value

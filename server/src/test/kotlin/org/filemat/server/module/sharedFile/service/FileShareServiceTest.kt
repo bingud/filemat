@@ -25,6 +25,7 @@ import org.filemat.server.testutil.assertError
 import org.filemat.server.testutil.assertNotFound
 import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.directoryLinkOrSkip
 import org.filemat.server.testutil.principalWith
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -452,6 +453,25 @@ class FileShareServiceTest {
             every { fileService.isAllowedToAccessFile(any(), any(), any()) } returns Result.reject("no access")
 
             assertRejected(service.getSharesByPath(state.principalWith(), FilePath.of(file.toString())))
+        }
+
+        @Test
+        fun `shares are found when the file is opened through a linked folder`() {
+            every { fileService.isAllowedToAccessFile(any(), any(), any()) } returns Result.ok()
+            val real = tempDir.toRealPath()
+            val target = Files.createDirectory(real.resolve("target"))
+            Files.createFile(target.resolve("file.txt"))
+            directoryLinkOrSkip(real.resolve("link"), target)
+            state.app.followSymlinks = true
+            val canonicalKey = PathPolicy.pathKey(target.resolve("file.txt").toString())
+            every { entityService.getEntityIdByPath(any(), any()) } answers {
+                if (firstArg<FilePath>().pathKey == canonicalKey) Result.ok(entityId) else Result.notFound()
+            }
+            every { repository.getSharesByFileId(entityId) } returns listOf(mine)
+
+            val result = service.getSharesByPath(state.principalWith(userId = ownerId), FilePath.of(real.resolve("link").resolve("file.txt").toString()))
+
+            assertEquals(listOf(mine), result.value)
         }
     }
 }
