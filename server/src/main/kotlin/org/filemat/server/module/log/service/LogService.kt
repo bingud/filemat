@@ -202,7 +202,7 @@ class LogService(
                 description = "Failed to get logs from database.",
                 message = e.stackTraceToString(),
                 initiatorIp = meta.ip,
-                initiatorId = meta.targetId
+                initiatorId = meta.initiatorId
             )
             return Result.error("Failed to get logs from database.")
         }
