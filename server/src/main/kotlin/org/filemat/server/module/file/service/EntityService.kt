@@ -310,7 +310,13 @@ class EntityService(
                     })
                 Result.ok()
             }!!
-        }.getOrElse {
+        }.getOrElse { e ->
+            logService.error(
+                type = LogType.SYSTEM,
+                action = userAction,
+                description = "Failed to move file in database.",
+                message = "Path: [${path.pathString}]\nNew path: [${newPath?.pathString}]\n${e.stackTraceToString()}",
+            )
             Result.error("Failed to move file.")
         }
     }

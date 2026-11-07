@@ -198,4 +198,33 @@ class EntityServiceMoveTest {
 
         assertEquals("/a/b2", updatedPaths[sibling.entityId.toString()])
     }
+
+    @Test
+    fun `a move that throws is logged`() {
+        val logService = mockk<org.filemat.server.module.log.service.LogService>(relaxed = true)
+        val failingManager = object : AbstractPlatformTransactionManager() {
+            override fun doGetTransaction(): Any = Any()
+            override fun doBegin(transaction: Any, definition: TransactionDefinition) = throw IllegalStateException("database is locked")
+            override fun doCommit(status: DefaultTransactionStatus) {}
+            override fun doRollback(status: DefaultTransactionStatus) {}
+        }
+        val failingService = EntityService(
+            entityRepository = entityRepository,
+            logService = logService,
+            entityPermissionService = entityPermissionService,
+            filesystemService = filesystemService,
+            platformTransactionManager = failingManager,
+            fileShareService = mockk(),
+            fileSecurityService = mockk(),
+        )
+
+        assertError(failingService.move(FilePath.of("/a"), FilePath.of("/b"), UserAction.NONE))
+
+        verify {
+            logService.error(
+                type = any(), action = UserAction.NONE, description = "Failed to move file in database.",
+                message = match { it.contains("database is locked") }, initiatorId = any(), initiatorIp = any(), targetId = any(), meta = any(),
+            )
+        }
+    }
 }
