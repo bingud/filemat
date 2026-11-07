@@ -55,8 +55,10 @@ class AdminLogController(
             userId = parseUlidOrNull(rawInitiatorId),
             targetId = parseUlidOrNull(rawTargetId),
             ip = rawIp,
-            severityList = parseEnumList<LogLevel>(rawSeverityList),
-            logTypeList = parseEnumList<LogType>(rawLogTypeList),
+            severityList = runCatching { parseEnumList<LogLevel>(rawSeverityList) }.getOrNull()
+                ?: return bad("Invalid severity list.", "validation"),
+            logTypeList = runCatching { parseEnumList<LogType>(rawLogTypeList) }.getOrNull()
+                ?: return bad("Invalid log type list.", "validation"),
             fromDate = rawFromDate?.toLongOrNull(),
             toDate = rawToDate?.toLongOrNull()
         )
