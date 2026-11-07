@@ -170,7 +170,7 @@ class SettingService(
 
     fun removeSetting(name: String): Result<Unit> {
         return try {
-            settingRepository.getSetting(name)
+            settingRepository.removeSetting(name)
             Result.ok(Unit)
         } catch (e: Exception) {
             logService.error(

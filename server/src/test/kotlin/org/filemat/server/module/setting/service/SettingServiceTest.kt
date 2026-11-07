@@ -148,4 +148,11 @@ class SettingServiceTest {
         assertEquals(FilePath.ofAlreadyNormalized(newFolder).pathString, state.app.uploadFolderPath)
         verify { tusService.moveUploadsInProgress(oldFolder, newFolder) }
     }
+
+    @Test
+    fun `removeSetting deletes the row`() {
+        assertSuccess(service.removeSetting(Props.Settings.appSetupCode))
+
+        verify(exactly = 1) { settingRepository.removeSetting(Props.Settings.appSetupCode) }
+    }
 }
