@@ -42,6 +42,7 @@
         })()
 
         window.addEventListener("beforeunload", beforeUnload)
+        return () => window.removeEventListener("beforeunload", beforeUnload)
     })
 
     onDestroy(() => {
