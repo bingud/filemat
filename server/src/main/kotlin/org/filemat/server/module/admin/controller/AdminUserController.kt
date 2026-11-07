@@ -124,9 +124,9 @@ class AdminUserController(
         val principal = request.getPrincipal()!!
         val email = StringUtils.normalizeEmail(rawEmail)
 
-        Validator.email(email)
+        (Validator.email(email)
             ?: Validator.username(username)
-            ?: Validator.password(rawPassword)
+            ?: Validator.password(rawPassword))
             ?.let { return bad(it, "validation") }
 
         val password = passwordEncoder.encode(rawPassword)
