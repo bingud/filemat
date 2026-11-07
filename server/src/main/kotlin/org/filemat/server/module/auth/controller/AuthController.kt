@@ -28,6 +28,7 @@ class AuthController(
     @PostMapping("/logout")
     fun logoutMapping(
         request: HttpServletRequest,
+        response: HttpServletResponse,
     ): ResponseEntity<String> {
         val token = request.getAuthToken()
         if (token == null) return ok("ok")
@@ -36,6 +37,8 @@ class AuthController(
             if (it.isNotSuccessful) return internal(it.errorOrNull ?: "Failed to logout.", "")
         }
 
+        // The token is gone, so the browser can drop the cookie too
+        response.addCookie(authTokenService.createCookie(token = "", maxAge = 0))
         return ok("ok")
     }
 

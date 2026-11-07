@@ -155,6 +155,21 @@ class AuthControllerTest {
         assertTrue(response.getHeader("Set-Cookie")!!.contains("Max-Age="))
     }
 
+    @Test
+    fun `logout clears the auth cookie`() {
+        every { authTokenService.createCookie(any(), any()) } answers { callOriginal() }
+        val request = MockHttpServletRequest().apply { setCookies(Cookie(Props.Cookies.authToken, token.authToken)) }
+        val response = MockHttpServletResponse()
+
+        val result = controller.logoutMapping(request, response)
+
+        assertEquals(200, result.statusCode.value())
+        val cookie = response.getCookie(Props.Cookies.authToken)!!
+        assertEquals("", cookie.value)
+        assertEquals(0, cookie.maxAge)
+        assertEquals("/", cookie.path)
+    }
+
     private fun spaRequest(origin: String): MockHttpServletRequest {
         val request = MockHttpServletRequest()
         request.addHeader("Origin", origin)
