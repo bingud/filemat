@@ -1,4 +1,4 @@
-# Creates the test files for docs/windows-test-plan.md.
+# Creates the test files (C:\FmTest) for the manual checks in docs/windows-todo.md.
 # Run in a normal (not administrator) PowerShell window:
 #   powershell -ExecutionPolicy Bypass -File .\utilities\windows-test-fixtures.ps1
 # Symbolic links need Developer Mode (Settings -> For developers). Without it they are skipped with a warning.

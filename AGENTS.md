@@ -68,7 +68,7 @@ Working Directory: `./web`
 
 ## Project information
 
-- Windows support: start at `docs/windows-status.md` (what's left, and which doc holds what).
+- Windows support: open work is in `docs/windows-todo.md`, user docs in `docs/windows.md`.
 
 ### Frontend
 

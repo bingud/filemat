@@ -1,6 +1,6 @@
 # Code review fixes (2026-11-07)
 
-Fixes for the clear-cut findings of [full-code-review.md](full-code-review.md), one commit each, on `windows-support` after `3c3533f`. Then quick questions for the findings that need a decision.
+Fixes for the clear-cut findings of [full-code-review.md](full-code-review.md), one commit each, on `windows-support` after `3c3533f`. Then the decisions on the findings that needed one, as a todo list.
 
 Tests, after the last commit: full server suite 904 tests, 0 failures (51 skipped by their own environment checks, as before); web unit tests 91 passed; `npm run check` 0 errors. Nothing was run in a browser, and the four Svelte page fixes (#21, #22, #24, #27) have no automated test.
 
@@ -147,53 +147,53 @@ In search mode, the trash button deleted the folder view's selection (hidden beh
 Fix: in search mode it deletes the selected search results, looked up in the results themselves, and removes deleted files from the results.
 You'll notice: the trash button in search results deletes what you selected there, and those results disappear.
 
-## Questions
+## Decisions (2026-11-15)
 
-Each needs a short answer. **(rec)** marks my recommendation.
+The answers to the review's questions, as work to do. Delete an item when it's done.
 
-### Security (High and Medium)
+### Security
 
-1. **R9, admins taking over the super admin.** Should change password, reset 2FA and edit username/e-mail/home folder refuse a target with higher rank, as delete already does? **Yes (rec)** / No.
-2. **R9, granting rights.** When creating a role or assigning one: (a) you may only grant permissions you hold yourself **(rec)**, or (b) keep the level rule (equals can grant each other everything)?
-3. **R10, "2FA required" flag.** When an admin required 2FA for a user: (a) the user can't turn 2FA off **(rec)**, or (b) they can, and are asked to set it up again at next login?
-4. **R1, `X-Forwarded-For`.** Add `FM_TRUSTED_PROXIES` and ignore forwarded headers from anyone else? Default: (a) nobody **(rec)** (people behind a proxy see the proxy's IP until they set it), or (b) loopback and private addresses.
-5. **R13 + R14, serving uploaded files.** Send `X-Frame-Options: DENY`, `nosniff` and `Referrer-Policy: no-referrer` on every response, and a sandbox CSP (no scripts) on file content? **Yes (rec)** / No.
-6. **R13, HTML files.** HTML/XHTML/XML content: (a) always downloaded, never shown inline **(rec)**, or (b) shown inline but sandboxed (no scripts)? SVG would stay inline under the sandbox CSP.
-7. **R3, unlisted endpoints.** Deny API requests that match no known endpoint (404) instead of letting them through? **Yes (rec)** / No.
-8. **R4, username timing.** Hash a dummy password when the username doesn't exist, so a wrong username takes as long as a wrong password? **Yes (rec)** / No.
-9. **R18, audit log on user delete.** Migration so deleting a user keeps their log rows (initiator set to empty)? **Yes (rec)** / No.
-10. **R22, overwrite and ownership.** Overwriting a file by upload keeps its original owner? **Yes (rec)** / No (drop the old grants instead).
-11. **R2, `Secure` cookies over plain HTTP.** (a) Set `Secure` only when the request is HTTPS **(rec)**, or (b) keep it and document "HTTPS except on localhost"?
-12. **R55, tus uploads.** Tie each upload to the user who started it (403 for anyone else)? **Yes (rec)** / No.
-13. **R19, shares after rights are removed.** Check the sharer's rights when a share link is opened (a removed right stops the link)? **Yes (rec)** / No.
-14. **R53, share IDs.** Generate a random share ID by default, with an optional readable prefix? **Yes (rec)** / No.
-15. **R56, Docker as root.** Run the image as a non-root user? Existing volumes owned by root then need a `chown` once. **Yes, with a note (rec)** / No.
+- [ ] **R9, rank guard (1).** Change password, reset 2FA and edit username/e-mail/home folder refuse a target of higher rank, as delete already does.
+- **R9, granting rights (2).** Keep the level rule: equals can grant each other everything. No change.
+- **R10, required 2FA (3).** The user may turn 2FA off; if an admin required it, they're asked to set it up again at the next login.
+- [ ] **R1, proxy headers (4).** Add `FM_TRUSTED_PROXIES`, default nobody. Only from a trusted proxy, read `X-Forwarded-For` (right-most untrusted entry) and `X-Forwarded-Proto`; ignore them from anyone else. Covers the rate limits, the audit log IP, `CorsOriginRegistry.requestOrigin` and the HTTPS check in `AuthController.contentSessionMapping`.
+- [ ] **R13/R14, headers (5).** `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on every response, and a sandbox CSP (no scripts) on file content.
+- [ ] **R13, HTML files (6).** Serve `text/html`, `application/xhtml+xml`, `text/xml` and `image/svg+xml` content inline as `text/plain`: the raw text shows, never a rendered page.
+- [ ] **R3, endpoint auth (7).** Fail closed: match routes by Spring pattern and HTTP method, build the map (immutable) before the port opens, and refuse an `/api` request with no entry (401). Tus `PATCH`/`HEAD`/`DELETE` get a real auth check.
+- [ ] **R4, login timing (8).** Hash a dummy password when the username doesn't exist.
+- [ ] **R18, audit log on user delete (9).** Logs never change and the initiator ID never changes: deleting a user leaves their log rows exactly as they are. Migration: drop the `ON DELETE CASCADE` foreign key on `log.initiator_user_id` (no `SET NULL`).
+- **R22, overwrite (10).** Overwriting a file by upload drops the old grants (no change to make the original owner stay).
+- [ ] **R2, `Secure` cookies (11).** Set `Secure` only when the request is HTTPS (trusted `X-Forwarded-Proto` per R1). Also in `windows-todo.md`.
+- [ ] **R55, tus uploads (12).** Each upload belongs to the user who started it; anyone else gets 403.
+- [ ] **R19, shares after rights are removed (13).** When a share link is opened, check the sharer still has the rights (cached briefly); a removed right stops the link.
+- [ ] **R53, share IDs (14).** Random share ID by default, with an optional readable prefix.
+- **R56, Docker as root (15).** Stays root. No change.
 
 ### Smaller behaviour choices
 
-16. **R34, logout.** Clear only Filemat's session data (upload resume data, share tokens, upload handles) and keep preferences like dark mode and sorting? **Yes (rec)** / No.
-17. **R6, TOTP replay.** Refuse a 2FA code that was already used (the same code can't log in twice within its 90 s)? **Yes (rec)** / No.
-18. **R11, backup codes.** (a) Make them work (single use, stored hashed) **(rec)**, or (b) stop generating and showing them?
-19. **R41 + R55, usernames.** (a) ASCII letters, digits, `-` and `_` only on the server too (matches the web, no look-alike names) **(rec)**, or (b) allow Unicode letters in the web as well? Existing names stay as they are either way.
-20. **R41, minimum password length.** Raise it from 4 to 8 for new passwords? **Yes (rec)** / No.
-21. **R41, e-mail.** (a) Store e-mails as typed (only trim and lowercase the domain) and stop rewriting Gmail addresses **(rec)**, or (b) normalise them everywhere?
-22. **R49, secret files on Linux.** Make `setup-code.txt` and `auth-code.txt` owner-only (`600`)? Someone who reads them through the group loses access. **Yes (rec)** / No.
-23. **R52, `package` in log metadata.** It was meant to be on every log but only lands on some. (a) Record it on every log (adds a line to each console log) or (b) drop it **(rec)**?
-24. **R54, sockets and FIFOs.** In "folders first" sorting they vanish; in mixed sorting they show. (a) Hide them in both **(rec)** (opening a FIFO can hang a read), or (b) show them in both?
-25. **R54, `ANY_LINK` in `isFile`.** The server never sends it. Remove the dead branch? **Yes (rec)** / No (it was meant to do something; tell me what).
-26. **R57, delete dialog.** Also list the file names in the dialog and clear the folder selection when a search starts? **Yes (rec)** / No.
-27. **N1, search selection details.** Make `searchMetaList` look in the search results, so the details panel shows a selected search result instead of the open folder? **Yes (rec)** / No.
-28. **R26, upload folder from setup.** Store the real path at setup too, like the settings page? Cosmetic only (see N2). **Yes (rec)** / Leave it.
-29. **R31, single-value permission converters.** Nothing uses them and they don't round-trip. (a) Delete them **(rec)**, or (b) fix them to write the index?
-30. **R35, delete with a failed DB lookup.** The file is gone but its database row stays. Report the delete as (a) done, and log the DB error **(rec)**, or (b) failed?
-31. **R21, small share items.** Refuse an empty share password, hash it only after the permission check, and let the owner delete a share whose file no longer exists? **Yes (rec)** / No.
-32. **R20, share password tokens.** Tie them to the share's creation time, so a re-created share with the same ID needs the new password? **Yes (rec)** / No.
-33. **R24, zip with duplicate names.** Rename duplicates (`x (2).txt`) instead of dropping them? **Yes (rec)** / No.
-34. **R28, log table growth.** Truncate logged user input to 256 characters and add an index on `created_date`? **Yes (rec)** / No. And keep logs for how long: 90 days / 1 year / forever?
-35. **R32, SQLite.** Switch to WAL with a 5 s busy timeout? **Yes (rec)** / No.
-36. **R33, `/util` page.** Remove it from release builds (keep it in dev)? **Yes (rec)** / No.
-37. **R7, caching.** Send `Cache-Control: immutable` for `_app/immutable/*` and refuse non-`GET` requests to page paths? **Yes (rec)** / No.
+- **R34, logout (16).** No change.
+- [ ] **R6, TOTP replay (17).** Refuse a 2FA code that was already used.
+- [ ] **R11, backup codes (18).** Make them work: single use, stored hashed.
+- [ ] **R41, usernames (19).** The server allows only ASCII letters, digits, `-` and `_`, like the web. Existing names stay.
+- **R41, password length (20).** Minimum stays 4.
+- [ ] **R41, e-mail (21).** Store as typed (trim, lowercase the domain only); stop rewriting Gmail addresses.
+- **R49, secret files (22).** No change.
+- [ ] **R52, `package` in log metadata (23).** Drop it.
+- [ ] **R54, sockets and FIFOs (24).** Hide them in both sortings.
+- [ ] **R54, `ANY_LINK` (25).** Remove the dead branch in `isFile`.
+- [ ] **R57, delete dialog (26).** List the file names in the dialog, and clear the folder selection when a search starts.
+- **N1, search selection details (27).** No change.
+- **R26, upload folder from setup (28).** Leave it.
+- [ ] **R31, single-value permission converters (29).** Fix them to write the index (don't delete them).
+- [ ] **R35, delete with a failed DB lookup (30).** Report the delete as done and log the DB error.
+- [ ] **R21, small share items (31).** Refuse an empty share password, hash it only after the permission check, and let the owner delete a share whose file no longer exists.
+- **R20, share password tokens (32).** No change.
+- **R24, zip duplicates (33).** No change.
+- [ ] **R28, log table (34).** Truncate logged user input to 256 characters and index `created_date`. Logs are kept forever.
+- [ ] **R32, SQLite (35).** WAL mode with a 5 s busy timeout.
+- **R33, `/util` page (36).** No change.
+- [ ] **R7, caching (37).** `Cache-Control: immutable` for `_app/immutable/*`, and refuse non-`GET` requests to page paths.
 
-### Bigger work
+### Bigger work (38)
 
-38. Larger fixes that each need a plan: R16, R15/R38, R17 + the `FileLockService` lock map, R23, R30, R36, R39, R40, R42, R43, R44, R46, R47, R48. Go through them in the review's suggested order, one plan at a time? **Yes (rec)** / Pick others first.
+- [ ] R16, R15/R38, R17 + the `FileLockService` lock map, R23, R30, R36, R39, R40, R42, R43, R44, R46, R47, R48: each needs its own plan. Order not decided: the owner picks which comes first.
