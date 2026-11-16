@@ -27,6 +27,9 @@ echo.
 
 :start
 
+rem Filemat stops when this cmd.exe ends: the scheduled task was ended, or the console window was closed
+set "FM_STOP_WITH_LAUNCHER=true"
+
 "%FILEMAT_HOME%jre\bin\java.exe" -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "%FILEMAT_HOME%filemat.jar" %*
 set "EXIT_CODE=%ERRORLEVEL%"
 

@@ -29,10 +29,30 @@ fun main(args: Array<String>) {
     if (Platform.isWindows) {
         startLogFile()
         warnIfElevated()
+        stopWithLauncher()
     }
 
     runApplication<ServerApplication>(*args) {
         setDefaultProperties(mapOf("spring.datasource.url" to "jdbc:sqlite:${Props.databaseFile}"))
+    }
+}
+
+/**
+ * Windows: ending the scheduled task or closing the console ends the `cmd.exe` that runs `filemat.cmd`, but not Java,
+ * which would keep serving without a window and block the port for the next start.
+ * `filemat.cmd` sets `FM_STOP_WITH_LAUNCHER`, and Filemat then shuts down when the process that started it ends.
+ * A plain `java -jar` start doesn't set it and is left alone.
+ */
+internal fun stopWithLauncher(
+    env: Map<String, String?> = System.getenv(),
+    launcher: ProcessHandle? = ProcessHandle.current().parent().orElse(null),
+    stop: () -> Unit = { exitProcess(0) },
+) {
+    if (env["FM_STOP_WITH_LAUNCHER"]?.toBooleanStrictOrNull() != true) return
+    launcher ?: return
+    launcher.onExit().thenRun {
+        println("filemat.cmd has ended. Stopping ${Props.appName}.")
+        stop()
     }
 }
 
