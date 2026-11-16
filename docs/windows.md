@@ -96,6 +96,8 @@ Filemat has no service mode yet. To start it automatically, create a Task Schedu
 
 With **Run whether user is logged on or not**, there is no console window. Read `logs\filemat.log` in the data folder instead.
 
+Ending the task, or closing the console window, stops Filemat.
+
 ## Network access and the firewall
 
 The first time Filemat starts, Windows asks whether `java.exe` may accept connections. Allow **Private networks** to use Filemat from other devices at home. Filemat never adds firewall rules itself.
@@ -154,7 +156,8 @@ Or stop Filemat and copy the whole data folder.
 
 ## Known limitations
 
-- **Network shares and mapped drives** (`\\server\share`, or a drive letter mapped to one) are not supported. `subst` drives work, and the permission checks use their real folder.
+- **Network shares and mapped drives** (`\\server\share`, or a drive letter mapped to one) are not supported, and can't be added to the exposed folders. `subst` drives work, and the permission checks use their real folder.
+- **Case-sensitive folders** can be moved on the same drive. Copying one, or moving it to another drive, is refused unless Filemat runs as administrator, because Windows only lets an administrator make the new folder case-sensitive.
 - **FAT32 and exFAT drives** (most USB sticks and SD cards): permissions and shares follow the path only. When a file there is renamed or moved outside Filemat, its permissions don't follow it. Filemat warns when you set a permission on such a drive.
 - **A changed drive letter** (for example a USB drive that comes back as `F:` instead of `E:`) un-exposes its folders. Expose them again under the new letter.
 - **OneDrive online-only files:** Filemat doesn't make thumbnails of them or read their content to detect the file type, so it doesn't download them. Opening or downloading one downloads it through OneDrive. Searching a folder of them reads names only.

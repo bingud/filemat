@@ -163,7 +163,7 @@ The answers to the review's questions, as work to do. Delete an item when it's d
 - [ ] **R4, login timing (8).** Hash a dummy password when the username doesn't exist.
 - [ ] **R18, audit log on user delete (9).** Logs never change and the initiator ID never changes: deleting a user leaves their log rows exactly as they are. Migration: drop the `ON DELETE CASCADE` foreign key on `log.initiator_user_id` (no `SET NULL`).
 - **R22, overwrite (10).** Overwriting a file by upload drops the old grants (no change to make the original owner stay).
-- [ ] **R2, `Secure` cookies (11).** Set `Secure` only when the request is HTTPS (trusted `X-Forwarded-Proto` per R1). Also in `windows-todo.md`.
+- [x] **R2, `Secure` cookies (11).** Done 2026-11-16: `Secure` is set only when the request is HTTPS. `X-Forwarded-Proto` is read from anyone until R1 adds trusted proxies (a client that fakes it only marks its own cookie `Secure`).
 - [ ] **R55, tus uploads (12).** Each upload belongs to the user who started it; anyone else gets 403.
 - [ ] **R19, shares after rights are removed (13).** When a share link is opened, check the sharer still has the rights (cached briefly); a removed right stops the link.
 - [ ] **R53, share IDs (14).** Random share ID by default, with an optional readable prefix.
