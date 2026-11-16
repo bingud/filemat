@@ -2,6 +2,8 @@ package org.filemat.server.module.file.service.filesystem.fileOperation
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.mockk.verify
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -382,5 +384,64 @@ class FilesystemMoveServiceTest {
         assertEquals("lower", Files.readString(movedFolder.resolve("a.txt")))
         assertEquals("upper", Files.readString(movedFolder.resolve("A.txt")))
         assertFalse(Files.exists(source))
+    }
+
+    /**
+     * Runs [block] as a normal user sees it: [caseSensitive] has the flag, and no new folder can get it
+     */
+    private fun withoutCaseSensitiveRights(caseSensitive: Path, block: () -> Unit) {
+        mockkObject(WindowsNative)
+        try {
+            every { WindowsNative.isCaseSensitiveDirectory(any()) } answers { firstArg<Path>().fileName == caseSensitive.fileName }
+            every { WindowsNative.setCaseSensitiveDirectory(any()) } returns null
+            every { WindowsNative.isElevatedOrSystem() } returns false
+            block()
+        } finally {
+            unmockkObject(WindowsNative)
+        }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a case-sensitive folder is moved on the same drive with one rename, without administrator rights`() {
+        val source = Files.createDirectory(tempDir.resolve("src"))
+        val caseSensitive = Files.createDirectory(source.resolve("cs"))
+        val file = Files.writeString(caseSensitive.resolve("a.txt"), "lower")
+        val dest = Files.createDirectory(tempDir.resolve("dest")).resolve("src")
+        movable.addAll(listOf(source, caseSensitive, file))
+
+        withoutCaseSensitiveRights(caseSensitive) {
+            assertSuccess(move(source, dest))
+        }
+
+        assertEquals("lower", Files.readString(dest.resolve("cs").resolve("a.txt")))
+        assertFalse(Files.exists(source))
+        // One move of the folder covers everything stored below it
+        verify(exactly = 1) { entityService.move(any(), any(), any()) }
+        verify { entityService.move(FilePath.ofAlreadyNormalized(source), FilePath.ofAlreadyNormalized(dest), any()) }
+        verify { mocks.thumbnailService.moveCacheForPath(FilePath.ofAlreadyNormalized(file), FilePath.ofAlreadyNormalized(dest.resolve("cs").resolve("a.txt"))) }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a case-sensitive folder that can't be renamed as a whole says that it needs administrator rights`() {
+        val source = Files.createDirectory(tempDir.resolve("src"))
+        val caseSensitive = Files.createDirectory(source.resolve("cs"))
+        val file = Files.writeString(caseSensitive.resolve("a.txt"), "lower")
+        val denied = Files.writeString(source.resolve("denied.txt"), "no")
+        val dest = Files.createDirectory(tempDir.resolve("dest")).resolve("src")
+        // One file may not be moved, so the folder is moved file by file
+        movable.addAll(listOf(source, caseSensitive, file))
+
+        var result: Result<Unit>? = null
+        withoutCaseSensitiveRights(caseSensitive) {
+            result = move(source, dest)
+        }
+
+        assertRejected(result!!)
+        assertTrue(result!!.error!!.endsWith("Moving a case-sensitive folder to another drive, or only part of it, needs Filemat to run as administrator."), result!!.error)
+        assertTrue(Files.exists(file))
+        assertTrue(Files.exists(denied))
+        assertFalse(Files.exists(dest.resolve("cs")))
     }
 }

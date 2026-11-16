@@ -1,6 +1,7 @@
 package org.filemat.server.common.util
 
 import org.filemat.server.common.model.Result
+import org.filemat.server.config.Props
 import org.filemat.server.config.platform.Platform
 import org.filemat.server.config.platform.WindowsNative
 import java.io.IOException
@@ -18,6 +19,20 @@ enum class FileFailure(val message: String, val detail: String) {
     IN_USE("File is in use.", "Some files are in use by another program."),
     READ_ONLY("File is read-only.", "Read-only files were left in place."),
     FOLDER_LINK("Links to folders cannot be copied.", "Links to folders were not copied."),
+
+    // Windows only lets an administrator make a new folder case-sensitive
+    CASE_SENSITIVE_COPY(
+        "Copying a case-sensitive folder needs ${Props.appName} to run as administrator.",
+        "Copying a case-sensitive folder needs ${Props.appName} to run as administrator.",
+    ),
+    CASE_SENSITIVE_MOVE(
+        "Moving a case-sensitive folder to another drive, or only part of it, needs ${Props.appName} to run as administrator.",
+        "Moving a case-sensitive folder to another drive, or only part of it, needs ${Props.appName} to run as administrator.",
+    ),
+    CASE_SENSITIVE_UNSUPPORTED(
+        "A case-sensitive folder can't be created at the destination.",
+        "A case-sensitive folder can't be created at the destination.",
+    ),
 }
 
 /**
@@ -146,7 +161,17 @@ object FileErrors {
      */
     fun <T> resultOf(failure: FileFailure): Result<T> = when (failure) {
         FileFailure.IN_USE -> Result.conflict(failure.message)
-        FileFailure.READ_ONLY, FileFailure.FOLDER_LINK -> Result.reject(failure.message)
+        else -> Result.reject(failure.message)
+    }
+
+    /**
+     * Why a case-sensitive folder could not be made for a copy, or for a move ([isMove]) that rebuilds folders.
+     * An elevated process may set the flag, so there the destination is the reason (FAT, or Windows without WSL).
+     */
+    fun caseSensitiveFailure(isMove: Boolean): FileFailure = when {
+        WindowsNative.isElevatedOrSystem() == true -> FileFailure.CASE_SENSITIVE_UNSUPPORTED
+        isMove -> FileFailure.CASE_SENSITIVE_MOVE
+        else -> FileFailure.CASE_SENSITIVE_COPY
     }
 
     private fun normalizeReason(reason: String) = reason.trim().trimEnd('.')

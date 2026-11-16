@@ -224,7 +224,7 @@ fun isPathInside(path: Path, root: Path): Boolean {
  * [source] is the folder within [sourceRoot] that [dest] stands for, or null when it is above it.
  * On Windows each new folder within the tree is made case-sensitive when its source folder is (§2.3), or a folder holding
  * `a.txt` and `A.txt` would lose one. Folders above it are created plainly.
- * Throws when a folder can't be created or can't be made case-sensitive.
+ * Throws when a folder can't be created, and [CaseSensitiveFolderException] when it can't be made case-sensitive.
  */
 fun createFoldersLike(dest: Path, source: Path?, sourceRoot: Path) {
     if (!Platform.isWindows) {
@@ -242,9 +242,11 @@ private fun createFolderLike(dest: Path, source: Path?, sourceRoot: Path) {
     Files.createDirectory(dest)
     if (source != null && WindowsNative.isCaseSensitiveDirectory(source) == true && WindowsNative.setCaseSensitiveDirectory(dest) != true) {
         runCatching { Files.delete(dest) }
-        throw IOException("A case-sensitive folder can't be created at $dest.")
+        throw CaseSensitiveFolderException(dest)
     }
 }
+
+class CaseSensitiveFolderException(folder: Path) : IOException("A case-sensitive folder can't be created at $folder.")
 
 /**
  * Returns whether moving [source] to [destination] only changes the case of its name (`photo.jpg` to `Photo.jpg`).

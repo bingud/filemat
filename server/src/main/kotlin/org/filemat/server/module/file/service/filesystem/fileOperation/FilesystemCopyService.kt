@@ -195,6 +195,7 @@ class FilesystemCopyService(
                     createFoldersLike(currentDest, currentSource, sourceRoot)
                 }
             } catch (e: Exception) {
+                if (e is CaseSensitiveFolderException) failures.add(FileErrors.caseSensitiveFailure(isMove = false))
                 return failedCount + 1
             }
             return failedCount
@@ -229,6 +230,7 @@ class FilesystemCopyService(
                 }
             }
         } catch (e: Exception) {
+            if (e is CaseSensitiveFolderException) failures.add(FileErrors.caseSensitiveFailure(isMove = false))
             return failedCount + 1
         }
 

@@ -3,6 +3,7 @@ package org.filemat.server.module.file.service.filesystem.fileOperation
 import org.filemat.server.common.InternalFolder
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.util.CaseSensitiveFolderException
 import org.filemat.server.common.util.FileErrors
 import org.filemat.server.common.util.FileFailure
 import org.filemat.server.common.util.FileFailures
@@ -14,6 +15,8 @@ import org.filemat.server.common.util.resolvePath
 import org.filemat.server.config.Props
 import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.config.platform.PathPolicy
+import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsNative
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.EntityService
@@ -105,7 +108,12 @@ class FilesystemMoveService(
 
         if (isCaseOnlyRename) return@tryWithLock renameCaseOnly(source, destination, user, ignorePermissions)
 
-        val isFolder = Files.isDirectory(source.path, LinkOption.NOFOLLOW_LINKS) && !LinkInspector.isDirectoryLink(source.path)
+        val isFolder = isRealFolder(source.path)
+        val protectedPath = if (isWriteDataFolderProtected) state.app.dataFolderPath else null
+        val isRenameCheck = isRename ?: (source.path.parent == destination.path.parent)
+        if (isFolder) {
+            moveCaseSensitiveFolder(source, destination, user, ignorePermissions, isRenameCheck, isFilematFile, protectedPath)?.let { return@tryWithLock it }
+        }
         val failures = FileFailures()
         val failedCount = FileErrors.withRetryBudget {
             moveRecursiveSafe(
@@ -113,9 +121,9 @@ class FilesystemMoveService(
                 currentSource = source.path,
                 currentDest = destination.path,
                 user = user,
-                protectedPath = if (isWriteDataFolderProtected) state.app.dataFolderPath else null,
+                protectedPath = protectedPath,
                 ignorePermissions = ignorePermissions,
-                isRename = isRename ?: (source.path.parent == destination.path.parent),
+                isRename = isRenameCheck,
                 isFilematFile = isFilematFile,
                 failures = failures,
             )
@@ -231,6 +239,7 @@ class FilesystemMoveService(
                 }
             }
         } catch (e: Exception) {
+            if (e is CaseSensitiveFolderException) failures.add(FileErrors.caseSensitiveFailure(isMove = true))
             return failedCount + 1
         }
 
@@ -283,11 +292,71 @@ class FilesystemMoveService(
     }
 
     /**
+     * Windows: moves a folder that has a case-sensitive folder in it with one rename, which keeps the flag.
+     * Moving it file by file makes new folders, and only an administrator may make those case-sensitive.
+     * Returns null when one rename can't do it (another drive, a file the user may not move, a file in use),
+     * and the folder is then moved file by file.
+     */
+    private fun moveCaseSensitiveFolder(
+        source: FilePath,
+        destination: FilePath,
+        user: Principal,
+        ignorePermissions: Boolean?,
+        isRename: Boolean,
+        isFilematFile: Boolean,
+        protectedPath: Path?,
+    ): Result<Unit>? {
+        if (!Platform.isWindows) return null
+        val destinationParent = destination.path.parent ?: return null
+        if (!Files.isDirectory(destinationParent) || !isSameVolume(source.path, destination.path)) return null
+        if (protectedPath != null && protectedPath.startsWith(source.path)) return null
+        if (!hasCaseSensitiveFolder(source.path)) return null
+        if (!isFilematFile && !canMoveAll(source.path, user, ignorePermissions, isRename)) return null
+
+        val files = filesBelow(source.path)
+        try {
+            FileErrors.retryWhenInUse { Files.move(source.path, destination.path, StandardCopyOption.ATOMIC_MOVE) }
+        } catch (e: Exception) {
+            return null
+        }
+
+        entityService.move(path = source, newPath = destination, userAction = UserAction.MOVE_FILE).let {
+            if (it.isNotSuccessful) {
+                runCatching { Files.move(destination.path, source.path, StandardCopyOption.ATOMIC_MOVE) }
+                return Result.error("Failed to move file.")
+            }
+        }
+        for (file in files) {
+            thumbnailService.moveCacheForPath(
+                oldPath = FilePath.ofAlreadyNormalized(file),
+                newPath = FilePath.ofAlreadyNormalized(destination.path.resolve(source.path.relativize(file))),
+            )
+        }
+        return Result.ok()
+    }
+
+    private fun hasCaseSensitiveFolder(folder: Path): Boolean {
+        if (WindowsNative.isCaseSensitiveDirectory(folder) == true) return true
+        return runCatching {
+            Files.newDirectoryStream(folder).use { stream -> stream.any { isRealFolder(it) && hasCaseSensitiveFolder(it) } }
+        }.getOrDefault(false)
+    }
+
+    /**
+     * The files and links in [folder] and the folders inside it. Links are not followed.
+     */
+    private fun filesBelow(folder: Path): List<Path> = runCatching {
+        Files.newDirectoryStream(folder).use { stream -> stream.flatMap { if (isRealFolder(it)) filesBelow(it) else listOf(it) } }
+    }.getOrDefault(emptyList())
+
+    private fun isRealFolder(path: Path) = Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) && !LinkInspector.isDirectoryLink(path)
+
+    /**
      * Renames a file or folder to a name that differs only in case.
      * `Files.move` does nothing when source and target are the same file, but an atomic move renames it.
      */
     private fun renameCaseOnly(source: FilePath, destination: FilePath, user: Principal, ignorePermissions: Boolean?): Result<Unit> {
-        if (!canRenameAll(source.path, user, ignorePermissions)) return Result.error("Failed to rename file.")
+        if (!canMoveAll(source.path, user, ignorePermissions, isRename = true)) return Result.error("Failed to rename file.")
 
         try {
             FileErrors.retryWhenInUse { Files.move(source.path, destination.path, StandardCopyOption.ATOMIC_MOVE) }
@@ -315,15 +384,20 @@ class FilesystemMoveService(
     }
 
     /**
-     * Returns whether the user may rename [path] and everything inside it, like a recursive rename requires
+     * Returns whether the user may move (or rename, with [isRename]) [path] and everything inside it, like a recursive move requires
      */
-    private fun canRenameAll(path: Path, user: Principal, ignorePermissions: Boolean?): Boolean {
+    private fun canMoveAll(path: Path, user: Principal, ignorePermissions: Boolean?, isRename: Boolean): Boolean {
         val filePath = FilePath.ofAlreadyNormalized(path)
-        if (fileService.isAllowedToRenameFile(user = user, canonicalPath = filePath, ignorePermissions = ignorePermissions).isNotSuccessful) return false
-        if (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) || LinkInspector.isDirectoryLink(path)) return true
+        val allowed = if (isRename) {
+            fileService.isAllowedToRenameFile(user = user, canonicalPath = filePath, ignorePermissions = ignorePermissions)
+        } else {
+            fileService.isAllowedToMoveFile(user = user, canonicalPath = filePath, ignorePermissions = ignorePermissions)
+        }
+        if (allowed.isNotSuccessful) return false
+        if (!isRealFolder(path)) return true
 
         return runCatching {
-            Files.newDirectoryStream(path).use { stream -> stream.all { canRenameAll(it, user, ignorePermissions) } }
+            Files.newDirectoryStream(path).use { stream -> stream.all { canMoveAll(it, user, ignorePermissions, isRename) } }
         }.getOrDefault(false)
     }
 

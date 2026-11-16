@@ -1,6 +1,8 @@
 package org.filemat.server.module.file.service.filesystem.fileOperation
 
 import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -278,5 +280,31 @@ class FilesystemCopyServiceTest {
         assertEquals("lower", Files.readString(copiedFolder.resolve("a.txt")))
         assertEquals("upper", Files.readString(copiedFolder.resolve("A.txt")))
         assertTrue(Files.isDirectory(empty))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `copying a case-sensitive folder without administrator rights says why it failed`() {
+        val source = Files.createDirectory(tempDir.resolve("src"))
+        val caseSensitive = Files.createDirectory(source.resolve("cs"))
+        val lower = Files.writeString(caseSensitive.resolve("a.txt"), "lower")
+        val dest = Files.createDirectory(tempDir.resolve("dest")).resolve("src")
+        readable.add(lower)
+
+        mockkObject(WindowsNative)
+        val result = try {
+            // As a normal user: the folder has the flag, and no new folder can get it
+            every { WindowsNative.isCaseSensitiveDirectory(any()) } answers { firstArg<Path>().fileName == caseSensitive.fileName }
+            every { WindowsNative.setCaseSensitiveDirectory(any()) } returns null
+            every { WindowsNative.isElevatedOrSystem() } returns false
+            copy(source, dest)
+        } finally {
+            unmockkObject(WindowsNative)
+        }
+
+        assertTrue(result.rejected)
+        assertEquals("1 items could not be copied. Copying a case-sensitive folder needs Filemat to run as administrator.", result.error)
+        assertFalse(Files.exists(dest))
+        assertEquals("lower", Files.readString(lower))
     }
 }
