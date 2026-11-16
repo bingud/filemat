@@ -143,6 +143,22 @@ export function displayPath(path: string): string {
 }
 
 /**
+ * Encodes one file path segment for a page URL. `:` stays readable (`/files/C:/Users`).
+ */
+export function encodeUrlPathSegment(segment: string): string {
+    return encodeURIComponent(segment).replace(/%3A/g, `:`)
+}
+
+/**
+ * Returns the page URL of a file path, with every segment encoded (`/files/a%23b/c`)
+ */
+export function filePageUrl(path: string, pagePath: string = `/files`): string {
+    const segments = path.split(`/`).filter(v => v !== ``)
+    if (segments.length === 0) return pagePath
+    return `${pagePath}/${segments.map(encodeUrlPathSegment).join(`/`)}`
+}
+
+/**
  * Removes the path separators of the server OS from a typed file name: `/` everywhere, and `\` on Windows
  */
 export function stripSeparators(name: string): string {

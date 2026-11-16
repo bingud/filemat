@@ -2,8 +2,7 @@
     import type { FullFileMetadata } from "$lib/code/auth/types";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import { filePageUrl } from "$lib/code/util/codeUtil.svelte"
-    import { displayPath, parentPath } from "$lib/code/util/path"
+    import { displayPath, parentPath, filePageUrl } from "$lib/code/util/path"
     import { Popover } from "$lib/component/bits-ui-wrapper";
     import BookmarkIcon from "$lib/component/icons/BookmarkIcon.svelte";
     import BookmarkXIcon from "$lib/component/icons/BookmarkXIcon.svelte";

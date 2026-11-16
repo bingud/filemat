@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { displayPath } from "$lib/code/util/path"
+    import { displayPath, filenameOf } from "$lib/code/util/path"
     import { cancelAllDownloads, cancelDownload, cancelDownloadJob } from "$lib/code/module/files/files"
     import { downloadState, type DownloadJob, type FileDownload } from "$lib/code/stateObjects/subState/downloadState.svelte"
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte"
-    import { filenameFromPath, formatBytes } from "$lib/code/util/codeUtil.svelte"
+    import { formatBytes } from "$lib/code/util/codeUtil.svelte"
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte"
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte"
 
@@ -68,7 +68,7 @@
             return
         }
 
-        const name = dl.displayPath || filenameFromPath(dl.path)
+        const name = dl.displayPath || filenameOf(dl.path)
         const confirmed = await confirmDialogState.show({
             title: `Cancel download?`,
             message: `Cancel download of "${name}"?`,
@@ -170,7 +170,7 @@
                             class="truncate max-w-full text-left hover:underline"
                             onclick={() => { showPathDialog(job.id) }}
                         >
-                            {job.displayPath || filenameFromPath(job.id)}
+                            {job.displayPath || filenameOf(job.id)}
                         </button>
                     </div>
 
@@ -213,7 +213,7 @@
                                     class="truncate max-w-full text-left text-sm hover:underline opacity-90"
                                     onclick={() => { showPathDialog(dl.path) }}
                                 >
-                                    {dl.displayPath || filenameFromPath(dl.path)}
+                                    {dl.displayPath || filenameOf(dl.path)}
                                 </button>
                             </div>
 

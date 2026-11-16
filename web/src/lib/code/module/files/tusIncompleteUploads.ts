@@ -1,6 +1,7 @@
 import * as tus from "tus-js-client"
 import { uploadState, type PreviousTusUpload, type TusUploadOptions } from "$lib/code/stateObjects/subState/uploadState.svelte"
-import { decodeBase64, filenameFromPath } from "$lib/code/util/codeUtil.svelte"
+import { decodeBase64 } from "$lib/code/util/codeUtil.svelte"
+import { filenameOf } from "$lib/code/util/path"
 import { deleteUploadFileHandle, getUploadFileHandle } from "./uploadFileHandleStore"
 
 import { credentialsForUrl, joinContentUrl } from "$lib/code/util/contentUrl"
@@ -159,9 +160,9 @@ export function optionsFromPreviousUpload(previous: PreviousTusUpload, path: str
 
     return {
         targetPath: path,
-        targetFilename: filenameFromPath(path),
+        targetFilename: filenameOf(path),
         metadata,
-        displayPath: previous.metadata.relativePath || filenameFromPath(path),
+        displayPath: previous.metadata.relativePath || filenameOf(path),
         relativePath: previous.metadata.relativePath || undefined,
         snapshotBeforeUpload: false,
     }

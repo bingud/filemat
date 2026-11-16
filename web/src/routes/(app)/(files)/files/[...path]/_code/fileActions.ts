@@ -2,12 +2,12 @@ import { filePermissionMeta } from "$lib/code/data/permissions";
 import { moveMultipleFiles, moveFile, deleteFiles, deleteWarning, downloadFilesAsZip, downloadFiles, downloadFilesAsFolder, supportsDirectoryPicker } from "$lib/code/module/files/files"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte";
 import { confirmDialogState, downloadChooserState, folderSelectorState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-import { arrayRemove, filenameFromPath, formData, handleErr, handleException, isChildOf, isFolder, keysOf, parseJson, resolvePath, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { arrayRemove, formData, handleErr, handleException, isFolder, keysOf, parseJson, safeFetch, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
 import { toast } from "@jill64/svelte-toast";
 import { textFileViewerState } from "./textFileViewerState.svelte";
 import { getContentUrl } from "$lib/code/util/stateUtils";
 import { Validator } from "$lib/code/util/validation"
-import { childPath, isDirectChildOf } from "$lib/code/util/path"
+import { childPath, isDirectChildOf, filenameOf, isChildOf } from "$lib/code/util/path"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 
 
@@ -27,8 +27,8 @@ export async function option_moveSelectedFiles() {
         const selected = filesState.selectedEntries.singlePath
         if (!selected || !filesState.data.entries) return
 
-        const filename = filenameFromPath(selected)
-        moveFile(selected, resolvePath(newParentPath, filename))
+        const filename = filenameOf(selected)
+        moveFile(selected, childPath(newParentPath, filename))
     }
 }
 

@@ -3,7 +3,8 @@ import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import { getFileCategoryFromFilename } from "$lib/code/data/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { encodeUrlFilePath, filenameFromPath, filePageUrl } from "$lib/code/util/codeUtil.svelte"
+import { encodeUrlFilePath } from "$lib/code/util/codeUtil.svelte"
+import { filenameOf, filePageUrl } from "$lib/code/util/path"
 import { config, fullscreenPixelSizes, fullscreenPreviewSize, maxCachedPixelSize, noSwCacheParam, thumbnailCacheQuery } from "$lib/code/config/values"
 import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl"
 import { SvelteSet } from "svelte/reactivity"
@@ -420,7 +421,7 @@ export class VisibilityManager {
             // Skip entries that already have a registered image (real or headless)
             if (this.imageMap.has(entry.path)) continue
 
-            const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
+            const format = getFileCategoryFromFilename(entry.filename || filenameOf(entry.path))
             if (format !== `image` && format !== `video`) continue
 
             const endpoint = format === `image` ? `image-thumbnail` : `video-preview`

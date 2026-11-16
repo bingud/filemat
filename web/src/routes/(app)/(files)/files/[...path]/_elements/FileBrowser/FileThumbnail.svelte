@@ -4,7 +4,8 @@
     import { thumbnailCacheQuery } from "$lib/code/config/values";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
     import { fallbackQueueKey, findCachedThumbFallback, type VisibilityManager } from "../../_code/fileBrowserUtil.svelte";
-    import { encodeUrlFilePath, filenameFromPath, formatMediaDuration } from "$lib/code/util/codeUtil.svelte";
+    import { encodeUrlFilePath, formatMediaDuration } from "$lib/code/util/codeUtil.svelte";
+    import { filenameOf } from "$lib/code/util/path";
     import { contentCrossOrigin, joinContentUrl } from "$lib/code/util/contentUrl";
     import FileArrow from "$lib/component/icons/FileArrow.svelte";
     import FileIcon from "$lib/component/icons/FileIcon.svelte";
@@ -26,7 +27,7 @@
 
     const loadFilePreview = visibilityManager.getAction()
 
-    const format = getFileCategoryFromFilename(entry.filename || filenameFromPath(entry.path))
+    const format = getFileCategoryFromFilename(entry.filename || filenameOf(entry.path))
     const shareTokenParam = filesState.getIsShared() ? `&shareToken=${filesState.meta.shareToken}` : ``
     const cors = $derived(contentCrossOrigin())
     const imageSrc = $derived(`${joinContentUrl(`/api/v1/file/image-thumbnail`)}?size=${size}&path=${encodeUrlFilePath(entry.path)}&modified=${entry.modifiedDate}${shareTokenParam}${thumbnailCacheQuery(size)}`)

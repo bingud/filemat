@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { encodeUrlPathSegment, filePageUrl } from "./codeUtil.svelte"
+import { encodeUrlPathSegment, filePageUrl } from "./path"
 
 describe(`encodeUrlPathSegment`, () => {
     it(`encodes characters that would break a URL`, () => {

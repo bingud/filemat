@@ -4,8 +4,8 @@ import { uploadFolderWithTus } from "$lib/code/module/files/folderUpload"
 import { getFileData, getFileListFromCustomEndpoint, getFileLastModifiedDate, startTusUpload, uploadWithTus, type FileData, navigateToFilePath } from "$lib/code/module/files/files"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import { filesState } from "$lib/code/stateObjects/filesState.svelte"
-import { filenameFromPath, filePageUrl, formData, handleErr, resolvePath, safeFetch } from "$lib/code/util/codeUtil.svelte"
-import { childPath, isOtherDrive, isSamePath, parentPath } from "$lib/code/util/path"
+import { formData, handleErr, safeFetch } from "$lib/code/util/codeUtil.svelte"
+import { childPath, isOtherDrive, isSamePath, parentPath, filenameOf, filePageUrl } from "$lib/code/util/path"
 import { isDialogOpen, isUserInAnyInput } from "$lib/code/util/stateUtils"
 import { Validator } from "$lib/code/util/validation"
 import { toast } from "@jill64/svelte-toast"
@@ -104,7 +104,7 @@ export async function loadPageData(
         const type = meta.fileType
 
         if (!meta.filename) {
-            meta.filename = filenameFromPath(meta.path)
+            meta.filename = filenameOf(meta.path)
         }
 
         // A Windows path typed in the wrong case, or on a `subst` drive: switch the URL to the real path, which loads the file again under it.
@@ -235,7 +235,7 @@ export async function handleNewFile() {
         return
     }
 
-    const newPath = resolvePath(path, filename)
+    const newPath = childPath(path, filename)
 
     const response = await safeFetch(`/api/v1/file/create-blank`, {
         body: formData({path: newPath})

@@ -17,7 +17,7 @@
     import ChevronLeftIcon from "$lib/component/icons/ChevronLeftIcon.svelte";
     import ChevronRightIcon from "$lib/component/icons/ChevronRightIcon.svelte";
     import { auth } from "$lib/code/stateObjects/authState.svelte";
-    import { filePageUrl } from "$lib/code/util/codeUtil.svelte"
+    import { filePageUrl } from "$lib/code/util/path"
 
     function hide() { uiState.menuOpen = false }
 

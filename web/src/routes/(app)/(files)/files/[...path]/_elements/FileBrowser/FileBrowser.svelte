@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
-    import { filenameFromPath, appendFilename, resolvePath, isFolder, safeFetch, formData, handleException, handleErr, includesList } from "$lib/code/util/codeUtil.svelte"
-    import { childPath, parentPath } from "$lib/code/util/path"
+    import { isFolder, safeFetch, formData, handleException, handleErr, includesList } from "$lib/code/util/codeUtil.svelte"
+    import { childPath, parentPath, filenameOf } from "$lib/code/util/path"
     import { onMount } from "svelte"
     import { filesState } from "$lib/code/stateObjects/filesState.svelte"
     import UploadPanel from "../ui/UploadPanel.svelte"
@@ -279,7 +279,7 @@
         }
 
         const parent = parentPath(entry.path) ?? `/`
-        const newPath = resolvePath(parent, newFilename)
+        const newPath = childPath(parent, newFilename)
         await moveFile(entry.path, newPath)
     }
 
@@ -322,7 +322,7 @@
             moveMultipleFiles(entry.path, draggedPaths)
         } else {
             const movedPath = draggedPaths[0]
-            const newPath = resolvePath(entry.path, filenameFromPath(movedPath))
+            const newPath = childPath(entry.path, filenameOf(movedPath))
             moveFile(movedPath, newPath)
         }
     }

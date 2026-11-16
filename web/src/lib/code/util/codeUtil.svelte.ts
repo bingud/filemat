@@ -5,7 +5,7 @@ import { appState } from "../stateObjects/appState.svelte"
 import type { FileSortingMode, SortingDirection } from "../types/fileTypes"
 import { withAccessDeniedHint } from "./accessDenied"
 import { credentialsForUrl, isCrossOriginUrl } from "./contentUrl"
-import { childPath, filenameOf, isChildOf as isPathChildOf } from "./path"
+import { filenameOf } from "./path"
 
 type ObjectKey = string | number | symbol
 
@@ -33,7 +33,7 @@ export function isFile(meta: FileMetadata | null | undefined): boolean {
 
 export function addComputedValuesToFileMeta(meta: FileMetadata): FileMetadata {
     if (!meta) return meta
-    if (!meta.filename) meta.filename = filenameFromPath(meta.path)
+    if (!meta.filename) meta.filename = filenameOf(meta.path)
     if (meta.isSymlink == null) meta.isSymlink = isSymlink(meta)
     return meta
 }
@@ -132,13 +132,6 @@ export async function safeFetch(
         console.log(e)
         return { failed: true, exception: e } as any as SafeFetchResult
     }
-}
-
-/**
- * Appends a filename to a directory path
- */
-export function appendFilename(path: string, filename: string): string {
-    return childPath(path, filename)
 }
 
 /**
@@ -348,13 +341,6 @@ export function letterS(count: number): "s" | "" {
 }
 
 /**
- * Resolve a path from a parent and filename
- */
-export function resolvePath(inputFolder: string, inputFilename: string): string {
-    return childPath(inputFolder, inputFilename)
-}
-
-/**
  * Returns current unix timestamp
  */
 export function unixNow(): number { 
@@ -410,21 +396,6 @@ export function sortArrayByNumberDesc<T>(arr: T[], accessor: (obj: T) => number)
 export function includesAny<T>(list: T[], items: T[]): boolean {
     return list.some(item => items.includes(item));
 }
-
-/**
- * Returns filename from a file path
- */
-export function filenameFromPath(path: string): string {
-    return filenameOf(path)
-}
-
-/**
- * Checks if a file path is a descendant of a given parent directory
- */
-export function isChildOf(path: string, parent: string): boolean {
-    return isPathChildOf(path, parent)
-}
-
 
 /**
  * Returns the parent directory from a file or folder path. Also works on relative paths.
@@ -923,22 +894,6 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 
 export function encodeUrlFilePath(str: string): string {
     return str.split('/').map(encodeURIComponent).join('/')
-}
-
-/**
- * Encodes one file path segment for a page URL. `:` stays readable (`/files/C:/Users`).
- */
-export function encodeUrlPathSegment(segment: string): string {
-    return encodeURIComponent(segment).replace(/%3A/g, `:`)
-}
-
-/**
- * Returns the page URL of a file path, with every segment encoded (`/files/a%23b/c`)
- */
-export function filePageUrl(path: string, pagePath: string = `/files`): string {
-    const segments = path.split(`/`).filter(v => v !== ``)
-    if (segments.length === 0) return pagePath
-    return `${pagePath}/${segments.map(encodeUrlPathSegment).join(`/`)}`
 }
 
 export function calculateFilesSize(list: FileMetadata[]): number {

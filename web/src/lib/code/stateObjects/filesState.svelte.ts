@@ -1,8 +1,8 @@
 import { page } from "$app/state"
 import type { FullFileMetadata } from "$lib/code/auth/types"
 import { uiState } from "$lib/code/stateObjects/uiState.svelte"
-import { filenameFromPath, generateRandomNumber, isFolder, keysOf, removeString, sortFileMetadata } from "$lib/code/util/codeUtil.svelte"
-import { isDriveList, normalizePath, pathSegments } from "$lib/code/util/path"
+import { generateRandomNumber, isFolder, keysOf, removeString, sortFileMetadata } from "$lib/code/util/codeUtil.svelte"
+import { isDriveList, normalizePath, pathSegments, filenameOf } from "$lib/code/util/path"
 import { SvelteSet } from "svelte/reactivity"
 import { devicePixelRatio as windowDevicePixelRatio, innerHeight as windowInnerHeight, innerWidth as windowInnerWidth } from "svelte/reactivity/window"
 import { VisibilityManager } from "../../../routes/(app)/(files)/files/[...path]/_code/fileBrowserUtil.svelte"
@@ -527,7 +527,7 @@ class FileStateClass {
             return getFileCategoryFromFilename(filesState.meta.shareTopLevelFilename)
         }
 
-        const filename = filesState.data.fileMeta.filename || filenameFromPath(filesState.data.fileMeta.path)
+        const filename = filesState.data.fileMeta.filename || filenameOf(filesState.data.fileMeta.path)
         return getFileCategoryFromFilename(filename)
     })
 

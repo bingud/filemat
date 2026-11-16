@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { getUniqueFilename, isChildOf, parentFromPath, resolvePath } from "./codeUtil.svelte"
+import { getUniqueFilename, parentFromPath } from "./codeUtil.svelte"
+import { isChildOf, childPath } from "./path"
 
 // `deleteFiles` uses these to find the closest parent that still exists, so prefixes must match whole segments
 describe(`isChildOf`, () => {
@@ -33,14 +34,14 @@ describe(`parentFromPath`, () => {
     })
 })
 
-describe(`resolvePath`, () => {
+describe(`childPath`, () => {
     it(`joins with exactly one slash`, () => {
-        expect(resolvePath(`/a/`, `/b`)).toBe(`/a/b`)
-        expect(resolvePath(`/a`, `b`)).toBe(`/a/b`)
+        expect(childPath(`/a/`, `/b`)).toBe(`/a/b`)
+        expect(childPath(`/a`, `b`)).toBe(`/a/b`)
     })
 
     it(`does not double the slash at the root`, () => {
-        expect(resolvePath(`/`, `name`)).toBe(`/name`)
+        expect(childPath(`/`, `name`)).toBe(`/name`)
     })
 })
 

@@ -32,8 +32,8 @@ import { filesState } from "$lib/code/stateObjects/filesState.svelte"
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 import type { FileMetadata, FullFileMetadata } from "$lib/code/auth/types"
 import type { FileCategory } from "$lib/code/data/files"
-import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, filenameFromPath, forEachObject, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isChildOf, isFile, isFolder, isSymlink, filePageUrl, letterS, parseJson, resolvePath, Result, safeFetch, sortArrayAlphabetically, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
-import { childPath, isDirectChildOf, parentPath } from "$lib/code/util/path"
+import { addComputedValuesToFileMeta, arrayRemove, decodeBase64, entriesOf, forEachObject, formData, generateRandomNumber, generateRandomString, getUniqueFilename, handleErr, handleException, isFile, isFolder, isSymlink, letterS, parseJson, Result, safeFetch, sortArrayAlphabetically, unixNowMillis, valuesOf } from "$lib/code/util/codeUtil.svelte"
+import { childPath, isDirectChildOf, parentPath, filenameOf, isChildOf, filePageUrl } from "$lib/code/util/path"
 import { uploadState, type FileUpload, type PreviousTusUpload, type TusUploadOptions } from "$lib/code/stateObjects/subState/uploadState.svelte"
 import { downloadState, type FileDownload } from "$lib/code/stateObjects/subState/downloadState.svelte"
 import { toast } from "@jill64/svelte-toast"
@@ -610,7 +610,7 @@ function fileMatchesPreviousUpload(file: File, previous: PreviousTusUpload | nul
     if (expectedSize > 0 && file.size !== expectedSize) return false
     // keep-both remaps target path; prefer original name from relativePath when present.
     const originalName = previous?.metadata?.relativePath
-        ? filenameFromPath(previous.metadata.relativePath)
+        ? filenameOf(previous.metadata.relativePath)
         : null
     if (originalName && file.name !== originalName) return false
     return true
@@ -839,7 +839,7 @@ export async function resumeIncompleteUpload(fileUpload: FileUpload, preselected
     }
 
     if (!file) {
-        const picked = await pickFileForResume(filenameFromPath(fileUpload.path))
+        const picked = await pickFileForResume(filenameOf(fileUpload.path))
         if (!picked) return
         file = picked.file
         fileHandle = picked.handle
@@ -856,7 +856,7 @@ export async function resumeIncompleteUpload(fileUpload: FileUpload, preselected
     const options: TusUploadOptions = {
         ...fileUpload.options,
         targetPath: fileUpload.path,
-        targetFilename: filenameFromPath(fileUpload.path),
+        targetFilename: filenameOf(fileUpload.path),
         snapshotBeforeUpload: false,
         fileHandle,
     }
@@ -868,7 +868,7 @@ export async function resumeIncompleteUpload(fileUpload: FileUpload, preselected
         if (previous.urlStorageKey) void putUploadFileHandle(previous.urlStorageKey, fileHandle)
     }
 
-    beginTusUpload(file, options, fileUpload.path, filenameFromPath(fileUpload.path), previous)
+    beginTusUpload(file, options, fileUpload.path, filenameOf(fileUpload.path), previous)
 }
 
 async function forgetPersistedTusUpload(
@@ -1038,7 +1038,7 @@ export async function retryTusUpload(fileUpload: FileUpload) {
     const options: TusUploadOptions = {
         ...fileUpload.options,
         targetPath: fileUpload.path,
-        targetFilename: filenameFromPath(fileUpload.path),
+        targetFilename: filenameOf(fileUpload.path),
     }
 
     // Drop the spent Upload so we don't resume from its dead URL/source.
@@ -1102,7 +1102,7 @@ export async function deleteFiles(entries: FileMetadata[]) {
         handleErr({
             description: `Failed to delete files.`,
             notification: result.failed.length === 1
-                ? `Failed to delete "${filenameFromPath(first.path)}": ${first.message}`
+                ? `Failed to delete "${filenameOf(first.path)}": ${first.message}`
                 : `${result.failed.length} files were not deleted. ${first.message}`,
         })
     }
@@ -1324,7 +1324,7 @@ async function planPathForDownload(
     if (isRoot) {
         addSaveJob(ctx, currentJobId, {
             kind: `file`,
-            displayPath: filenameFromPath(path) || path,
+            displayPath: filenameOf(path) || path,
         })
     }
 
@@ -1341,7 +1341,7 @@ async function planPathForDownload(
         if (job) job.listing = false
         addSaveFile(ctx, path, {
             jobId: currentJobId,
-            displayPath: filenameFromPath(path),
+            displayPath: filenameOf(path),
             status: `failed`,
         })
         return
@@ -1360,20 +1360,20 @@ async function planFromMeta(
 ): Promise<void> {
     if (isFolderSaveAborted(ctx, jobId)) return
 
-    const name = meta.filename || filenameFromPath(meta.path)
+    const name = meta.filename || filenameOf(meta.path)
     if (!name) {
         const rootJobId = jobId ?? meta.path
         if (!jobId) {
             addSaveJob(ctx, rootJobId, {
                 kind: `file`,
-                displayPath: filenameFromPath(meta.path) || meta.path,
+                displayPath: filenameOf(meta.path) || meta.path,
             })
         }
         const job = downloadState.getJob(rootJobId)
         if (job) job.listing = false
         addSaveFile(ctx, meta.path, {
             jobId: rootJobId,
-            displayPath: filenameFromPath(meta.path),
+            displayPath: filenameOf(meta.path),
             status: `failed`,
         })
         return
@@ -1436,11 +1436,11 @@ function planKnownFile(
 ) {
     if (isFolderSaveAborted(ctx, jobId)) return
 
-    const name = meta.filename || filenameFromPath(meta.path)
+    const name = meta.filename || filenameOf(meta.path)
     if (!name) {
         addSaveFile(ctx, meta.path, {
             jobId,
-            displayPath: filenameFromPath(meta.path),
+            displayPath: filenameOf(meta.path),
             status: `failed`,
         })
         return
@@ -1876,7 +1876,7 @@ export async function moveMultipleFiles(newParentPath: string, paths: string[]) 
     const failedCount = paths.length - movedFiles.length
 
     movedFiles.forEach(oldPath => {
-        const newPath = resolvePath(newParentPath, filenameFromPath(oldPath))
+        const newPath = childPath(newParentPath, filenameOf(oldPath))
         console.log(`old `, oldPath, "new", newPath)
         updateFileListAfterFileMove(oldPath, newPath)
     })
@@ -1897,7 +1897,7 @@ function updateFileListAfterFileMove(oldPath: string, newPath: string) {
         if (entry) {
             // Check if file was moved in the same folder
             if (parentPath(oldPath) === parentPath(newPath)) {
-                entry.filename = filenameFromPath(newPath)
+                entry.filename = filenameOf(newPath)
                 entry.path = newPath
             } else {
                 arrayRemove(filesState.data.entries!, (v) => v.path === oldPath)

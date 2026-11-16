@@ -2,7 +2,8 @@ import { page } from "$app/state"
 import { untrack } from "svelte"
 import type { Role } from "../auth/types"
 import type { ulid, ValuesOf } from "../types/types"
-import { entriesOf, filePageUrl } from "../util/codeUtil.svelte"
+import { entriesOf } from "../util/codeUtil.svelte"
+import { filePageUrl } from "../util/path"
 import { auth } from "./authState.svelte"
 
 export const filePagePaths = {

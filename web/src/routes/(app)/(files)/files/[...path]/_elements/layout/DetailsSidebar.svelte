@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { filenameFromPath, formatBytes, formatUnixMillis, formatMediaDuration, formData, safeFetch, debounceFunction, handleErr, handleException, isFolder, explicitEffect, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
+    import { formatBytes, formatUnixMillis, formatMediaDuration, formData, safeFetch, debounceFunction, handleErr, handleException, isFolder, explicitEffect, isFile, calculateFilesSize } from "$lib/code/util/codeUtil.svelte";
+    import { filenameOf } from "$lib/code/util/path";
     import type { EntityPermission, FilePermission, FullFileMetadata, MiniUser } from "$lib/code/auth/types";
     import { onDestroy } from "svelte";
     import { filesState } from "$lib/code/stateObjects/filesState.svelte";
@@ -99,7 +100,7 @@
             return "/"
         }
 
-        return meta.filename || filenameFromPath(meta.path)
+        return meta.filename || filenameOf(meta.path)
     })
 
     /** Path for entity permission API: explicit selection, else current folder. */

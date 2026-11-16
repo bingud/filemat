@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { displayPath } from "$lib/code/util/path"
+    import { displayPath, filenameOf } from "$lib/code/util/path"
     import { cancelAllUploads, cancelUpload, pauseAllUploads, pauseUpload, resumeAllUploads, resumeUpload, retryTusUpload } from "$lib/code/module/files/files";
     import { uploadState, type FileUpload } from "$lib/code/stateObjects/subState/uploadState.svelte";
     import { confirmDialogState } from "$lib/code/stateObjects/subState/utilStates.svelte";
-    import { filenameFromPath, forEachObject, formatBytes } from "$lib/code/util/codeUtil.svelte";
+    import { forEachObject, formatBytes } from "$lib/code/util/codeUtil.svelte";
     import ChevronDownIcon from "$lib/component/icons/ChevronDownIcon.svelte";
     import CloseIcon from "$lib/component/icons/CloseIcon.svelte";
     import PauseIcon from "$lib/component/icons/PauseIcon.svelte";
@@ -65,7 +65,7 @@
 
         if (up.action === "canceling" || up.action === "pausing") return
 
-        const name = up.displayPath || filenameFromPath(up.actualPath || up.path)
+        const name = up.displayPath || filenameOf(up.actualPath || up.path)
         const confirmed = await confirmDialogState.show({
             title: `Cancel upload?`,
             message: `Cancel upload of "${name}"?`,
@@ -180,7 +180,7 @@
                             class="truncate max-w-full text-left hover:underline"
                             on:click={() => { showUploadPathDialog(up) }}
                         >
-                            {up.displayPath || filenameFromPath(up.actualPath || up.path)}
+                            {up.displayPath || filenameOf(up.actualPath || up.path)}
                         </button>
                     </div>
                     
