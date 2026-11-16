@@ -43,16 +43,29 @@ class State(env: Map<String, String?> = System.getenv(), dataFolderPath: Path = 
     }
 
     /**
-     * Real path of a folder chosen for Filemat's own working files. Rejects a root, the data folder and the folders that contain it,
-     * because Filemat's own moves and deletes there could reach everything inside, the database too.
+     * Real path of a folder chosen for Filemat's own working files. Rejects a root, the data folder, the folders that contain it
+     * and the folders inside it other than the two defaults, because Filemat's own moves and deletes there could reach
+     * everything inside, the database too.
      */
     fun realInternalFolder(folder: FilePath): Result<Path> {
         val real = resolvePath(folder, followSymlinks = true, allowNonExistent = true).valueOrNull?.path
             ?: return Result.reject("This folder can't be used.")
         if (PathPolicy.isRoot(real)) return Result.reject("A drive or the root folder can't be used.")
         if (app.dataFolderPath.startsWith(real)) return Result.reject("The ${Props.appName} data folder, or a folder that contains it, can't be used.")
+        // Its other folders hold the DLLs Filemat loads (`native`), the logs and the database backups
+        if (app.isInDataFolder(real) && PathPolicy.pathKey(real) !in defaultInternalFolderKeys()) {
+            return Result.reject("A folder inside the ${Props.appName} data folder can't be used, except its \"uploads\" and \"cache/thumbnails\" folders.")
+        }
         return Result.ok(real)
     }
+
+    /**
+     * The only folders inside the data folder that may hold working files: the Windows defaults (see [Props.defaultUploadFolderPath])
+     */
+    private fun defaultInternalFolderKeys(): Set<String> = setOf(
+        app.dataFolderPath.resolve("uploads"),
+        app.dataFolderPath.resolve("cache").resolve("thumbnails"),
+    ).map { PathPolicy.pathKey(it) }.toSet()
 
     /**
      * Returns whether a file is inside one of Filemat's own working folders (not the folder itself).

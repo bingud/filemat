@@ -63,6 +63,24 @@ class StateInternalFolderTest {
     }
 
     @Test
+    fun `only the default folders inside the data folder can hold working files`() {
+        for (name in listOf("native", "logs", "backups", "uploads/sub", "cache", "cache/other")) {
+            val result = state.realInternalFolder(org.filemat.server.module.file.model.FilePath.ofAlreadyNormalized(dataFolder.resolve(name)))
+            assertTrue(result.rejected, name)
+            assertEquals("A folder inside the Filemat data folder can't be used, except its \"uploads\" and \"cache/thumbnails\" folders.", result.error)
+        }
+        uploadFolder(dataFolder.resolve("native"))
+        assertNull(state.internalFolderPath(InternalFolder.UPLOADS))
+
+        for (name in listOf("uploads", "cache/thumbnails")) {
+            val folder = dataFolder.resolve(name)
+            assertEquals(folder, state.realInternalFolder(org.filemat.server.module.file.model.FilePath.ofAlreadyNormalized(folder)).value, name)
+        }
+        val outside = Files.createDirectory(tempDir.resolve("elsewhere")).toRealPath()
+        assertEquals(outside, state.realInternalFolder(org.filemat.server.module.file.model.FilePath.ofAlreadyNormalized(outside)).value)
+    }
+
+    @Test
     fun `a missing file is not internal`() {
         val uploads = uploadFolder(Files.createDirectory(dataFolder.resolve("uploads")))
 

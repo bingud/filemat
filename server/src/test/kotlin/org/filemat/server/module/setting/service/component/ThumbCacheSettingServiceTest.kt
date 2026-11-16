@@ -193,7 +193,8 @@ class ThumbCacheSettingServiceTest {
             assertRejected(result)
             assertEquals("Thumbnail cache folder: The Filemat data folder, or a folder that contains it, can't be used.", result.error)
         }
-        assertSuccess(set(dataFolder.resolve("cache")))
+        assertRejected(set(dataFolder.resolve("native")))
+        assertSuccess(set(dataFolder.resolve("cache").resolve("thumbnails")))
     }
 
     @Test

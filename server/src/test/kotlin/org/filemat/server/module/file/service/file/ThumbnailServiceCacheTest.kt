@@ -43,9 +43,15 @@ class ThumbnailServiceCacheTest {
     }
 
     @Test
-    fun `a cache folder in the data folder is used`() {
+    fun `the default cache folder in the data folder is used`() {
         // Not created: getCacheFile only builds the path
-        assertNotNull(cacheFileWith(dataFolder.resolve("cache")))
+        assertNotNull(cacheFileWith(dataFolder.resolve("cache").resolve("thumbnails")))
+    }
+
+    @Test
+    fun `another folder in the data folder is never the cache folder`() {
+        assertNull(cacheFileWith(dataFolder.resolve("cache")))
+        assertNull(cacheFileWith(dataFolder.resolve("native")))
     }
 
     @Test
