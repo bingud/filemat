@@ -2,8 +2,12 @@ package org.filemat.server.module.file.service
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import org.filemat.server.common.State
 import org.filemat.server.config.platform.Platform
+import org.filemat.server.config.platform.WindowsNative
 import org.filemat.server.config.platform.WindowsSystemFolders
 import org.filemat.server.config.properties.SensitiveFolderPaths
 import org.filemat.server.module.file.model.FilePath
@@ -12,9 +16,11 @@ import org.filemat.server.module.file.repository.FileVisibilityRepository
 import org.filemat.server.module.user.model.UserAction
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
+import java.nio.file.Path
 
 class FileVisibilityServiceTest {
 
@@ -89,5 +95,31 @@ class FileVisibilityServiceTest {
 
         assertEquals("This file is blocked.", service.isPathAllowed(FilePath.of("$hidden/file")))
         assertNull(service.isPathAllowed(FilePath.of("${root}srv/public")))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `network folders and network drives can't be exposed`() {
+        val repository = mockk<FileVisibilityRepository>(relaxed = true)
+        val state = State(env = emptyMap())
+        val service = FileVisibilityService(repository, mockk(relaxed = true), state, SensitiveFolderPaths(state))
+
+        mockkObject(WindowsNative)
+        try {
+            // Z: stands for a mapped network drive
+            every { WindowsNative.isOnNetworkDrive(any()) } answers { firstArg<Path>().root.toString().startsWith("Z:", ignoreCase = true) }
+            every { WindowsNative.substTarget(any()) } returns null
+
+            for (path in listOf("Z:/", "z:/data", "//host/share", "\\\\host\\share\\folder")) {
+                val result = service.insertPath(FileVisibility(path = path, isExposed = true, createdDate = 0), UserAction.ADD_FILE_VISIBILITY_CONFIGURATION)
+                assertTrue(result.rejected, path)
+                assertEquals("Network drives and network folders (\\\\server\\share) aren't supported: $path", result.error)
+            }
+            verify(exactly = 0) { repository.insertOrReplace(any(), any(), any()) }
+
+            assertTrue(service.insertPath(FileVisibility(path = root, isExposed = true, createdDate = 0), UserAction.ADD_FILE_VISIBILITY_CONFIGURATION).isSuccessful)
+        } finally {
+            unmockkObject(WindowsNative)
+        }
     }
 }

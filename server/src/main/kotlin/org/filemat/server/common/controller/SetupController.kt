@@ -147,6 +147,7 @@ class SetupController(
 
         val folderVisibilities = Json.decodeFromStringOrNull<List<PlainFolderVisibility>>(rawFolderVisibilities)
             ?: return@run bad("Configuration for folder visibility is invalid.", "validation")
+        folderVisibilities.firstNotNullOfOrNull { fileVisibilityService.networkPathProblem(it.path) }?.let { return@run bad(it, "validation") }
         val followSymlinks = rawFollowSymlinks.toBooleanStrictOrNull()
             ?: return@run bad("Option for following symbolic links must be true or false.", "validation")
 

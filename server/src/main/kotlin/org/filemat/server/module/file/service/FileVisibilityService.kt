@@ -2,6 +2,8 @@ package org.filemat.server.module.file.service
 
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
+import org.filemat.server.common.util.localDrivePath
+import org.filemat.server.common.util.reachesNetwork
 import org.filemat.server.common.util.unixNow
 import org.filemat.server.config.Props
 import org.filemat.server.config.platform.FileIdentity
@@ -105,9 +107,25 @@ class FileVisibilityService(
     }
 
     /**
+     * Windows: why [path] can't be exposed or hidden, when it is a network folder (`\\server\share`), on a network drive (`Z:`)
+     * or a link to one. Such paths are never served, so the setting would do nothing. Null for every other path.
+     */
+    fun networkPathProblem(path: String): String? {
+        if (!Platform.isWindows) return null
+        val problem = "Network drives and network folders (\\\\server\\share) aren't supported: $path"
+        if (path.replace('\\', '/').startsWith("//")) return problem
+        val parsed = runCatching { PathPolicy.parse(path) }.getOrNull() ?: return null
+        if (!parsed.isAbsolute) return null
+        val isNetwork = localDrivePath(FilePath.ofAlreadyNormalized(parsed)) == null || reachesNetwork(parsed)
+        return if (isNetwork) problem else null
+    }
+
+    /**
      * Create new folder visibility configurations
      */
     fun insertPaths(paths: List<IFileVisibility>, userAction: UserAction): Result<Unit> {
+        paths.firstNotNullOfOrNull { networkPathProblem(it.path) }?.let { return Result.reject(it) }
+
         try {
             // Check if any path already exists
             paths.forEach {
