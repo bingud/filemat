@@ -248,7 +248,7 @@ class LoginService(
 
     private fun createLoginTokenCookie(token: String): Cookie {
         return Cookie(Props.Cookies.tempLoginToken, token).apply {
-            secure = true
+            secure = isCurrentRequestHttps()
             isHttpOnly = true
             path = "/"
             maxAge = tempTokenExpirationSeconds

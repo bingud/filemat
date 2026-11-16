@@ -4,6 +4,7 @@ import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.servlet.http.Cookie
 import org.filemat.server.config.Props
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.repository.AuthTokenRepository
@@ -13,9 +14,13 @@ import org.filemat.server.testutil.assertError
 import org.filemat.server.testutil.assertNotFound
 import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.springframework.mock.web.MockHttpServletRequest
+import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.context.request.ServletRequestAttributes
 
 class AuthTokenServiceTest {
 
@@ -135,5 +140,29 @@ class AuthTokenServiceTest {
         assertEquals("/", cookie.path)
         assertEquals(3600, cookie.maxAge)
         assertEquals("Lax", cookie.getAttribute("SameSite"))
+    }
+
+    private fun cookieFor(request: MockHttpServletRequest): Cookie {
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(request))
+        try {
+            return service.createCookie("abc", 3600)
+        } finally {
+            RequestContextHolder.resetRequestAttributes()
+        }
+    }
+
+    @Test
+    fun `auth cookie is not Secure over plain http, so a login from another device on the network works`() {
+        val cookie = cookieFor(MockHttpServletRequest())
+
+        assertFalse(cookie.secure)
+        assertTrue(cookie.isHttpOnly)
+    }
+
+    @Test
+    fun `auth cookie is Secure over https, also behind a proxy`() {
+        assertTrue(cookieFor(MockHttpServletRequest().apply { isSecure = true }).secure)
+        assertTrue(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "https") }).secure)
+        assertFalse(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "http") }).secure)
     }
 }

@@ -71,7 +71,7 @@ class AuthController(
         @RequestParam("ticket", required = false) ticket: String?,
     ): ResponseEntity<String> {
         val origin = CorsOriginRegistry.spaOriginFrom(request)
-        val secure = request.isSecure || request.getHeader("X-Forwarded-Proto")?.equals("https", ignoreCase = true) == true
+        val secure = request.isHttps()
         if (!secure) {
             return bad("Content session cookies require HTTPS.")
         }

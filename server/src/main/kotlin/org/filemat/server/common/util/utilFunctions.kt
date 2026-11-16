@@ -1,5 +1,7 @@
 package org.filemat.server.common.util
 
+import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.context.request.ServletRequestAttributes
 import com.github.f4b6a3.ulid.Ulid
 import com.github.f4b6a3.ulid.UlidCreator
 import jakarta.servlet.http.HttpServletRequest
@@ -138,6 +140,23 @@ fun HttpServletRequest.getPrincipal() = this.getAttribute("auth") as Principal?
 fun HttpServletRequest.realIp(): String {
     val header: String? = this.getHeader("X-Forwarded-For")
     return header ?: this.remoteAddr
+}
+
+/**
+ * Returns whether the browser reached the server over HTTPS, directly or through a proxy that says so
+ */
+fun HttpServletRequest.isHttps(): Boolean {
+    if (isSecure) return true
+    return getHeader("X-Forwarded-Proto")?.substringBefore(',')?.trim().equals("https", ignoreCase = true)
+}
+
+/**
+ * Whether cookies set now get `Secure`. A browser drops a `Secure` cookie that arrives over plain HTTP,
+ * so a login at `http://<pc-ip>:8080` would silently fail. Without a request, cookies are `Secure`.
+ */
+fun isCurrentRequestHttps(): Boolean {
+    val request = (RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes)?.request ?: return true
+    return request.isHttps()
 }
 
 

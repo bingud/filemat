@@ -2,6 +2,7 @@ package org.filemat.server.module.auth.service
 
 import com.github.f4b6a3.ulid.Ulid
 import jakarta.servlet.http.Cookie
+import org.filemat.server.common.util.isCurrentRequestHttps
 import kotlinx.coroutines.*
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
@@ -116,7 +117,7 @@ class AuthTokenService(private val logService: LogService, private val authToken
 
     fun createCookie(token: String, maxAge: Long): Cookie {
         return Cookie(Props.Cookies.authToken, token).apply {
-            secure = true
+            secure = isCurrentRequestHttps()
             isHttpOnly = true
             path = "/"
             this.maxAge = maxAge.toInt()
