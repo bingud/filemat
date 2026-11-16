@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 @RestController
 @RequestMapping("/v1/file")
@@ -46,6 +47,9 @@ class FileUtilController(
      * so the browser's own cache is allowed to keep them for a while. The `modified` query
      * parameter changes the URL when the file changes.
      */
+    // A preview that failed for a file the operating system denies the server's account
+    private val unreadableMessage = "Missing permission to read file."
+
     private fun HttpHeaders.applyLargeThumbnailCacheControl(targetSize: Int) {
         if (targetSize <= ThumbnailService.MAX_CACHED_THUMBNAIL_SIZE) return
         set(HttpHeaders.CACHE_CONTROL, "private, max-age=86400")
@@ -77,6 +81,7 @@ class FileUtilController(
         }
 
         val meta = fileService.getMetadata(principal, canonicalPath, true, ignorePermissions = ignorePermissions).let {
+            if (it.isForbidden) return streamForbidden(it.error)
             if (it.isNotSuccessful) return streamInternal(it.errorOrNull ?: "Failed to get file metadata to generate a preview.")
             it.value
         }
@@ -117,6 +122,7 @@ class FileUtilController(
         } catch (e: FfmpegBusyException) {
             return streamUnavailable(FfmpegBusyException.MESSAGE)
         } catch (e: Exception) {
+            if (!Files.isReadable(canonicalPath.path)) return streamForbidden(unreadableMessage)
             RateLimitedLog.ifDue("file_util_image_thumbnail") {
                 logService.error(
                     type = LogType.SYSTEM,
@@ -210,6 +216,7 @@ class FileUtilController(
         } catch (e: FfmpegBusyException) {
             return streamUnavailable(FfmpegBusyException.MESSAGE)
         } catch (e: Exception) {
+            if (!Files.isReadable(canonicalPath.path)) return streamForbidden(unreadableMessage)
             RateLimitedLog.ifDue("file_util_video_preview") {
                 logService.error(
                     type = LogType.SYSTEM,

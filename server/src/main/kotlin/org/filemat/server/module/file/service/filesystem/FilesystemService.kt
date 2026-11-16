@@ -162,6 +162,18 @@ class FilesystemService(
     }
 
     /**
+     * Returns whether [getMetadata] has nothing for a path because the operating system denies access to it
+     */
+    fun isAccessDenied(path: FilePath): Boolean = try {
+        Files.readAttributes(path.path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        false
+    } catch (e: AccessDeniedException) {
+        true
+    } catch (e: Exception) {
+        false
+    }
+
+    /**
      * The Windows drive list, shown as a read-only folder
      */
     private fun virtualRootMetadata() = FileMetadata(

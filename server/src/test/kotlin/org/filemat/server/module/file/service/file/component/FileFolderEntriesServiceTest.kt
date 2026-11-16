@@ -7,6 +7,8 @@ import org.filemat.server.module.file.model.FileType
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.testutil.assertSuccess
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.filemat.server.testutil.withReadDenied
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
@@ -68,5 +70,20 @@ class FileFolderEntriesServiceTest {
 
         assertSuccess(result)
         assertEquals(listOf(kept.toString()), result.value.map { it.path })
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a folder that Windows denies the account says so when listed`(@TempDir dir: Path) {
+        val folder = Files.createDirectory(dir.toRealPath().resolve("denied"))
+        Files.writeString(folder.resolve("a.txt"), "x")
+        every { fileService.isAllowedToAccessFile(any(), any(), any()) } returns Result.ok()
+
+        val result = withReadDenied(folder) {
+            service.getFolderEntries(user = null, canonicalPath = FilePath.ofAlreadyNormalized(folder), ignorePermissions = true)
+        }
+
+        assertTrue(result.isForbidden)
+        assertEquals("Missing permission to open this folder.", result.error)
     }
 }

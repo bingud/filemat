@@ -31,6 +31,7 @@ abstract class AController {
         streamResponse(ErrorResponse("Too many requests. Try again in ${formatMillisecondsToReadableTime(millisUntilRefill)}", "ratelimit").serialize(), 429)
 
     fun streamBad(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 400)
+    fun streamForbidden(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 403)
     fun streamNotFound() = ResponseEntity.status(404).build<StreamingResponseBody>()
     fun streamUnauthenticated(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 401)
     fun streamInternal(body: String, error: String = "") = streamResponse(ErrorResponse(body, error).serialize(), 500)

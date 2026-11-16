@@ -32,6 +32,7 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
+import java.nio.file.AccessDeniedException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -91,6 +92,8 @@ class FileContentService(
                 .get()
 
             return bounded.toResult()
+        } catch (e: AccessDeniedException) {
+            return Result.forbidden("Missing permission to read file.")
         } catch (e: Exception) {
             return Result.error("Failed to stream file.")
         } finally {
@@ -291,23 +294,24 @@ class FileContentService(
             // 4. Write File to Zip
             try {
                 val entryName = zipEntryName(currentZipPath) ?: currentSource.fileName.invariantSeparatorsPathString
-                zip.putNextEntry(ZipEntry(entryName))
-                try {
-                    val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
+                val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)
 
-                    // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
-                    Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
+                // Opened before the entry is added, so a file that can't be read is left out instead of added empty.
+                // Use standard InputStream. getFileContent is not needed as we did manual perm checks above
+                Files.newInputStream(currentSource, *inputOptions).use { inputStream ->
+                    zip.putNextEntry(ZipEntry(entryName))
+                    try {
                         val buffer = ByteArray(8192)
                         var bytesRead: Int
                         val buffered = BufferedInputStream(inputStream)
                         while (buffered.read(buffer).also { bytesRead = it } != -1) {
                             zip.write(buffer, 0, bytesRead)
                         }
-                    }
-                } finally {
-                    try {
-                        zip.closeEntry()
-                    } catch (_: Exception) {
+                    } finally {
+                        try {
+                            zip.closeEntry()
+                        } catch (_: Exception) {
+                        }
                     }
                 }
                 zip.flush()
@@ -351,6 +355,7 @@ class FileContentService(
             } catch (e: Exception) {
                 // Read-only files stay read-only (Q38)
                 FileErrors.failureOf(e, canonicalPath.path)?.let { return FileErrors.resultOf(it) }
+                if (e is AccessDeniedException) return Result.forbidden("Missing permission to edit file.")
                 return Result.error("An error occurred while saving file.")
             }
 

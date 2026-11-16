@@ -91,7 +91,7 @@ class FileMetadataService(
 
         try {
             // Get file metadata, change its path to be relative
-            val rawMetadata: FileMetadata = filesystemService.getMetadata(canonicalPath) ?: return Result.notFound()
+            val rawMetadata: FileMetadata = filesystemService.getMetadata(canonicalPath) ?: return missing(canonicalPath)
 
             val metadata = rawMetadata.copy(path = rawPath.pathString)
             val type = metadata.fileType
@@ -153,8 +153,14 @@ class FileMetadataService(
         }
 
         return filesystemService.getMetadata(displayPath(rawPath, canonicalPath))?.toResult()
-            ?: Result.notFound()
+            ?: missing(canonicalPath)
     }
+
+    /**
+     * Result for a file without metadata: denied by the operating system, or not found
+     */
+    private fun <T> missing(canonicalPath: FilePath): Result<T> =
+        if (filesystemService.isAccessDenied(canonicalPath)) Result.forbidden("Missing permission to read file.") else Result.notFound()
 
     /**
      * Returns file metadata along with applied file permissions. Authenticates user
@@ -186,7 +192,7 @@ class FileMetadataService(
         }
 
         val meta = filesystemService.getMetadata(displayPath(rawPath, canonicalPath))
-            ?: return Result.notFound()
+            ?: return missing(canonicalPath)
 
         val permissions: Set<FilePermission> = user?.let { fileService.getActualFilePermissions(user, canonicalPath) } ?: setOf(FilePermission.READ)
         val isSaved = if (user != null) savedFileService.isSaved(user.userId, meta.path) else null

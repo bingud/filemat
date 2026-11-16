@@ -153,6 +153,7 @@ class FileController(
                 if (it.hasError) return internal(it.error)
                 if (it.notFound) return bad("This file does not exist.")
                 if (it.isConflict) return conflict(it.error, "in-use")
+                if (it.isForbidden) return forbidden(it.error)
                 if (it.rejected) return bad(it.error)
 
                 val result = it.value
@@ -226,6 +227,7 @@ class FileController(
                 ignorePermissions = shareToken != null,
             ).let {
                 if (it.notFound) return@tryWithLock notFound()
+                if (it.isForbidden) return@tryWithLock forbidden(it.error)
                 if (it.hasError) return@tryWithLock internal(it.error, "")
                 if (it.isNotSuccessful) return@tryWithLock bad(it.error, "")
                 return@tryWithLock ok(it.value.modifiedDate.toString())
@@ -378,6 +380,7 @@ class FileController(
             ignorePermissions = shareToken != null
         ).let {
             if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.isForbidden) return streamForbidden(it.error)
             if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             BufferedInputStream(it.value)

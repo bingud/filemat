@@ -85,6 +85,7 @@ class FolderController(private val fileService: FileService, private val state: 
             )
         }
 
+        if (result.isForbidden) return forbidden(result.error)
         if (result.rejected) return bad(result.error, "rejected")
         if (result.hasError) return bad(result.error, "")
         if (result.notFound) return notFound()
@@ -128,6 +129,7 @@ class FolderController(private val fileService: FileService, private val state: 
 
         if (result.hasError) return internal(result.error)
         if (result.notFound) return notFound()
+        if (result.isForbidden) return forbidden(result.error)
         if (result.rejected) return bad(result.error, "no-permission")
         if (result.isNotSuccessful) return bad(result.error)
 

@@ -14,6 +14,7 @@ import org.filemat.server.testutil.directoryLinkOrSkip
 import org.filemat.server.testutil.setReadOnly
 import org.filemat.server.testutil.symlinkOrSkip
 import org.filemat.server.testutil.withFileLocked
+import org.filemat.server.testutil.withReadDenied
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -346,6 +347,41 @@ class FileContentServiceTest {
                 )
             }
         }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a file that Windows denies the account says so when read or edited`() {
+        state.app.followSymlinks = false
+        val file = Files.writeString(tempDir.resolve("denied.txt"), "secret")
+        allow(file)
+
+        withReadDenied(file) {
+            val read = service.getFileContent(user, FilePath.ofAlreadyNormalized(file))
+            assertTrue(read.isForbidden)
+            assertEquals("Missing permission to read file.", read.error)
+
+            val edited = edit(file, "new")
+            assertTrue(edited.isForbidden)
+            assertEquals("Missing permission to edit file.", edited.error)
+        }
+
+        assertEquals("secret", Files.readString(file))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a zip leaves out a file that Windows denies the account`() {
+        state.app.followSymlinks = false
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        val file = Files.writeString(folder.resolve("a.txt"), "hello")
+        val denied = Files.writeString(folder.resolve("denied.txt"), "secret")
+        listOf(folder, file, denied).forEach { allow(it) }
+
+        val entries = withReadDenied(denied) { zipEntries(folder) }
+
+        assertEquals("hello", entries["folder/a.txt"])
+        assertFalse(entries.keys.any { it.endsWith("denied.txt") }, "${entries.keys}")
     }
 
     private fun allow(path: Path) {

@@ -9,6 +9,7 @@ data class Result<T>(
     private val rejectInput: String? = null,
     private val inputException: Exception? = null,
     private val inputConflict: Boolean = false,
+    private val inputForbidden: Boolean = false,
 ) {
 
     companion object {
@@ -22,6 +23,12 @@ data class Result<T>(
          * A rejection caused by the current state of a file, like a file in use. Callers that don't check [isConflict] see a rejection.
          */
         fun <T> conflict(message: String): Result<T> = Result(rejectInput = message, inputConflict = true)
+
+        /**
+         * A rejection because the operating system denies the account that runs the server access to a file (403).
+         * Callers that don't check [isForbidden] see a rejection.
+         */
+        fun <T> forbidden(message: String): Result<T> = Result(rejectInput = message, inputForbidden = true)
 
 //        fun <T> error(message: String, source: String? = null): Result<T> = Result(inputError = message, source = source)
 //        fun <T> notFound(source: String? = null): Result<T> = Result(inputNotFound = true, source = source)
@@ -45,6 +52,9 @@ data class Result<T>(
 
     val isConflict
         get() = inputConflict
+
+    val isForbidden
+        get() = inputForbidden
 
     val value: T
         get() {

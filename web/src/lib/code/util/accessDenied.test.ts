@@ -9,7 +9,7 @@ function useStyle(pathStyle: `posix` | `windows`) {
 describe(`withAccessDeniedHint`, () => {
     afterEach(() => useStyle(`posix`))
 
-    it.each([`Missing permission to delete file.`, `Missing permission to move file.`, `Missing permission to copy file.`, `Missing permission to replace file.`, `Missing permission to open this folder.`])(
+    it.each([`Missing permission to delete file.`, `Missing permission to move file.`, `Missing permission to copy file.`, `Missing permission to replace file.`, `Missing permission to read file.`, `Missing permission to edit file.`, `Missing permission to open this folder.`])(
         `adds the hint to "%s" on Windows`,
         (message) => {
             useStyle(`windows`)

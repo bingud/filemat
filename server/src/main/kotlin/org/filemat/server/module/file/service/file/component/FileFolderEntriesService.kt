@@ -22,6 +22,7 @@ import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.savedFile.SavedFileService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
+import java.nio.file.AccessDeniedException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -170,7 +171,7 @@ class FileFolderEntriesService(
 
             // Check folder permissions
             if (!Files.isExecutable(canonicalPath.path)) {
-                return Result.error("Missing permission to open this folder.")
+                return Result.forbidden("Missing permission to open this folder.")
             }
 
             // List entries
@@ -183,7 +184,7 @@ class FileFolderEntriesService(
 
             return files.toResult()
         } catch (e: AccessDeniedException) {
-            return Result.error("Access to folder was denied.")
+            return Result.forbidden("Missing permission to open this folder.")
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,

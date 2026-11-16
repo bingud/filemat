@@ -1,6 +1,6 @@
 import { appState } from "$lib/code/stateObjects/appState.svelte"
 
-const accessDenied = /Missing permission to (open this folder|(copy|move|delete|replace) file)\.?$/
+const accessDenied = /Missing permission to (open this folder|(copy|move|delete|replace|read|edit) file)\.?$/
 
 const hint = `Windows refused access: the account that runs Filemat may need access to it (icacls), or Controlled folder access may block it. See docs/windows.md.`
 
