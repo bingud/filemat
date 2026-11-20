@@ -2,23 +2,22 @@
 
 The one list of open work on the `windows-support` branch. Delete an item when it's done. User docs are in [windows.md](windows.md). The old plan, test plan, changelog, code review and guides were removed on 2026-11-15; they are in git history (`git log -- docs/windows-test-plan.md` and so on) if a detail is ever needed.
 
-Where it stands: all code is done and tested on Windows (server 917 tests, 51 of them skipped without symlink rights; web 93). The fixes of 2026-11-16 (F2 to F5, R2, I3, I4) are not committed and not yet run on Linux or on a built zip. No PR yet. A release is blocked by W38 and W35 (section 3).
+Where it stands: all code is done and tested. Server: 921 tests pass on Windows and on Linux (2026-11-20). On Windows, the symlink tests skip without Developer Mode, and the FFmpeg tests skip without `FM_FFMPEG_PATH`. Web: 93. The fixes of 2026-11-16 (F2 to F5, R2, I3, I4) are committed and pushed. The F6 fix is committed (2026-11-20), not pushed. Every blocking check passed on the `1.64.0-beta` x64 zip: W29, W35 (after F6) and W38. W47 passed except for F7, which is accepted. No PR yet, and nothing blocks the release.
 
 ## 1. Bugs to fix
 
-None open. F2, F3, F4, F5 and R2 were fixed on 2026-11-16; their manual reruns are W21, W15, W40, W38, W47 and W9 in section 3. **Accepted as is:** a start with `FM_DATA_DIR` on a network drive writes `native\<jna>.dll` there before it refuses (harmless, the user's own drive).
+None open. **F7, accepted for this release** (decided 2026-11-20, in the known limitations below): copying a file or folder the OS account can't read answers `"1 items could not be copied."`, and deleting such a folder answers `"1 items could not be deleted."`, without the permission message and the Windows hint.
+
+F2, F3, F4, F5 and R2 were fixed on 2026-11-16. F6 was fixed on 2026-11-20: online-only OneDrive files were downloaded, because Windows disguises placeholders for Java, so it sees no reparse point. `LinkInspector` now also checks the recall attributes. **Accepted as is:** a start with `FM_DATA_DIR` on a network drive writes `native\<jna>.dll` there before it refuses (harmless, the user's own drive). F3 works: a killed launcher stops Java within about 10 s.
 
 ## 2. Reruns after fixes
 
-- [ ] **W29** (F1 is fixed, not rerun on a build). Elevated `mklink /D C:\FmTest\links\network-link \\192.0.2.1\share` (or the fixtures script with Developer Mode on). Run `for /l %i in (1,0,2) do @netstat -an | findstr 192.0.2.1` while listing `C:\FmTest\links`, once with `FM_FOLLOW_SYMBOLIC_LINKS` unset and once `true`. Expected: the listing loads at once, `network-link` can't be opened, no connection to `192.0.2.1:445`.
+None open. W29 passed on 2026-11-20, with links followed and not. **When rerunning it, keep the link path off every command line.** Windows checks paths in a new process's arguments: starting `curl.exe` with `C:\FmTest\links\network-link` as an argument connects to the share even with Filemat stopped. Send requests from a browser or with `Invoke-WebRequest`.
 ## 3. Manual checks for a person
 
 Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\x64\ffmpeg\ffmpeg.exe` creates `C:\FmTest` (Developer Mode on first for the symlinks). Accounts: `admin` (setup) and `tester` (normal user). Delete fixtures with `cmd /c rmdir /s /q C:\FmTest`.
 
-**Blocking:**
-
-- [ ] **W38 Network shares.** Mostly passed; F4 is fixed, rerun on a build. Admin PowerShell: `New-SmbShare -Name FmShare -Path C:\FmTest -FullAccess $env:USERNAME`; normal `cmd`: `net use Z: \\localhost\FmShare`. Exposing `Z:\` and `\\localhost\FmShare` must be refused; `FM_DATA_DIR=Z:\fm` must stop without writing anything there. Clean up: `net use Z: /delete`, `Remove-SmbShare FmShare`.
-- [ ] **W35 OneDrive** (blocking, decided 2026-11-15). In a OneDrive folder make `FmTest-OD` with a large image, a video, a PDF and a text file; **Free up space** so they're cloud-only. Expose it. Listing, searching and opening each file's details panel leave the cloud icons (no download), no thumbnails show. Opening the image downloads it and shows it.
+**Blocking:** none left. W35 (OneDrive) passed on 2026-11-20 after F6, on the API calls the web makes. To repeat it: put a large image, a video, a PDF and a text file in `OneDrive\FmTest-OD`, and run `attrib +U -P` on them (the same as **Free up space**). Expose the folder. Listing, searching and each file's details panel leave them online-only, and thumbnails are refused. Opening the image downloads only that file. In PowerShell, attribute `0x400000` set means a file is still online-only. W38 (network shares) passed on 2026-11-19.
 
 **Not blocking** (a failure or skip goes in the release notes):
 
@@ -33,7 +32,6 @@ Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\
 - [ ] **W40 rest.** During a 2 GB upload, close the console window, and end the scheduled task (F3 is fixed: Java must stop with it). Restart: the upload resumes. (Ctrl+C and a forced kill passed.)
 - [ ] **W43 Docker Desktop.** Run the Linux image with `-v C:\FmTest:/data`, expose `/data`, give `tester` access to `/data/tree/file.txt`. Restart the container, then `wsl --shutdown` and start Docker again: the permission is still there, or the log has the mount warning.
 - [ ] **W44 ARM64.** On an ARM64 Windows 11 PC the arm64 zip starts and a video thumbnail shows. If not run, release notes say ARM64 is untested.
-- [ ] **W47** F5 is fixed, rerun: `icacls <file> /deny <you>:(R)` on a file and a folder; read, list, edit, copy, delete give a clear permission message with the Windows hint, and a zip of the folder above leaves the file out. Remove the deny after.
 - [ ] **L8 `.heic`.** A real `.heic` from a phone gets a thumbnail on Linux (`.avif` passed).
 - [ ] **L16** Firefox private window (no service workers): the app loads within about 3 s.
 - [ ] **L17 Folder download to Windows.** On Linux: `mkdir clash && cd clash && touch 'a:b' 'a?b' CON.txt 'name.' 'NUL .txt' A.txt a.txt`. From Windows, download `clash` as a folder (not zip) with Chrome or Edge: seven files arrive (`a_b`, `a_b (1)`, `_CON.txt`, `name_`, `_NUL .txt`, `A.txt`, `a (1).txt`), nothing overwritten.
@@ -43,10 +41,10 @@ Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\
 
 ## 4. Merge and release
 
-- [ ] Force-push `windows-support` (history was squashed to 4 commits on 2026-10-31; `windows-support-backup` has the old one), open a PR to `main`.
-- [ ] Build: `.\gradlew.bat windowsDist '-PreleaseVersion=<v>'` (quote it in PowerShell; JDK 21 for Gradle).
-- [ ] On the new x64 zip, Defender on: smoke-test start, setup, the main flows, and every blocking check above. After any new dependency, rerun the jlink module check: `jdeps --print-module-deps --ignore-missing-deps --multi-release 21 --class-path "BOOT-INF/lib/*" BOOT-INF/classes` on the unpacked JAR; every module must be in `jreModules` in `server/build.gradle.kts`.
-- [ ] Run the server tests on Linux (copy the repo into the WSL home without `build`, `node_modules`, `.gradle`, `.git`; `./gradlew test -PskipWeb`). Not in `/mnt/c`, it would share `server/build`.
+- [ ] Push `windows-support` and open a PR to `main`.
+- [ ] Build: `.\gradlew.bat windowsDist '-PreleaseVersion=<v>'` (quote it in PowerShell; JDK 21 for Gradle). Both `1.64.0-beta` zips in `server\build\dist` were built on 2026-11-20 from the F6 commit. Build again only if the code changes.
+- [ ] On the final x64 zip, with Defender on, smoke-test by hand: start, setup and the main flows in a browser. The blocking checks passed on the 2026-11-20 build. The jlink module check passed on 2026-11-19. After any new dependency, rerun it: `jdeps --print-module-deps --ignore-missing-deps --multi-release 21 --class-path "BOOT-INF/lib/*" BOOT-INF/classes` on the unpacked JAR; every module must be in `jreModules` in `server/build.gradle.kts`.
+- [ ] Server tests on Linux: passed on 2026-11-20 with the F6 fix. Rerun after any later code change: copy the repo into the WSL home without `build`, `node_modules`, `.gradle` and `.git`, then `./gradlew test -PskipWeb`. Not in `/mnt/c`, because it would share `server/build`.
 - [ ] Release notes: beta, unsigned (SmartScreen warns), ARM64 untested unless W44 ran, the known limitations below, and any non-blocking check that failed or wasn't run.
 - [ ] Upload both zips by hand (no CI).
 
@@ -60,6 +58,7 @@ Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\
 - Saved files follow the path: a move in Explorer doesn't update them (a move in Filemat does).
 - Deleting a video while its thumbnail is made can say "File is in use" (FFmpeg opens it without share-delete; no fix without breaking MP4 seeking).
 - A replace that fails because the target can't be deleted says "File is in use" (Windows gives the same error).
+- Copying a file or folder that the account running Filemat can't read, or deleting such a folder, says only "1 items could not be copied/deleted.", without saying it's a permission problem (F7).
 - A folder's case sensitivity changed while Filemat runs can leave a narrower permission inside it unapplied until the next start.
 - A junction can't be moved to another drive. Copying a folder skips junctions inside it ("Links to folders were not copied.").
 - Search reads names in a folder of OneDrive online-only files (not content).

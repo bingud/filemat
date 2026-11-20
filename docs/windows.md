@@ -1,6 +1,6 @@
 # Filemat on Windows (beta)
 
-Windows support is a beta. It is tested on Windows 10 22H2 x64. Windows 11 should work. The ARM64 zip is built the same way but not tested. Windows Server is not tested.
+Windows support is a beta. It is tested on Windows 10 22H2 and Windows 11, both x64. The ARM64 zip is built the same way but not tested. Windows Server is not tested.
 
 ## Running the portable zip
 
