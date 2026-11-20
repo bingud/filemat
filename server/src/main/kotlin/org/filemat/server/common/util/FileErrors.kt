@@ -20,14 +20,14 @@ enum class FileFailure(val message: String, val detail: String) {
     READ_ONLY("File is read-only.", "Read-only files were left in place."),
     FOLDER_LINK("Links to folders cannot be copied.", "Links to folders were not copied."),
 
-    // Windows only lets an administrator make a new folder case-sensitive
+    // Making a new folder case-sensitive needs "Delete subfolders and files" on it, which Full control has and Modify doesn't
     CASE_SENSITIVE_COPY(
-        "Copying a case-sensitive folder needs ${Props.appName} to run as administrator.",
-        "Copying a case-sensitive folder needs ${Props.appName} to run as administrator.",
+        "Copying a case-sensitive folder needs the account running ${Props.appName} to have Full control of the destination folder.",
+        "Copying a case-sensitive folder needs the account running ${Props.appName} to have Full control of the destination folder.",
     ),
     CASE_SENSITIVE_MOVE(
-        "Moving a case-sensitive folder to another drive, or only part of it, needs ${Props.appName} to run as administrator.",
-        "Moving a case-sensitive folder to another drive, or only part of it, needs ${Props.appName} to run as administrator.",
+        "Moving a case-sensitive folder to another drive, or only part of it, needs the account running ${Props.appName} to have Full control of the destination folder.",
+        "Moving a case-sensitive folder to another drive, or only part of it, needs the account running ${Props.appName} to have Full control of the destination folder.",
     ),
     CASE_SENSITIVE_UNSUPPORTED(
         "A case-sensitive folder can't be created at the destination.",
@@ -166,7 +166,7 @@ object FileErrors {
 
     /**
      * Why a case-sensitive folder could not be made for a copy, or for a move ([isMove]) that rebuilds folders.
-     * An elevated process may set the flag, so there the destination is the reason (FAT, or Windows without WSL).
+     * An elevated process has Full control through Administrators, so there the destination is the reason (FAT, or Windows without WSL).
      */
     fun caseSensitiveFailure(isMove: Boolean): FileFailure = when {
         WindowsNative.isElevatedOrSystem() == true -> FileFailure.CASE_SENSITIVE_UNSUPPORTED

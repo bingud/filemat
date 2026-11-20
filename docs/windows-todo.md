@@ -2,17 +2,20 @@
 
 The one list of open work on the `windows-support` branch. Delete an item when it's done. User docs are in [windows.md](windows.md). The old plan, test plan, changelog, code review and guides were removed on 2026-11-15; they are in git history (`git log -- docs/windows-test-plan.md` and so on) if a detail is ever needed.
 
-Where it stands: all code is done and tested. Server: 921 tests pass on Windows and on Linux (2026-11-20). On Windows, the symlink tests skip without Developer Mode, and the FFmpeg tests skip without `FM_FFMPEG_PATH`. Web: 93. The fixes of 2026-11-16 (F2 to F5, R2, I3, I4) are committed and pushed. The F6 fix is committed (2026-11-20), not pushed. Every blocking check passed on the `1.64.0-beta` x64 zip: W29, W35 (after F6) and W38. W47 passed except for F7, which is accepted. No PR yet, and nothing blocks the release.
+Where it stands: all code is done and tested. Server: 921 tests pass on Windows and on Linux (2026-11-20). On Windows, the symlink tests skip without Developer Mode, and the FFmpeg tests skip without `FM_FFMPEG_PATH`. Web: 93. The fixes of 2026-11-16 (F2 to F5, R2, I3, I4) are committed and pushed. Of the 2026-11-20 fixes, F6 is committed and F8 is not yet; neither is pushed. Every blocking check passed on the `1.64.0-beta` x64 zip: W29, W35 (after F6) and W38. W5, W21 (after F8) and W47 passed too, W47 except for F7, which is accepted. No PR yet, and nothing blocks the release.
 
 ## 1. Bugs to fix
 
-None open. **F7, accepted for this release** (decided 2026-11-20, in the known limitations below): copying a file or folder the OS account can't read answers `"1 items could not be copied."`, and deleting such a folder answers `"1 items could not be deleted."`, without the permission message and the Windows hint.
+None open. **F8 fixed on 2026-11-20:** making a new folder case-sensitive doesn't need an administrator but **Delete subfolders and files** on it, which Full control has and Modify doesn't (an administrator always has Full control, which is why elevated runs passed). The refusal now says the account running Filemat needs Full control of the destination folder, and the known limitation in both docs says so.
+
+**F7, accepted for this release** (decided 2026-11-20, in the known limitations below): copying a file or folder the OS account can't read answers `"1 items could not be copied."`, and deleting such a folder answers `"1 items could not be deleted."`, without the permission message and the Windows hint.
 
 F2, F3, F4, F5 and R2 were fixed on 2026-11-16. F6 was fixed on 2026-11-20: online-only OneDrive files were downloaded, because Windows disguises placeholders for Java, so it sees no reparse point. `LinkInspector` now also checks the recall attributes. **Accepted as is:** a start with `FM_DATA_DIR` on a network drive writes `native\<jna>.dll` there before it refuses (harmless, the user's own drive). F3 works: a killed launcher stops Java within about 10 s.
 
 ## 2. Reruns after fixes
 
 None open. W29 passed on 2026-11-20, with links followed and not. **When rerunning it, keep the link path off every command line.** Windows checks paths in a new process's arguments: starting `curl.exe` with `C:\FmTest\links\network-link` as an argument connects to the share even with Filemat stopped. Send requests from a browser or with `Invoke-WebRequest`.
+
 ## 3. Manual checks for a person
 
 Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\x64\ffmpeg\ffmpeg.exe` creates `C:\FmTest` (Developer Mode on first for the symlinks). Accounts: `admin` (setup) and `tester` (normal user). Delete fixtures with `cmd /c rmdir /s /q C:\FmTest`.
@@ -22,11 +25,9 @@ Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\
 **Not blocking** (a failure or skip goes in the release notes):
 
 - [ ] **W2 Download path.** Download the zip with Edge from a web server or cloud drive (gets the internet mark). Without unblocking, unzip and run: note what SmartScreen shows. Then unblock, unzip, run.
-- [ ] **W5 default folder.** Rename `%LOCALAPPDATA%\Filemat` away, start: it's created with `setup-code.txt`, setup works. Put yours back.
 - [ ] **W9 Firewall.** R2 is fixed. First start shows the prompt for `java.exe`; allow Private only. From a phone, `http://<pc-ip>:8080` opens and you can sign in. Restart: no second prompt.
-- [ ] **W14** A Windows account with a non-ASCII name (`Jürgen`), default data folder: starts, setup works, an upload finishes.
+- [ ] **W14** A Windows account with a non-ASCII name (`Jürgen`), default data folder: starts, setup works, an upload finishes. Mostly covered on 2026-11-20: with `LOCALAPPDATA`, `TEMP` and `TMP` under a `Jürgen` folder, it started, created the data folder, set up and finished a tus upload. Left: a real account, whose user profile and home folder have the name too.
 - [ ] **W15 Task Scheduler.** F3 is fixed. Create the task as `windows.md` says, "At log on" and "At startup". After a sign-out or reboot Filemat runs without a window and serves. Ending the task stops it.
-- [ ] **W21** F2 is fixed, rerun as a normal user: move `C:\FmTest\cs` to `tree\cs-moved`; it keeps `a.txt` "lower" and `A.txt` "UPPER", and `fsutil file queryCaseSensitiveInfo` says enabled. Copy it to `cs-copy`: refused with "Copying a case-sensitive folder needs Filemat to run as administrator.", nothing left behind.
 - [ ] **W31 rest.** With `C:\` exposed: `C:\Windows` and `C:\Users` can't be deleted or moved. With the default data folder, `%LOCALAPPDATA%\Filemat` can't be opened. (Left on purpose, it's a real PC.)
 - [ ] **W39 Controlled folder access.** Turn it on, expose `Documents`: an upload is refused with a permission error. Allow `jre\bin\java.exe` as `windows.md` says: it works. Turn it off again.
 - [ ] **W40 rest.** During a 2 GB upload, close the console window, and end the scheduled task (F3 is fixed: Java must stop with it). Restart: the upload resumes. (Ctrl+C and a forced kill passed.)
@@ -37,21 +38,21 @@ Test files: `utilities\windows-test-fixtures.ps1 -Ffmpeg .\server\build\windows\
 - [ ] **L17 Folder download to Windows.** On Linux: `mkdir clash && cd clash && touch 'a:b' 'a?b' CON.txt 'name.' 'NUL .txt' A.txt a.txt`. From Windows, download `clash` as a folder (not zip) with Chrome or Edge: seven files arrive (`a_b`, `a_b (1)`, `_CON.txt`, `name_`, `_NUL .txt`, `A.txt`, `a (1).txt`), nothing overwritten.
 - [ ] **L18 Docker image.** Build and run as `docker-deployment.md` says, with a bind mount: setup, an upload and a video thumbnail work.
 - [ ] Not yet possible: **W42**'s `.bak` part and **L3** (backup pruning) need a build with a migration newer than V9. Run with the first release that adds one.
-- [ ] Not looked at by eye (low risk): video playing in the page (W16, W24, L8), the path-only note in the details panel (W30), the FFmpeg card in Settings → System (W13).
+- [ ] Not looked at by eye (low risk): video playing in the page (W16, W24, L8), the path-only note in the details panel (W30, needs a FAT32 or exFAT drive), the FFmpeg card in Settings → System (W13).
 
 ## 4. Merge and release
 
 - [ ] Push `windows-support` and open a PR to `main`.
-- [ ] Build: `.\gradlew.bat windowsDist '-PreleaseVersion=<v>'` (quote it in PowerShell; JDK 21 for Gradle). Both `1.64.0-beta` zips in `server\build\dist` were built on 2026-11-20 from the F6 commit. Build again only if the code changes.
-- [ ] On the final x64 zip, with Defender on, smoke-test by hand: start, setup and the main flows in a browser. The blocking checks passed on the 2026-11-20 build. The jlink module check passed on 2026-11-19. After any new dependency, rerun it: `jdeps --print-module-deps --ignore-missing-deps --multi-release 21 --class-path "BOOT-INF/lib/*" BOOT-INF/classes` on the unpacked JAR; every module must be in `jreModules` in `server/build.gradle.kts`.
-- [ ] Server tests on Linux: passed on 2026-11-20 with the F6 fix. Rerun after any later code change: copy the repo into the WSL home without `build`, `node_modules`, `.gradle` and `.git`, then `./gradlew test -PskipWeb`. Not in `/mnt/c`, because it would share `server/build`.
+- [ ] Build: `.\gradlew.bat windowsDist '-PreleaseVersion=<v>'` (quote it in PowerShell; JDK 21 for Gradle). Both `1.64.0-beta` zips in `server\build\dist` were built on 2026-11-20 with the F8 fix. Build again only if the code changes.
+- [ ] On the final x64 zip, with Defender on, smoke-test by hand: start, setup and the main flows in a browser. The blocking checks passed on the F6 build of 2026-11-20; the F8 build after it only changes a message, and W21 passed on it. The jlink module check passed on 2026-11-19. After any new dependency, rerun it: `jdeps --print-module-deps --ignore-missing-deps --multi-release 21 --class-path "BOOT-INF/lib/*" BOOT-INF/classes` on the unpacked JAR; every module must be in `jreModules` in `server/build.gradle.kts`.
+- [ ] Server tests on Linux: passed on 2026-11-20 with the F8 fix. Rerun after any later code change: copy the repo into the WSL home without `build`, `node_modules`, `.gradle` and `.git`, then `./gradlew test -PskipWeb`. Not in `/mnt/c`, because it would share `server/build`.
 - [ ] Release notes: beta, unsigned (SmartScreen warns), ARM64 untested unless W44 ran, the known limitations below, and any non-blocking check that failed or wasn't run.
 - [ ] Upload both zips by hand (no CI).
 
 ### Known limitations (for the release notes)
 
 - Network shares and mapped drives aren't supported.
-- Copying a case-sensitive folder, or moving it to another drive, needs Filemat to run as administrator (Windows only lets an administrator make a new folder case-sensitive). A move on the same drive works.
+- Copying a case-sensitive folder, or moving it to another drive, needs the account running Filemat to have Full control of the destination folder (Modify isn't enough to make the new folder case-sensitive). A move on the same drive works.
 - FAT32/exFAT drives: permissions follow the path only. A changed drive letter un-exposes its folders.
 - Delete is permanent (no Recycle Bin). No service mode or installer.
 - A database can't move between Linux and Windows (it stores full paths).

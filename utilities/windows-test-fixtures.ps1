@@ -55,7 +55,9 @@ foreach ($n in @("a_b", "a%b", "aXb", "foo", "foobar")) { Add-Folder "$prefix\$n
 $case = Add-Folder "$Root\case"
 Add-Text "$case\Report.txt" "one file, any case"
 $cs = Add-Folder "$Root\cs"
-if (Invoke-Cmd "fsutil file setCaseSensitiveInfo `"$cs`" enable" "Case-sensitive folder") {
+# Making a folder case-sensitive needs Full control of it. Folders under C:\ give users only Modify.
+if ((Invoke-Cmd "icacls `"$cs`" /grant `"%USERDOMAIN%\%USERNAME%:(OI)(CI)F`"" "Full control of the case-sensitive folder") -and
+    (Invoke-Cmd "fsutil file setCaseSensitiveInfo `"$cs`" enable" "Case-sensitive folder")) {
     Add-Text "$cs\a.txt" "lower"
     Add-Text "$cs\A.txt" "UPPER"
 }

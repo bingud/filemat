@@ -293,7 +293,7 @@ class FilesystemMoveService(
 
     /**
      * Windows: moves a folder that has a case-sensitive folder in it with one rename, which keeps the flag.
-     * Moving it file by file makes new folders, and only an administrator may make those case-sensitive.
+     * Moving it file by file makes new folders, and making those case-sensitive needs Full control of the destination.
      * Returns null when one rename can't do it (another drive, a file the user may not move, a file in use),
      * and the folder is then moved file by file.
      */

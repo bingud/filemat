@@ -284,7 +284,7 @@ class FilesystemCopyServiceTest {
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    fun `copying a case-sensitive folder without administrator rights says why it failed`() {
+    fun `copying a case-sensitive folder without Full control of the destination says why it failed`() {
         val source = Files.createDirectory(tempDir.resolve("src"))
         val caseSensitive = Files.createDirectory(source.resolve("cs"))
         val lower = Files.writeString(caseSensitive.resolve("a.txt"), "lower")
@@ -293,7 +293,7 @@ class FilesystemCopyServiceTest {
 
         mockkObject(WindowsNative)
         val result = try {
-            // As a normal user: the folder has the flag, and no new folder can get it
+            // As a normal user without Full control of the destination: the folder has the flag, and no new folder can get it
             every { WindowsNative.isCaseSensitiveDirectory(any()) } answers { firstArg<Path>().fileName == caseSensitive.fileName }
             every { WindowsNative.setCaseSensitiveDirectory(any()) } returns null
             every { WindowsNative.isElevatedOrSystem() } returns false
@@ -303,7 +303,7 @@ class FilesystemCopyServiceTest {
         }
 
         assertTrue(result.rejected)
-        assertEquals("1 items could not be copied. Copying a case-sensitive folder needs Filemat to run as administrator.", result.error)
+        assertEquals("1 items could not be copied. Copying a case-sensitive folder needs the account running Filemat to have Full control of the destination folder.", result.error)
         assertFalse(Files.exists(dest))
         assertEquals("lower", Files.readString(lower))
     }

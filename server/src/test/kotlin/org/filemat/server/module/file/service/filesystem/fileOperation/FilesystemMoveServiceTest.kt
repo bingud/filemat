@@ -387,7 +387,7 @@ class FilesystemMoveServiceTest {
     }
 
     /**
-     * Runs [block] as a normal user sees it: [caseSensitive] has the flag, and no new folder can get it
+     * Runs [block] as a normal user without Full control of the destination sees it: [caseSensitive] has the flag, and no new folder can get it
      */
     private fun withoutCaseSensitiveRights(caseSensitive: Path, block: () -> Unit) {
         mockkObject(WindowsNative)
@@ -403,7 +403,7 @@ class FilesystemMoveServiceTest {
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    fun `a case-sensitive folder is moved on the same drive with one rename, without administrator rights`() {
+    fun `a case-sensitive folder is moved on the same drive with one rename, without Full control of the destination`() {
         val source = Files.createDirectory(tempDir.resolve("src"))
         val caseSensitive = Files.createDirectory(source.resolve("cs"))
         val file = Files.writeString(caseSensitive.resolve("a.txt"), "lower")
@@ -424,7 +424,7 @@ class FilesystemMoveServiceTest {
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    fun `a case-sensitive folder that can't be renamed as a whole says that it needs administrator rights`() {
+    fun `a case-sensitive folder that can't be renamed as a whole says that it needs Full control of the destination`() {
         val source = Files.createDirectory(tempDir.resolve("src"))
         val caseSensitive = Files.createDirectory(source.resolve("cs"))
         val file = Files.writeString(caseSensitive.resolve("a.txt"), "lower")
@@ -439,7 +439,7 @@ class FilesystemMoveServiceTest {
         }
 
         assertRejected(result!!)
-        assertTrue(result!!.error!!.endsWith("Moving a case-sensitive folder to another drive, or only part of it, needs Filemat to run as administrator."), result!!.error)
+        assertTrue(result!!.error!!.endsWith("Moving a case-sensitive folder to another drive, or only part of it, needs the account running Filemat to have Full control of the destination folder."), result!!.error)
         assertTrue(Files.exists(file))
         assertTrue(Files.exists(denied))
         assertFalse(Files.exists(dest.resolve("cs")))
