@@ -2,7 +2,7 @@
 
 The one list of open work on the `windows-support` branch. Delete an item when it's done. User docs are in [windows.md](windows.md). The old plan, test plan, changelog, code review and guides were removed on 2026-11-15; they are in git history (`git log -- docs/windows-test-plan.md` and so on) if a detail is ever needed.
 
-Where it stands: all code is done and tested. Server: 921 tests pass on Windows and on Linux (2026-11-20). On Windows, the symlink tests skip without Developer Mode, and the FFmpeg tests skip without `FM_FFMPEG_PATH`. Web: 93. The fixes of 2026-11-16 (F2 to F5, R2, I3, I4) are committed and pushed. Of the 2026-11-20 fixes, F6 is committed and F8 is not yet; neither is pushed. Every blocking check passed on the `1.64.0-beta` x64 zip: W29, W35 (after F6) and W38. W5, W21 (after F8) and W47 passed too, W47 except for F7, which is accepted. No PR yet, and nothing blocks the release.
+Where it stands: all code is done and tested. Server: 921 tests pass on Windows and on Linux (2026-11-20). On Windows, the symlink tests skip without Developer Mode, and the FFmpeg tests skip without `FM_FFMPEG_PATH`. Web: 93. The fixes of 2026-11-16 (F2 to F5, R2, I3, I4) are committed and pushed. The fixes of 2026-11-20 (F6, F8) are committed, not pushed. Every blocking check passed on the `1.64.0-beta` x64 zip: W29, W35 (after F6) and W38. W5, W21 (after F8) and W47 passed too, W47 except for F7, which is accepted. No PR yet, and nothing blocks the release.
 
 ## 1. Bugs to fix
 
