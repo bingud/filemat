@@ -15,6 +15,9 @@ object LinkInspector {
     // IsReparseTagNameSurrogate: the tag points to another file or folder
     private const val nameSurrogateBit = 0x20000000
 
+    // FILE_ATTRIBUTE_RECALL_ON_OPEN and FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: the data is not on this PC, and reading it downloads it
+    private const val recallAttributes = 0x00040000 or 0x00400000
+
     enum class Kind {
         /** Not a reparse point, or not on Windows */
         NONE,
@@ -29,7 +32,10 @@ object LinkInspector {
      */
     fun kindOf(path: Path, attributes: BasicFileAttributes): Kind {
         if (attributes.isSymbolicLink) return Kind.LINK
-        if (!Platform.isWindows || !attributes.isOther) return Kind.NONE
+        if (!Platform.isWindows) return Kind.NONE
+        // Windows disguises OneDrive placeholders as ordinary files for programs that don't opt in, Java among them:
+        // no reparse point and no tag. The recall attributes stay visible.
+        if (!attributes.isOther) return if (!attributes.isDirectory && isRecalledOnAccess(path)) Kind.DATA else Kind.NONE
         // A folder whose tag can't be read counts as a link, so walks never descend into an unknown target
         val tag = WindowsNative.reparseTag(path) ?: return if (attributes.isDirectory) Kind.LINK else Kind.NONE
         return when {
@@ -73,5 +79,14 @@ object LinkInspector {
 
     private fun readAttributes(path: Path): BasicFileAttributes? = runCatching {
         Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+    }.getOrNull()
+
+    private fun isRecalledOnAccess(path: Path): Boolean = ((windowsAttributes(path) ?: 0) and recallAttributes) != 0
+
+    /**
+     * Windows: the file attributes of [path] (`FILE_ATTRIBUTE_*`), read without following links or reading the file's data
+     */
+    internal fun windowsAttributes(path: Path): Int? = runCatching {
+        Files.getAttribute(path, "dos:attributes", LinkOption.NOFOLLOW_LINKS) as Int
     }.getOrNull()
 }

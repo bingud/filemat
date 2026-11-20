@@ -86,15 +86,63 @@ class LinkInspectorTest {
     fun `a OneDrive placeholder is a file with data`() {
         val oneDrive = System.getenv("OneDrive")?.let { Path.of(it) }
         assumeTrue(oneDrive != null && Files.isDirectory(oneDrive), "No OneDrive folder")
-        // Files that are only online are reparse points; downloaded files are ordinary files
+        // Files that are only online have FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS. Java sees them as ordinary files,
+        // not as reparse points (`isOther`), because Windows disguises placeholders for it.
         val placeholder = oneDrive!!.listDirectoryEntries().firstOrNull {
-            val attributes = Files.readAttributes(it, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-            !attributes.isDirectory && attributes.isOther
+            !Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS) && ((LinkInspector.windowsAttributes(it) ?: 0) and 0x00400000) != 0
         }
         assumeTrue(placeholder != null, "No online-only file at the top of the OneDrive folder")
 
         assertEquals(LinkInspector.Kind.DATA, LinkInspector.kindOf(placeholder!!))
         assertTrue(LinkInspector.isRegularFile(placeholder))
+        assertTrue(LinkInspector.isNotStoredLocally(placeholder))
+        // Reading the kind doesn't download the file
+        assertTrue(((LinkInspector.windowsAttributes(placeholder) ?: 0) and 0x00400000) != 0)
+    }
+
+    private fun kindOfOrdinary(windowsAttributes: Int?, isDirectory: Boolean, isWindows: Boolean = true): LinkInspector.Kind {
+        // How Java sees a disguised OneDrive placeholder: no reparse point, so not "other"
+        val attributes = mockk<BasicFileAttributes> {
+            every { this@mockk.isDirectory } returns isDirectory
+            every { isOther } returns false
+            every { isSymbolicLink } returns false
+            every { isRegularFile } returns !isDirectory
+        }
+        mockkObject(Platform, LinkInspector)
+        try {
+            every { Platform.isWindows } returns isWindows
+            every { LinkInspector.windowsAttributes(any()) } returns windowsAttributes
+            return LinkInspector.kindOf(Path.of("entry"), attributes)
+        } finally {
+            unmockkObject(Platform, LinkInspector)
+        }
+    }
+
+    @Test
+    fun `a disguised OneDrive placeholder is a file with data`() {
+        // Seen by java.exe for an online-only file: ARCHIVE, UNPINNED, RECALL_ON_DATA_ACCESS
+        assertEquals(LinkInspector.Kind.DATA, kindOfOrdinary(0x500020, isDirectory = false))
+        // RECALL_ON_OPEN
+        assertEquals(LinkInspector.Kind.DATA, kindOfOrdinary(0x40020, isDirectory = false))
+    }
+
+    @Test
+    fun `an ordinary file without recall attributes has no data elsewhere`() {
+        assertEquals(LinkInspector.Kind.NONE, kindOfOrdinary(0x20, isDirectory = false))
+        // A locally available OneDrive file: PINNED
+        assertEquals(LinkInspector.Kind.NONE, kindOfOrdinary(0x80020, isDirectory = false))
+        assertEquals(LinkInspector.Kind.NONE, kindOfOrdinary(null, isDirectory = false))
+    }
+
+    @Test
+    fun `a folder with recall attributes stays a folder`() {
+        // An online-only OneDrive folder lists its names from the cloud, and is walked like any folder
+        assertEquals(LinkInspector.Kind.NONE, kindOfOrdinary(0x440010, isDirectory = true))
+    }
+
+    @Test
+    fun `recall attributes only count on Windows`() {
+        assertEquals(LinkInspector.Kind.NONE, kindOfOrdinary(0x500020, isDirectory = false, isWindows = false))
     }
 
     private fun kindWithTag(tag: Int?, isDirectory: Boolean): LinkInspector.Kind {
