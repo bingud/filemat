@@ -87,6 +87,33 @@ class AdminUserController(
         }
     }
 
+    /**
+     * Requires 2FA for a user, or stops requiring it, without resetting the 2FA they have
+     */
+    @PostMapping("/set-totp-mfa-required")
+    fun adminSetUserMfaRequiredMapping(
+        request: HttpServletRequest,
+        @RequestParam("userId") rawUserId: String,
+        @RequestParam("required") rawRequired: String,
+    ): ResponseEntity<String> {
+        val admin = request.getPrincipal()!!
+        val meta = RequestMeta(
+            targetId = parseUlidOrNull(rawUserId) ?: return bad("Invalid user ID"),
+            initiatorId = admin.userId,
+            ip = request.realIp(),
+            action = UserAction.SET_TOTP_MFA_REQUIRED
+        )
+        val required = rawRequired.toBooleanStrictOrNull()
+            ?: return bad("Option for requiring 2FA must be true or false.")
+
+        adminUserService.setTotpMfaRequired(meta, required).let {
+            if (it.notFound) return bad("This user was not found.")
+            if (it.rejected) return bad(it.error)
+            if (it.hasError) return internal(it.error)
+            return ok("ok")
+        }
+    }
+
     @PostMapping("/change-password")
     fun adminChangeUserPasswordMapping(
         request: HttpServletRequest,

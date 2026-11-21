@@ -104,4 +104,19 @@ class RotatingLogFileTest {
         assertTrue(text.contains(String("out ünïcödé".toByteArray(charset), charset)), text)
         assertTrue(text.contains("err"), text)
     }
+
+    @Test
+    fun `the log file gets the output when the console fails`() {
+        val file = RotatingLogFile(folder)
+        val brokenConsole = object : java.io.OutputStream() {
+            override fun write(b: Int) = throw java.io.IOException("no console")
+        }
+        val stream = java.io.PrintStream(ConsoleLogFile.TeeOutputStream(brokenConsole, file), true, Charsets.UTF_8)
+
+        stream.println("still logged")
+        stream.flush()
+        file.close()
+
+        assertTrue(read("filemat.log").contains("still logged"))
+    }
 }

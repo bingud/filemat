@@ -11,6 +11,7 @@ import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FileType
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.file.ThumbnailService
+import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -41,6 +42,8 @@ class FileUtilControllerThumbnailTest {
     // Larger than ThumbnailService.MAX_CACHED_THUMBNAIL_SIZE, so a success carries a long cache header
     private val size = (ThumbnailService.MAX_CACHED_THUMBNAIL_SIZE + 1).toString()
 
+    private fun signedIn() = MockHttpServletRequest().apply { setAttribute("auth", testPrincipal()) }
+
     private fun setUp(): String {
         val file = Files.writeString(tempDir.resolve("photo.png"), "x")
         val canonical = FilePath.ofAlreadyNormalized(file)
@@ -60,7 +63,7 @@ class FileUtilControllerThumbnailTest {
         val path = setUp()
         every { thumbnailService.streamImageThumbnail(any(), any(), any(), any(), any(), any()) } throws Exception("decode failed")
 
-        val response = controller.imageThumbnailMapping(MockHttpServletRequest(), path, size, null)
+        val response = controller.imageThumbnailMapping(signedIn(), path, size, null)
 
         assertEquals(500, response.statusCode.value())
         assertNull(response.headers.cacheControl)
@@ -73,7 +76,7 @@ class FileUtilControllerThumbnailTest {
         val path = setUp()
         every { thumbnailService.streamVideoPreview(any(), any(), any(), any(), any()) } throws Exception("no frame")
 
-        val response = controller.videoPreviewMapping(MockHttpServletRequest(), path, size, null)
+        val response = controller.videoPreviewMapping(signedIn(), path, size, null)
 
         assertEquals(500, response.statusCode.value())
         assertNull(response.headers.cacheControl)
@@ -87,7 +90,7 @@ class FileUtilControllerThumbnailTest {
             (args[5] as OutputStream).write(byteArrayOf(1, 2, 3))
         }
 
-        val response = controller.imageThumbnailMapping(MockHttpServletRequest(), path, size, null)
+        val response = controller.imageThumbnailMapping(signedIn(), path, size, null)
 
         assertEquals(200, response.statusCode.value())
         assertEquals(MediaType.IMAGE_JPEG, response.headers.contentType)

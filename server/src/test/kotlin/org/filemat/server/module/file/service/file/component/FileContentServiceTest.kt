@@ -17,10 +17,12 @@ import org.filemat.server.testutil.withFileLocked
 import org.filemat.server.testutil.withReadDenied
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTimeoutPreemptively
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.function.ThrowingSupplier
 import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
@@ -98,6 +100,24 @@ class FileContentServiceTest {
         val entries = zipEntries(folder)
 
         assertEquals("hello", entries["folder/a.txt"])
+    }
+
+    @Test
+    @EnabledOnOs(OS.LINUX)
+    fun `a named pipe is left out of a zip instead of blocking it`() {
+        state.app.followSymlinks = false
+        val folder = Files.createDirectory(tempDir.resolve("folder"))
+        val file = Files.writeString(folder.resolve("a.txt"), "hello")
+        val fifo = folder.resolve("pipe")
+        assertEquals(0, ProcessBuilder("mkfifo", fifo.toString()).start().waitFor())
+        allow(folder)
+        allow(file)
+        allow(fifo)
+
+        val entries: Map<String, String> = assertTimeoutPreemptively(java.time.Duration.ofSeconds(10), ThrowingSupplier { zipEntries(folder) })
+
+        assertEquals("hello", entries["folder/a.txt"])
+        assertFalse(entries.containsKey("folder/pipe"))
     }
 
     @Test

@@ -292,6 +292,11 @@ class FileContentService(
             }
 
             // 4. Write File to Zip
+            // Only files with data. Opening a named pipe (FIFO) would wait for a writer forever, holding the locks.
+            if (!LinkInspector.isRegularFile(realPath)) {
+                logZipSkip(currentSource, "not a regular file")
+                return@tryWithLock failedCount + 1
+            }
             try {
                 val entryName = zipEntryName(currentZipPath) ?: currentSource.fileName.invariantSeparatorsPathString
                 val inputOptions = if (copyResolvedSymlinks) emptyArray() else arrayOf(LinkOption.NOFOLLOW_LINKS)

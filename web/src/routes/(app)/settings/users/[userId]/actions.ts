@@ -259,6 +259,47 @@ export async function resetUserMfa(user: typeof state.user) {
     }
 }
 
+/**
+ * Requires 2FA for a user, or stops requiring it. The 2FA the user has stays as it is.
+ */
+export async function setUserMfaRequired(user: typeof state.user, required: boolean) {
+    if (!user || state.settingMfaRequired) return
+
+    const confirmation = await confirmDialogState.show({
+        title: required ? `Require 2FA?` : `Stop requiring 2FA?`,
+        message: required
+            ? `'${user.username}' will have to set up 2FA at their next login if they don't have it, and keep it.`
+            : `'${user.username}' will be able to turn 2FA off. Their current 2FA stays on.`
+    })
+    if (!confirmation) return
+
+    state.settingMfaRequired = true
+    try {
+        const response = await safeFetch(`/api/v1/admin/user/set-totp-mfa-required`, {
+            body: formData({ userId: user.userId, required })
+        })
+        if (response.failed) {
+            handleException(`Exception when changing whether 2FA is required.`, `Failed to change whether 2FA is required.`, response.exception)
+            return
+        }
+
+        const json = response.json()
+        if (response.code.failed) {
+            handleErr({
+                description: `Failed to change whether 2FA is required.`,
+                notification: json.message || `Failed to change whether 2FA is required.`,
+                isServerDown: response.code.serverDown
+            })
+            return
+        }
+
+        toast.success(required ? `2FA is now required.` : `2FA is no longer required.`)
+        user.mfaTotpRequired = required
+    } finally {
+        state.settingMfaRequired = false
+    }
+}
+
 export async function deleteUser() {
     if (state.deletingUser || !state.user) return
 

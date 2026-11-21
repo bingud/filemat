@@ -15,25 +15,23 @@ import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
 import kotlin.io.path.isSymbolicLink
-import kotlin.io.path.pathString
 
 @Service
 class FileCopyService(private val fileService: FileService, private val filesystemService: FilesystemService, private val state: State) {
 
     fun copyFile(user: Principal, rawPath: FilePath, rawDestinationPath: FilePath): Result<FullFileMetadata> {
-        val isSymlink = rawPath.path.isSymbolicLink()
-
-        // Resolve the copied path
+        // Resolve the copied path. First, because it refuses a path through a link to a network folder before anything opens it.
         val canonicalPath: FilePath = resolvePath(rawPath, state.app.followSymlinks)
             .let { result: Result<FilePath> ->
                 if (result.notFound) return Result.reject("Copied file was not found.")
                 if (result.isNotSuccessful) return result.cast()
                 result.value
             }
+        val isSymlink = rawPath.path.isSymbolicLink()
 
         if (PathPolicy.isRoot(canonicalPath.path)) return Result.reject("Cannot copy root folder.")
 
-        val rawParentDestinationPath = FilePath.of(rawDestinationPath.path.parent.pathString)
+        val rawParentDestinationPath = FilePath.ofAlreadyNormalized(rawDestinationPath.path.parent ?: return Result.reject("A file can't be copied here."))
 
         // Resolve parent of destination path
         val canonicalParentDestinationPath: FilePath = resolvePath(rawParentDestinationPath, state.app.followSymlinks)

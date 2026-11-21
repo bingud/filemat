@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.nio.file.Path
 
 class FileVisibilityServiceTest {
@@ -95,6 +96,46 @@ class FileVisibilityServiceTest {
 
         assertEquals("This file is blocked.", service.isPathAllowed(FilePath.of("$hidden/file")))
         assertNull(service.isPathAllowed(FilePath.of("${root}srv/public")))
+    }
+
+    private fun emptyService(): FileVisibilityService {
+        val state = State(env = emptyMap())
+        return FileVisibilityService(mockk(relaxed = true), mockk(relaxed = true), state, SensitiveFolderPaths(state))
+    }
+
+    private fun expose(service: FileVisibilityService) =
+        service.insertPath(FileVisibility(path = "${root}srv", isExposed = true, createdDate = 0), UserAction.APP_SETUP)
+
+    @Test
+    fun `a rolled-back transaction leaves no rule in memory, so the same folder can be added again`() {
+        val service = emptyService()
+
+        TransactionSynchronizationManager.initSynchronization()
+        try {
+            assertTrue(expose(service).isSuccessful)
+            assertEquals("This file is not exposed.", service.isPathAllowed(FilePath.of("${root}srv/file")))
+        } finally {
+            // Rollback: the synchronizations are dropped without `afterCommit`
+            TransactionSynchronizationManager.clearSynchronization()
+        }
+
+        assertTrue(expose(service).isSuccessful)
+        assertNull(service.isPathAllowed(FilePath.of("${root}srv/file")))
+    }
+
+    @Test
+    fun `a committed transaction adds the rule to memory`() {
+        val service = emptyService()
+
+        TransactionSynchronizationManager.initSynchronization()
+        try {
+            assertTrue(expose(service).isSuccessful)
+            TransactionSynchronizationManager.getSynchronizations().forEach { it.afterCommit() }
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization()
+        }
+
+        assertNull(service.isPathAllowed(FilePath.of("${root}srv/file")))
     }
 
     @Test

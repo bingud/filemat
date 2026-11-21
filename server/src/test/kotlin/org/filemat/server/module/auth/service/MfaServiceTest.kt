@@ -14,6 +14,7 @@ import org.filemat.server.module.user.model.UserAction
 import org.filemat.server.module.user.repository.UserRepository
 import org.filemat.server.module.user.service.UserService
 import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -39,7 +40,7 @@ class MfaServiceTest {
     @Test
     fun `disable answers an error when the database update fails`() {
         every { userService.getUserByUserId(userId, any()) } returns Result.ok(userWith2fa())
-        every { userRepository.updateTotpMfa(any(), any(), any(), any(), any()) } throws RuntimeException("db down")
+        every { userRepository.updateTotpMfaKeepRequired(any(), any(), any(), any()) } throws RuntimeException("db down")
 
         val result = service.disable(meta, currentCode())
 
@@ -48,11 +49,41 @@ class MfaServiceTest {
     }
 
     @Test
-    fun `disable succeeds when the database update succeeds`() {
+    fun `disable succeeds and keeps whether an admin requires 2FA`() {
         every { userService.getUserByUserId(userId, any()) } returns Result.ok(userWith2fa())
-        every { userRepository.updateTotpMfa(any(), any(), any(), any(), any()) } returns 1
+        every { userRepository.updateTotpMfaKeepRequired(any(), any(), any(), any()) } returns 1
 
         assertSuccess(service.disable(meta, currentCode()))
-        verify { userRepository.updateTotpMfa(userId, false, null, null, false) }
+        verify { userRepository.updateTotpMfaKeepRequired(userId, false, null, null) }
+        verify(exactly = 0) { userRepository.updateTotpMfa(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `enabling 2FA keeps whether an admin requires it`() {
+        every { userRepository.updateTotpMfaKeepRequired(any(), any(), any(), any()) } returns 1
+        val credentials = service.enable_generateSecret(testPrincipal(userId = userId))
+        val code = TotpUtil.generator.generateCurrent(credentials.secretObject).value
+
+        assertSuccess(service.enable_confirmSecret(meta.copy(action = UserAction.ENABLE_TOTP_MFA), code, credentials.codes))
+
+        verify { userRepository.updateTotpMfaKeepRequired(userId, true, credentials.secret, any()) }
+        verify(exactly = 0) { userRepository.updateTotpMfa(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `an admin can stop requiring 2FA without resetting it`() {
+        every { userRepository.updateTotpMfaRequired(any(), any()) } returns 1
+
+        assertSuccess(service.setRequired(meta.copy(action = UserAction.SET_TOTP_MFA_REQUIRED), false))
+
+        verify { userRepository.updateTotpMfaRequired(userId, false) }
+        verify(exactly = 0) { userRepository.updateTotpMfa(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `requiring 2FA for a user that doesn't exist is not found`() {
+        every { userRepository.updateTotpMfaRequired(any(), any()) } returns 0
+
+        assertTrue(service.setRequired(meta, true).notFound)
     }
 }

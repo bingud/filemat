@@ -18,6 +18,8 @@ import org.filemat.server.module.log.model.LogType
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.user.model.UserAction
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.nio.file.Path
 import kotlin.system.exitProcess
 
@@ -134,9 +136,17 @@ class FileVisibilityService(
             }
 
             val now = unixNow()
-            paths.forEach {
-                fileVisibilityRepository.insertOrReplace(it.path, it.isExposed, now)
-                visibilityTrie.insert(PathPolicy.pathKey(it.path), it.isExposed, it.path)
+            paths.forEach { fileVisibilityRepository.insertOrReplace(it.path, it.isExposed, now) }
+
+            // Inside a transaction (setup), memory changes only once the rows are committed.
+            // Otherwise a rolled-back setup would leave the folders exposed in memory, and every retry would find them "already" there.
+            val applyToMemory = { paths.forEach { visibilityTrie.insert(PathPolicy.pathKey(it.path), it.isExposed, it.path) } }
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+                    override fun afterCommit() = applyToMemory()
+                })
+            } else {
+                applyToMemory()
             }
             return Result.ok(Unit)
         } catch (e: Exception) {

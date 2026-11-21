@@ -210,6 +210,8 @@ class FileController(
             rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
+        // Before the path is looked at, so the answer doesn't tell whether it exists
+        if (shareToken == null && principal == null) return unauthenticated("Unauthenticated", "")
         val path = FilePath.of(rawPath)
 
         val resolvedPath = fileService.resolvePathWithOptionalShare(path, shareToken).let {
@@ -345,15 +347,24 @@ class FileController(
             rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return streamRateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
+        // Before the path is looked at, so the answer doesn't tell whether it exists
+        if (shareToken == null && principal == null) return streamUnauthenticated("Unauthenticated")
         val path = FilePath.of(rawPath)
         val rawRangeHeader: String? = request.getHeader("Range")
 
         val canonicalPath = fileService.resolvePathWithOptionalShare(path, shareToken = shareToken).let {
             if (it.notFound) return streamNotFound()
+            // An expired share password login
+            if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) {
                 return streamInternal(it.error, "")
             }
             it.value
+        }
+        // Access is checked before the file is read at all
+        fileService.isAllowedToAccessFile(principal, canonicalPath, ignorePermissions = shareToken != null).let {
+            if (it.hasError) return streamInternal(it.error, "")
+            if (it.isNotSuccessful) return streamBad(it.error, "")
         }
         val fileSize = filesystemService.getSize(canonicalPath).let {
             if (it.notFound) return streamBad("This file was not found.", "")

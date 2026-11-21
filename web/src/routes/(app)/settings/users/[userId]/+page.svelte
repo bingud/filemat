@@ -12,7 +12,7 @@
     import EditIcon from "$lib/component/icons/EditIcon.svelte";
     import Loader from "$lib/component/Loader.svelte";
     import { fade } from "svelte/transition";
-    import { assignRole, changeUserPassword, deleteUser, editUserProperty, loadUser, removeSelectedRoles, resetUserMfa, selectRole, toggleRoleSelection } from "./actions";
+    import { assignRole, changeUserPassword, deleteUser, editUserProperty, loadUser, removeSelectedRoles, resetUserMfa, selectRole, setUserMfaRequired, toggleRoleSelection } from "./actions";
     import { userPageState as pageState } from "./state.svelte";
     import { onMount } from "svelte";
     import { Popover } from "$lib/component/bits-ui-wrapper";
@@ -192,6 +192,9 @@
         <section class="flex flex-wrap gap-4">
             <button on:click={() => { changeUserPassword(pageState.user) }} class="basic-button">Change password</button>
             <button on:click={() => { resetUserMfa(pageState.user) }} class="basic-button">Reset 2FA</button>
+            <button on:click={() => { setUserMfaRequired(pageState.user, !user.mfaTotpRequired) }} disabled={pageState.settingMfaRequired} class="basic-button disabled:opacity-60">
+                {user.mfaTotpRequired ? `Stop requiring 2FA` : `Require 2FA`}
+            </button>
             {#if auth.principal!.userId !== user.userId}
                 <button
                     on:click={deleteUser}

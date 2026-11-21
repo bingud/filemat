@@ -81,13 +81,13 @@ class MfaService(
      */
     fun enable_confirmSecret(meta: RequestMeta, totp: String, codes: List<String>): Result<Unit> {
         val mfa = newMfaCredentialsCache.getIfPresent(meta.targetUserId) ?: return Result.reject("2FA setup has expired.")
-        val actualTotp = TotpUtil.generator.generateCurrent(mfa.secretObject)
-        if (totp != actualTotp.value) return Result.reject("2FA code is incorrect.")
+        // One step of clock drift, like a login
+        if (!TotpUtil.verify(mfa.secretObject, totp)) return Result.reject("2FA code is incorrect.")
 
         // Validate if client has valid backup codes
         if (!codes.containsAll(mfa.codes)) return Result.reject("Backup codes could not be validated.")
 
-        updateUserMfa(meta, true, mfa.secret, mfa.codes, false).let {
+        updateUserMfa(meta, true, mfa.secret, mfa.codes, isRequired = null).let {
             if (it.isNotSuccessful) return it
         }
 
@@ -123,7 +123,8 @@ class MfaService(
             status = false,
             secret = null,
             codes = null,
-            isRequired = false
+            // A 2FA that an admin requires is asked for again at the next login
+            isRequired = null,
         ).let {
             if (it.isNotSuccessful) return it
         }
@@ -143,18 +144,22 @@ class MfaService(
     }
 
     /**
-     * Updates 2FA state of a user
+     * Updates 2FA state of a user. [isRequired] null keeps whether an admin requires 2FA: only an admin changes that.
      */
     fun updateUserMfa(
         meta: RequestMeta,
         status: Boolean,
         secret: String?,
         codes: List<String>?,
-        isRequired: Boolean,
+        isRequired: Boolean?,
     ): Result<Unit> {
         try {
             val serializedCodes = codes?.toJson()
-            userRepository.updateTotpMfa(meta.targetUserId, status, secret, serializedCodes, isRequired)
+            if (isRequired == null) {
+                userRepository.updateTotpMfaKeepRequired(meta.targetUserId, status, secret, serializedCodes)
+            } else {
+                userRepository.updateTotpMfa(meta.targetUserId, status, secret, serializedCodes, isRequired)
+            }
         } catch (e: Exception) {
             logService.error(
                 type = LogType.SYSTEM,
@@ -166,9 +171,29 @@ class MfaService(
         }
 
         authService.updatePrincipal(meta.targetUserId) { existing ->
-            existing.copy(mfaTotpStatus = status)
+            existing.copy(mfaTotpStatus = status, mfaTotpRequired = isRequired ?: existing.mfaTotpRequired)
         }
 
+        return Result.ok()
+    }
+
+    /**
+     * Sets whether a user must have 2FA, without changing the 2FA they have. Without it, they set it up at their next login.
+     */
+    fun setRequired(meta: RequestMeta, isRequired: Boolean): Result<Unit> {
+        try {
+            if (userRepository.updateTotpMfaRequired(meta.targetUserId, isRequired) == 0) return Result.notFound()
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = meta.action,
+                description = "Failed to update whether 2FA is required in the database",
+                message = e.stackTraceToString()
+            )
+            return Result.error("Failed to update 2FA.")
+        }
+
+        authService.updatePrincipal(meta.targetUserId) { existing -> existing.copy(mfaTotpRequired = isRequired) }
         return Result.ok()
     }
 }

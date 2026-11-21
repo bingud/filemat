@@ -25,20 +25,24 @@ object ConsoleLogFile {
     // The file gets the same bytes as the console
     private fun tee(console: PrintStream, file: OutputStream) = PrintStream(TeeOutputStream(console, file), true, console.charset())
 
-    private class TeeOutputStream(private val console: OutputStream, private val file: OutputStream) : OutputStream() {
+    /**
+     * The file is written first, and a console that fails (no console window) doesn't stop it.
+     * [RotatingLogFile] never throws, so the console still gets every write.
+     */
+    internal class TeeOutputStream(private val console: OutputStream, private val file: OutputStream) : OutputStream() {
         override fun write(b: Int) {
-            console.write(b)
             file.write(b)
+            console.write(b)
         }
 
         override fun write(b: ByteArray, off: Int, len: Int) {
-            console.write(b, off, len)
             file.write(b, off, len)
+            console.write(b, off, len)
         }
 
         override fun flush() {
-            console.flush()
             file.flush()
+            console.flush()
         }
     }
 }

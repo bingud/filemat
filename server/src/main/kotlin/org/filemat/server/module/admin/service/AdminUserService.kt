@@ -129,6 +129,24 @@ class AdminUserService(
         }
     }
 
+    /**
+     * Sets whether a user must have 2FA. Their 2FA and sessions stay as they are.
+     */
+    fun setTotpMfaRequired(meta: RequestMeta, isRequired: Boolean): Result<Unit> {
+        return mfaService.setRequired(meta, isRequired).also {
+            if (it.isSuccessful) {
+                logService.info(
+                    type = LogType.AUDIT,
+                    action = meta.action,
+                    description = if (isRequired) "Admin required 2FA for user" else "Admin stopped requiring 2FA for user",
+                    initiatorId = meta.initiatorId,
+                    initiatorIp = meta.ip,
+                    targetId = meta.targetId,
+                )
+            }
+        }
+    }
+
     fun createUser(admin: Principal, email: String, username: String, password: ArgonHash): Result<Ulid> {
         // Check if email or password exists already
         userService.checkExistsByEmailOrUsername(email, username).let {

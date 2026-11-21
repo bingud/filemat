@@ -839,7 +839,10 @@ class FolderUploadService(
      */
     private fun isDestinationCaseSensitive(destinationPath: String): Boolean {
         if (platform == FolderUploadPlatform.LINUX) return true
-        return runCatching { CaseSensitivity.isCaseSensitive(PathPolicy.parse(destinationPath)) }.getOrDefault(false)
+        // Resolved before the folder is opened: `resolvePath` refuses a network folder, or a link to one, without connecting
+        val folder = runCatching { resolvePath(FilePath.of(destinationPath), state.app.followSymlinks, allowNonExistent = true) }
+            .getOrNull()?.valueOrNull ?: return false
+        return runCatching { CaseSensitivity.isCaseSensitive(folder.path) }.getOrDefault(false)
     }
 
     private fun duplicateKey(path: String, isCaseSensitive: Boolean): String {

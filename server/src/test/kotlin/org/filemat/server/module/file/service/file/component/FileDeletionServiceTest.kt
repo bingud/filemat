@@ -12,6 +12,7 @@ import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.testutil.assertNotFound
 import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
+import org.filemat.server.testutil.junctionOrSkip
 import org.filemat.server.testutil.symlinkOrSkip
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -79,6 +80,43 @@ class FileDeletionServiceTest {
 
         verify { fileService.isAllowedToDeleteFile(user = user, canonicalPath = FilePath.ofAlreadyNormalized(real)) }
         verify { filesystemService.deleteFile(target = FilePath.ofAlreadyNormalized(real), user = user) }
+    }
+
+    /**
+     * `folder/junction` is a junction to `target`, which holds a file
+     */
+    private fun junctionToFolder(): Pair<Path, Path> {
+        val real = tempDir.toRealPath()
+        val target = Files.createDirectory(real.resolve("target"))
+        Files.writeString(target.resolve("keep.txt"), "x")
+        val folder = Files.createDirectory(real.resolve("folder"))
+        val junction = folder.resolve("junction")
+        junctionOrSkip(junction, target)
+        return junction to target
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `with links on, a junction is deleted itself, not the folder it points to`() {
+        state.app.followSymlinks = true
+        val (junction, target) = junctionToFolder()
+
+        assertSuccess(delete(junction))
+
+        verify { fileService.isAllowedToDeleteFile(user = user, canonicalPath = FilePath.ofAlreadyNormalized(junction)) }
+        verify { filesystemService.deleteFile(target = FilePath.ofAlreadyNormalized(junction), user = user) }
+        verify(exactly = 0) { filesystemService.deleteFile(target = FilePath.ofAlreadyNormalized(target), user = any()) }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `with links off, a junction can be deleted`() {
+        state.app.followSymlinks = false
+        val (junction, _) = junctionToFolder()
+
+        assertSuccess(delete(junction))
+
+        verify { filesystemService.deleteFile(target = FilePath.ofAlreadyNormalized(junction), user = user) }
     }
 
     @Test

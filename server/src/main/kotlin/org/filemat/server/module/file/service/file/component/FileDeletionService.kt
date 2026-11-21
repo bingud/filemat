@@ -6,6 +6,7 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.withRealNames
+import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
@@ -13,7 +14,6 @@ import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.savedFile.SavedFileService
 import org.springframework.stereotype.Service
-import kotlin.io.path.isSymbolicLink
 
 @Service
 class FileDeletionService(
@@ -36,7 +36,9 @@ class FileDeletionService(
         val pathInParent = FilePath.ofAlreadyNormalized(parent.path.resolve(rawPath.path.fileName))
 
         // Resolve the target path. A link is deleted itself, so it is not resolved, but its real name is checked, not an 8.3 short name.
-        val canonicalPath = if (pathInParent.path.isSymbolicLink()) {
+        // Junctions and mount points too: Java doesn't count them as symbolic links, but `toRealPath` follows them,
+        // so resolving one would delete the contents of the folder it points to.
+        val canonicalPath = if (LinkInspector.kindOf(pathInParent.path) == LinkInspector.Kind.LINK) {
             withRealNames(pathInParent)
         } else {
             resolvePath(rawPath, state.app.followSymlinks).let { canonicalResult ->

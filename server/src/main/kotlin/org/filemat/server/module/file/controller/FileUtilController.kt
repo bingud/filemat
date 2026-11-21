@@ -69,6 +69,8 @@ class FileUtilController(
             rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
+        // Before the path is looked at, so the answer doesn't tell whether it exists
+        if (shareToken == null && principal == null) return streamUnauthenticated("Unauthenticated")
         val path = FilePath.of(rawPath)
         val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, ThumbnailService.MAX_THUMBNAIL_SIZE) ?: 100
         val ignorePermissions = shareToken != null
@@ -76,12 +78,15 @@ class FileUtilController(
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken)
         val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             it.value
         }
 
         val meta = fileService.getMetadata(principal, canonicalPath, true, ignorePermissions = ignorePermissions).let {
             if (it.isForbidden) return streamForbidden(it.error)
+            if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.errorOrNull ?: "Failed to get file metadata to generate a preview.")
             it.value
         }
@@ -168,12 +173,15 @@ class FileUtilController(
             rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
+        // Before the path is looked at, so the answer doesn't tell whether it exists
+        if (shareToken == null && principal == null) return streamUnauthenticated("Unauthenticated")
         val path = FilePath.of(rawPath)
         val targetSize = rawSize?.toIntOrNull()?.coerceIn(1, ThumbnailService.MAX_THUMBNAIL_SIZE) ?: 100
 
         val canonicalPathResult = fileService.resolvePathWithOptionalShare(path, shareToken)
         val canonicalPath = canonicalPathResult.let {
             if (it.notFound) return streamBad("This file was not found.", "")
+            if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             it.value
         }
@@ -261,6 +269,8 @@ class FileUtilController(
             rateLimiter.consume(RateLimitId.SHARED_FILE_ACCESS, ip).let { if (!it.isAllowed) return rateLimited(it.millisUntilRefill) }
         }
         val principal = request.getPrincipal()
+        // Before the path is looked at, so the answer doesn't tell whether it exists
+        if (shareToken == null && principal == null) return unauthenticated("Unauthenticated", "")
         val path = FilePath.of(rawPath)
 
         return fileService.getContentMetadata(principal, path, shareToken).let {
