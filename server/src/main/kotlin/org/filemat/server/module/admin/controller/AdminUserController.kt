@@ -106,7 +106,7 @@ class AdminUserController(
         val required = rawRequired.toBooleanStrictOrNull()
             ?: return bad("Option for requiring 2FA must be true or false.")
 
-        adminUserService.setTotpMfaRequired(meta, required).let {
+        adminUserService.setTotpMfaRequired(admin, meta, required).let {
             if (it.notFound) return bad("This user was not found.")
             if (it.rejected) return bad(it.error)
             if (it.hasError) return internal(it.error)

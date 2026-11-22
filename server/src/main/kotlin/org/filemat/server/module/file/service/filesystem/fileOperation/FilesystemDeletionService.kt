@@ -58,7 +58,8 @@ class FilesystemDeletionService(
         internalFolder: InternalFolder?,
     ): Result<Unit> = fileLockService.tryWithLock(target.path, LockType.WRITE) {
         val isWriteDataFolderProtected = state.app.allowWriteDataFolder == false
-        if (!target.path.exists()) return@tryWithLock Result.notFound()
+        // A link whose target is gone still exists itself
+        if (!target.path.exists(LinkOption.NOFOLLOW_LINKS)) return@tryWithLock Result.notFound()
 
         val isFilematFile = internalFolder != null
         if (internalFolder != null && !state.isInInternalFolder(internalFolder, target.path)) {

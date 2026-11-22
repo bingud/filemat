@@ -177,6 +177,23 @@ class FilesystemMoveServiceTest {
         assertEquals("keep", Files.readString(outsideFile))
     }
 
+    @Test
+    fun `a junction whose target is gone can be moved`() {
+        val outside = Files.createDirectories(tempDir.resolve("outside"))
+        val source = tempDir.resolve("junction")
+        val dest = tempDir.resolve("moved")
+        junctionOrSkip(source, outside)
+        Files.delete(outside)
+        movable.add(source)
+
+        assertSuccess(move(source, dest))
+
+        assertFalse(Files.exists(source, LinkOption.NOFOLLOW_LINKS))
+        assertTrue(Files.exists(dest, LinkOption.NOFOLLOW_LINKS))
+        // JUnit's cleanup can't remove a junction whose target is gone
+        Files.delete(dest)
+    }
+
     private fun move(source: Path, dest: Path) = service.moveFile(
         source = FilePath.ofAlreadyNormalized(source),
         destination = FilePath.ofAlreadyNormalized(dest),

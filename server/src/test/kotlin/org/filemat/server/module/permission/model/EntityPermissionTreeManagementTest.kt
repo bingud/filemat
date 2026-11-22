@@ -113,12 +113,63 @@ class EntityPermissionTreeManagementTest {
     }
 
     @Test
-    fun `should fail to move path if target already exists`() {
-        tree.addPermission("/source", createPerm(userId = userId, permissions = listOf(FilePermission.READ)))
-        tree.addPermission("/target", createPerm(userId = userId, permissions = listOf(FilePermission.READ)))
+    fun `a move onto an existing node merges into it, the moved permissions winning`() {
+        val otherUser = UlidCreator.getUlid()
+        val moved = createPerm(userId = userId, permissions = listOf(FilePermission.READ))
+        val replaced = createPerm(userId = userId, permissions = listOf(FilePermission.WRITE))
+        val kept = createPerm(userId = otherUser, permissions = listOf(FilePermission.READ))
+        tree.addPermission("/source", moved)
+        tree.addPermission("/target", replaced)
+        tree.addPermission("/target", kept)
 
-        val result = tree.movePath("/source", "/target")
-        assertFalse(result)
+        assertTrue(tree.movePath("/source", "/target"))
+
+        assertEquals(moved, tree.getDirectPermissionForUser("/target", userId))
+        assertEquals(kept, tree.getDirectPermissionForUser("/target", otherUser))
+        assertNull(tree.getPermissionById(replaced.permissionId))
+        assertTrue(tree.getAllPermissionsForPath("/source").isEmpty())
+    }
+
+    @Test
+    fun `renaming a folder after its children were moved keeps the same tree as one loaded from the database`() {
+        val alice = UlidCreator.getUlid()
+        val bob = UlidCreator.getUlid()
+        val folder = createPerm(userId = alice, permissions = listOf(FilePermission.READ))
+        val contracts = createPerm(userId = bob, permissions = listOf(FilePermission.READ))
+        val invoice = createPerm(roleId = roleA, permissions = listOf(FilePermission.READ))
+        tree.addPermission("/projects/acme", folder)
+        tree.addPermission("/projects/acme/contracts", contracts)
+        tree.addPermission("/projects/acme/contracts/2026/invoice.pdf", invoice)
+
+        // A move file by file moves the children first, then the folder
+        assertTrue(tree.movePath("/projects/acme/contracts/2026/invoice.pdf", "/projects/b/contracts/2026/invoice.pdf"))
+        assertTrue(tree.movePath("/projects/acme/contracts", "/projects/b/contracts"))
+        assertTrue(tree.movePath("/projects/acme", "/projects/b"))
+
+        val fromDatabase = EntityPermissionTree().apply {
+            addPermission("/projects/b", folder)
+            addPermission("/projects/b/contracts", contracts)
+            addPermission("/projects/b/contracts/2026/invoice.pdf", invoice)
+        }
+        val paths = listOf(
+            "/projects", "/projects/acme", "/projects/acme/new", "/projects/b", "/projects/b/contracts",
+            "/projects/b/contracts/2026", "/projects/b/contracts/2026/invoice.pdf", "/projects/b/other",
+        )
+        for (path in paths) {
+            assertEquals(fromDatabase.getAllPermissionsForPath(path).toSet(), tree.getAllPermissionsForPath(path).toSet(), path)
+            for (user in listOf(alice, bob)) {
+                assertEquals(
+                    fromDatabase.resolveEffectivePermissions(path, user, listOf(roleA)),
+                    tree.resolveEffectivePermissions(path, user, listOf(roleA)),
+                    path,
+                )
+            }
+        }
+        assertEquals(
+            fromDatabase.getAllAccessibleEntitiesForUser(alice, emptyList()).toSet(),
+            tree.getAllAccessibleEntitiesForUser(alice, emptyList()).toSet(),
+        )
+        assertTrue(tree.resolveEffectivePermissions("/projects/acme", alice, emptyList()).isEmpty())
     }
 
     @Test

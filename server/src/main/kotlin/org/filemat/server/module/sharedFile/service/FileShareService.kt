@@ -207,14 +207,24 @@ class FileShareService(
             if (it.isNotSuccessful) return it.cast()
         }
 
-        // Check if share ID is taken
-        getSharesByShareId(sharePath, UserAction.SHARE_FILE)
-            .let {
-                if (it.hasError) return Result.error("Failed to check if share link is already used.")
-
-                if (it.valueOrNull?.isExpired() == true) return@let
-                if (it.valueOrNull != null) return Result.reject("This share link is already used.")
+        // Check if share ID is taken. An expired share keeps its row until the cleanup, so it is deleted here to free the ID.
+        val existingShare = try {
+            fileShareRepository.getSharesByShareId(sharePath)
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.SHARE_FILE,
+                description = "Failed to get file share from the database by share ID.",
+                message = e.stackTraceToString(),
+            )
+            return Result.error("Failed to check if share link is already used.")
+        }
+        if (existingShare != null) {
+            if (!existingShare.isExpired()) return Result.reject("This share link is already used.")
+            db_deleteShare(existingShare.shareId, existingShare.fileId, UserAction.SHARE_FILE).let {
+                if (it.isNotSuccessful) return it.cast()
             }
+        }
 
         // Get entity
         fileService.ensureEntityIndexed(

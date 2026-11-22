@@ -141,6 +141,11 @@ class SetupController(
                 ?: return@run bad("Thumbnail cache expiration must be a number.", "validation")
         }
 
+        // Rate limit, before the setup code is checked, so guesses here are limited too
+        rateLimiter.consume(RateLimitId.SETUP, ip).let {
+            if (!it.isAllowed) return@run rateLimited(it.millisUntilRefill)
+        }
+
         val codeVerification = appService.verifySetupCode(setupCode)
         if (codeVerification.rejected) return@run bad(codeVerification.error, "setup-code-invalid")
         if (codeVerification.isNotSuccessful) return@run internal(codeVerification.error, "code-verification-failure")
@@ -150,11 +155,6 @@ class SetupController(
         folderVisibilities.firstNotNullOfOrNull { fileVisibilityService.networkPathProblem(it.path) }?.let { return@run bad(it, "validation") }
         val followSymlinks = rawFollowSymlinks.toBooleanStrictOrNull()
             ?: return@run bad("Option for following symbolic links must be true or false.", "validation")
-
-        // Rate limit
-        rateLimiter.consume(RateLimitId.SETUP, ip).let {
-            if (!it.isAllowed) return@run rateLimited(it.millisUntilRefill)
-        }
 
         // Check for folder visibility duplicates
         folderVisibilities.let {
@@ -270,7 +270,7 @@ class SetupController(
             createdDate = now,
             description = "Admin account created during application setup.",
             message = "Email: [$email]\nusername: [$username]\naccount ID: [${user.userId}]",
-            meta = mapOf("setup-code" to setupCode)
+            meta = null,
         )
 
         appService.deleteSetupCode()

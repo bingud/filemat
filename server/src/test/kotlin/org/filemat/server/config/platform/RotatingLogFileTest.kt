@@ -81,6 +81,29 @@ class RotatingLogFileTest {
         assertFalse(Files.exists(folder.resolve("filemat.log")))
     }
 
+    @Test
+    fun `after a write error the log is opened again once the retry delay has passed`() {
+        var now = 0L
+        // A file where the folder should be makes opening the log fail
+        Files.writeString(folder, "not a folder")
+        val log = RotatingLogFile(folder, retryDelayMillis = 1000, clock = { now })
+
+        log.print("lost\n")
+        Files.delete(folder)
+        now = 999
+        log.print("dropped\n")
+        assertFalse(Files.exists(folder))
+
+        now = 1000
+        log.print("back\n")
+        log.close()
+
+        val text = read("filemat.log")
+        assertTrue(text.startsWith("[log] Some output is missing here"), text)
+        assertTrue(text.endsWith("back\n"), text)
+        assertFalse(text.contains("lost") || text.contains("dropped"), text)
+    }
+
     // ConsoleLogFile replaces System.out and System.err, which every test shares
     @Test
     @ResourceLock(Resources.SYSTEM_OUT, mode = ResourceAccessMode.READ_WRITE)

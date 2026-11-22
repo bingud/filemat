@@ -46,15 +46,25 @@ class ExternalFfmpegBackend(
         return FfmpegOutput.metadata(run.log)
     }
 
-    override fun firstFrame(path: Path): MediaFrame? {
-        val run = run(inputArgs(path) + listOf("-map", "0:v:0", "-frames:v", "1", "-f", "image2pipe", "-c:v", "bmp", "pipe:1"))
+    override fun firstFrame(path: Path, maxSize: Int?): MediaFrame? {
+        // Scaled down in FFmpeg, so a thumbnail of a large video is a few MB through the pipe instead of up to [maxOutputBytes]
+        val scale = maxSize?.let { listOf("-vf", scaleFilter(it)) }.orEmpty()
+        val run = run(inputArgs(path) + listOf("-map", "0:v:0", "-frames:v", "1") + scale + listOf("-f", "image2pipe", "-c:v", "bmp", "pipe:1"))
         if (run.exitCode != 0 || run.output.isEmpty()) {
             throw IOException("FFmpeg exited with code ${run.exitCode}: ${run.log.takeLast(2000)}")
         }
         val image = ImageIO.read(ByteArrayInputStream(run.output)) ?: return null
-        val metadata = FfmpegOutput.metadata(run.log) ?: FileContentMetadata(width = image.width, height = image.height)
+        // A scaled frame doesn't tell the source size
+        val metadata = FfmpegOutput.metadata(run.log)
+            ?: if (maxSize == null) FileContentMetadata(width = image.width, height = image.height) else null
         return MediaFrame(image, metadata)
     }
+
+    /**
+     * Fits the frame in [maxSize] × [maxSize], never larger than it is
+     */
+    private fun scaleFilter(maxSize: Int) =
+        "scale='min($maxSize,iw)':'min($maxSize,ih)':force_original_aspect_ratio=decrease"
 
     /**
      * Returns the version line of `ffmpeg -version`, without the copyright. Throws when [executable] isn't a working ffmpeg.

@@ -31,7 +31,7 @@ class ExternalFfmpegBackendSlotTest {
         backend.slots.acquire()
 
         val time = elapsed {
-            assertThrows(FfmpegBusyException::class.java) { backend.firstFrame(file) }
+            assertThrows(FfmpegBusyException::class.java) { backend.firstFrame(file, maxSize = null) }
             // Not taken for "no metadata", which would be cached
             assertThrows(FfmpegBusyException::class.java) { backend.probe(file) }
         }
@@ -44,7 +44,7 @@ class ExternalFfmpegBackendSlotTest {
         val backend = ExternalFfmpegBackend(tempDir.resolve("ffmpeg"), maxProcesses = 1)
         backend.slots.acquire()
 
-        val time = elapsed { assertThrows(FfmpegBusyException::class.java) { backend.firstFrame(file) } }
+        val time = elapsed { assertThrows(FfmpegBusyException::class.java) { backend.firstFrame(file, maxSize = null) } }
 
         assertTrue(time >= Duration.ofMillis(1900) && time < Duration.ofSeconds(5), "took $time")
     }

@@ -203,10 +203,12 @@ class FileContentService(
             return failedCount
         }
 
-        val isSymlink = Files.isSymbolicLink(currentSource)
-        if (isSymlink && !copyResolvedSymlinks) return 0
+        // Junctions and mount points count as links: Java reports them as folders even with NOFOLLOW_LINKS,
+        // and their children would be checked under the link's path instead of where they really are
+        val isLink = Files.isSymbolicLink(currentSource) || LinkInspector.isDirectoryLink(currentSource)
+        if (isLink && !copyResolvedSymlinks) return 0
         // A link to a network folder is never followed (§4.3)
-        if (isSymlink && reachesNetwork(currentSource)) {
+        if (isLink && reachesNetwork(currentSource)) {
             logZipSkip(currentSource, "link to a network folder")
             return failedCount + 1
         }
@@ -226,7 +228,7 @@ class FileContentService(
             Files.isDirectory(currentSource, LinkOption.NOFOLLOW_LINKS)
         }
 
-        val resolvedPath = if (isSymlink) {
+        val resolvedPath = if (isLink) {
             resolvePath(sourceFilePath, state.app.followSymlinks).let { result ->
                 if (result.isNotSuccessful) {
                     logZipSkip(currentSource, "failed to resolve symlink")

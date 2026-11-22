@@ -82,11 +82,11 @@ class ThumbnailServiceImageTest {
     @Test
     fun `a format ImageIO cannot read goes to the FFmpeg fallback`() {
         val file = Files.write(tempDir.resolve("photo.heic"), byteArrayOf(1, 2, 3))
-        every { backend.firstFrame(any()) } returns MediaFrame(BufferedImage(300, 150, BufferedImage.TYPE_INT_RGB), null)
+        every { backend.firstFrame(any(), any()) } returns MediaFrame(BufferedImage(300, 150, BufferedImage.TYPE_INT_RGB), null)
 
         val result = thumbnail(file, 100)
 
-        verify(exactly = 1) { backend.firstFrame(any()) }
+        verify(exactly = 1) { backend.firstFrame(any(), any()) }
         assertEquals(100, result.width)
         assertEquals(50, result.height)
     }

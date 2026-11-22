@@ -265,6 +265,8 @@ class EntityService(
                     it.value
                 }.sortedBy { it.pathKey?.length }
                 val depth = PathPolicy.segments(path.pathKey).size
+                val movedIds = entities.mapTo(HashSet()) { it.entityId }
+                val orphaned = mutableListOf<FilesystemEntity>()
 
                 // move entities
                 data class NewPair(val entity: FilesystemEntity, val newEntity: FilesystemEntity)
@@ -274,6 +276,17 @@ class EntityService(
                     val keySuffix = PathPolicy.segments(entity.pathKey.orEmpty()).drop(depth)
                     val newEntityPath = newPath?.let { PathPolicy.join(PathPolicy.segments(it.pathString) + suffix) }
                     val newEntityKey = newPath?.let { PathPolicy.join(PathPolicy.segments(it.pathKey) + keySuffix) }
+
+                    // A file deleted outside Filemat keeps its entity and key. The file has just been moved onto a free path,
+                    // so another entity at the new key is stale and loses its path, or the unique key would fail the move.
+                    if (newEntityKey != null && newEntityKey != entity.pathKey) {
+                        entityRepository.getByPathKey(newEntityKey)
+                            ?.takeIf { it.entityId !in movedIds }
+                            ?.let { stale ->
+                                entityRepository.updatePath(stale.entityId, null, null)
+                                orphaned += stale
+                            }
+                    }
 
                     updatePath(entity.entityId, newEntityPath, entity, userAction, updateEntityMap = false, newPathKey = newEntityKey).let {
                         if (it.isNotSuccessful) {
@@ -301,6 +314,11 @@ class EntityService(
                     .registerSynchronization(object : TransactionSynchronization {
                         override fun afterCommit() {
                             mapLock.write {
+                                // Before the moved entities take their keys in the cache
+                                orphaned.forEach { stale ->
+                                    map_put(entity = stale.copy(path = null, pathKey = null), lock = false)
+                                    updatePermissionPath(entity = stale, newPathKey = null)
+                                }
                                 newEntities.forEach { entity: NewPair ->
                                     map_put(entity = entity.newEntity, lock = false)
                                     updatePermissionPath(entity = entity.entity, newPathKey = entity.newEntity.pathKey)

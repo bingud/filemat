@@ -16,9 +16,10 @@ interface MediaPreviewBackend {
 
     /**
      * Returns the first video frame of [path] (the picture itself for a still), or null when it has none.
+     * A backend may scale a frame larger than [maxSize] × [maxSize] down to fit, keeping its aspect ratio. The metadata keeps the source size.
      * Throws when FFmpeg fails.
      */
-    fun firstFrame(path: Path): MediaFrame?
+    fun firstFrame(path: Path, maxSize: Int?): MediaFrame?
 }
 
 /**

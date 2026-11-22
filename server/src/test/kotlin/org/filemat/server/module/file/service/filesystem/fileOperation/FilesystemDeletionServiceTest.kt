@@ -14,6 +14,7 @@ import org.filemat.server.testutil.directoryLinkOrSkip
 import org.filemat.server.testutil.isReadOnly
 import org.filemat.server.testutil.junctionOrSkip
 import org.filemat.server.testutil.setReadOnly
+import org.filemat.server.testutil.symlinkOrSkip
 import org.filemat.server.testutil.withFileOpen
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -113,6 +114,28 @@ class FilesystemDeletionServiceTest {
 
         assertFalse(Files.exists(junction, LinkOption.NOFOLLOW_LINKS))
         assertEquals("keep", Files.readString(outsideFile))
+    }
+
+    @Test
+    fun `a junction whose target is gone can be deleted`() {
+        val outside = Files.createDirectories(tempDir.resolve("outside"))
+        val junction = tempDir.resolve("junction")
+        junctionOrSkip(junction, outside)
+        Files.delete(outside)
+
+        assertSuccess(delete(junction))
+
+        assertFalse(Files.exists(junction, LinkOption.NOFOLLOW_LINKS))
+    }
+
+    @Test
+    fun `a symbolic link whose target is gone can be deleted`() {
+        val link = tempDir.resolve("link")
+        symlinkOrSkip(link, tempDir.resolve("missing.txt"))
+
+        assertSuccess(delete(link))
+
+        assertFalse(Files.exists(link, LinkOption.NOFOLLOW_LINKS))
     }
 
     private fun delete(target: Path) = service.deleteFile(

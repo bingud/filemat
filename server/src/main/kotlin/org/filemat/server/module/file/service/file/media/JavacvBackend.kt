@@ -18,7 +18,8 @@ object JavacvBackend : MediaPreviewBackend {
         }
     }
 
-    override fun firstFrame(path: Path): MediaFrame? = withGrabber(path) { grabber ->
+    // The frame is decoded in this process, without a pipe to fill, so it's scaled with the thumbnail afterwards
+    override fun firstFrame(path: Path, maxSize: Int?): MediaFrame? = withGrabber(path) { grabber ->
         val metadata = metadataOf(grabber)
         val frame = grabber.grabImage() ?: return@withGrabber null
         // The converter copies the frame, so the image outlives the grabber

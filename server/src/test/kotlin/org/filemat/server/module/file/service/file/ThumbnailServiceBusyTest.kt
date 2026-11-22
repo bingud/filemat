@@ -25,7 +25,7 @@ class ThumbnailServiceBusyTest {
     lateinit var tempDir: Path
 
     private val backend = mockk<MediaPreviewBackend> {
-        every { firstFrame(any()) } throws FfmpegBusyException()
+        every { firstFrame(any(), any()) } throws FfmpegBusyException()
     }
 
     private fun service(cacheFolder: Path): ThumbnailService {

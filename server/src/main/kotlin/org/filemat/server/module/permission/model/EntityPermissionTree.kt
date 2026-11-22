@@ -176,7 +176,9 @@ class EntityPermissionTree() {
 
     /**
      * Moves or renames a path in the tree.
-     * Returns true if successful, false if source doesn't exist or target already exists.
+     * A node that already exists at the target is merged with the moved one: a folder moved file by file moves its children first,
+     * and their nodes create the target folder's node before the folder itself moves.
+     * Returns true if successful, false if the source doesn't exist or the target is inside it.
      */
     fun movePath(oldPath: String, newPath: String): Boolean {
         treeLock.write {
@@ -184,8 +186,12 @@ class EntityPermissionTree() {
             val node = findNode(oldPath, getClosestNode = false)
                 ?: return false
 
-            // fail if target already exists
-            if (findNode(newPath, getClosestNode = false) != null) return false
+            findNode(newPath, getClosestNode = false)?.let { target ->
+                if (isSelfOrDescendant(target, node)) return false
+                node.parent?.children?.remove(node.segment)
+                permissionsIndexLock.write { mergeNode(source = node, target = target) }
+                return true
+            }
 
             // split newPath into parent path and new name
             val segments = PathPolicy.segments(newPath)
@@ -196,13 +202,7 @@ class EntityPermissionTree() {
             val newParent = if (parentPath == PathPolicy.root) root else getOrCreateTreePath(parentPath)
 
             // Prevent creating a cycle: do not move a node into its own subtree.
-            // Walk up from newParent to root; if we encounter `node`, newParent is
-            // a descendant of `node` and the move would create a cycle.
-            var current: Node? = newParent
-            while (current != null) {
-                if (current === node) return false
-                current = current.parent
-            }
+            if (isSelfOrDescendant(newParent, node)) return false
 
             // detach from old parent (if any)
             node.parent?.children?.remove(node.segment)
@@ -213,6 +213,41 @@ class EntityPermissionTree() {
             newParent.children[newName] = node
 
             return true
+        }
+    }
+
+    private fun isSelfOrDescendant(candidate: Node, ancestor: Node): Boolean {
+        var current: Node? = candidate
+        while (current != null) {
+            if (current === ancestor) return true
+            current = current.parent
+        }
+        return false
+    }
+
+    /**
+     * Moves the permissions and children of [source] into [target]. The moved permissions replace the target's for the same user or role.
+     * Callers hold the tree and index write locks.
+     */
+    private fun mergeNode(source: Node, target: Node) {
+        source.userPermissions.forEach { (userId, permission) ->
+            target.userPermissions.put(userId, permission)
+                ?.takeIf { it != permission }
+                ?.let { permissionIndex_remove(it) }
+        }
+        source.rolePermissions.forEach { (roleId, permission) ->
+            target.rolePermissions.put(roleId, permission)
+                ?.takeIf { it != permission }
+                ?.let { permissionIndex_remove(it) }
+        }
+        source.children.forEach { (segment, child) ->
+            val existing = target.children[segment]
+            if (existing == null) {
+                child.parent = target
+                target.children[segment] = child
+            } else {
+                mergeNode(source = child, target = existing)
+            }
         }
     }
 

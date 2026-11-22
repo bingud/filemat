@@ -62,7 +62,7 @@ class ExternalFfmpegBackendTest {
 
     @Test
     fun `reads the first frame of a video`() {
-        val frame = backend.firstFrame(makeVideo())
+        val frame = backend.firstFrame(makeVideo(), maxSize = null)
 
         assertNotNull(frame)
         assertEquals(64, frame?.image?.width)
@@ -70,6 +70,20 @@ class ExternalFfmpegBackendTest {
         assertEquals(64, frame?.metadata?.width)
         assertEquals(48, frame?.metadata?.height)
         assertOneSecond(frame?.metadata?.durationMs)
+    }
+
+    @Test
+    fun `a frame larger than the thumbnail is scaled down in FFmpeg, keeping the source size in the metadata`() {
+        val video = makeVideo()
+
+        val scaled = backend.firstFrame(video, maxSize = 32)
+        assertEquals(32, scaled?.image?.width)
+        assertEquals(24, scaled?.image?.height)
+        assertEquals(64, scaled?.metadata?.width)
+        assertEquals(48, scaled?.metadata?.height)
+
+        // Never made larger
+        assertEquals(64, backend.firstFrame(video, maxSize = 1000)?.image?.width)
     }
 
     @Test
@@ -86,7 +100,7 @@ class ExternalFfmpegBackendTest {
         val file = tempDir.resolve("still.png")
         ImageIO.write(BufferedImage(32, 16, BufferedImage.TYPE_INT_RGB), "png", file.toFile())
 
-        val frame = backend.firstFrame(file)
+        val frame = backend.firstFrame(file, maxSize = null)
 
         assertEquals(32, frame?.image?.width)
         assertEquals(16, frame?.image?.height)
@@ -96,7 +110,7 @@ class ExternalFfmpegBackendTest {
     fun `a name like an option, with spaces and non-ASCII letters, is just a file`() {
         val video = makeVideo("-y ünïcödé clip.mp4")
 
-        assertEquals(64, backend.firstFrame(video)?.image?.width)
+        assertEquals(64, backend.firstFrame(video, maxSize = null)?.image?.width)
     }
 
     @Test
@@ -107,7 +121,7 @@ class ExternalFfmpegBackendTest {
         Files.createDirectories(folder)
         val moved = Files.move(video, folder.resolve("clip.mp4"))
 
-        assertEquals(64, backend.firstFrame(moved)?.image?.width)
+        assertEquals(64, backend.firstFrame(moved, maxSize = null)?.image?.width)
         assertEquals(48, backend.probe(moved)?.height)
     }
 
@@ -116,7 +130,7 @@ class ExternalFfmpegBackendTest {
         val file = Files.writeString(tempDir.resolve("notes.mp4"), "not a video")
 
         assertNull(backend.probe(file))
-        assertThrows(IOException::class.java) { backend.firstFrame(file) }
+        assertThrows(IOException::class.java) { backend.firstFrame(file, maxSize = null) }
     }
 
     @Test
@@ -127,7 +141,7 @@ class ExternalFfmpegBackendTest {
                 "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nhttp://127.0.0.1:${server.localPort}/a.ts\n#EXT-X-ENDLIST\n",
             )
 
-            runCatching { backend.firstFrame(playlist) }
+            runCatching { backend.firstFrame(playlist, maxSize = null) }
 
             server.soTimeout = 300
             assertThrows(SocketTimeoutException::class.java) { server.accept().close() }
@@ -143,7 +157,7 @@ class ExternalFfmpegBackendTest {
         )
 
         assertNull(backend.probe(playlist))
-        assertThrows(IOException::class.java) { backend.firstFrame(playlist) }
+        assertThrows(IOException::class.java) { backend.firstFrame(playlist, maxSize = null) }
     }
 
     @Test
@@ -153,7 +167,7 @@ class ExternalFfmpegBackendTest {
         ImageIO.write(BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB), "png", tempDir.resolve("img001.png").toFile())
 
         // Read as a single PNG or refused, never as the sequence img001.png
-        val width = runCatching { backend.firstFrame(file)?.image?.width }.getOrNull()
+        val width = runCatching { backend.firstFrame(file, maxSize = null)?.image?.width }.getOrNull()
         assertTrue(width == null || width == 32, "width $width")
     }
 
@@ -162,7 +176,7 @@ class ExternalFfmpegBackendTest {
         val video = makeVideo()
         val slow = ExternalFfmpegBackend(executable, timeout = Duration.ofMillis(1))
 
-        val e = assertThrows(IOException::class.java) { slow.firstFrame(video) }
+        val e = assertThrows(IOException::class.java) { slow.firstFrame(video, maxSize = null) }
         assertTrue(e.message.orEmpty().startsWith("FFmpeg did not finish"), e.message)
     }
 

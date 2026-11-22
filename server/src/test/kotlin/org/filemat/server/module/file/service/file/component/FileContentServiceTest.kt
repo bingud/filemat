@@ -11,6 +11,7 @@ import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.sharedFile.resolveSharedFilePath
 import org.filemat.server.testutil.directoryLinkOrSkip
+import org.filemat.server.testutil.junctionOrSkip
 import org.filemat.server.testutil.setReadOnly
 import org.filemat.server.testutil.symlinkOrSkip
 import org.filemat.server.testutil.withFileLocked
@@ -338,6 +339,57 @@ class FileContentServiceTest {
 
         assertTrue(entries.values.any { it == "from-a" })
         assertTrue(entries.keys.any { it.replace('\\', '/').endsWith("hello.txt") })
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a zip with links not followed leaves out a junction`() {
+        state.app.followSymlinks = false
+
+        val allowed = Files.createDirectory(tempDir.resolve("allowed"))
+        val denied = Files.createDirectory(tempDir.resolve("denied"))
+        val visible = Files.writeString(allowed.resolve("visible.txt"), "ok")
+        Files.writeString(denied.resolve("secret.txt"), "DENIED SECRET PAYLOAD")
+        val junction = allowed.resolve("j")
+        junctionOrSkip(junction, denied)
+
+        allow(allowed)
+        allow(visible)
+        // Readable by the path under the junction, as a check by path would see it
+        readable.add(junction)
+        readable.add(junction.resolve("secret.txt"))
+
+        val entries = zipEntries(allowed)
+
+        assertEquals("ok", entries["allowed/visible.txt"])
+        assertFalse(entries.values.any { it.contains("DENIED SECRET PAYLOAD") }, "${entries.keys}")
+        assertFalse(entries.keys.any { it.startsWith("allowed/j/") }, "${entries.keys}")
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a zip with links followed checks a junction's children where they really are`() {
+        state.app.followSymlinks = true
+
+        val allowed = Files.createDirectory(tempDir.resolve("allowed"))
+        val denied = Files.createDirectory(tempDir.resolve("denied"))
+        val other = Files.createDirectory(tempDir.resolve("other"))
+        Files.writeString(denied.resolve("secret.txt"), "DENIED SECRET PAYLOAD")
+        val shared = Files.writeString(other.resolve("shared.txt"), "from-other")
+        val toDenied = allowed.resolve("to-denied")
+        junctionOrSkip(toDenied, denied)
+        junctionOrSkip(allowed.resolve("to-other"), other)
+
+        allow(allowed)
+        allow(other)
+        allow(shared)
+        readable.add(toDenied)
+        readable.add(toDenied.resolve("secret.txt"))
+
+        val entries = zipEntries(allowed)
+
+        assertEquals("from-other", entries["allowed/to-other/shared.txt"])
+        assertFalse(entries.values.any { it.contains("DENIED SECRET PAYLOAD") }, "${entries.keys}")
     }
 
     private fun mockShareResolve(shareRoot: Path) {

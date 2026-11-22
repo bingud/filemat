@@ -5,6 +5,7 @@ import com.github.f4b6a3.ulid.UlidCreator
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.RateLimiter
@@ -309,9 +310,16 @@ class FileShareServiceTest {
             every { fileService.isAllowedToShareFile(any(), any()) } returns Result.ok()
             every { fileService.ensureEntityIndexed(any(), any(), any(), any()) } returns Result.ok()
             every { entityService.getByPath(any(), any()) } returns Result.ok(entity(path.toString()))
-            every { repository.getSharesByShareId("my-link") } returns share(createdDate = unixNow() - 1000, maxAge = 10)
+            val expired = share(createdDate = unixNow() - 1000, maxAge = 10)
+            every { repository.getSharesByShareId("my-link") } returns expired
 
             assertSuccess(service.createShare(user, FilePath.of(path.toString()), "my-link", null, null))
+
+            // The expired row still holds the share ID until the cleanup runs
+            verifyOrder {
+                repository.delete("my-link", expired.fileId)
+                repository.insert("my-link", entityId, ownerId, any(), 0, false, null)
+            }
         }
 
         @Test

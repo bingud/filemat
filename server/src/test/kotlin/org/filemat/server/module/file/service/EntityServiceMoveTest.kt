@@ -67,6 +67,7 @@ class EntityServiceMoveTest {
             1
         }
         every { entityRepository.getByFileKey(any()) } returns null
+        every { entityRepository.getByPathKey(any()) } returns null
         // The moved files can't be read, so the stored keys stay
         every { filesystemService.isSupportedFilesystem(any()) } returns null
     }
@@ -180,6 +181,21 @@ class EntityServiceMoveTest {
         val (_, file) = moveFolderWithFile(fileKey = null, newKey = "taken")
 
         assertEquals(null to false, updatedKeys[file.entityId.toString()])
+    }
+
+    @Test
+    fun `an entity left at the new path by a file deleted outside Filemat loses its path`() {
+        val draft = entity("/docs/draft.docx")
+        val stale = entity("/docs/final.docx")
+        givenEntities("/docs/draft.docx", draft)
+        every { entityRepository.getByPathKey(PathPolicy.pathKey("/docs/final.docx")) } returns stale
+        service.map_put(stale)
+
+        assertSuccess(service.move(FilePath.of("/docs/draft.docx"), FilePath.of("/docs/final.docx"), UserAction.NONE))
+
+        assertEquals(mapOf(stale.entityId.toString() to null, draft.entityId.toString() to "/docs/final.docx"), updatedPaths)
+        assertEquals(draft.entityId, service.map_getByPath(PathPolicy.pathKey("/docs/final.docx"))?.entityId)
+        verify { entityPermissionService.memory_removeEntity(PathPolicy.pathKey("/docs/final.docx"), stale.entityId) }
     }
 
     @Test

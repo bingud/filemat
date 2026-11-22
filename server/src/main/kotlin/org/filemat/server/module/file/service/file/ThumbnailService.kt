@@ -855,7 +855,7 @@ class ThumbnailService(
         val backend = mediaPreviewService.backend ?: throw IllegalStateException("No media backend to decode the image")
 
         try {
-            val frame = backend.firstFrame(canonicalPath.path) ?: throw Exception("Could not decode image")
+            val frame = backend.firstFrame(canonicalPath.path, maxSize = targetSize) ?: throw Exception("Could not decode image")
 
             // Save the decoded size. Stills have no duration.
             frame.metadata?.let { meta ->
@@ -910,7 +910,7 @@ class ThumbnailService(
             val backend = mediaPreviewService.backend ?: throw IllegalStateException("Video previews are not available")
 
             try {
-                val frame = backend.firstFrame(canonicalPath.path) ?: throw IOException("Could not extract frame from video")
+                val frame = backend.firstFrame(canonicalPath.path, maxSize = targetSize) ?: throw IOException("Could not extract frame from video")
 
                 // Save frame size and duration from this decode.
                 frame.metadata?.let { meta ->

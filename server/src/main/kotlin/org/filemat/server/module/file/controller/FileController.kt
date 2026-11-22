@@ -397,7 +397,9 @@ class FileController(
             BufferedInputStream(it.value)
         }
 
-        val filename = path.filename
+        // A single-file share is requested as `/`, which has no name, so the shared file's own name is used
+        val namedPath = if (path.path.fileName == null) canonicalPath else path
+        val filename = namedPath.filename
 
         // Get mimetype from either byte stream or filename extension
         val mimeType = if (range == null) {
@@ -411,7 +413,7 @@ class FileController(
             // Reset to the beginning after reading
             inputStream.reset()
             type
-        } else tika.detect(path.pathString)
+        } else tika.detect(namedPath.pathString)
 
         // Add byte stream to response
         val responseBody = StreamingResponseBody { outputStream ->

@@ -81,7 +81,8 @@ class FilesystemMoveService(
     ) {
         val isWriteDataFolderProtected = state.app.allowWriteDataFolder == false
 
-        if (!source.path.exists()) return@tryWithLock Result.notFound()
+        // A link whose target is gone still exists itself
+        if (!source.path.exists(LinkOption.NOFOLLOW_LINKS)) return@tryWithLock Result.notFound()
         val isFilematFile = internalFolder != null
         if (internalFolder != null && !state.isInInternalFolder(internalFolder, source.path)) {
             return@tryWithLock Result.reject("Only ${Props.appName}'s own working files can be moved this way.")

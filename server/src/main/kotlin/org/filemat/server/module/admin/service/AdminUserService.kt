@@ -131,8 +131,17 @@ class AdminUserService(
 
     /**
      * Sets whether a user must have 2FA. Their 2FA and sessions stay as they are.
+     * Refused for a user with higher permissions than [admin].
      */
-    fun setTotpMfaRequired(meta: RequestMeta, isRequired: Boolean): Result<Unit> {
+    fun setTotpMfaRequired(admin: Principal, meta: RequestMeta, isRequired: Boolean): Result<Unit> {
+        val target = authService.getPrincipalByUserId(meta.targetUserId, cacheInMemory = false).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        if (!admin.getPermissions(state).hasSufficientPermissionsFor(target.getPermissions(state))) {
+            return Result.reject("Cannot change 2FA for a user with higher permissions than you have.")
+        }
+
         return mfaService.setRequired(meta, isRequired).also {
             if (it.isSuccessful) {
                 logService.info(
