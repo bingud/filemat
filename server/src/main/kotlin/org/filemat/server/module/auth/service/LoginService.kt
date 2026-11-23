@@ -204,6 +204,9 @@ class LoginService(
         loginToken: String,
         totp: String,
         userAgent: String,
+        ip: String,
+        meta: Map<String, String>,
+        now: Long,
         response: HttpServletResponse
     ): ResponseEntity<String> {
         val userId = loginTokenCache.getIfPresent(loginToken) ?: return unauthenticated("Login expired.", "login-expired")
@@ -224,11 +227,12 @@ class LoginService(
         val totpSecretString = user.mfaTotpSecret ?: return internal("Failed to verify 2FA.")
 
         val totpSecret = TOTPSecret.fromBase32EncodedString(totpSecretString)
+        val userMeta = meta + mapOf("target-userId" to user.userId.toString(), "target-username" to user.username)
 
         // Verify 2FA code
         val isValid = TotpUtil.verify(totpSecret, totp)
         if (!isValid) {
-            loginLog(LogLevel.WARN, "Failed login - Incorrect 2FA", "", mapOf("target-userId" to user.userId.toString(), "target-username" to user.username), "unknown")
+            loginLog(LogLevel.WARN, "Failed login - Incorrect 2FA", "", userMeta, ip)
             return bad("2FA code is incorrect.", "invalid-totp")
         }
 
@@ -238,8 +242,8 @@ class LoginService(
             return@let result.value
         }
 
-        val cookie = authTokenService.createCookie(token.authToken, token.maxAge)
-        response.addCookie(cookie)
+        // Like a login without 2FA: cookie, audit row and last login date
+        handleSuccessfulLogin(response = response, user = user, token = token, meta = userMeta, ip = ip, now = now)
 
         loginTokenCache.invalidate(loginToken)
 

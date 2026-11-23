@@ -482,6 +482,9 @@ class EntityService(
             } else {
                 entityPermissionService.memory_removeEntity(entity.pathKey, entity.entityId)
             }
+        } else if (newPathKey != null) {
+            // An orphaned entity that is found again: its grants left the tree with its path
+            entityPermissionService.memory_loadEntity(newPathKey, entity.entityId)
         }
     }
 

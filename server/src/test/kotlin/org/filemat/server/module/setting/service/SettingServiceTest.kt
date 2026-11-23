@@ -14,6 +14,8 @@ import org.filemat.server.testutil.assertRejected
 import org.filemat.server.testutil.assertSuccess
 import org.filemat.server.testutil.testPrincipal
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -147,6 +149,31 @@ class SettingServiceTest {
         assertSuccess(result)
         assertEquals(FilePath.ofAlreadyNormalized(newFolder).pathString, state.app.uploadFolderPath)
         verify { tusService.moveUploadsInProgress(oldFolder, newFolder) }
+    }
+
+    @Test
+    fun `changing the upload folder moves only tus's folder, not a user's uploads and locks folders`(@TempDir tempDir: Path) {
+        val dataFolder = Files.createDirectory(tempDir.resolve("data")).toRealPath()
+        val oldFolder = Files.createDirectory(tempDir.resolve("old")).toRealPath()
+        val newFolder = tempDir.resolve("new").toAbsolutePath()
+        val tusFolder = Files.createDirectories(oldFolder.resolve(Props.uploadSubfolderName).resolve("uploads").resolve("id"))
+        Files.writeString(tusFolder.resolve("data"), "part")
+        Files.createDirectories(oldFolder.resolve("uploads").resolve("mine"))
+        Files.createDirectories(oldFolder.resolve("locks"))
+        Files.writeString(oldFolder.resolve("locks").resolve("a.txt"), "user's")
+        val state = State(env = emptyMap(), dataFolderPath = dataFolder).apply { app.uploadFolderPath = oldFolder.toString() }
+        val realTusService = TusService(mockk(), mockk(), logService, mockk(), state)
+        every { tusService.uploadLock } returns realTusService.uploadLock
+        every { tusService.moveUploadsInProgress(any(), any()) } answers { realTusService.moveUploadsInProgress(firstArg(), secondArg()) }
+        every { tusService.initializeTusService() } returns true
+
+        assertSuccess(newService(state).set_uploadFolderPath(testPrincipal(), FilePath.ofAlreadyNormalized(newFolder)))
+
+        assertEquals("part", Files.readString(newFolder.resolve(Props.uploadSubfolderName).resolve("uploads").resolve("id").resolve("data")))
+        assertFalse(Files.exists(oldFolder.resolve(Props.uploadSubfolderName)))
+        assertTrue(Files.isDirectory(oldFolder.resolve("uploads").resolve("mine")))
+        assertEquals("user's", Files.readString(oldFolder.resolve("locks").resolve("a.txt")))
+        assertEquals(listOf(Props.uploadSubfolderName), Files.list(newFolder).use { list -> list.map { it.fileName.toString() }.toList() })
     }
 
     @Test

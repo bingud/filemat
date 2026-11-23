@@ -196,4 +196,4 @@ The answers to the review's questions, as work to do. Delete an item when it's d
 
 ### Bigger work (38)
 
-- [ ] R16, R15/R38, R17 + the `FileLockService` lock map, R23, R30, R36, R39, R40, R42, R43, R44, R46, R47, R48: each needs its own plan. Order not decided: the owner picks which comes first.
+- [ ] R16, R15/R38, R17 + the `FileLockService` lock map, R30, R36, R39, R40, R42, R43, R44, R46, R47, R48: each needs its own plan. Order not decided: the owner picks which comes first.

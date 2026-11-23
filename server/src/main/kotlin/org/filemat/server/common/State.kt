@@ -6,11 +6,14 @@ import org.filemat.server.common.util.isAbsoluteHttpsUrl
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.config.Props
+import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.config.platform.Platform
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.role.model.Role
 import org.springframework.stereotype.Component
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -33,13 +36,21 @@ class State(env: Map<String, String?> = System.getenv(), dataFolderPath: Path = 
     /**
      * Real path of one of Filemat's own working folders. Filemat moves and deletes its files inside it without the user checks.
      * Null when the folder is not set or can't be one (see [realInternalFolder]), so the database is never reachable this way.
+     *
+     * For [InternalFolder.UPLOADS] it is the [Props.uploadSubfolderName] folder inside the upload folder, not the upload folder,
+     * which may hold a user's files. Null while that is missing or a link.
      */
     fun internalFolderPath(folder: InternalFolder): Path? {
         val configured = when (folder) {
             InternalFolder.UPLOADS -> runCatching { app.uploadFolderPath }.getOrNull()
             InternalFolder.THUMBNAIL_CACHE -> thumbCache.folderPath
         } ?: return null
-        return runCatching { realInternalFolder(FilePath.of(configured)).valueOrNull }.getOrNull()
+        val real = runCatching { realInternalFolder(FilePath.of(configured)).valueOrNull }.getOrNull() ?: return null
+        if (folder != InternalFolder.UPLOADS) return real
+
+        val sub = real.resolve(Props.uploadSubfolderName)
+        val isRealFolder = Files.isDirectory(sub, LinkOption.NOFOLLOW_LINKS) && !LinkInspector.isDirectoryLink(sub)
+        return if (isRealFolder) sub else null
     }
 
     /**

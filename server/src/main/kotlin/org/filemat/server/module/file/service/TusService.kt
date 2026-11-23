@@ -13,7 +13,9 @@ import org.filemat.server.common.util.*
 import org.filemat.server.common.util.classes.wrappers.BufferedResponseWrapper
 import org.filemat.server.common.util.classes.wrappers.RequestPathOverrideWrapper
 import org.filemat.server.common.util.controller.ErrorResponse
+import org.filemat.server.config.Props
 import org.filemat.server.config.SerialFilter
+import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.module.auth.model.Principal
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FolderUploadResolution
@@ -55,8 +57,22 @@ class TusService(
     fun initializeTusService(): Boolean {
         try {
             // Finished uploads are moved out as Filemat's own files, which a root or the data folder can't hold
-            state.realInternalFolder(FilePath.of(state.app.uploadFolderPath)).let {
+            val uploadFolder = state.realInternalFolder(FilePath.of(state.app.uploadFolderPath)).let {
                 if (it.isNotSuccessful) throw IllegalStateException("The upload folder can't be used. ${it.error}")
+                it.value
+            }
+
+            // tus makes its own `uploads` and `locks` folders in its storage path, and its cleanup deletes entries of `locks`.
+            // The upload folder may hold a user's files, so tus only gets a folder of its own inside it.
+            val storageFolder = uploadFolder.resolve(Props.uploadSubfolderName)
+            when {
+                !Files.exists(storageFolder, LinkOption.NOFOLLOW_LINKS) -> {
+                    Files.createDirectories(uploadFolder)
+                    Files.createDirectory(storageFolder)
+                }
+                !isRealFolder(storageFolder) -> throw IllegalStateException(
+                    "`${Props.uploadSubfolderName}` in the upload folder is a link or a file. Remove it, or choose another upload folder."
+                )
             }
 
             // tus deserializes each upload's info file, which users may be able to write (set in main() too)
@@ -64,7 +80,7 @@ class TusService(
 
             tusFileService = TusFileUploadService()
                 .withUploadUri("/api/v1/file/upload")
-                .withStoragePath(state.app.uploadFolderPath)
+                .withStoragePath(storageFolder.toString())
                 .withUploadExpirationPeriod(Duration.ofHours(48).toMillis())
                 .withThreadLocalCache(true)
 
@@ -82,28 +98,34 @@ class TusService(
     }
 
     /**
-     * Moves the uploads in progress to a new upload folder, so they can resume there. tus keeps them in `uploads` and `locks`.
-     * Only renames: on another drive, or when the new folder has its own, they stay where they are.
-     * Both move or neither does, so the uploads are never in one folder and their locks in the other.
+     * Returns whether a path is a folder that is neither a link nor a junction
+     */
+    private fun isRealFolder(path: Path) =
+        Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) && !LinkInspector.isDirectoryLink(path)
+
+    /**
+     * Moves the uploads in progress to a new upload folder, so they can resume there. tus keeps all its files in the
+     * [Props.uploadSubfolderName] folder inside the upload folder, and only that folder moves. Anything else in the old
+     * folder stays, including a user's own `uploads` or `locks` folder and the leftovers of the old layout.
+     * Only renames: on another drive, or when the new folder already has one, it stays where it is.
      * Call it with [uploadLock] held, before the service starts on the new folder.
      */
     fun moveUploadsInProgress(from: Path, to: Path): Result<Unit> {
-        val names = listOf("uploads", "locks").filter { Files.exists(from.resolve(it), LinkOption.NOFOLLOW_LINKS) }
-        names.firstOrNull { Files.exists(to.resolve(it), LinkOption.NOFOLLOW_LINKS) }?.let {
-            return Result.error("The new folder already has a `$it` folder.")
-        }
+        val name = Props.uploadSubfolderName
+        val source = from.resolve(name)
+        if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) return Result.ok()
+        if (!isRealFolder(source)) return Result.error("`$name` in the old folder is a link or a file.")
 
-        val moved = mutableListOf<String>()
-        for (name in names) {
-            try {
-                Files.createDirectories(to)
-                Files.move(from.resolve(name), to.resolve(name))
-                moved += name
-            } catch (e: Exception) {
-                moved.forEach { runCatching { Files.move(to.resolve(it), from.resolve(it)) } }
-                if (e is FileAlreadyExistsException) return Result.error("The new folder already has a `$name` folder.")
-                return Result.error("The `$name` folder could not be moved there (${e.message}).")
-            }
+        val target = to.resolve(name)
+        if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) return Result.error("The new folder already has a `$name` folder.")
+
+        try {
+            Files.createDirectories(to)
+            Files.move(source, target)
+        } catch (e: FileAlreadyExistsException) {
+            return Result.error("The new folder already has a `$name` folder.")
+        } catch (e: Exception) {
+            return Result.error("The `$name` folder could not be moved there (${e.message}).")
         }
         return Result.ok()
     }
@@ -323,7 +345,7 @@ class TusService(
      */
     private fun handleUploadedFile(user: Principal, info: UploadInfo): Result<String?> {
         // Get the current uploaded file location
-        val sourceFolder = FilePath.ofAlreadyNormalized(FilePath.of(state.app.uploadFolderPath).path.resolve("uploads").resolve(info.id.toString()))
+        val sourceFolder = FilePath.ofAlreadyNormalized(FilePath.of(state.app.uploadFolderPath).path.resolve(Props.uploadSubfolderName).resolve("uploads").resolve(info.id.toString()))
         val uploadLocation = FilePath.ofAlreadyNormalized(sourceFolder.path.resolve("data"))
 
         val folderUploadSessionId = info.metadata["folderUploadSessionId"]

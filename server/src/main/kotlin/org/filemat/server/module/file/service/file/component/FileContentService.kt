@@ -83,15 +83,24 @@ class FileContentService(
             val fileInputStream = Files.newInputStream(canonicalPath.path)
             if (range == null) return fileInputStream.toResult()
 
-            safeStreamSkip(fileInputStream, range.first)
-                .let { if (!it) return Result.error("Failed to get the requested range from a stream.") }
+            // Closed on every failure from here, or the file stays open until garbage collection
+            try {
+                // The file got shorter since its size was read
+                if (!safeStreamSkip(fileInputStream, range.first)) {
+                    fileInputStream.close()
+                    return Result.reject(RANGE_PAST_END)
+                }
 
-            val bounded = BoundedInputStream.builder()
-                .setInputStream(fileInputStream)
-                .setMaxCount((range.last - range.first) + 1)
-                .get()
+                val bounded = BoundedInputStream.builder()
+                    .setInputStream(fileInputStream)
+                    .setMaxCount((range.last - range.first) + 1)
+                    .get()
 
-            return bounded.toResult()
+                return bounded.toResult()
+            } catch (e: Exception) {
+                runCatching { fileInputStream.close() }
+                throw e
+            }
         } catch (e: AccessDeniedException) {
             return Result.forbidden("Missing permission to read file.")
         } catch (e: Exception) {
@@ -413,6 +422,11 @@ class FileContentService(
                 channel.truncate(bytes.size.toLong())
             }
         }
+    }
+
+    companion object {
+        /** Rejection of a range that starts past the end, because the file got shorter. Answered with 416. */
+        const val RANGE_PAST_END = "The requested range is past the end of the file."
     }
 
     private fun writeFully(channel: FileChannel, buffer: ByteBuffer, position: Long) {

@@ -17,6 +17,7 @@ import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.model.FullFileMetadata
 import org.filemat.server.module.file.service.file.FileService
+import org.filemat.server.module.file.service.file.component.FileContentService
 import org.filemat.server.module.file.service.filesystem.FilesystemService
 import org.filemat.server.module.file.service.FileLockService
 import org.filemat.server.module.file.service.LockType
@@ -392,6 +393,9 @@ class FileController(
         ).let {
             if (it.notFound) return streamBad("This file was not found.", "")
             if (it.isForbidden) return streamForbidden(it.error)
+            if (it.rejected && it.error == FileContentService.RANGE_PAST_END) {
+                return streamResponse(it.error, HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value())
+            }
             if (it.rejected) return streamBad(it.error, "")
             if (it.isNotSuccessful) return streamInternal(it.error, "")
             BufferedInputStream(it.value)

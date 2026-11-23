@@ -64,10 +64,14 @@ class LoginController(
         if (loginToken == null || loginToken.length != 128) return unauthenticated("The login has expired.", "login-expired")
         Validator.totp(totp)?.let { return bad(it, "validation") }
 
+        val ip = request.realIp()
         return loginService.verifyTotpMfa(
             loginToken = loginToken,
             totp = totp,
             userAgent = userAgent,
+            ip = ip,
+            meta = mapOf("ip" to ip, "user-agent" to userAgent),
+            now = unixNow(),
             response = response
         )
     }

@@ -43,6 +43,11 @@ object Props {
         if (Platform.isWindows) dataFolderPath.resolve("uploads").toString() else "/tmp/filemat"
     val defaultThumbnailCacheFolderPath: String get() =
         if (Platform.isWindows) dataFolderPath.resolve("cache").resolve("thumbnails").toString() else "/var/cache/filemat"
+    /**
+     * Folder inside the upload folder that only Filemat's upload service (tus) uses. tus makes its own `uploads` and `locks`
+     * folders in its storage path and deletes stale entries of `locks`, so it never gets the upload folder itself, which may hold user files.
+     */
+    const val uploadSubfolderName = ".filemat-uploads"
     const val defaultThumbnailCacheMaxSizeMb = 512
     const val defaultThumbnailCacheMaxAgeSeconds = 604800L
 

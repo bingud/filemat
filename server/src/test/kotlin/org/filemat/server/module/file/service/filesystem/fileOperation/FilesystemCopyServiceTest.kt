@@ -213,6 +213,38 @@ class FilesystemCopyServiceTest {
         assertEquals(outside, Files.readSymbolicLink(dest.resolve("link")))
     }
 
+    @Test
+    fun `with links followed, a file in a linked folder is checked where it really is`() {
+        val base = tempDir.toRealPath()
+        val secret = Files.createDirectories(base.resolve("secret"))
+        Files.writeString(secret.resolve("id_rsa"), "key")
+        val source = Files.createDirectories(base.resolve("usb"))
+        symlinkOrSkip(source.resolve("keys"), secret)
+        val following = FilesystemCopyService(
+            logService = mocks.logService,
+            fileService = fileService,
+            fileLockService = mocks.fileLockService,
+            state = State(env = mapOf("FM_FOLLOW_SYMBOLIC_LINKS" to "true")),
+        )
+        fun copyFollowing(dest: Path) = following.copyFile(
+            canonicalSource = FilePath.ofAlreadyNormalized(source),
+            canonicalDestination = FilePath.ofAlreadyNormalized(dest),
+            user = user,
+            ignorePermissions = false,
+            copyResolvedSymlinks = true,
+        )
+
+        // Allowed under the link's path only: not copied
+        readable.add(source.resolve("keys").resolve("id_rsa"))
+        assertNotSuccessful(copyFollowing(base.resolve("copy1")))
+        assertFalse(Files.exists(base.resolve("copy1").resolve("keys").resolve("id_rsa")))
+
+        // Allowed where it really is: copied
+        readable.add(secret.resolve("id_rsa"))
+        assertSuccess(copyFollowing(base.resolve("copy2")))
+        assertEquals("key", Files.readString(base.resolve("copy2").resolve("keys").resolve("id_rsa")))
+    }
+
     private fun copy(source: Path, dest: Path) = service.copyFile(
         canonicalSource = FilePath.ofAlreadyNormalized(source),
         canonicalDestination = FilePath.ofAlreadyNormalized(dest),

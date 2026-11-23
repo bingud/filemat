@@ -162,15 +162,24 @@ class EntityPermissionTree() {
 
         treeLock.write {
             permissionsIndexLock.write {
+                // Every grant of the entity: a file can have several users and roles
                 if (permissionType == PermissionType.USER || permissionType == null) {
-                    node.userPermissions.removeIf { key, value -> value.entityId == entityId }
-                        ?.also { permissionIndex_remove(it) }
+                    removeAllOfEntity(node.userPermissions, entityId)
                 }
                 if (permissionType == PermissionType.ROLE || permissionType == null) {
-                    node.rolePermissions.removeIf { key, value -> value.entityId == entityId }
-                        ?.also { permissionIndex_remove(it) }
+                    removeAllOfEntity(node.rolePermissions, entityId)
                 }
             }
+        }
+    }
+
+    private fun removeAllOfEntity(permissions: ConcurrentHashMap<Ulid, EntityPermission>, entityId: Ulid) {
+        val iterator = permissions.values.iterator()
+        while (iterator.hasNext()) {
+            val permission = iterator.next()
+            if (permission.entityId != entityId) continue
+            iterator.remove()
+            permissionIndex_remove(permission)
         }
     }
 

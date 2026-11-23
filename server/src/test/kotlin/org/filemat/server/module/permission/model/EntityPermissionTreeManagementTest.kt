@@ -39,6 +39,25 @@ class EntityPermissionTreeManagementTest {
     }
 
     @Test
+    fun `removing an entity removes all of its user and role grants`() {
+        val entityId = UlidCreator.getUlid()
+        val users = List(3) { UlidCreator.getUlid() }
+        val roles = List(2) { UlidCreator.getUlid() }
+        users.forEach { tree.addPermission("/team/report.pdf", createPerm(userId = it, permissions = listOf(FilePermission.READ)).copy(entityId = entityId)) }
+        roles.forEach { tree.addPermission("/team/report.pdf", createPerm(roleId = it, permissions = listOf(FilePermission.READ)).copy(entityId = entityId)) }
+        // Another entity's grant on the same node stays
+        val other = createPerm(userId = userId, permissions = listOf(FilePermission.WRITE))
+        tree.addPermission("/team/report.pdf", other)
+
+        tree.removePermissionByEntityId("/team/report.pdf", entityId, null)
+
+        users.forEach { assertTrue(tree.resolveEffectivePermissions("/team/report.pdf", it, emptyList()).isEmpty()) }
+        roles.forEach { assertTrue(tree.resolveEffectivePermissions("/team/report.pdf", UlidCreator.getUlid(), listOf(it)).isEmpty()) }
+        assertEquals(listOf(other), tree.getAllPermissionsForPath("/team/report.pdf"))
+        assertTrue(tree.getAllAccessibleEntitiesForUser(users[0], emptyList()).isEmpty())
+    }
+
+    @Test
     fun `should find permission by ID`() {
         val perm = createPerm(userId = userId, permissions = listOf(FilePermission.READ))
         tree.addPermission("/foo", perm)

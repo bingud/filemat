@@ -2,6 +2,7 @@ package org.filemat.server.module.admin.service
 
 import com.github.f4b6a3.ulid.Ulid
 import org.filemat.server.common.State
+import org.filemat.server.config.Props
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.module.auth.model.Principal
@@ -38,6 +39,14 @@ class AdminUserRoleService(private val userRoleService: UserRoleService, private
         val targetPrincipal = authService.getPrincipalByUserId(targetId, false).let {
             if (it.isNotSuccessful) return it.cast()
             it.value
+        }
+
+        // Like deleting a user: someone must keep the admin role, or nobody can manage the app
+        if (Props.Roles.adminRoleId in roleIds) {
+            val admins = userRoleService.getRoleUsers(Props.Roles.adminRoleId).let {
+                if (it.notFound) emptyList() else if (it.isNotSuccessful) return it.cast() else it.value
+            }
+            if (targetId in admins && admins.size <= 1) return Result.reject("Cannot remove the admin role from the last admin user.")
         }
 
         userRoleService.removeList(

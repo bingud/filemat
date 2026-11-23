@@ -53,7 +53,7 @@ Filemat keeps its database, setup code, logs, uploads and thumbnail cache in `%L
 
 When Filemat creates the data folder, it limits it to the current user, SYSTEM and Administrators, and what goes inside follows. A folder that already existed (`FM_DATA_DIR`) keeps its permissions, and Filemat warns at startup when other accounts can open it; the database is limited either way. Users can't open or change it through Filemat. Filemat itself only touches its uploads and thumbnails there.
 
-The upload folder and the thumbnail cache folder (Admin → System) can't be a drive, the data folder or a folder that contains it. Changing the upload folder moves the uploads in progress along when the new folder is on the same drive. Deleting or moving the thumbnail cache only touches thumbnail files.
+The upload folder and the thumbnail cache folder (Admin → System) can't be a drive, the data folder or a folder that contains it. Filemat keeps the uploads in progress in a `.filemat-uploads` folder inside the upload folder, and touches nothing else there. Changing the upload folder moves that folder along when the new folder is on the same drive; the old folder's other files stay. Deleting or moving the thumbnail cache only touches thumbnail files.
 
 ## Configuration
 

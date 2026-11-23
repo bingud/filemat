@@ -370,7 +370,7 @@
                         <label for="upload-folder-path-input">Folder path</label>
                         <input type="text" bind:value={uploadPathInput} id="upload-folder-path-input" class="basic-input">
                         <p class="text-sm text-neutral-500">This is where temporary files will be stored while being uploaded</p>
-                        <p class="text-sm text-neutral-500">Uploads in progress are kept in its <CodeChunk>uploads</CodeChunk> and <CodeChunk>locks</CodeChunk> folders.</p>
+                        <p class="text-sm text-neutral-500">Uploads in progress are kept in its <CodeChunk>.filemat-uploads</CodeChunk> folder.</p>
                         <button type="submit" class="basic-input-button my-4">{running ? "..." : "Continue"}</button>
                         {@render backButton()}
                     </form>

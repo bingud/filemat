@@ -51,3 +51,4 @@ Algorithm: **Argon2**
 | --- | --- |
 | Protocol | TUS (resumable uploads) |
 | Endpoint | `/api/v1/file/upload` |
+| Storage | Uploads in progress are kept in the `.filemat-uploads` folder inside the upload folder. Anything else in the upload folder is never touched. |

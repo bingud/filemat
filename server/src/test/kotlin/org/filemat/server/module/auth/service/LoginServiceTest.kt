@@ -259,13 +259,21 @@ class LoginServiceTest {
             val loginToken = response.getCookie(Props.Cookies.tempLoginToken)!!.value
             val code = TotpUtil.generator.generateCurrent(TOTPSecret.fromBase32EncodedString(totpSecret)).value
 
-            val first = service.verifyTotpMfa(loginToken, code, "ua", response)
-            val replay = service.verifyTotpMfa(loginToken, code, "ua", response)
+            val first = service.verifyTotpMfa(loginToken, code, "ua", ip, emptyMap(), 1234, response)
+            val replay = service.verifyTotpMfa(loginToken, code, "ua", ip, emptyMap(), 1234, response)
 
             assertEquals(200, first.statusCode.value())
             assertNotNull(response.getCookie(Props.Cookies.authToken))
             assertEquals(401, replay.statusCode.value())
             verify(exactly = 1) { authTokenService.createToken(user.userId, any(), any()) }
+            // Audited and dated like a login without 2FA
+            verify(exactly = 1) { userService.setLastLoginDate(user.userId, 1234) }
+            verify(exactly = 1) {
+                logService.createLog(
+                    level = any(), type = any(), action = any(), createdDate = any(), description = "Successful login", message = any(),
+                    initiatorId = any(), initiatorIp = ip, targetId = any(), meta = match { it?.get("target-userId") == user.userId.toString() },
+                )
+            }
         }
 
         @Test
@@ -274,7 +282,7 @@ class LoginServiceTest {
             login()
             val loginToken = response.getCookie(Props.Cookies.tempLoginToken)!!.value
 
-            val result = service.verifyTotpMfa(loginToken, "000000", "ua", response)
+            val result = service.verifyTotpMfa(loginToken, "000000", "ua", ip, emptyMap(), 1234, response)
 
             assertEquals(400, result.statusCode.value())
             assertEquals("invalid-totp", result.errorCode())
@@ -283,7 +291,7 @@ class LoginServiceTest {
 
         @Test
         fun `unknown or expired temporary token is refused`() {
-            val result = service.verifyTotpMfa(StringUtils.randomString(128), "123456", "ua", response)
+            val result = service.verifyTotpMfa(StringUtils.randomString(128), "123456", "ua", ip, emptyMap(), 1234, response)
 
             assertEquals(401, result.statusCode.value())
             assertEquals("login-expired", result.errorCode())
@@ -295,7 +303,7 @@ class LoginServiceTest {
             login()
             val loginToken = response.getCookie(Props.Cookies.tempLoginToken)!!.value
 
-            val statuses = (1..9).map { service.verifyTotpMfa(loginToken, "000000", "ua", response).statusCode.value() }
+            val statuses = (1..9).map { service.verifyTotpMfa(loginToken, "000000", "ua", ip, emptyMap(), 1234, response).statusCode.value() }
 
             assertEquals(429, statuses.last())
             assertNoSessionCreated()

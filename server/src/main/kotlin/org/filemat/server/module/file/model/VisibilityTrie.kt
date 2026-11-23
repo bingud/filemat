@@ -1,6 +1,7 @@
 package org.filemat.server.module.file.model
 
 import org.filemat.server.config.platform.PathPolicy
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Visibility rules by path. Every function takes path keys (`PathPolicy.pathKey`), so matching follows the case rules of each folder.
@@ -122,10 +123,14 @@ class VisibilityTrie {
     }
 
 
+    /**
+     * Requests read the trie while an admin exposes or hides a folder, so the children map is concurrent and the fields volatile.
+     * [insert] sets [isExposed] before [hasRule], so a reader that sees the rule sees its value.
+     */
     private class TrieNode {
-        val children = mutableMapOf<String, TrieNode>()
-        var isExposed: Boolean = false
-        var hasRule: Boolean = false
-        var path: String? = null
+        val children = ConcurrentHashMap<String, TrieNode>()
+        @Volatile var isExposed: Boolean = false
+        @Volatile var hasRule: Boolean = false
+        @Volatile var path: String? = null
     }
 }

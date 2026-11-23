@@ -82,6 +82,22 @@ class FileContentServiceTest {
     }
 
     @Test
+    fun `a range past the end of a file that got shorter is refused and the file is closed`() {
+        state.app.followSymlinks = false
+        val folder = Files.createDirectory(tempDir.resolve("shrunk"))
+        val file = Files.writeString(folder.resolve("a.txt"), "short")
+        allow(file)
+
+        val result = service.getFileContent(user, FilePath.ofAlreadyNormalized(file), range = 100L..199L)
+
+        assertTrue(result.rejected)
+        assertEquals(FileContentService.RANGE_PAST_END, result.error)
+        // On Windows a folder can't be deleted while a file in it is still open
+        Files.delete(file)
+        Files.delete(folder)
+    }
+
+    @Test
     fun `file content of a folder is not found`() {
         state.app.followSymlinks = false
         val folder = Files.createDirectory(tempDir.resolve("folder"))

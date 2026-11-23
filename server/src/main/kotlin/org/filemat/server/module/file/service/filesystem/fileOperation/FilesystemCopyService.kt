@@ -201,25 +201,19 @@ class FilesystemCopyService(
             return failedCount
         }
 
-        if (isSymlink == true) {
-            if (resolvedPath == null) return failedCount + 1
-
-            fileService.isAllowedToAccessFile(
-                user = user,
-                canonicalPath = resolvedPath,
-                ignorePermissions = ignorePermissions
-            ).let {
-                if (it.isNotSuccessful) return failedCount + 1
-            }
-        } else {
-            // Check download/read permission on source file
-            fileService.isAllowedToAccessFile(
-                user = user,
-                canonicalPath = sourceFilePath,
-                ignorePermissions = ignorePermissions
-            ).let {
-                if (it.isNotSuccessful) return failedCount + 1
-            }
+        // Check download/read permission on source file, where it really is.
+        // When links are followed, a file inside a linked folder is reached through the link's path, so it is resolved too (like zips, F17).
+        val accessPath = when {
+            isSymlink == true -> resolvedPath ?: return failedCount + 1
+            copyResolvedSymlinks -> resolvePath(sourceFilePath, followSymlinks = true).valueOrNull ?: return failedCount + 1
+            else -> sourceFilePath
+        }
+        fileService.isAllowedToAccessFile(
+            user = user,
+            canonicalPath = accessPath,
+            ignorePermissions = ignorePermissions
+        ).let {
+            if (it.isNotSuccessful) return failedCount + 1
         }
 
         try {

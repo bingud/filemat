@@ -1,5 +1,6 @@
 package org.filemat.server.common
 
+import org.filemat.server.config.Props
 import org.filemat.server.testutil.junctionOrSkip
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -30,21 +31,62 @@ class StateInternalFolderTest {
 
     private fun uploadFolder(path: Path) = path.also { state.app.uploadFolderPath = it.toString() }
 
-    @Test
-    fun `a file in the upload folder inside the data folder is internal`() {
-        val uploads = uploadFolder(Files.createDirectory(dataFolder.resolve("uploads")))
-        val file = Files.createDirectories(uploads.resolve("uploads").resolve("id")).resolve("data").also { Files.writeString(it, "x") }
-
-        assertTrue(state.isInInternalFolder(InternalFolder.UPLOADS, file))
-        assertEquals(uploads, state.internalFolderPath(InternalFolder.UPLOADS))
+    /** Sets the upload folder and creates the folder tus keeps its files in */
+    private fun uploadFolderWithTusFolder(path: Path): Path {
+        uploadFolder(path)
+        return Files.createDirectories(path.resolve(Props.uploadSubfolderName))
     }
 
     @Test
-    fun `the folder itself and files outside it are not internal`() {
+    fun `a file in tus's folder inside the upload folder is internal`() {
+        val tusFolder = uploadFolderWithTusFolder(Files.createDirectory(dataFolder.resolve("uploads")))
+        val file = Files.createDirectories(tusFolder.resolve("uploads").resolve("id")).resolve("data").also { Files.writeString(it, "x") }
+
+        assertTrue(state.isInInternalFolder(InternalFolder.UPLOADS, file))
+        assertEquals(tusFolder, state.internalFolderPath(InternalFolder.UPLOADS))
+    }
+
+    @Test
+    fun `a user's files in the upload folder are not internal, not even in folders named uploads and locks`() {
+        val uploads = Files.createDirectory(dataFolder.resolve("uploads"))
+        uploadFolderWithTusFolder(uploads)
+        val files = listOf(
+            Files.writeString(uploads.resolve("a.txt"), "x"),
+            Files.writeString(Files.createDirectories(uploads.resolve("uploads").resolve("id")).resolve("data"), "x"),
+            Files.writeString(Files.createDirectories(uploads.resolve("locks")).resolve("id"), "x"),
+        )
+
+        files.forEach { assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, it), it.toString()) }
+    }
+
+    @Test
+    fun `without tus's folder there is no internal upload folder`() {
         val uploads = uploadFolder(Files.createDirectory(dataFolder.resolve("uploads")))
+        val file = Files.writeString(uploads.resolve("a.txt"), "x")
+
+        assertNull(state.internalFolderPath(InternalFolder.UPLOADS))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, file))
+    }
+
+    @Test
+    fun `tus's folder as a link is not an internal upload folder`() {
+        val uploads = uploadFolder(Files.createDirectory(dataFolder.resolve("uploads")))
+        val outside = Files.createDirectory(tempDir.resolve("outside"))
+        val file = Files.writeString(outside.resolve("file.txt"), "x")
+        junctionOrSkip(uploads.resolve(Props.uploadSubfolderName), outside)
+
+        assertNull(state.internalFolderPath(InternalFolder.UPLOADS))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, uploads.resolve(Props.uploadSubfolderName).resolve("file.txt")))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, file))
+    }
+
+    @Test
+    fun `the folders themselves and files outside them are not internal`() {
+        val tusFolder = uploadFolderWithTusFolder(Files.createDirectory(dataFolder.resolve("uploads")))
         val database = Files.writeString(dataFolder.resolve("filemat-server.db"), "x")
 
-        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, uploads))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, tusFolder.parent))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, tusFolder))
         assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, database))
         assertFalse(state.isInInternalFolder(InternalFolder.THUMBNAIL_CACHE, database))
     }
@@ -82,33 +124,34 @@ class StateInternalFolderTest {
 
     @Test
     fun `a missing file is not internal`() {
-        val uploads = uploadFolder(Files.createDirectory(dataFolder.resolve("uploads")))
+        val tusFolder = uploadFolderWithTusFolder(Files.createDirectory(dataFolder.resolve("uploads")))
 
-        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, uploads.resolve("missing")))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, tusFolder.resolve("missing")))
     }
 
     @Test
-    fun `a link in the upload folder to a folder outside it is not internal`() {
-        val uploads = uploadFolder(Files.createDirectory(dataFolder.resolve("uploads")))
+    fun `a link in tus's folder to a folder outside it is not internal`() {
+        val tusFolder = uploadFolderWithTusFolder(Files.createDirectory(dataFolder.resolve("uploads")))
         val outside = Files.createDirectory(tempDir.resolve("outside"))
         Files.writeString(outside.resolve("file.txt"), "x")
-        junctionOrSkip(uploads.resolve("link"), outside)
+        junctionOrSkip(tusFolder.resolve("link"), outside)
 
-        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, uploads.resolve("link").resolve("file.txt")))
+        assertFalse(state.isInInternalFolder(InternalFolder.UPLOADS, tusFolder.resolve("link").resolve("file.txt")))
     }
 
     @Test
     fun `an upload folder set through a link is compared by its real path`() {
         // FM_DATA_DIR on a junction: the defaults name the link, the checks use the real folder
         val uploads = Files.createDirectory(dataFolder.resolve("uploads"))
-        val file = Files.writeString(uploads.resolve("data"), "x")
+        val tusFolder = Files.createDirectory(uploads.resolve(Props.uploadSubfolderName))
+        val file = Files.writeString(tusFolder.resolve("data"), "x")
         val dataLink = tempDir.resolve("datalink")
         junctionOrSkip(dataLink, dataFolder)
         try {
             uploadFolder(dataLink.resolve("uploads"))
 
-            assertEquals(uploads, state.internalFolderPath(InternalFolder.UPLOADS))
-            assertTrue(state.isInInternalFolder(InternalFolder.UPLOADS, dataLink.resolve("uploads").resolve("data")))
+            assertEquals(tusFolder, state.internalFolderPath(InternalFolder.UPLOADS))
+            assertTrue(state.isInInternalFolder(InternalFolder.UPLOADS, dataLink.resolve("uploads").resolve(Props.uploadSubfolderName).resolve("data")))
             assertTrue(state.isInInternalFolder(InternalFolder.UPLOADS, file))
         } finally {
             // Removes the link only. The temp folder cleanup can't delete a link whose target is already gone.

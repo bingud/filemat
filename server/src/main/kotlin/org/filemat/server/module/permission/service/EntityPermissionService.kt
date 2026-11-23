@@ -288,7 +288,8 @@ class EntityPermissionService(
             it.value
         }
 
-        fileService.hasPermissionToAccessFile(user = user, canonicalPath = canonicalPath).let {
+        // Blocked paths too (hidden, sensitive, the data folder), like changing a permission
+        fileService.isAllowedToAccessFile(user = user, canonicalPath = canonicalPath).let {
             if (it.isNotSuccessful) return it.cast()
         }
 
@@ -320,6 +321,26 @@ class EntityPermissionService(
      * Remove permission for an entity ID from a specific file path
      */
     fun memory_removeEntity(pathKey: String, entityId: Ulid) = pathTree.removePermissionByEntityId(pathKey, entityId, null)
+
+    /**
+     * Puts the permissions of an entity that had no path back into the tree at [pathKey], for example when a file is found again by its key.
+     * Its grants left the tree when it lost its path, and the tree loads them only at startup otherwise.
+     */
+    fun memory_loadEntity(pathKey: String, entityId: Ulid) {
+        val permissions = try {
+            permissionRepository.getByEntityId(entityId).map { it.toEntityPermission() }
+        } catch (e: Exception) {
+            logService.error(
+                type = LogType.SYSTEM,
+                action = UserAction.NONE,
+                description = "Failed to load the permissions of a file that was found again.",
+                message = e.stackTraceToString(),
+                targetId = entityId,
+            )
+            return
+        }
+        permissions.forEach { pathTree.addPermission(pathKey, it) }
+    }
 
     /**
      * Update the file path of an entity

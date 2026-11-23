@@ -243,4 +243,14 @@ class EntityServiceMoveTest {
             )
         }
     }
+
+    @Test
+    fun `an orphaned entity that gets a path again loads its permissions into the tree`() {
+        val path = PathPolicy.toApiString(dir.resolve("found.txt"))
+        val orphan = entity(path).copy(path = null, pathKey = null)
+
+        assertSuccess(service.updatePath(orphan.entityId, path, orphan, UserAction.NONE))
+
+        verify { entityPermissionService.memory_loadEntity(PathPolicy.pathKey(path), orphan.entityId) }
+    }
 }

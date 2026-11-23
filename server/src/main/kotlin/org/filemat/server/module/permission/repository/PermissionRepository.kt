@@ -14,6 +14,9 @@ interface PermissionRepository : CrudRepository<EntityPermissionDto, Ulid> {
     @Query("SELECT * FROM permissions")
     fun getAll(): List<EntityPermissionDto>
 
+    @Query("SELECT * FROM permissions WHERE entity_id = :entityId")
+    fun getByEntityId(entityId: Ulid): List<EntityPermissionDto>
+
     @Modifying
     @Query("INSERT INTO permissions (permission_id, permission_type, entity_id, user_id, role_id, permissions, created_date) VALUES (:permissionId, :permissionType, :entityId, :userId, :roleId, :permissions, :createdDate)")
     fun insert(

@@ -15,6 +15,7 @@ import org.filemat.server.module.file.service.EntityService
 import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.log.service.LogService
 import org.filemat.server.module.permission.model.EntityPermission
+import org.filemat.server.module.permission.model.EntityPermissionDto
 import org.filemat.server.module.permission.model.EntityPermissionMeta
 import org.filemat.server.module.permission.model.FilePermission
 import org.filemat.server.module.permission.model.PermissionType
@@ -314,6 +315,20 @@ class EntityPermissionServiceTest {
         }
 
         @Test
+        fun `a file found again gets its stored permissions back`() {
+            val stored = grant(FilePermission.READ)
+            service.memory_removeEntity(path.pathKey, entity.entityId)
+            val foundAt = FilePath.of("/data/moved/report.txt")
+            every { permissionRepository.getByEntityId(entity.entityId) } returns listOf(
+                EntityPermissionDto(stored.permissionId, stored.permissionType, stored.entityId, stored.userId, null, "[0]", stored.createdDate)
+            )
+
+            service.memory_loadEntity(foundAt.pathKey, entity.entityId)
+
+            assertEquals(setOf(FilePermission.READ), service.getEffectivePermissions(foundAt, targetUserId, emptyList()))
+        }
+
+        @Test
         fun `removing a user drops their permissions everywhere`() {
             grant(FilePermission.READ)
 
@@ -332,12 +347,19 @@ class EntityPermissionServiceTest {
 
         private fun metaOf(entity: FilesystemEntity?): EntityPermissionMeta {
             val file = FilePath.of(PathPolicy.toApiString(Files.writeString(dir.toRealPath().resolve("a.txt"), "a")))
-            every { fileService.hasPermissionToAccessFile(any(), any()) } returns Result.ok()
             every { entityService.getByPath(any(), any()) } returns if (entity == null) Result.notFound() else Result.ok(entity)
 
             val result = service.getEntityPermissions(manager, file)
             assertSuccess(result)
             return result.value
+        }
+
+        @Test
+        fun `the permissions of a blocked path are not listed`() {
+            val file = FilePath.of(PathPolicy.toApiString(Files.writeString(dir.toRealPath().resolve("a.txt"), "a")))
+            every { fileService.isAllowedToAccessFile(any(), file, any()) } returns Result.reject("This file is blocked.")
+
+            assertRejected(service.getEntityPermissions(manager, file))
         }
 
         @Test

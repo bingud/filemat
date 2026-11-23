@@ -6,6 +6,7 @@ import java.nio.file.LinkOption
 import java.nio.file.Path
 import org.filemat.server.common.InternalFolder
 import org.filemat.server.common.model.Result
+import org.filemat.server.config.Props
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.testutil.FileOperationMocks
 import org.filemat.server.testutil.assertRejected
@@ -206,9 +207,22 @@ class FilesystemDeletionServiceTest {
     private fun uploadTempFolder(): Path {
         val uploads = Files.createDirectories(dataFolder.resolve("uploads"))
         mocks.state.app.uploadFolderPath = uploads.toString()
-        val folder = Files.createDirectories(uploads.resolve("uploads").resolve("id"))
+        val folder = Files.createDirectories(uploads.resolve(Props.uploadSubfolderName).resolve("uploads").resolve("id"))
         Files.writeString(folder.resolve("info"), "x")
         return folder
+    }
+
+    @Test
+    fun `an internal delete never touches a user's own uploads folder in the upload folder`() {
+        uploadTempFolder()
+        val userFile = Files.writeString(Files.createDirectories(dataFolder.resolve("uploads").resolve("uploads").resolve("id")).resolve("a.txt"), "x")
+        val userLock = Files.writeString(Files.createDirectories(dataFolder.resolve("uploads").resolve("locks")).resolve("b.txt"), "x")
+
+        assertRejected(deleteUpload(userFile.parent))
+        assertRejected(deleteUpload(userLock))
+
+        assertTrue(Files.exists(userFile))
+        assertTrue(Files.exists(userLock))
     }
 
     private fun deleteUpload(target: Path) = service.deleteFile(

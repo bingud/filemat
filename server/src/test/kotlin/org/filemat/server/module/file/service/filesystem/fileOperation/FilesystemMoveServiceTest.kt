@@ -11,6 +11,7 @@ import java.nio.file.Path
 import kotlin.io.path.listDirectoryEntries
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.InternalFolder
+import org.filemat.server.config.Props
 import org.filemat.server.config.platform.Platform
 import org.filemat.server.config.platform.WindowsNative
 import org.filemat.server.module.file.model.FilePath
@@ -316,8 +317,18 @@ class FilesystemMoveServiceTest {
     private fun uploadedFile(): Path {
         val uploads = Files.createDirectories(dataFolder.resolve("uploads"))
         mocks.state.app.uploadFolderPath = uploads.toString()
-        val folder = Files.createDirectories(uploads.resolve("uploads").resolve("id"))
+        val folder = Files.createDirectories(uploads.resolve(Props.uploadSubfolderName).resolve("uploads").resolve("id"))
         return Files.writeString(folder.resolve("data"), "upload")
+    }
+
+    @Test
+    fun `an internal move never takes a user's own uploads folder in the upload folder`() {
+        uploadedFile()
+        val userFile = Files.writeString(Files.createDirectories(dataFolder.resolve("uploads").resolve("uploads").resolve("id")).resolve("a.txt"), "x")
+
+        assertRejected(moveUpload(userFile, tempDir.resolve("a.txt")))
+
+        assertTrue(Files.exists(userFile))
     }
 
     private fun moveUpload(source: Path, dest: Path) = service.moveFile(
