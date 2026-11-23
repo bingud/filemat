@@ -147,6 +147,28 @@ class FilesystemCopyServiceTest {
     }
 
     @Test
+    @EnabledOnOs(OS.LINUX)
+    fun `a folder the system refuses to open says it is a permission problem`() {
+        val source = tempDir.resolve("folder")
+        val locked = source.resolve("locked")
+        Files.createDirectories(locked)
+        Files.writeString(source.resolve("ok.txt"), "ok")
+        readable.add(source.resolve("ok.txt"))
+        Files.setPosixFilePermissions(locked, emptySet())
+        try {
+            // root opens it anyway
+            org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(locked))
+
+            val result = copy(source, tempDir.resolve("dest"))
+
+            assertEquals("1 item could not be copied. Missing permission to copy file.", result.error)
+            assertTrue(Files.exists(tempDir.resolve("dest").resolve("ok.txt")))
+        } finally {
+            Files.setPosixFilePermissions(locked, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+        }
+    }
+
+    @Test
     fun `junction in a folder does not copy its target contents`() {
         val outside = tempDir.resolve("outside")
         Files.createDirectories(outside)
@@ -163,7 +185,7 @@ class FilesystemCopyServiceTest {
 
         // The rest is copied, and nothing is made where the junction was
         assertTrue(result.isNotSuccessful)
-        assertEquals("1 items could not be copied. Links to folders were not copied.", result.error)
+        assertEquals("1 item could not be copied. Links to folders were not copied.", result.error)
         assertTrue(Files.exists(dest.resolve("ok.txt")))
         assertFalse(Files.exists(dest.resolve("junction"), LinkOption.NOFOLLOW_LINKS))
         assertEquals("secret", Files.readString(outsideFile))
@@ -194,7 +216,7 @@ class FilesystemCopyServiceTest {
 
         val result = copy(source, dest)
 
-        assertEquals("1 items could not be copied. Links to folders were not copied.", result.error)
+        assertEquals("1 item could not be copied. Links to folders were not copied.", result.error)
         assertFalse(Files.exists(dest, LinkOption.NOFOLLOW_LINKS))
     }
 
@@ -335,7 +357,7 @@ class FilesystemCopyServiceTest {
         }
 
         assertTrue(result.rejected)
-        assertEquals("1 items could not be copied. Copying a case-sensitive folder needs the account running Filemat to have Full control of the destination folder.", result.error)
+        assertEquals("1 item could not be copied. Copying a case-sensitive folder needs the account running Filemat to have Full control of the destination folder.", result.error)
         assertFalse(Files.exists(dest))
         assertEquals("lower", Files.readString(lower))
     }

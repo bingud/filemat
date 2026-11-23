@@ -20,7 +20,12 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
+import org.filemat.server.testutil.junctionOrSkip
+import org.filemat.server.testutil.symlinkOrSkip
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.io.TempDir
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import java.nio.file.Files
 import java.nio.file.Path
 
 class FileVisibilityServiceTest {
@@ -136,6 +141,61 @@ class FileVisibilityServiceTest {
         }
 
         assertNull(service.isPathAllowed(FilePath.of("${root}srv/file")))
+    }
+
+    // A junction on Windows (no Developer Mode needed), a symbolic link elsewhere
+    private fun folderLink(link: Path, target: Path) = if (Platform.isWindows) junctionOrSkip(link, target) else symlinkOrSkip(link, target)
+
+    @Test
+    fun `a rule through a linked folder is refused with the real path`(@TempDir tempDir: Path) {
+        val real = Files.createDirectories(tempDir.resolve("real").resolve("secret")).parent
+        val link = tempDir.resolve("link")
+        folderLink(link, real)
+        val repository = mockk<FileVisibilityRepository>(relaxed = true)
+        val state = State(env = emptyMap())
+        val service = FileVisibilityService(repository, mockk(relaxed = true), state, SensitiveFolderPaths(state))
+
+        val result = service.insertPath(FileVisibility(path = "$link/secret", isExposed = false, createdDate = 0), UserAction.ADD_FILE_VISIBILITY_CONFIGURATION)
+
+        assertTrue(result.rejected)
+        val realSecret = FilePath.of(real.toRealPath().resolve("secret").toString()).pathString
+        assertEquals("This path goes through a link or a short name, so the rule would never match. Use the real path: $realSecret", result.error)
+        verify(exactly = 0) { repository.insertOrReplace(any(), any(), any()) }
+
+        // The real path, and the link itself (hides it in its folder), are fine
+        assertNull(service.rulePathProblem(realSecret))
+        assertNull(service.rulePathProblem(link.toString()))
+        assertNull(service.rulePathProblem("$realSecret/not-made-yet"))
+    }
+
+    @Test
+    fun `a hidden folder typed through a link is hidden at its real path`(@TempDir tempDir: Path) {
+        val real = Files.createDirectories(tempDir.resolve("real").resolve("secret")).parent
+        val link = tempDir.resolve("link")
+        folderLink(link, real)
+        // The temp folder may be on the sensitive list (AppData on Windows)
+        val state = State(env = mapOf("FM_HIDDEN_FOLDER_PATHS" to "$link/secret", "FM_HIDE_SENSITIVE_FOLDERS" to "false"))
+        val service = FileVisibilityService(mockk(relaxed = true), mockk(relaxed = true), state, SensitiveFolderPaths(state))
+        service.loadHiddenFiles()
+        service.insertPath(FileVisibility(path = root, isExposed = true, createdDate = 0), UserAction.APP_SETUP)
+
+        assertEquals("This file is blocked.", service.isPathAllowed(FilePath.of(real.toRealPath().resolve("secret").resolve("file").toString())))
+        assertNull(service.isPathAllowed(FilePath.of(real.toRealPath().resolve("public").toString())))
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    fun `a rule through an 8 3 short name is refused`(@TempDir tempDir: Path) {
+        val folder = Files.createDirectories(tempDir.resolve("Long folder name for 8.3"))
+        val process = ProcessBuilder("cmd", "/c", "for %I in (\"$folder\") do @echo %~sI").redirectErrorStream(true).start()
+        val short = process.inputStream.bufferedReader().readText().trim()
+        process.waitFor()
+        assumeTrue(short.isNotEmpty() && !short.equals(folder.toString(), ignoreCase = true), "8.3 names are off on this drive")
+
+        val problem = FileVisibilityService(mockk(relaxed = true), mockk(relaxed = true), State(env = emptyMap()), SensitiveFolderPaths(State(env = emptyMap())))
+            .rulePathProblem("$short/inner")
+
+        assertTrue(problem?.endsWith(FilePath.of(folder.toRealPath().resolve("inner").toString()).pathString) == true, problem)
     }
 
     @Test

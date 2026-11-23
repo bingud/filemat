@@ -182,6 +182,8 @@ class FilesystemMoveService(
                     }
                 }
             } catch (e: Exception) {
+                // A folder the account running Filemat can't open
+                if (FileErrors.isAccessDenied(e)) failures.add(FileFailure.MOVE_DENIED)
                 return failedCount + 1
             }
         }
@@ -443,9 +445,9 @@ class FilesystemMoveService(
                 failures.add(it)
                 return FileErrors.resultOf(it)
             }
-            val isPermissionError = e.suppressed.any { it is AccessDeniedException } || e is AccessDeniedException
-            if (isPermissionError) {
-                Result.error("Missing permission to move file.")
+            if (FileErrors.isAccessDenied(e)) {
+                failures.add(FileFailure.MOVE_DENIED)
+                FileErrors.resultOf(FileFailure.MOVE_DENIED)
             } else {
                 Result.error("Failed to move file due to filesystem error.")
             }

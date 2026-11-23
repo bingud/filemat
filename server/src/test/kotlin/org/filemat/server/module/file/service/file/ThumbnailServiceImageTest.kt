@@ -15,6 +15,7 @@ import org.filemat.server.module.file.service.file.media.MediaFrame
 import org.filemat.server.module.file.service.file.media.MediaPreviewBackend
 import org.filemat.server.module.file.service.file.media.MediaPreviewService
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -39,10 +40,32 @@ class ThumbnailServiceImageTest {
         )
     }
 
-    private fun writeImage(name: String, width: Int, height: Int, format: String = "png"): Path {
+    private fun writeImage(name: String, width: Int, height: Int, format: String = "png", type: Int = BufferedImage.TYPE_INT_RGB): Path {
         val file = tempDir.resolve(name)
-        ImageIO.write(BufferedImage(width, height, BufferedImage.TYPE_INT_RGB), format, file.toFile())
+        ImageIO.write(BufferedImage(width, height, type), format, file.toFile())
         return file
+    }
+
+    @Test
+    fun `an image above the pixel limit is read subsampled and still reaches the target`() {
+        // 24.6 MP, gray so the test itself stays small
+        val file = writeImage("huge.png", 6000, 4100, type = BufferedImage.TYPE_BYTE_GRAY)
+        assertEquals(5, ThumbnailService.imageSubsampling(6000, 4100, 256))
+
+        val result = thumbnail(file, 256)
+
+        assertEquals(256, result.width)
+        assertTrue(result.height in 174..175, "${result.height}")
+    }
+
+    @Test
+    fun `subsampling starts above the pixel limit and keeps the decode under it`() {
+        assertEquals(1, ThumbnailService.imageSubsampling(6000, 4000, 100))
+        // At least 4 times the target is read
+        assertEquals(8, ThumbnailService.imageSubsampling(10_000, 10_000, 300))
+        // A large target can't make it decode more than the limit
+        val subsampling = ThumbnailService.imageSubsampling(30_000, 30_000, 8192)
+        assertTrue((30_000L / subsampling) * (30_000L / subsampling) <= ThumbnailService.MAX_DECODED_PIXELS)
     }
 
     private fun thumbnail(file: Path, targetSize: Int): BufferedImage {

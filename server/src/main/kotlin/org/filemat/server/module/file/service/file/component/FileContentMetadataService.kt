@@ -1,6 +1,9 @@
 package org.filemat.server.module.file.service.file.component
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import net.coobird.thumbnailator.util.exif.ExifFilterUtils
+import net.coobird.thumbnailator.util.exif.ExifUtils
+import net.coobird.thumbnailator.util.exif.Orientation
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.cast
 import org.filemat.server.common.util.md5hash
@@ -14,6 +17,7 @@ import org.filemat.server.module.file.service.file.FileService
 import org.filemat.server.module.file.service.file.media.FfmpegBusyException
 import org.filemat.server.module.file.service.file.media.MediaPreviewService
 import org.springframework.stereotype.Service
+import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.SeekableByteChannel
@@ -180,6 +184,30 @@ internal fun readImageSize(path: Path): Pair<Int, Int>? {
         }
     } catch (_: Exception) {
         null
+    }
+}
+
+/**
+ * Decodes the image at [path] reading only every [subsampling]-th pixel in each direction, so only those are held in memory,
+ * and turns it upright by its EXIF orientation like Thumbnailator does. Null when ImageIO cannot read the format.
+ */
+internal fun readImageSubsampled(path: Path, subsampling: Int): BufferedImage? {
+    Files.newByteChannel(path).use { channel ->
+        ChannelImageInputStream(channel).use { input ->
+            val readers = ImageIO.getImageReaders(input)
+            if (!readers.hasNext()) return null
+            val reader = readers.next()
+            try {
+                reader.input = input
+                val orientation = runCatching { ExifUtils.getExifOrientation(reader, 0) }.getOrNull()
+                val param = reader.defaultReadParam.apply { setSourceSubsampling(subsampling, subsampling, 0, 0) }
+                val image = reader.read(0, param)
+                if (orientation == null || orientation == Orientation.TOP_LEFT) return image
+                return ExifFilterUtils.getFilterForOrientation(orientation).apply(image)
+            } finally {
+                reader.dispose()
+            }
+        }
     }
 }
 

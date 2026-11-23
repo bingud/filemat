@@ -20,6 +20,11 @@ enum class FileFailure(val message: String, val detail: String) {
     READ_ONLY("File is read-only.", "Read-only files were left in place."),
     FOLDER_LINK("Links to folders cannot be copied.", "Links to folders were not copied."),
 
+    // The operating system refused access to a file or folder. The web adds the Windows hint to messages ending like these.
+    COPY_DENIED("Missing permission to copy file.", "Missing permission to copy file."),
+    DELETE_DENIED("Missing permission to delete file.", "Missing permission to delete file."),
+    MOVE_DENIED("Missing permission to move file.", "Missing permission to move file."),
+
     // Making a new folder case-sensitive needs "Delete subfolders and files" on it, which Full control has and Modify doesn't
     CASE_SENSITIVE_COPY(
         "Copying a case-sensitive folder needs the account running ${Props.appName} to have Full control of the destination folder.",
@@ -174,6 +179,11 @@ object FileErrors {
         else -> FileFailure.CASE_SENSITIVE_COPY
     }
 
+    /**
+     * Returns whether the operating system refused access, as [e] or as one of the errors it suppressed
+     */
+    fun isAccessDenied(e: Throwable): Boolean = e is AccessDeniedException || e.suppressed.any { it is AccessDeniedException }
+
     private fun normalizeReason(reason: String) = reason.trim().trimEnd('.')
 }
 
@@ -190,15 +200,26 @@ class FileFailures {
     /**
      * Result for failed items. [summary] says how many failed, and the reasons are appended to it.
      * When one file failed for a known reason, the message is that reason only.
+     * A permission reason goes last, where the web looks for it to add the Windows hint.
      */
     fun <T> toResult(summary: String, isSingleFile: Boolean = false): Result<T> {
         if (isSingleFile && reasons.size == 1) return FileErrors.resultOf(reasons.first())
 
-        val message = (listOf(summary) + reasons.map { it.detail }).joinToString(" ")
+        val (denied, other) = reasons.partition { it in accessDenied }
+        val message = (listOf(summary) + (other + denied).map { it.detail }).joinToString(" ")
         return when {
             FileFailure.IN_USE in reasons -> Result.conflict(message)
             reasons.isNotEmpty() -> Result.reject(message)
             else -> Result.error(message)
         }
     }
+
+    private companion object {
+        val accessDenied = setOf(FileFailure.COPY_DENIED, FileFailure.DELETE_DENIED, FileFailure.MOVE_DENIED)
+    }
 }
+
+/**
+ * Says how many items a file operation could not handle, for example "1 item could not be copied."
+ */
+fun failedItemsSummary(count: Int, verb: String) = "$count ${plural("item", count)} could not be $verb."

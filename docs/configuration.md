@@ -80,7 +80,7 @@ The rest of `AppData` is not blocked.
 
 Use `FM_NON_SENSITIVE_FOLDERS` to exclude paths from this list. Write them as in the list, for example `C:/Users/*/.ssh` or `C:\Users\*\.ssh`.
 
-Use `FM_HIDDEN_FOLDER_PATHS` to add additional blocked paths. Give each folder's full path: `*` is not a wildcard there, and Filemat prints a warning at startup for each entry that has one. The same goes for `FM_FORCE_DELETABLE_FOLDERS`. Only `FM_NON_SENSITIVE_FOLDERS` takes `*`, because it names entries of the list above.
+Use `FM_HIDDEN_FOLDER_PATHS` to add additional blocked paths. A path that goes through a linked folder (or, on Windows, an 8.3 short name) is also blocked at its real path, and Filemat prints it at startup. Give each folder's full path: `*` is not a wildcard there, and Filemat prints a warning at startup for each entry that has one. The same goes for `FM_FORCE_DELETABLE_FOLDERS`. Only `FM_NON_SENSITIVE_FOLDERS` takes `*`, because it names entries of the list above.
 
 ### Non-Deletable System Paths
 

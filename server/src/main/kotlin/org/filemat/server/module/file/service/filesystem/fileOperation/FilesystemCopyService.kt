@@ -117,7 +117,7 @@ class FilesystemCopyService(
             )
         }
 
-        return if (failedCount == 0) Result.ok() else failures.toResult("$failedCount items could not be copied.", isSingleFile = !isFolder)
+        return if (failedCount == 0) Result.ok() else failures.toResult(failedItemsSummary(failedCount, "copied"), isSingleFile = !isFolder)
     }
 
     private fun copyRecursiveSafe(
@@ -181,6 +181,8 @@ class FilesystemCopyService(
                     }
                 }
             } catch (e: Exception) {
+                // A folder the account running Filemat can't open
+                if (FileErrors.isAccessDenied(e)) failures.add(FileFailure.COPY_DENIED)
                 return failedCount + 1
             }
 
@@ -291,9 +293,9 @@ class FilesystemCopyService(
                 failures.add(FileFailure.IN_USE)
                 return FileErrors.resultOf(FileFailure.IN_USE)
             }
-            val isPermissionError = e.suppressed.any { it is AccessDeniedException } || e is AccessDeniedException
-            if (isPermissionError) {
-                Result.error("Missing permission to copy file.")
+            if (FileErrors.isAccessDenied(e)) {
+                failures.add(FileFailure.COPY_DENIED)
+                FileErrors.resultOf(FileFailure.COPY_DENIED)
             } else {
                 Result.error("Failed to copy file due to filesystem error.")
             }

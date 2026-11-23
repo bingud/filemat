@@ -202,4 +202,32 @@ class FileErrorsTest {
         assertTrue(result.hasError)
         assertEquals("2 items could not be deleted.", result.error)
     }
+
+    @Test
+    fun `a file the system refuses reports the permission message`() {
+        val single = FileFailures().apply { add(FileFailure.COPY_DENIED) }.toResult<Unit>(failedItemsSummary(1, "copied"), isSingleFile = true)
+        assertTrue(single.rejected)
+        assertEquals("Missing permission to copy file.", single.error)
+
+        // Last, where the web finds it to add the Windows hint
+        val folder = FileFailures().apply {
+            add(FileFailure.DELETE_DENIED)
+            add(FileFailure.READ_ONLY)
+        }.toResult<Unit>(failedItemsSummary(2, "deleted"))
+        assertEquals("2 items could not be deleted. Read-only files were left in place. Missing permission to delete file.", folder.error)
+    }
+
+    @Test
+    fun `access denied is found when suppressed`() {
+        val wrapped = java.io.IOException("x").apply { addSuppressed(AccessDeniedException("a")) }
+        assertTrue(FileErrors.isAccessDenied(AccessDeniedException("a")))
+        assertTrue(FileErrors.isAccessDenied(wrapped))
+        assertFalse(FileErrors.isAccessDenied(java.io.IOException("x")))
+    }
+
+    @Test
+    fun `the summary counts items in the singular and plural`() {
+        assertEquals("1 item could not be copied.", failedItemsSummary(1, "copied"))
+        assertEquals("3 items could not be deleted.", failedItemsSummary(3, "deleted"))
+    }
 }

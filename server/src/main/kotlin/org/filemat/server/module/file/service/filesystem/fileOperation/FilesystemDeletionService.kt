@@ -4,7 +4,9 @@ import org.filemat.server.common.InternalFolder
 import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.FileErrors
+import org.filemat.server.common.util.FileFailure
 import org.filemat.server.common.util.FileFailures
+import org.filemat.server.common.util.failedItemsSummary
 import org.filemat.server.config.Props
 import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.module.auth.model.Principal
@@ -93,7 +95,7 @@ class FilesystemDeletionService(
         return@tryWithLock if (failedCount == 0) {
             Result.ok()
         } else {
-            failures.toResult("$failedCount items could not be deleted.", isSingleFile = !isFolder)
+            failures.toResult(failedItemsSummary(failedCount, "deleted"), isSingleFile = !isFolder)
         }
     }.onFailure { Result.reject("This file is currently being modified.") }
 
@@ -129,6 +131,8 @@ class FilesystemDeletionService(
                     }
                 }
             } catch (e: Exception) {
+                // A folder the account running Filemat can't open
+                if (FileErrors.isAccessDenied(e)) failures.add(FileFailure.DELETE_DENIED)
                 return failedCount + 1
             }
 
@@ -192,9 +196,9 @@ class FilesystemDeletionService(
                 failures.add(it)
                 return FileErrors.resultOf(it)
             }
-            val isPermissionError = e.suppressed.any { it is AccessDeniedException } || e is AccessDeniedException
-            if (isPermissionError) {
-                Result.error("Missing permission to delete file.")
+            if (FileErrors.isAccessDenied(e)) {
+                failures.add(FileFailure.DELETE_DENIED)
+                FileErrors.resultOf(FileFailure.DELETE_DENIED)
             } else {
                 Result.error("Failed to delete file due to filesystem error.")
             }

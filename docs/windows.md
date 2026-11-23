@@ -152,6 +152,7 @@ Or stop Filemat and copy the whole data folder.
 - **Delete is permanent.** Files don't go to the Recycle Bin.
 - **Hidden and system files** are shown like other files. `$Recycle.Bin`, `System Volume Information`, `pagefile.sys`, `hiberfil.sys` and `swapfile.sys` in a drive's top folder are always hidden.
 - **Links:** symbolic links, junctions and mount points are not followed unless `FM_FOLLOW_SYMBOLIC_LINKS=true`. That includes uploads: a folder upload can't write through a junction, and with links followed, the junction's target is checked like any folder. Shortcuts (`.lnk`) are ordinary files.
+- **Exposed and hidden folders** are matched at their real path. A path that goes through a linked folder or an 8.3 short name (`C:\Users\JOHNSM~1`) is refused, and the message gives the path to use. A folder in `FM_HIDDEN_FOLDER_PATHS` given that way is hidden at its real path too.
 - **Names** that Windows can't store are refused: `<>:"/\|?*`, names ending in a dot or space, and device names such as `CON` or `NUL.txt`.
 
 ## Known limitations

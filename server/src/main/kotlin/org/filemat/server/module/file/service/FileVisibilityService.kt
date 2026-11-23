@@ -4,7 +4,9 @@ import org.filemat.server.common.State
 import org.filemat.server.common.model.Result
 import org.filemat.server.common.util.localDrivePath
 import org.filemat.server.common.util.reachesNetwork
+import org.filemat.server.common.util.resolvePath
 import org.filemat.server.common.util.unixNow
+import org.filemat.server.common.util.withRealNames
 import org.filemat.server.config.Props
 import org.filemat.server.config.platform.FileIdentity
 import org.filemat.server.config.platform.PathPolicy
@@ -63,6 +65,8 @@ class FileVisibilityService(
         }
 
         visibilityData.filter { it.isExposed }.forEach { warnIfUnstableMount(it.path) }
+        // Rules saved before F14 could go through a link or a short name
+        visibilityData.forEach { rule -> rulePathProblem(rule.path)?.let { println("\nWARNING: the rule for ${rule.path} never matches. $it") } }
     }
 
     /**
@@ -72,7 +76,15 @@ class FileVisibilityService(
     fun loadHiddenFiles() {
         hiddenFileTrie.insert(PathPolicy.pathKey(Props.authCodeFile), true)
         // Insert true because VisibilityTrie returns false by default
-        state.app.hiddenFolders.forEach { hiddenFileTrie.insert(PathPolicy.pathKey(it), true) }
+        state.app.hiddenFolders.forEach { hidden ->
+            hiddenFileTrie.insert(PathPolicy.pathKey(hidden), true)
+            // Requests are checked at their real path, so a folder typed through a link or a short name is hidden there too (F14)
+            val real = realRulePath(hidden) ?: return@forEach
+            if (real.pathKey != PathPolicy.pathKey(hidden)) {
+                hiddenFileTrie.insert(real.pathKey, true)
+                println("Hidden folder $hidden is also hidden at its real path ${real.pathString}.")
+            }
+        }
     }
 
     /**
@@ -123,10 +135,33 @@ class FileVisibilityService(
     }
 
     /**
+     * The path a rule for [path] has to have to match: requests are checked at their real path, with links followed and real names.
+     * Only the folders above it are resolved: a rule on a link itself still hides the link in its folder.
+     * A folder that doesn't exist yet stays as typed. Null when [path] can't be resolved (not absolute, the network).
+     */
+    fun realRulePath(path: String): FilePath? = runCatching {
+        val typed = FilePath.of(path)
+        if (PathPolicy.isVirtualRoot(typed.path) || !typed.path.isAbsolute) return null
+        val parent = typed.path.parent ?: return withRealNames(typed)
+        val realParent = resolvePath(FilePath.ofAlreadyNormalized(parent), followSymlinks = true, allowNonExistent = true).valueOrNull ?: return null
+        withRealNames(FilePath.ofAlreadyNormalized(PathPolicy.normalize(realParent.path.resolve(typed.path.fileName.toString()))))
+    }.getOrNull()
+
+    /**
+     * Why a rule for [path] would never match anything (F14): a folder in it is a link, or a name in it is an 8.3 short name (`JOHNSM~1`).
+     * Null when the path is already the real one.
+     */
+    fun rulePathProblem(path: String): String? {
+        val real = realRulePath(path) ?: return null
+        if (real.pathKey == PathPolicy.pathKey(path)) return null
+        return "This path goes through a link or a short name, so the rule would never match. Use the real path: ${real.pathString}"
+    }
+
+    /**
      * Create new folder visibility configurations
      */
     fun insertPaths(paths: List<IFileVisibility>, userAction: UserAction): Result<Unit> {
-        paths.firstNotNullOfOrNull { networkPathProblem(it.path) }?.let { return Result.reject(it) }
+        paths.firstNotNullOfOrNull { networkPathProblem(it.path) ?: rulePathProblem(it.path) }?.let { return Result.reject(it) }
 
         try {
             // Check if any path already exists

@@ -11,6 +11,7 @@ import org.filemat.server.module.file.model.FileContentMetadata
 import org.filemat.server.module.file.model.FilePath
 import org.filemat.server.module.file.service.file.component.FileContentMetadataService
 import org.filemat.server.module.file.service.file.component.readImageSize
+import org.filemat.server.module.file.service.file.component.readImageSubsampled
 import org.filemat.server.module.file.service.file.media.FfmpegBusyException
 import org.filemat.server.module.file.service.file.media.MediaPreviewService
 import org.filemat.server.module.log.model.LogType
@@ -53,6 +54,22 @@ class ThumbnailService(
          * and the controller marks them as only browser-cacheable.
          */
         const val MAX_CACHED_THUMBNAIL_SIZE = 2048
+
+        /** Most pixels an image thumbnail decodes (about 96 MB as ARGB), however large the image and the heap. */
+        const val MAX_DECODED_PIXELS = 24_000_000L
+
+        /**
+         * How many pixels to step over in each direction when decoding a [width] × [height] image for a thumbnail of [targetSize].
+         * 1 (every pixel, smoothed by Thumbnailator) up to [MAX_DECODED_PIXELS]. Above it, subsampling skips pixels without smoothing,
+         * so at least 4 times the target size is read, and never more than [MAX_DECODED_PIXELS]
+         * (a very large image asked at a large size then gets a smaller thumbnail).
+         */
+        fun imageSubsampling(width: Int, height: Int, targetSize: Int): Int {
+            if (width.toLong() * height <= MAX_DECODED_PIXELS) return 1
+            var subsampling = max(1, max(width, height) / (targetSize.coerceAtLeast(1) * 4))
+            while ((width / subsampling).toLong() * (height / subsampling) > MAX_DECODED_PIXELS) subsampling++
+            return subsampling
+        }
 
         init {
             // Thumbnailator reads a large image reduced (ImageReadParam source subsampling) only with this switch on,
@@ -788,9 +805,14 @@ class ThumbnailService(
             // When it is unknown, the old full decode finds it.
             val headerSize = readImageSize(canonicalPath.path)
 
+            // A large image is read reduced, whatever the free heap: a thumbnail never needs every pixel
+            val subsampling = headerSize?.let { imageSubsampling(it.first, it.second, targetSize) } ?: 1
+
             // FFmpeg fallback when Thumbnailator cannot decode the stream (e.g. AVIF/HEIC).
             val image: BufferedImage = try {
-                inputStreamProvider().use {
+                if (subsampling > 1) {
+                    readImageSubsampled(canonicalPath.path, subsampling) ?: throw IOException("No image reader for ${canonicalPath.path}")
+                } else inputStreamProvider().use {
                     if (headerSize != null && max(headerSize.first, headerSize.second) > targetSize) {
                         // Thumbnailator subsamples while reading when it knows the target size (see the companion init).
                         Thumbnails.of(it).size(targetSize, targetSize).asBufferedImage()
