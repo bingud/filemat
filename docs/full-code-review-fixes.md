@@ -153,12 +153,12 @@ The answers to the review's questions, as work to do. Delete an item when it's d
 
 ### Security
 
-- [ ] **R9, rank guard (1).** Change password, reset 2FA and edit username/e-mail/home folder refuse a target of higher rank, as delete already does.
+- [x] **R9, rank guard (1).** Done 2026-11-25: change password, reset 2FA and edit username/e-mail/home folder refuse a target of higher rank (`AdminUserService.rankRefusal`), as delete and "require 2FA" already did.
 - **R9, granting rights (2).** Keep the level rule: equals can grant each other everything. No change.
 - **R10, required 2FA (3).** The user may turn 2FA off; if an admin required it, they're asked to set it up again at the next login.
-- [ ] **R1, proxy headers (4).** Add `FM_TRUSTED_PROXIES`, default nobody. Only from a trusted proxy, read `X-Forwarded-For` (right-most untrusted entry) and `X-Forwarded-Proto`; ignore them from anyone else. Covers the rate limits, the audit log IP, `CorsOriginRegistry.requestOrigin` and the HTTPS check in `AuthController.contentSessionMapping`.
-- [ ] **R13/R14, headers (5).** `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on every response, and a sandbox CSP (no scripts) on file content.
-- [ ] **R13, HTML files (6).** Serve `text/html`, `application/xhtml+xml`, `text/xml` and `image/svg+xml` content inline as `text/plain`: the raw text shows, never a rendered page.
+- [x] **R1, proxy headers (4).** Done 2026-11-25 (`TrustedProxies`; entries are separated by commas, because IPv6 addresses contain colons). Add `FM_TRUSTED_PROXIES`, default nobody. Only from a trusted proxy, read `X-Forwarded-For` (right-most untrusted entry) and `X-Forwarded-Proto`; ignore them from anyone else. Covers the rate limits, the audit log IP, `CorsOriginRegistry.requestOrigin` and the HTTPS check in `AuthController.contentSessionMapping`.
+- [ ] **R13/R14, headers (5).** `X-Content-Type-Options: nosniff` on file content is done (2026-11-25). Still open: `nosniff` and `Referrer-Policy: no-referrer` on every response. **Needs a new decision:** `X-Frame-Options: DENY` and a sandbox CSP on file content would break the PDF preview, which shows `/api/v1/file/content` in an `<iframe>` (Chrome refuses PDFs in a sandboxed frame). Proposed: `frame-ancestors 'self' <content base URL origin>` on content, and `DENY` on everything else.
+- [x] **R13, HTML files (6).** Done 2026-11-25, also for `application/xml`, `text/xsl` and every `+xml` type; downloads keep their type. Serve `text/html`, `application/xhtml+xml`, `text/xml` and `image/svg+xml` content inline as `text/plain`: the raw text shows, never a rendered page.
 - [ ] **R3, endpoint auth (7).** Fail closed: match routes by Spring pattern and HTTP method, build the map (immutable) before the port opens, and refuse an `/api` request with no entry (401). Tus `PATCH`/`HEAD`/`DELETE` get a real auth check.
 - [ ] **R4, login timing (8).** Hash a dummy password when the username doesn't exist.
 - [ ] **R18, audit log on user delete (9).** Logs never change and the initiator ID never changes: deleting a user leaves their log rows exactly as they are. Migration: drop the `ON DELETE CASCADE` foreign key on `log.initiator_user_id` (no `SET NULL`).

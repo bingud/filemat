@@ -13,7 +13,7 @@ The data folder is `FM_DATA_DIR`, or by default `/var/lib/filemat` on Linux and 
 | `/var/cache/filemat` | `<data folder>\cache\thumbnails` | Default thumbnail cache folder |
 | `/tmp/filemat` | `<data folder>\uploads` | Default upload folder |
 | (stdout only) | `<data folder>\logs\filemat.log` | Console output, rotated at 10 MB, 9 older files kept |
-| - | `<data folder>\native` | SQLite's native library |
+| - | `<data folder>\native` | DLLs of JNA (Windows system calls) and SQLite |
 
 ## Server
 
@@ -31,7 +31,7 @@ The data folder is `FM_DATA_DIR`, or by default `/var/lib/filemat` on Linux and 
 | Type | Cookie-based session tokens |
 | Auth cookie | `filemat-auth-token` |
 | Token max age | ~1 year (31,557,600 seconds) |
-| Cookie security | `Secure`, `HttpOnly`, `SameSite=Lax` |
+| Cookie security | `HttpOnly`, `SameSite=Lax`, and `Secure` when the browser uses HTTPS (directly, or through a proxy in `FM_TRUSTED_PROXIES`) |
 
 ## Password Hashing
 
