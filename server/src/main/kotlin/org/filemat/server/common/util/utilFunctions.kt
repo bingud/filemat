@@ -12,6 +12,7 @@ import org.filemat.server.common.model.Result
 import org.filemat.server.common.model.toResult
 import org.filemat.server.config.Props
 import org.filemat.server.config.TransactionTemplateConfig
+import org.filemat.server.config.TrustedProxies
 import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.config.platform.Platform
 import org.filemat.server.config.platform.WindowsNative
@@ -138,16 +139,24 @@ fun Short.toBoolean() = this > 0
 fun HttpServletRequest.getPrincipal() = this.getAttribute("auth") as Principal?
 
 fun HttpServletRequest.realIp(): String {
-    val header: String? = this.getHeader("X-Forwarded-For")
-    return header ?: this.remoteAddr
+    val forwardedFor = getHeaders("X-Forwarded-For")?.toList() ?: emptyList()
+    return TrustedProxies.clientAddress(remoteAddr, forwardedFor)
 }
 
 /**
- * Returns whether the browser reached the server over HTTPS, directly or through a proxy that says so
+ * The scheme a trusted proxy ([TrustedProxies]) says the browser used, from `X-Forwarded-Proto`. Null from anyone else.
+ */
+fun HttpServletRequest.forwardedProto(): String? {
+    if (!TrustedProxies.isTrusted(remoteAddr)) return null
+    return getHeader("X-Forwarded-Proto")?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+/**
+ * Returns whether the browser reached the server over HTTPS, directly or through a trusted proxy that says so
  */
 fun HttpServletRequest.isHttps(): Boolean {
     if (isSecure) return true
-    return getHeader("X-Forwarded-Proto")?.substringBefore(',')?.trim().equals("https", ignoreCase = true)
+    return forwardedProto().equals("https", ignoreCase = true)
 }
 
 /**

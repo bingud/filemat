@@ -6,6 +6,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import org.filemat.server.config.Props
+import org.filemat.server.config.TrustedProxies
 import org.filemat.server.module.auth.model.AuthToken
 import org.filemat.server.module.auth.repository.AuthTokenRepository
 import org.filemat.server.module.log.service.LogService
@@ -160,9 +161,20 @@ class AuthTokenServiceTest {
     }
 
     @Test
-    fun `auth cookie is Secure over https, also behind a proxy`() {
+    fun `auth cookie is Secure over https, also behind a trusted proxy`() {
         assertTrue(cookieFor(MockHttpServletRequest().apply { isSecure = true }).secure)
-        assertTrue(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "https") }).secure)
-        assertFalse(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "http") }).secure)
+        try {
+            // MockHttpServletRequest comes from 127.0.0.1
+            TrustedProxies.configure("127.0.0.1")
+            assertTrue(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "https") }).secure)
+            assertFalse(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "http") }).secure)
+        } finally {
+            TrustedProxies.configure(null)
+        }
+    }
+
+    @Test
+    fun `X-Forwarded-Proto from a client that isn't a trusted proxy is ignored`() {
+        assertFalse(cookieFor(MockHttpServletRequest().apply { addHeader("X-Forwarded-Proto", "https") }).secure)
     }
 }

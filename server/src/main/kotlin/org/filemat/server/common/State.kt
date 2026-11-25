@@ -6,6 +6,7 @@ import org.filemat.server.common.util.isAbsoluteHttpsUrl
 import org.filemat.server.common.util.normalizePath
 import org.filemat.server.common.util.resolvePath
 import org.filemat.server.config.Props
+import org.filemat.server.config.TrustedProxies
 import org.filemat.server.config.platform.LinkInspector
 import org.filemat.server.config.platform.PathPolicy
 import org.filemat.server.config.platform.Platform
@@ -150,6 +151,11 @@ class State(env: Map<String, String?> = System.getenv(), dataFolderPath: Path = 
         }
 
         val printLogs = env.read("FM_PRINT_LOGS", true)?.toBooleanStrictOrNull() ?: true
+
+        init {
+            // Request helpers (`realIp`, `isHttps`) have no State, so the list is kept in TrustedProxies
+            TrustedProxies.configure(env.read("FM_TRUSTED_PROXIES", true))
+        }
     }
 
     class ThumbCache {

@@ -57,7 +57,7 @@ The upload folder and the thumbnail cache folder (Admin → System) can't be a d
 
 ## Configuration
 
-Filemat is configured with environment variables, as on Linux ([full list](/docs/configuration.md)). Lists use `;` between values on Windows, for example `C:\Private;D:\Backups`.
+Filemat is configured with environment variables, as on Linux ([full list](/docs/configuration.md)). Lists of folders use `;` between values on Windows, for example `C:\Private;D:\Backups`. `FM_TRUSTED_PROXIES` (IP addresses) uses commas everywhere.
 
 Set them for your user in **Settings → System → About → Advanced system settings → Environment Variables**, with `setx` (new windows only), or in a small script that calls `filemat.cmd`:
 
@@ -107,6 +107,8 @@ To add the rule by hand, run this in an administrator PowerShell:
 ```powershell
 New-NetFirewallRule -DisplayName "Filemat" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Private
 ```
+
+Behind a reverse proxy (for HTTPS from the internet), set `FM_TRUSTED_PROXIES` to the proxy's address, for example `127.0.0.1` when it runs on the same PC. Without it, Filemat ignores `X-Forwarded-For`, and every user shares the proxy's rate limits.
 
 ### "Windows system calls don't work"
 

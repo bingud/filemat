@@ -19,6 +19,7 @@ Input multiple values by putting a colon in between (`/one:/two`). On Windows, u
 | `FM_CONTENT_BASE_URL` | Absolute prefix for file content, uploads, and thumbnails | (empty) | `https://203.0.113.10:8080` |
 | `FM_CONTENT_BASE_URL_FOR_UNAUTHENTICATED` | Also send the content base URL to unauthenticated users | `false` | `true` |
 | `FM_PRINT_LOGS` | Whether to print logs to console | `true` | `false` |
+| `FM_TRUSTED_PROXIES` | Reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` headers are believed: IP addresses or ranges, separated by **commas** on every system (IPv6 addresses contain colons). From anyone else the headers are ignored. An entry that isn't an address or range stops the start | (nobody) | `127.0.0.1,172.16.0.0/12` |
 
 Spring Boot settings work too, for example `SERVER_PORT=9090` for another port.
 

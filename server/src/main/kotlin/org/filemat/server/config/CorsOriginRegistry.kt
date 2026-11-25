@@ -2,6 +2,7 @@ package org.filemat.server.config
 
 import com.github.f4b6a3.ulid.Ulid
 import jakarta.servlet.http.HttpServletRequest
+import org.filemat.server.common.util.forwardedProto
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
@@ -98,12 +99,8 @@ object CorsOriginRegistry {
         }
     }
 
-    private fun forwardedProto(request: HttpServletRequest): String? {
-        return request.getHeader("X-Forwarded-Proto")
-            ?.substringBefore(',')
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-    }
+    /** Only from a trusted proxy ([TrustedProxies]): anyone else could claim the scheme of a bound origin */
+    private fun forwardedProto(request: HttpServletRequest): String? = request.forwardedProto()
 
     private fun formatOrigin(scheme: String, host: String, port: Int): String {
         val schemeNorm = scheme.lowercase()

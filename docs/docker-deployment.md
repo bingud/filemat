@@ -66,11 +66,13 @@ The image is a Linux image, and Docker Desktop runs it in WSL 2. For Filemat as 
 
 ### Reverse proxy
 
-When Filemat runs behind a reverse proxy, these headers must be forwarded:
+When Filemat runs behind a reverse proxy, set `FM_TRUSTED_PROXIES` to the proxy's address as Filemat sees it (in Docker, usually the network's gateway or the proxy container's address, for example `172.16.0.0/12`). Filemat ignores the headers below from anyone else, so a client can't choose its own IP address. Without it, every request seems to come from the proxy: all users then share one rate limit bucket, so a few wrong passwords can block the login for everyone, and the audit log shows the proxy's address.
 
-- `X-Forwarded-For`: client IP, for rate limiting and audit logs. If missing, the connection IP is used.
+The proxy must send:
 
-If you also configure a different content server URL, Filemat requires these headers:
+- `X-Forwarded-For`: client IP, for rate limiting and audit logs. Filemat takes the right-most address that isn't a trusted proxy. If missing, the connection IP is used.
+- `X-Forwarded-Proto`: the browser scheme (`https` or `http`). With `https`, the login cookie gets `Secure`.
 
-- `X-Forwarded-Proto`: the browser scheme (`https` or `http`).
+If you also configure a different content server URL, Filemat also requires:
+
 - `Host`
