@@ -418,6 +418,7 @@ class FileController(
             inputStream.reset()
             type
         } else tika.detect(namedPath.pathString)
+        val servedType = if (download) mimeType else inlineSafeMimeType(mimeType)
 
         // Add byte stream to response
         val responseBody = StreamingResponseBody { outputStream ->
@@ -440,6 +441,8 @@ class FileController(
             set(HttpHeaders.ACCEPT_RANGES, "bytes")
             set(HttpHeaders.CACHE_CONTROL, "private, no-store")
             set(HttpHeaders.CONTENT_DISPOSITION, "$disposition; filename*=UTF-8''$encodedFilename")
+            // The browser must not guess a type that runs scripts from the bytes
+            set("X-Content-Type-Options", "nosniff")
 
             if (range != null) {
                 set(HttpHeaders.CONTENT_RANGE, "bytes ${range.first}-${range.last}/${fileSize}")
@@ -452,7 +455,7 @@ class FileController(
         val response = if (range == null) ResponseEntity.ok() else ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
         return response
             .headers(headers)
-            .contentType(MediaType.parseMediaType(mimeType))
+            .contentType(MediaType.parseMediaType(servedType))
             .body(responseBody)
     }
 
@@ -528,3 +531,19 @@ private fun isOpenEndedByteRange(rangeHeader: String): Boolean {
 
 
 
+
+/**
+ * Types a browser runs scripts in when it opens them (HTML, XML with XHTML or XSLT inside, SVG).
+ * Opened inline from the app's own origin, such a file could act as the user who opened it.
+ */
+private val scriptCapableTypes = setOf("text/html", "application/xhtml+xml", "text/xml", "application/xml", "text/xsl", "image/svg+xml")
+
+/**
+ * The type to serve a file inline as: [mimeType], or `text/plain` for a type that can run scripts (see [scriptCapableTypes]),
+ * so the raw text shows instead of a page. Downloads keep their type.
+ */
+internal fun inlineSafeMimeType(mimeType: String): String {
+    val base = mimeType.substringBefore(';').trim().lowercase()
+    val isScriptCapable = base in scriptCapableTypes || base.endsWith("+xml")
+    return if (isScriptCapable) "text/plain;charset=UTF-8" else mimeType
+}
