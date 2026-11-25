@@ -120,4 +120,54 @@ class AdminUserServiceTest {
         verify(exactly = 1) { mfaService.setRequired(any(), false) }
     }
 
+    private val userManager = state.principalWith(SystemPermission.MANAGE_USERS)
+    private val superAdmin = state.principalWith(SystemPermission.SUPER_ADMIN)
+
+    private fun meta(target: Principal, action: UserAction) =
+        RequestMeta(initiatorId = userManager.userId, targetId = target.userId, action = action)
+
+    @Test
+    fun `a user manager can't change the super admin's password`() {
+        every { authService.getPrincipalByUserId(superAdmin.userId, any()) } returns Result.ok(superAdmin)
+
+        val result = adminUserService.changeUserPassword(userManager, "127.0.0.1", superAdmin.userId, "new-password", false, UserAction.CHANGE_PASSWORD)
+
+        assertRejected(result)
+        verify(exactly = 0) { userService.changePassword(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a user manager can change the password of a user of the same rank`() {
+        val target = state.principalWith(SystemPermission.MANAGE_USERS)
+        every { authService.getPrincipalByUserId(target.userId, any()) } returns Result.ok(target)
+        every { userService.changePassword(any(), any(), any()) } returns Result.ok()
+
+        val result = adminUserService.changeUserPassword(userManager, "127.0.0.1", target.userId, "new-password", false, UserAction.CHANGE_PASSWORD)
+
+        assertSuccess(result)
+        verify(exactly = 1) { userService.changePassword(target.userId, any(), any()) }
+    }
+
+    @Test
+    fun `a user manager can't reset the super admin's 2FA`() {
+        every { authService.getPrincipalByUserId(superAdmin.userId, any()) } returns Result.ok(superAdmin)
+
+        val result = adminUserService.resetTotpMfa(userManager, meta(superAdmin, UserAction.RESET_TOTP_MFA), enforce = false)
+
+        assertRejected(result)
+        verify(exactly = 0) { mfaService.updateUserMfa(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { authService.logoutUserByUserId(any()) }
+    }
+
+    @Test
+    fun `a user manager can't change the super admin's e-mail`() {
+        every { userService.getUserByUserId(superAdmin.userId, any()) } returns Result.ok(mockk(relaxed = true))
+        every { authService.getPrincipalByUserId(superAdmin.userId, any()) } returns Result.ok(superAdmin)
+
+        val result = adminUserService.updateProperty(userManager, meta(superAdmin, UserAction.UPDATE_ACCOUNT_PROPERTY), "email", "attacker@example.com")
+
+        assertRejected(result)
+        verify(exactly = 0) { userService.changeEmail(any(), any()) }
+    }
+
 }

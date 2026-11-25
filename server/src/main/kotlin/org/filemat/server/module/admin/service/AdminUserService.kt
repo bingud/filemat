@@ -50,7 +50,23 @@ class AdminUserService(
     private val entityPermissionService: EntityPermissionService,
     private val state: State,
 ) {
-    fun updateProperty(meta: RequestMeta, property: String, value: String): Result<Unit> {
+    /**
+     * Null when [admin] may change the account of [targetUserId], or else the refusal.
+     * A user with higher permissions can't be changed: a new password, e-mail or 2FA would let [admin] sign in as them.
+     */
+    private fun rankRefusal(admin: Principal, targetUserId: Ulid, what: String): Result<Unit>? {
+        val target = authService.getPrincipalByUserId(targetUserId, cacheInMemory = false).let {
+            if (it.isNotSuccessful) return it.cast()
+            it.value
+        }
+        if (admin.getPermissions(state).hasSufficientPermissionsFor(target.getPermissions(state))) return null
+        return Result.reject("Cannot $what a user with higher permissions than you have.")
+    }
+
+    /**
+     * Changes a user's username, e-mail or home folder. Refused for a user with higher permissions than [admin].
+     */
+    fun updateProperty(admin: Principal, meta: RequestMeta, property: String, value: String): Result<Unit> {
         // Check if user exists
         userService.getUserByUserId(meta.targetUserId, meta.action)
             .let {
@@ -58,6 +74,7 @@ class AdminUserService(
                 if (it.hasError) return it.cast()
                 it.value
             }
+        rankRefusal(admin, meta.targetUserId, "edit")?.let { return it }
 
         // Update property
         val result: Result<Unit> =
@@ -96,7 +113,11 @@ class AdminUserService(
         return result
     }
 
-    fun resetTotpMfa(meta: RequestMeta, enforce: Boolean): Result<Unit> {
+    /**
+     * Turns off a user's 2FA and logs them out. Refused for a user with higher permissions than [admin].
+     */
+    fun resetTotpMfa(admin: Principal, meta: RequestMeta, enforce: Boolean): Result<Unit> {
+        rankRefusal(admin, meta.targetUserId, "reset 2FA for")?.let { return it }
         return mfaService.updateUserMfa(
             meta = meta,
             status = false,
@@ -134,13 +155,7 @@ class AdminUserService(
      * Refused for a user with higher permissions than [admin].
      */
     fun setTotpMfaRequired(admin: Principal, meta: RequestMeta, isRequired: Boolean): Result<Unit> {
-        val target = authService.getPrincipalByUserId(meta.targetUserId, cacheInMemory = false).let {
-            if (it.isNotSuccessful) return it.cast()
-            it.value
-        }
-        if (!admin.getPermissions(state).hasSufficientPermissionsFor(target.getPermissions(state))) {
-            return Result.reject("Cannot change 2FA for a user with higher permissions than you have.")
-        }
+        rankRefusal(admin, meta.targetUserId, "change 2FA for")?.let { return it }
 
         return mfaService.setRequired(meta, isRequired).also {
             if (it.isSuccessful) {
@@ -250,7 +265,12 @@ class AdminUserService(
         }
     }
 
-    fun changeUserPassword(adminId: Ulid, adminIp: String, userId: Ulid, rawPassword: String, logout: Boolean, userAction: UserAction): Result<Unit> {
+    /**
+     * Sets a user's password. Refused for a user with higher permissions than [admin].
+     */
+    fun changeUserPassword(admin: Principal, adminIp: String, userId: Ulid, rawPassword: String, logout: Boolean, userAction: UserAction): Result<Unit> {
+        val adminId = admin.userId
+        rankRefusal(admin, userId, "change the password of")?.let { return it }
         return let {
             Validator.password(rawPassword)?.let { return Result.reject(it) }
             val password = ArgonHash(passwordEncoder.encode(rawPassword))

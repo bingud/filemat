@@ -55,7 +55,7 @@ class AdminUserController(
             ip = ip
         )
 
-        adminUserService.updateProperty(meta, property, value).let {
+        adminUserService.updateProperty(admin, meta, property, value).let {
             if (it.hasError) return internal(it.error)
             if (it.isNotSuccessful) return bad(it.error)
             return ok("ok")
@@ -79,10 +79,10 @@ class AdminUserController(
         val enforce = rawEnforce.toBooleanStrictOrNull()
             ?: return bad("Option for 2FA enforcement is missing.")
 
-        adminUserService.resetTotpMfa(meta, enforce).let {
+        adminUserService.resetTotpMfa(admin, meta, enforce).let {
+            if (it.notFound) return bad("This user was not found.")
             if (it.rejected) return bad(it.error)
             if (it.hasError) return internal(it.error)
-            if (it.notFound) return bad("This user was not found.")
             return ok("ok")
         }
     }
@@ -127,16 +127,16 @@ class AdminUserController(
         val logout = rawLogout.toBooleanStrictOrNull() ?: return bad("Invalid logout option")
 
         adminUserService.changeUserPassword(
-            adminId = admin.userId,
+            admin = admin,
             adminIp = ip,
             userId = userId,
             rawPassword = password,
             logout = logout,
             userAction = UserAction.CHANGE_PASSWORD
         ).let {
+            if (it.notFound) return bad("This user was not found.")
             if (it.rejected) return bad(it.error)
             if (it.hasError) return internal(it.error)
-            if (it.notFound) return bad("This user was not found.")
             return ok("ok")
         }
     }
